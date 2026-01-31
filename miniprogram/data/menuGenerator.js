@@ -22,17 +22,22 @@ function getBabyConfig(month) {
   return { suffix: '块', action: '正常切块', salt: '🥗 过渡饮食：可少量尝试成人餐，但需保持低油低盐，避免重口味。' };
 }
 
-function generateMenu(taste, meat, babyMonth, hasBaby, adultCount) {
+function generateMenu(taste, meat, babyMonth, hasBaby, adultCount, babyTaste) {
   adultCount = adultCount == null ? 2 : adultCount;
   var meatKey = normalizeMeat(meat);
   var m = Math.min(36, Math.max(6, Number(babyMonth) || 6));
   var config = getBabyConfig(m);
+  var validBabyTastes = ['soft_porridge', 'finger_food', 'braised_mash'];
+  var babyTasteKey = (babyTaste && validBabyTastes.indexOf(babyTaste) !== -1) ? babyTaste : 'soft_porridge';
 
   var aPool = adultRecipes.filter(function (r) { return r.taste === taste && r.meat === meatKey; });
   var adultRaw = (aPool.length > 0 ? aPool : adultRecipes)[Math.floor(Math.random() * (aPool.length || adultRecipes.length))];
   var adult = adultRaw ? JSON.parse(JSON.stringify(adultRaw)) : null;
 
-  var bPool = babyRecipes.filter(function (r) { return r.meat === meatKey; });
+  var bPool = babyRecipes.filter(function (r) {
+    return r.meat === meatKey && (r.taste === babyTasteKey || (r.taste == null && babyTasteKey === 'soft_porridge'));
+  });
+  if (bPool.length === 0) bPool = babyRecipes.filter(function (r) { return r.meat === meatKey; });
   var rawBaby;
   if (meatKey === 'fish') {
     rawBaby = bPool.find(function (r) { return r.id === 'b-fish-detail'; }) || bPool[0] || babyRecipes[0];
@@ -91,6 +96,41 @@ function getStepText(step) {
   return typeof step === 'string' ? step : String((step && step.text != null ? step.text : '') || '');
 }
 
+function buildIngredientsInfo(recipe, shoppingList) {
+  if (!recipe || !Array.isArray(recipe.ingredients) || recipe.ingredients.length === 0) return '主食材';
+  var amountByKey = {};
+  if (Array.isArray(shoppingList)) {
+    shoppingList.forEach(function (item) {
+      if (item && item.name != null) {
+        var key = item.name + '\u0001' + (item.sub_type != null ? item.sub_type : '');
+        amountByKey[key] = item.amount != null ? item.amount : '适量';
+      }
+    });
+  }
+  var mainParts = [];
+  recipe.ingredients.forEach(function (it) {
+    var name = typeof it === 'string' ? it : (it && (it.name != null ? it.name : it.ingredient != null ? it.ingredient : ''));
+    if (!name) return;
+    var category = typeof it === 'object' && it != null && it.category != null ? it.category : '';
+    if (category !== '肉类' && category !== '蔬菜' && category !== '其他' && category !== '干货') return;
+    var subType = (typeof it === 'object' && it != null && it.sub_type != null) ? it.sub_type : '';
+    var key = name + '\u0001' + subType;
+    var amount = amountByKey[key] != null ? amountByKey[key] : '适量';
+    mainParts.push(name + ' (' + amount + ')');
+  });
+  if (mainParts.length === 0) return '主食材';
+  return '主食材 ' + mainParts.join('、');
+}
+
+function replaceStepPlaceholders(text, recipe, shoppingList, scaleText) {
+  if (!text || typeof text !== 'string') return text;
+  var out = text;
+  var ingredientsInfo = buildIngredientsInfo(recipe, shoppingList);
+  out = out.replace(/\{\{ingredients_info\}\}/g, ingredientsInfo);
+  if (scaleText != null) out = out.replace(/\{\{scale_hint\}\}/g, scaleText);
+  return out;
+}
+
 function getStepsByAction(recipe) {
   var getSafeText = function (s) { return (typeof s === 'object' && s ? s.text : s) || ''; };
   var steps = (recipe && recipe.steps) ? recipe.steps.slice() : [];
@@ -118,24 +158,27 @@ function estimateMinutes(text) {
   return 5;
 }
 
-function generateSteps(adultRecipe, babyRecipe) {
+function generateSteps(adultRecipe, babyRecipe, shoppingList) {
   var steps = [];
   var id = 1;
   var hasAdult = adultRecipe && Array.isArray(adultRecipe.steps) && adultRecipe.steps.length > 0;
   var hasBaby = babyRecipe && Array.isArray(babyRecipe.steps) && babyRecipe.steps.length > 0;
+  var list = Array.isArray(shoppingList) ? shoppingList : [];
 
   if (hasAdult && !hasBaby) {
     (adultRecipe.steps || []).forEach(function (step, i) {
-      var text = getStepText(step);
-      if (!text) return;
+      var raw = getStepText(step);
+      if (!raw) return;
+      var text = replaceStepPlaceholders(raw, adultRecipe, list, '');
       steps.push({ id: id++, title: '步骤 ' + (i + 1), details: [text], role: 'adult', completed: false, duration: estimateMinutes(text) });
     });
     return steps;
   }
   if (hasBaby && !hasAdult) {
     (babyRecipe.steps || []).forEach(function (s, i) {
-      var text = getStepText(s);
-      if (!text) return;
+      var raw = getStepText(s);
+      if (!raw) return;
+      var text = replaceStepPlaceholders(raw, babyRecipe, list, '');
       steps.push({ id: id++, title: '步骤 ' + (i + 1), details: [text], role: 'baby', completed: false, duration: estimateMinutes(text) });
     });
     return steps;
@@ -143,16 +186,28 @@ function generateSteps(adultRecipe, babyRecipe) {
 
   var adultSteps = getStepsByAction(adultRecipe);
   var babySteps = getStepsByAction(babyRecipe);
-  var sharedMain = (adultRecipe && MEAT_LABEL[adultRecipe.meat]) || (babyRecipe && MEAT_LABEL[babyRecipe.meat]) || '主料';
   var babySteamMins = babySteps.cook.reduce(function (sum, t) { return sum + estimateMinutes(t); }, 0) || 15;
-  var adultPrepText = adultSteps.prep[0] || '肉类腌制与配菜切配。';
+  var adultPrepRaw = adultSteps.prep[0] || '肉类腌制与配菜切配。';
+  var adultPrepText = replaceStepPlaceholders(adultPrepRaw, adultRecipe, list, '');
   var babyMonth = (babyRecipe && babyRecipe.month) || 6;
   var config = getBabyConfig(babyMonth);
+  var adultCanShare = adultRecipe && adultRecipe.can_share_base === true;
+  var babyCanShare = babyRecipe && babyRecipe.can_share_base === true;
+  var shareBase = adultCanShare && babyCanShare;
 
-  steps.push({ id: id++, title: '步骤 1：联合备菜', details: ['✨ 今日共用食材：' + sharedMain + '。', '👨 【大人端】🔥 请一次性洗净、去刺/去腥，按比例预留份量。', '👶 【宝宝端】🔥 从中分出约 50g 单独装小碗备用，剩余留给大人。'], role: 'both', completed: false, duration: 10 });
-  steps.push({ id: id++, title: '步骤 2：并行烹饪（利用宝宝蒸煮间隙处理成人菜）', details: ['👶 【宝宝端】🔥 宝宝端先上火蒸（计时 ' + babySteamMins + 'min），蒸至熟软。', '👨 【大人端】⏳ 大人端利用间隙：' + adultPrepText, '✨ 省时窍门：共用蒸锅可分层放置，一锅同蒸省时省气。'], role: 'both', completed: false, duration: Math.max(babySteamMins, adultSteps.prep.reduce(function (s, t) { return s + estimateMinutes(t); }, 0) || 10) });
+  if (shareBase) {
+    var sharedMain = (adultRecipe && MEAT_LABEL[adultRecipe.meat]) || (babyRecipe && MEAT_LABEL[babyRecipe.meat]) || '主料';
+    steps.push({ id: id++, title: '步骤 1：联合备菜', details: ['✨ 今日共用食材：' + sharedMain + '。', '👨 【大人端】🔥 请一次性洗净、去刺/去腥，按比例预留份量。', '👶 【宝宝端】🔥 从中分出约 50g 单独装小碗备用，剩余留给大人。'], role: 'both', completed: false, duration: 10 });
+    steps.push({ id: id++, title: '步骤 2：并行烹饪（利用宝宝蒸煮间隙处理成人菜）', details: ['👶 【宝宝端】🔥 宝宝端先上火蒸（计时 ' + babySteamMins + 'min），蒸至熟软。', '👨 【大人端】⏳ 大人端利用间隙：' + adultPrepText, '✨ 省时窍门：共用蒸锅可分层放置，一锅同蒸省时省气。'], role: 'both', completed: false, duration: Math.max(babySteamMins, adultSteps.prep.reduce(function (s, t) { return s + estimateMinutes(t); }, 0) || 10) });
+  } else {
+    var babyPrepRaw = babySteps.prep[0] || '宝宝食材洗净切配。';
+    var babyPrepText = replaceStepPlaceholders(babyPrepRaw, babyRecipe, list, '');
+    steps.push({ id: id++, title: '步骤 1：大人备菜', details: ['👨 【大人端】🔥 ' + adultPrepText], role: 'adult', completed: false, duration: 10 });
+    steps.push({ id: id++, title: '步骤 2：宝宝备菜', details: ['👶 【宝宝端】🔥 ' + babyPrepText], role: 'baby', completed: false, duration: 10 });
+    steps.push({ id: id++, title: '步骤 3：并行烹饪', details: ['👶 【宝宝端】🔥 宝宝端先上火蒸（计时 ' + babySteamMins + 'min），蒸至熟软。', '👨 【大人端】⏳ 大人端：' + (adultSteps.cook.slice(0, 2).join('；') || '大火快炒、调味装盘。')], role: 'both', completed: false, duration: Math.max(babySteamMins, adultSteps.prep.reduce(function (s, t) { return s + estimateMinutes(t); }, 0) || 10) });
+  }
   var adultCook = adultSteps.cook.slice(0, 2).join('；') || '大火快炒、调味装盘。';
-  steps.push({ id: id++, title: '步骤 3：分锅调味', details: ['👶 【宝宝端】✨ ' + config.action + '，' + config.salt, '👨 【大人端】🔥 ' + adultCook, '✨ 宝宝与大人分别调味，按需装盘即可。'], role: 'both', completed: false, duration: 10 });
+  steps.push({ id: id++, title: shareBase ? '步骤 3：分锅调味' : '步骤 4：分锅调味', details: ['👶 【宝宝端】✨ ' + config.action + '，' + config.salt, '👨 【大人端】🔥 ' + adultCook, '✨ 宝宝与大人分别调味，按需装盘即可。'], role: 'both', completed: false, duration: 10 });
   return steps;
 }
 
@@ -168,30 +223,28 @@ function getIngredientNames(list) {
 }
 
 function generateShoppingListRaw(adultRecipe, babyRecipe) {
-  var aNames = new Set(getIngredientNames(adultRecipe && adultRecipe.ingredients));
-  var bNames = new Set(getIngredientNames(babyRecipe && babyRecipe.ingredients));
-  var sharedNames = Array.from(aNames).filter(function (n) { return bNames.has(n); });
   var items = [];
-  var seen = new Set();
-  function add(list) {
+  function add(list, isFromBaby) {
     if (!Array.isArray(list)) return;
     list.forEach(function (it) {
       var name = typeof it === 'string' ? it : (it && (it.name != null ? it.name : it.ingredient != null ? it.ingredient : ''));
-      if (!name || seen.has(name)) return;
-      seen.add(name);
-      items.push({ name: name, category: (typeof it === 'object' && it != null && it.category != null) ? it.category : '其他', isShared: sharedNames.indexOf(name) !== -1 });
+      if (!name) return;
+      var category = (typeof it === 'object' && it != null && it.category != null) ? it.category : '其他';
+      var subType = (category === '肉类' && typeof it === 'object' && it != null && it.sub_type != null) ? it.sub_type : undefined;
+      var baseAmount = (typeof it === 'object' && it != null && typeof it.baseAmount === 'number') ? it.baseAmount : 1;
+      var unit = (typeof it === 'object' && it != null && it.unit != null) ? String(it.unit) : '份';
+      items.push({ name: name, sub_type: subType, category: category, baseAmount: baseAmount, unit: unit, isFromBaby: !!isFromBaby });
     });
   }
-  add(adultRecipe && adultRecipe.ingredients);
-  add(babyRecipe && babyRecipe.ingredients);
-  // 菜谱数据无 ingredients 时，用主料生成至少一项，避免清单为空
+  add(adultRecipe && adultRecipe.ingredients, false);
+  add(babyRecipe && babyRecipe.ingredients, true);
   if (items.length === 0) {
     var main = adultRecipe || babyRecipe;
     if (main && main.meat) {
       var mainName = MEAT_LABEL[main.meat] || main.meat;
-      items.push({ name: mainName, category: '肉类', isShared: false });
+      items.push({ name: mainName, sub_type: undefined, category: '肉类', baseAmount: 200, unit: 'g', isFromBaby: false });
     }
-    if (items.length === 0) items.push({ name: '主料', category: '其他', isShared: false });
+    if (items.length === 0) items.push({ name: '主料', sub_type: undefined, category: '其他', baseAmount: 1, unit: '份', isFromBaby: false });
   }
   return items;
 }
@@ -208,11 +261,19 @@ function aggregateWeeklyIngredients(ingredientsArray) {
     if (!name) return;
     if (!map.has(name)) map.set(name, { category: getCategory(it), byUnit: new Map() });
     var row = map.get(name);
-    var amountStr = (typeof it === 'object' && it != null && it.amount != null) ? String(it.amount).trim() : '适量';
-    var match = amountStr.match(re);
-    if (!match) return;
-    var value = parseFloat(match[1]);
-    var unit = (match[2] || '').trim() || '份';
+    var value;
+    var unit;
+    if (typeof it === 'object' && it != null && typeof it.baseAmount === 'number' && it.unit != null) {
+      value = it.baseAmount;
+      unit = String(it.unit).trim() || '份';
+      if (unit === '适量') return;
+    } else {
+      var amountStr = (typeof it === 'object' && it != null && it.amount != null) ? String(it.amount).trim() : '适量';
+      var match = amountStr.match(re);
+      if (!match) return;
+      value = parseFloat(match[1]);
+      unit = (match[2] || '').trim() || '份';
+    }
     row.byUnit.set(unit, (row.byUnit.get(unit) || 0) + value);
   });
   var items = [];

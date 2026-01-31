@@ -1,5 +1,11 @@
 <view class="steps-container">
   <view class="page-content">
+    <view wx:if="{{ingredientList.length > 0}}" class="ingredient-block">
+      <text class="ingredient-block__title">今日食材（按人数已换算）</text>
+      <view class="ingredient-block__list">
+        <text wx:for="{{ingredientList}}" wx:key="id" class="ingredient-line">{{item.name}} {{item.amount || ''}}</text>
+      </view>
+    </view>
     <view class="progress-block">
       <progress percent="{{progressPercentage}}" stroke-width="8" activeColor="#C1663E" backgroundColor="#efe9e2"/>
       <text class="progress-label">{{currentStepLabel}}</text>

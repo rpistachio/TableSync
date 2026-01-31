@@ -83,7 +83,10 @@ Page({
     weeklyNoticeText: '',
     ingredientsList: [],
     currentDishName: '未选菜品',
-    isEmpty: true
+    isEmpty: true,
+    todayPrepTime: 0,
+    todayAllergens: [],
+    todayAllergensText: ''
   },
 
   onLoad: function () {
@@ -91,14 +94,23 @@ Page({
   },
 
   onShow: function () {
-    // 从缓存读取首页存入的配料
     var list = wx.getStorageSync('cart_ingredients') || [];
     var dishName = wx.getStorageSync('selected_dish_name') || '未选菜品';
+    var prepTime = wx.getStorageSync('today_prep_time');
+    var allergensRaw = wx.getStorageSync('today_allergens');
+    var allergens = [];
+    try {
+      if (allergensRaw) allergens = JSON.parse(allergensRaw);
+      if (!Array.isArray(allergens)) allergens = [];
+    } catch (e) {}
 
     this.setData({
       ingredientsList: list,
       currentDishName: dishName,
-      isEmpty: list.length === 0
+      isEmpty: list.length === 0,
+      todayPrepTime: typeof prepTime === 'number' ? prepTime : 0,
+      todayAllergens: allergens,
+      todayAllergensText: Array.isArray(allergens) && allergens.length > 0 ? allergens.join('、') : ''
     });
   },
 

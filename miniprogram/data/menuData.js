@@ -6,33 +6,36 @@ var generator = require('./menuGenerator.js');
 var MEAT_LABEL_MAP = { chicken: '鸡肉', pork: '猪肉', beef: '牛肉', fish: '鱼肉', shrimp: '虾仁' };
 exports.MEAT_KEY_MAP = { 鸡肉: 'chicken', 猪肉: 'pork', 牛肉: 'beef', 鱼肉: 'fish', 虾仁: 'shrimp', chicken: 'chicken', pork: 'pork', beef: 'beef', fish: 'fish', shrimp: 'shrimp' };
 
-var VALID_TASTES = ['light', 'spicy', 'soup'];
+var VALID_ADULT_TASTES = ['quick_stir_fry', 'slow_stew', 'steamed_salad'];
+var VALID_BABY_TASTES = ['soft_porridge', 'finger_food', 'braised_mash'];
 var VALID_MEATS = ['chicken', 'pork', 'beef', 'fish', 'shrimp'];
 var categoryOrder = { '蔬菜': 1, '肉类': 2, '蛋类': 2, '干货': 2, '调料': 3, '辅食': 4, '其他': 5 };
 var cache = {};
 
 function normalizePreference(preference) {
   if (preference == null || typeof preference !== 'object') {
-    return { taste: 'light', meat: 'chicken', adultCount: 2, babyMonth: 6, hasBaby: false };
+    return { adultTaste: 'quick_stir_fry', babyTaste: 'soft_porridge', meat: 'chicken', adultCount: 2, babyMonth: 6, hasBaby: false };
   }
-  var taste = preference.taste;
+  var adultTaste = preference.adultTaste != null ? preference.adultTaste : preference.taste;
+  var babyTaste = preference.babyTaste;
   var meat = preference.meat;
   var adultCount = Math.min(6, Math.max(1, Number(preference.adultCount) || 2));
   var babyMonth = Math.min(36, Math.max(6, Number(preference.babyMonth) || 6));
   var hasBaby = preference.hasBaby === '1' || preference.hasBaby === true;
-  if (VALID_TASTES.indexOf(taste) === -1) taste = 'light';
+  if (VALID_ADULT_TASTES.indexOf(adultTaste) === -1) adultTaste = 'quick_stir_fry';
+  if (VALID_BABY_TASTES.indexOf(babyTaste) === -1) babyTaste = 'soft_porridge';
   meat = exports.MEAT_KEY_MAP[meat] || (VALID_MEATS.indexOf(meat) !== -1 ? meat : 'chicken');
-  return { taste: taste, meat: meat, adultCount: adultCount, babyMonth: babyMonth, hasBaby: hasBaby };
+  return { adultTaste: adultTaste, babyTaste: babyTaste, meat: meat, adultCount: adultCount, babyMonth: babyMonth, hasBaby: hasBaby };
 }
 
 function getAdaptedRecipes(preference) {
   var norm = normalizePreference(preference);
-  var key = norm.taste + '_' + norm.meat + '_' + norm.babyMonth + '_' + norm.adultCount + '_' + norm.hasBaby;
+  var key = norm.adultTaste + '_' + norm.babyTaste + '_' + norm.meat + '_' + norm.babyMonth + '_' + norm.adultCount + '_' + norm.hasBaby;
   if (!cache[key]) {
-    cache[key] = generator.generateMenu(norm.taste, norm.meat, norm.babyMonth, norm.hasBaby, norm.adultCount);
+    cache[key] = generator.generateMenu(norm.adultTaste, norm.meat, norm.babyMonth, norm.hasBaby, norm.adultCount, norm.babyTaste);
   }
   var res = cache[key];
-  return { taste: norm.taste, meat: norm.meat, adultRecipe: res.adultRecipe || null, babyRecipe: res.babyRecipe || null };
+  return { adultTaste: norm.adultTaste, babyTaste: norm.babyTaste, meat: norm.meat, adultRecipe: res.adultRecipe || null, babyRecipe: res.babyRecipe || null };
 }
 
 /**
@@ -50,7 +53,7 @@ function buildMenuFromAdapted(adapted) {
   var totalTimeDisplay = totalTime > 0 ? totalTime : 25;
   var explanation = generator.generateExplanation(adultRecipe, babyRecipe);
 
-  return { taste: adapted.taste, meat: meat, adultMenu: adultMenu, babyMenu: babyMenu, totalTime: totalTimeDisplay, explanation: explanation };
+  return { taste: adapted.adultTaste, meat: meat, adultMenu: adultMenu, babyMenu: babyMenu, totalTime: totalTimeDisplay, explanation: explanation };
 }
 
 exports.getTodayMenu = function (preference) {
@@ -61,17 +64,69 @@ exports.getTodayMenu = function (preference) {
 
 exports.generateSteps = function (preference) {
   var adapted = getAdaptedRecipes(preference);
-  return generator.generateSteps(adapted.adultRecipe, adapted.babyRecipe);
+  var shoppingList = exports.generateShoppingList(preference);
+  return generator.generateSteps(adapted.adultRecipe, adapted.babyRecipe, shoppingList);
 };
+
+function formatAmount(value) {
+  if (value == null || isNaN(value)) return '0';
+  if (Number.isInteger(value)) return String(value);
+  var v = parseFloat(value.toFixed(2));
+  return v % 1 === 0 ? String(Math.round(v)) : String(v);
+}
 
 exports.generateShoppingList = function (preference) {
   var adapted = getAdaptedRecipes(preference);
+  var adultCount = preference && typeof preference.adultCount !== 'undefined' ? Math.min(6, Math.max(1, Number(preference.adultCount) || 2)) : 2;
   var raw = generator.generateShoppingList(adapted.adultRecipe, adapted.babyRecipe);
-  var list = raw.map(function (item, idx) {
-    return { id: idx + 1, name: item.name != null ? item.name : '未知', amount: '适量', checked: false, category: item.category != null ? item.category : '其他', order: categoryOrder[item.category] != null ? categoryOrder[item.category] : 5, isShared: item.isShared || false };
+  var groupKey = function (item) { return (item.name != null ? item.name : '') + '\u0001' + (item.sub_type != null ? item.sub_type : ''); };
+  var groups = {};
+  raw.forEach(function (item) {
+    var key = groupKey(item);
+    if (!groups[key]) groups[key] = { name: item.name, sub_type: item.sub_type, category: item.category != null ? item.category : '其他', unit: (item.unit != null && String(item.unit).trim() !== '') ? String(item.unit).trim() : '份', rows: [] };
+    groups[key].rows.push(item);
+  });
+  var list = [];
+  var idx = 0;
+  Object.keys(groups).forEach(function (key) {
+    var g = groups[key];
+    var totalRaw = 0;
+    var isLiang = g.unit === '适量' || g.rows.every(function (r) { var b = (r.baseAmount != null && typeof r.baseAmount === 'number') ? r.baseAmount : 1; return b === 0; });
+    g.rows.forEach(function (row) {
+      var base = (row.baseAmount != null && typeof row.baseAmount === 'number') ? row.baseAmount : 1;
+      if (g.category === '肉类' || g.category === '蔬菜') {
+        totalRaw += row.isFromBaby ? base : base * adultCount;
+      } else if (g.category === '调料' || g.category === '干货') {
+        if (!isLiang) totalRaw += row.isFromBaby ? base : base * (1 + 0.2 * (adultCount - 1));
+      } else {
+        totalRaw += row.isFromBaby ? base : base * adultCount;
+      }
+    });
+    var amountDisplay;
+    if (g.category === '肉类' || g.category === '蔬菜') {
+      amountDisplay = formatAmount(totalRaw) + g.unit;
+    } else if (g.category === '调料' || g.category === '干货') {
+      if (isLiang || totalRaw === 0) amountDisplay = '适量';
+      else amountDisplay = formatAmount(totalRaw) + g.unit;
+    } else {
+      if (g.unit === '适量' || totalRaw === 0) amountDisplay = '适量';
+      else amountDisplay = formatAmount(totalRaw) + g.unit;
+    }
+    list.push({
+      id: ++idx,
+      name: g.name != null ? g.name : '未知',
+      sub_type: g.sub_type,
+      amount: amountDisplay,
+      rawAmount: totalRaw,
+      unit: g.unit,
+      checked: false,
+      category: g.category,
+      order: categoryOrder[g.category] != null ? categoryOrder[g.category] : 5,
+      isShared: g.rows.some(function (r) { return r.isFromBaby; }) && g.rows.some(function (r) { return !r.isFromBaby; })
+    });
   });
   if (list.length === 0) {
-    list = [{ id: 1, name: '请先生成菜单后查看清单', amount: '—', checked: false, category: '其他', order: 99, isShared: false }];
+    list = [{ id: 1, name: '请先生成菜单后查看清单', sub_type: undefined, amount: '—', rawAmount: 0, unit: '—', checked: false, category: '其他', order: 99, isShared: false }];
   }
   return list;
 };
@@ -89,7 +144,7 @@ exports.generateWeeklyShoppingList = function (weeklyPreferences) {
   for (var i = 0; i < prefs.length; i++) {
     var p = prefs[i];
     var norm = normalizePreference(p);
-    var res = generator.generateMenu(norm.taste, norm.meat, norm.babyMonth, norm.hasBaby, norm.adultCount);
+    var res = generator.generateMenu(norm.adultTaste, norm.meat, norm.babyMonth, norm.hasBaby, norm.adultCount, norm.babyTaste);
     if (res.adultRecipe && res.adultRecipe.ingredients && res.adultRecipe.ingredients.length > 0) {
       allIngredients = allIngredients.concat(res.adultRecipe.ingredients);
     }

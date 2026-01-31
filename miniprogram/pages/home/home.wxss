@@ -140,6 +140,24 @@
   line-height: 1.5;
 }
 
+.adult-count-section {
+  padding: 24rpx 40rpx 20rpx;
+}
+
+.adult-count-section .group-label {
+  margin-bottom: 24rpx;
+}
+
+.count-stack .curated-card {
+  width: calc((100% - 120rpx) / 6);
+  min-width: 72rpx;
+  padding: 24rpx 8rpx;
+}
+
+.count-stack .card-text {
+  font-size: 24rpx;
+}
+
 .card-stack {
   display: flex;
   flex-wrap: wrap;

@@ -28,6 +28,29 @@
   color: #8e857e;
 }
 
+.meta-tags {
+  margin-top: 20rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.meta-tag {
+  font-size: 22rpx;
+  padding: 8rpx 16rpx;
+  border-radius: 8rpx;
+}
+
+.prep-tag {
+  background: rgba(193, 102, 62, 0.1);
+  color: #c1663e;
+}
+
+.allergen-tag {
+  background: rgba(220, 100, 80, 0.12);
+  color: #8e4a45;
+}
+
 .page-content {
   padding: 0 32rpx 48rpx;
 }

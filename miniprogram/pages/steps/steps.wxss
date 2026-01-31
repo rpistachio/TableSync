@@ -7,6 +7,33 @@
   padding: 32rpx 32rpx 192rpx;
 }
 
+.ingredient-block {
+  margin: 0 32rpx 24rpx;
+  padding: 24rpx 32rpx;
+  background: #fff;
+  border-radius: 32rpx;
+  box-shadow: 0 4rpx 16rpx rgba(74, 69, 64, 0.06);
+}
+
+.ingredient-block__title {
+  display: block;
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #8e857e;
+  margin-bottom: 16rpx;
+}
+
+.ingredient-block__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx 24rpx;
+}
+
+.ingredient-line {
+  font-size: 26rpx;
+  color: #1a1a1a;
+}
+
 .progress-block {
   padding: 32rpx 40rpx;
   background: #fff;

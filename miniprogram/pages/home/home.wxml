@@ -22,6 +22,14 @@
       <text class="baby-age-tag-label">宝宝月龄</text>
       <text class="baby-age-tag-value">{{babyMonth}} 月</text>
     </view>
+    <view wx:if="{{activeMember === 'adult'}}" class="adult-count-section">
+      <text class="group-label">用餐人数</text>
+      <view class="card-stack count-stack">
+        <view wx:for="{{adultCountOptions}}" wx:key="*this" class="curated-card {{adultCount === item ? 'is-active' : ''}}" data-count="{{item}}" bindtap="onAdultCountTap">
+          <text class="card-text">{{item}} 人</text>
+        </view>
+      </view>
+    </view>
   </view>
 
   <view class="selection-area">
@@ -33,9 +41,9 @@
     </view>
 
     <view class="selection-group">
-      <text class="group-label">Taste Preference / 口味偏好</text>
+      <text class="group-label">Taste Preference / 口味偏好 {{activeMember === 'adult' ? '（大人）' : '（宝宝）'}}</text>
       <view class="card-stack">
-        <view wx:for="{{tastes}}" wx:key="value" class="curated-card {{selectedTaste === item.value ? 'is-active' : ''}}" data-value="{{item.value}}" bindtap="onTasteTap">
+        <view wx:for="{{activeMember === 'adult' ? adultTasteOptions : babyTasteOptions}}" wx:key="value" class="curated-card {{(activeMember === 'adult' ? adultTaste : babyTaste) === item.value ? 'is-active' : ''}}" data-value="{{item.value}}" bindtap="onTasteTap">
           <text class="card-icon">{{item.icon}}</text>
           <text class="card-text">{{item.label}}</text>
         </view>

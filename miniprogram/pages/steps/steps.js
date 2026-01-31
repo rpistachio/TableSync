@@ -3,11 +3,12 @@ var menuData = require('../../data/menuData.js');
 var STORAGE_PREFIX = 'tablesync_steps_completed_';
 var KEY_ACTIONS = ['下锅', '打泥', '切', '炒', '煮', '蒸', '煎', '搅拌', '焯水', '腌制', '加盐', '装盘', '翻炒', '焖', '烤', '炖', '剁'];
 
-function getStepsQuery() {
+function getStepsPreference() {
   var app = getApp();
   var p = app.globalData.preference || {};
   return {
-    taste: p.taste || 'light',
+    adultTaste: p.adultTaste != null ? p.adultTaste : p.taste,
+    babyTaste: p.babyTaste,
     meat: p.meat || 'chicken',
     adultCount: Number(p.adultCount) || 2,
     babyMonth: Number(p.babyMonth) || 6,
@@ -16,8 +17,8 @@ function getStepsQuery() {
 }
 
 function stepsStorageKey() {
-  var q = getStepsQuery();
-  return STORAGE_PREFIX + q.taste + '_' + q.meat + '_' + q.babyMonth + '_' + q.adultCount + '_' + q.hasBaby;
+  var q = getStepsPreference();
+  return STORAGE_PREFIX + (q.adultTaste || q.taste) + '_' + (q.babyTaste || '') + '_' + q.meat + '_' + q.babyMonth + '_' + q.adultCount + '_' + q.hasBaby;
 }
 
 function highlightSegments(text) {
@@ -68,12 +69,13 @@ Page({
   data: {
     steps: [],
     progressPercentage: 0,
-    currentStepLabel: '第 0/0 步'
+    currentStepLabel: '第 0/0 步',
+    ingredientList: []
   },
 
   onLoad: function () {
-    var query = getStepsQuery();
-    var steps = menuData.generateSteps(query);
+    var preference = getStepsPreference();
+    var steps = menuData.generateSteps(preference);
     try {
       var raw = wx.getStorageSync(stepsStorageKey());
       if (raw) {
@@ -88,6 +90,16 @@ Page({
     } catch (e) {}
     this._stepsRaw = steps;
     this._updateView(steps);
+    this._loadIngredientList();
+  },
+
+  onShow: function () {
+    this._loadIngredientList();
+  },
+
+  _loadIngredientList: function () {
+    var list = wx.getStorageSync('cart_ingredients') || [];
+    this.setData({ ingredientList: Array.isArray(list) ? list : [] });
   },
 
   _updateView: function (steps) {
