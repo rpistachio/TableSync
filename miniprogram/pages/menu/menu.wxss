@@ -1,0 +1,149 @@
+.menu-container {
+  min-height: 100vh;
+  background-color: #fdf8f2;
+  padding: 32rpx 48rpx 240rpx;
+}
+
+.page-header {
+  margin-bottom: 48rpx;
+}
+
+.curation-tag {
+  font-size: 20rpx;
+  letter-spacing: 4rpx;
+  color: #c1663e;
+  font-weight: 700;
+}
+
+.main-title {
+  display: block;
+  font-size: 52rpx;
+  color: #2d2d2d;
+  margin: 16rpx 0 8rpx;
+}
+
+.sub-title {
+  font-size: 26rpx;
+  color: #8e857e;
+}
+
+.menu-content {
+  margin-bottom: 48rpx;
+}
+
+.plan-card {
+  background: #fff;
+  border-radius: 48rpx;
+  padding: 56rpx 48rpx;
+  box-shadow: 0 20rpx 60rpx rgba(74, 69, 64, 0.08);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24rpx;
+}
+
+.role-badge {
+  font-size: 18rpx;
+  font-weight: 800;
+  letter-spacing: 2rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 8rpx;
+}
+
+.role-badge.adult {
+  background: #e8f0e9;
+  color: #4a5d4e;
+}
+
+.role-badge.baby {
+  background: #feeff0;
+  color: #d67a7d;
+}
+
+.dish-name {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 16rpx;
+}
+
+.ingredient-preview {
+  font-size: 24rpx;
+  color: #999;
+}
+
+/* 小程序不支持 text + text::before，用间距代替伪元素分隔符 */
+.ingredient-preview text {
+  margin-right: 8rpx;
+}
+
+.card-divider {
+  margin: 48rpx 0;
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.card-divider .line {
+  flex: 1;
+  height: 2rpx;
+  background: #f0ede9;
+}
+
+.card-divider .dot {
+  width: 8rpx;
+  height: 8rpx;
+  background: #d1cdc7;
+  border-radius: 50%;
+}
+
+.time-hint {
+  font-size: 24rpx;
+  color: #8e857e;
+  margin-top: 32rpx;
+  text-align: center;
+  display: block;
+}
+
+.action-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 32rpx 48rpx 48rpx;
+  background: linear-gradient(to top, #fdf8f2 85%, transparent);
+}
+
+.button-group {
+  display: flex;
+  gap: 24rpx;
+  align-items: stretch;
+}
+
+.primary-btn {
+  flex: 2;
+  height: 108rpx;
+  background: #2d2d2d;
+  color: #fdf8f2;
+  border-radius: 24rpx;
+  font-weight: 600;
+  border: none;
+  line-height: 108rpx;
+  font-size: 32rpx;
+}
+
+.secondary-btn {
+  flex: 1;
+  height: 108rpx;
+  background: #fff;
+  border: 2rpx solid #efe9e2;
+  border-radius: 24rpx;
+  color: #5a544f;
+  font-weight: 500;
+  line-height: 108rpx;
+  font-size: 28rpx;
+}

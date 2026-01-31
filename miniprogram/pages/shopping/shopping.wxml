@@ -1,0 +1,70 @@
+<view class="shopping-page">
+  <view class="page-header">
+    <text class="curation-tag">Shopping List</text>
+    <text class="main-title">采购清单</text>
+    <text class="sub-title">今日/本周所需食材，按分类查看</text>
+  </view>
+  <view class="page-content">
+    <view class="main-tabs">
+      <view class="tab-item {{listMode === 'today' ? 'active' : ''}}" data-mode="today" bindtap="onTabChange">今日</view>
+      <view class="tab-item {{listMode === 'weekly' ? 'active' : ''}}" data-mode="weekly" bindtap="onTabChange">本周</view>
+    </view>
+
+    <view wx:if="{{listMode === 'weekly'}}" class="notice-card">
+      <text class="notice-icon">📅</text>
+      <text class="notice-text">{{weeklyNoticeText}}</text>
+    </view>
+
+    <view class="toolbar">
+      <picker mode="selector" range="{{sortOptions}}" range-key="text" value="{{sortIndex}}" bindchange="onSortChange">
+        <view class="picker-label">{{sortOptions[sortIndex].text}}</view>
+      </picker>
+    </view>
+
+    <block wx:if="{{listMode === 'today'}}">
+      <block wx:if="{{groupedTodayItems.length > 0}}">
+        <view wx:for="{{groupedTodayItems}}" wx:key="category" class="category-card">
+          <view class="category-card__title">{{item.category}}</view>
+          <view class="category-card__list">
+            <view wx:for="{{item.items}}" wx:for-item="row" wx:key="id" class="list-row {{row.checked ? 'is-done' : ''}}">
+              <checkbox value="{{row.id}}" checked="{{row.checked}}" bindtap="onCheckToday" data-item="{{row}}"/>
+              <view class="list-row__body">
+                <text class="list-row__name">{{row.name}}</text>
+                <text class="list-row__amount">{{row.amount}}</text>
+                <view class="list-row__tags">
+                  <text wx:if="{{row.isShared}}" class="tag tag-success">共用</text>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+      </block>
+      <view wx:else class="empty-hint">暂无数据，请先选择食材</view>
+    </block>
+
+    <block wx:if="{{listMode === 'weekly'}}">
+      <block wx:if="{{groupedWeeklyItems.length > 0}}">
+        <view wx:for="{{groupedWeeklyItems}}" wx:key="category" class="category-card">
+          <view class="category-card__title">{{item.category}}</view>
+          <view class="category-card__list">
+            <view wx:for="{{item.items}}" wx:for-item="row" wx:key="id" class="list-row {{row.checked ? 'is-done' : ''}}">
+              <checkbox value="{{row.id}}" checked="{{row.checked}}" bindtap="onCheckWeekly" data-item="{{row}}"/>
+              <view class="list-row__body">
+                <text class="list-row__name">{{row.name}}</text>
+                <text class="list-row__amount">{{row.amount}}</text>
+                <view class="list-row__tags">
+                  <text wx:if="{{row.isWeeklyCore}}" class="tag tag-warning">本周总计</text>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+      </block>
+      <view wx:else class="empty-hint">暂无数据，请先选择食材</view>
+    </block>
+  </view>
+
+  <view class="page-footer">
+    <button class="copy-btn" bindtap="copyList">复制清单</button>
+  </view>
+</view>

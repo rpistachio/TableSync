@@ -1,0 +1,38 @@
+<view class="steps-container">
+  <view class="page-content">
+    <view class="progress-block">
+      <progress percent="{{progressPercentage}}" stroke-width="8" activeColor="#C1663E" backgroundColor="#efe9e2"/>
+      <text class="progress-label">{{currentStepLabel}}</text>
+    </view>
+
+    <view class="steps-list">
+      <view wx:for="{{steps}}" wx:key="id" class="step-card {{item.completed ? 'completed' : ''}}">
+        <view class="step-card__header">
+          <view class="step-card__title-row">
+            <text class="step-card__title">{{item.title}}</text>
+            <text wx:if="{{item.roleTag}}" class="role-badge {{item.roleTag === '成人餐' ? 'adult' : 'baby'}}">{{item.roleTag}}</text>
+          </view>
+          <view class="step-card__meta">
+            预计用时：{{item.duration}} 分钟
+            <text wx:if="{{item.completed}}" class="step-card__done">｜ 已完成</text>
+          </view>
+        </view>
+        <view class="step-card__body">
+          <view class="step-details">
+            <view wx:for="{{item.details}}" wx:for-item="line" wx:key="index" class="detail-line">
+              <text wx:for="{{line.segments}}" wx:for-item="seg" wx:key="index" class="{{seg.strong ? 'detail-strong' : ''}}">{{seg.text}}</text>
+            </view>
+          </view>
+          <button class="step-action-btn {{item.completed ? 'is-done' : ''}} {{item.isLast && !item.completed ? 'is-last-step' : ''}}" disabled="{{item.completed}}" bindtap="markCompleted" data-id="{{item.id}}">
+            {{item.completed ? '已达成 ✅' : (item.isLast ? '标记完成，查看采购清单' : '标记为完成')}}
+          </button>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="share-footer">
+    <button class="share-btn" bindtap="goToShopping">查看采购清单</button>
+    <button class="share-btn" open-type="share">微信转发</button>
+  </view>
+</view>

@@ -1,0 +1,55 @@
+<view class="menu-container">
+  <view class="page-header">
+    <text class="curation-tag">Chef's Recommendation</text>
+    <text class="main-title">今日配餐方案</text>
+    <text class="sub-title">{{menu.explanation || '营养均衡 · 主材共用 · 高效执行'}}</text>
+  </view>
+
+  <view class="menu-content">
+    <view class="plan-card">
+      <view class="dish-section adult">
+        <view class="section-header">
+          <text class="role-badge adult">FOR ADULT</text>
+          <text class="taste-tag">{{tasteTagText}}</text>
+        </view>
+        <text class="dish-name">{{adultDishName}}</text>
+        <view class="ingredient-preview">
+          <block wx:if="{{adultIngredients.length > 0}}">
+            <text wx:for="{{adultIngredients}}" wx:key="name" wx:for-item="ing">{{ing.name}}</text><text wx:if="{{adultIngredients.length > 4}}">...</text>
+          </block>
+          <text wx:else>约 {{adultTime}} 分钟</text>
+        </view>
+      </view>
+
+      <block wx:if="{{menu.babyMenu}}">
+        <view class="card-divider">
+          <view class="dot"></view>
+          <view class="line"></view>
+          <view class="dot"></view>
+        </view>
+        <view class="dish-section baby">
+          <view class="section-header">
+            <text class="role-badge baby">FOR BABY</text>
+            <text class="age-tag">👶 辅食阶段</text>
+          </view>
+          <text class="dish-name">{{menu.babyMenu.name}}</text>
+          <view class="ingredient-preview">
+            <block wx:if="{{babyIngredients.length > 0}}">
+              <text wx:for="{{babyIngredients}}" wx:key="name" wx:for-item="ing">{{ing.name}}</text><text wx:if="{{babyIngredients.length > 4}}">...</text>
+            </block>
+            <text wx:else>{{menu.babyMenu.from}}</text>
+          </view>
+        </view>
+      </block>
+    </view>
+
+    <text class="time-hint">预计总耗时约 {{menu.totalTime}} 分钟（可并行操作）</text>
+  </view>
+
+  <view class="action-footer">
+    <view class="button-group">
+      <button class="secondary-btn" bindtap="handleRefresh">重新编排</button>
+      <button class="primary-btn" bindtap="goNext">查看流程</button>
+    </view>
+  </view>
+</view>

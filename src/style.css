@@ -1,0 +1,209 @@
+:root {
+  --page-bg: #f2f3f5;
+  --card-radius: 16px;
+  --card-radius-lg: 20px;
+}
+
+/* 微信/移动端：整页滚动，不锁高度，强制 body 可滚动 */
+html {
+  margin: 0;
+  padding: 0;
+  height: auto;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch;
+}
+body {
+  margin: 0;
+  padding: 0;
+  height: auto;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch;
+}
+#app {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--page-bg);
+}
+
+.page-content {
+  flex: 1;
+  padding: 16px;
+}
+
+.page-footer {
+  padding: 12px 16px 24px;
+  background-color: var(--page-bg);
+}
+
+/* 统一 inset 圆角卡片流 */
+.van-cell-group--inset {
+  margin: 0 16px;
+  border-radius: var(--card-radius);
+  overflow: hidden;
+}
+
+.van-cell-group--inset + .van-cell-group--inset {
+  margin-top: 12px;
+}
+
+/* 首页：grid 卡片选中态 */
+.select-card {
+  border-radius: var(--card-radius);
+  background: #fff;
+  padding: 16px;
+  text-align: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+
+.select-card.selected {
+  border-color: var(--van-primary-color);
+  box-shadow: 0 4px 12px rgba(var(--van-primary-color-rgb, 25, 137, 250), 0.2);
+  transform: scale(1.02);
+}
+
+.select-card:active {
+  transform: scale(0.98);
+}
+
+/* 菜单页：大圆角卡片 */
+.menu-card.van-card {
+  border-radius: var(--card-radius-lg);
+  overflow: hidden;
+}
+
+/* 步骤页：清爽步骤卡片 */
+.step-card {
+  border-radius: var(--card-radius);
+  background: #fff;
+  margin: 0 16px 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.step-card__header {
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.step-card__body {
+  padding: 0 16px 14px;
+}
+
+.step-card__body ul {
+  margin: 0;
+  padding-left: 18px;
+  color: #646566;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.step-card__body li {
+  margin-bottom: 6px;
+}
+
+.step-card__body .detail-strong {
+  font-weight: 600;
+  color: #323233;
+}
+
+.step-card.completed .step-card__header {
+  opacity: 0.7;
+}
+
+.step-card.completed .step-card__body {
+  opacity: 0.8;
+}
+
+/* 模拟 Erewhon 高级字法 */
+.erewhon-title {
+  font-family: 'Inter', -apple-system, sans-serif;
+  text-transform: uppercase; /* 全大写是高级感的来源 */
+  letter-spacing: 2px;       /* 核心：拉开字间距 */
+  font-weight: 700;
+  color: #1A1A1A;
+  margin-bottom: 4px;
+}
+
+.erewhon-subtitle {
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #888888;
+  text-transform: uppercase;
+}
+
+/* 选项卡片的微交互 */
+.option-card {
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid #E5E5E5;
+  background: white;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.option-card--active {
+  background: #1A1A1A; /* 选中后变成哑光黑，非常有高级感 */
+  color: #FFFFFF;
+  border-color: #1A1A1A;
+  transform: scale(0.98); /* 选中有轻微按下感 */
+}
+
+/* 统一“高级感”底部主按钮（首页、流程页等） */
+.premium-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 52px !important;
+  width: 90% !important;
+  margin: 0 auto;
+  background: #1C1C1E !important;
+  color: #FFFFFF !important;
+  border-radius: 12px !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  letter-spacing: 1.2px !important;
+  border: none !important;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+  transition: all 0.2s ease;
+}
+.premium-btn:active {
+  transform: scale(0.96);
+  opacity: 0.9;
+}
+
+/* 底部 Banner 容器：safe-area 适配、居中，悬浮感 */
+.bottom-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10000;
+  padding: 12px 16px;
+  padding-top: 16px !important;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom)) !important;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

@@ -1,0 +1,34 @@
+/** 全局样式 - TableSync 微信小程序（iPhone 安全区 + 滚动优化） */
+page {
+  --primary: #2d2d2d;
+  --primary-light: #c1663e;
+  --bg: #fdf8f2;
+  --card-bg: #fff;
+  --text: #2d2d2d;
+  --text-muted: #7d746d;
+  --border: #efe9e2;
+  --safe-bottom: env(safe-area-inset-bottom);
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 100%;
+}
+
+view, text, scroll-view, button, input, textarea, image, navigator {
+  box-sizing: border-box;
+}
+
+/* 图片视口适配：高度不固定 px，用 vh + 不拉伸 */
+image {
+  max-height: 25vh;
+  object-fit: cover;
+}
+
+/* 可滚动容器：iOS 顺滑滚动 */
+.scroll-container {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  height: 100%;
+}

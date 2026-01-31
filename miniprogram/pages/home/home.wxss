@@ -1,0 +1,258 @@
+.home-container {
+  min-height: 100%;
+  height: 100%;
+  background-color: #fdf8f2;
+  padding: 3vw 3vw 180rpx;
+  color: #2d2d2d;
+  box-sizing: border-box;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.brand-header {
+  margin-bottom: 6vw;
+}
+
+.header-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.date-badge {
+  display: inline-block;
+  padding: 8rpx 24rpx;
+  background: rgba(193, 102, 62, 0.1);
+  color: #c1663e;
+  font-size: 22rpx;
+  border-radius: 40rpx;
+  font-weight: 600;
+  margin-bottom: 24rpx;
+  align-self: flex-start;
+}
+
+.main-title {
+  font-size: 64rpx;
+  color: #2d2d2d;
+  letter-spacing: -1rpx;
+}
+
+.sub-quote {
+  font-size: 28rpx;
+  color: #7d746d;
+  margin-top: 12rpx;
+}
+
+.group-label {
+  font-size: 24rpx;
+  font-weight: 600;
+  letter-spacing: 3rpx;
+  color: #4a4540;
+  margin-bottom: 32rpx;
+  display: block;
+}
+
+/* Pill Segmented Control 药丸式分段 */
+.member-pills-container {
+  padding: 24rpx 40rpx 20rpx;
+  background: transparent;
+}
+
+.pills-track {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 100rpx;
+  padding: 8rpx;
+}
+
+.pill-item {
+  flex: 1;
+  padding: 20rpx 32rpx;
+  text-align: center;
+  background: transparent;
+  border-radius: 100rpx;
+  transition: all 0.25s ease;
+}
+
+.pill-text {
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #969799;
+}
+
+.pill-item.is-active {
+  background: #fff;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
+}
+
+.pill-item.is-active .pill-text {
+  color: #1C1C1E;
+}
+
+.pill-divider {
+  width: 2rpx;
+  height: 28rpx;
+  background: rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+}
+
+.baby-age-tag {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  margin-top: 20rpx;
+  padding: 12rpx 24rpx;
+  font-size: 24rpx;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.baby-age-tag-label {
+  opacity: 0.85;
+}
+
+.baby-age-tag-value {
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.baby-age-row {
+  display: flex;
+  align-items: center;
+  gap: 32rpx;
+  margin-bottom: 16rpx;
+}
+
+.baby-age-row slider {
+  flex: 1;
+}
+
+.baby-month-value {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #2d2d2d;
+  min-width: 96rpx;
+}
+
+.baby-age-hint {
+  font-size: 24rpx;
+  color: #8e857e;
+  line-height: 1.5;
+}
+
+.card-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24rpx;
+  margin-bottom: 60rpx;
+}
+
+.curated-card {
+  width: calc(33.33% - 16rpx);
+  background: #fff;
+  border-radius: 32rpx;
+  padding: 40rpx 20rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 2rpx solid #efe9e2;
+}
+
+.curated-card.is-active {
+  background: #c1663e;
+  border-color: #c1663e;
+  box-shadow: 0 16rpx 32rpx rgba(193, 102, 62, 0.2);
+}
+
+.card-icon {
+  font-size: 48rpx;
+  margin-bottom: 16rpx;
+}
+
+.card-text {
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #5a544f;
+}
+
+.curated-card.is-active .card-text {
+  color: #fff;
+}
+
+/* TableSync 品牌露出 */
+.home-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48rpx 0 32rpx;
+  opacity: 0.6;
+}
+
+.brand-line {
+  width: 40rpx;
+  height: 2rpx;
+  background: #b2aba4;
+  margin-bottom: 16rpx;
+}
+
+.brand-text {
+  font-family: "Helvetica Neue", sans-serif;
+  font-weight: 300;
+  letter-spacing: 8rpx;
+  text-transform: uppercase;
+  font-size: 28rpx;
+  color: #b2aba4;
+}
+
+/* Premium UI：底部 Banner，内容居中，safe-area 不挤压 */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24rpx 48rpx;
+  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20rpx);
+}
+
+.prime-action-btn {
+  width: 100%;
+  height: 96rpx;
+  background: #1C1C1E;
+  color: #fff;
+  border-radius: 24rpx;
+  font-weight: 600;
+  font-size: 30rpx;
+  letter-spacing: 2.4rpx;
+  border: none;
+  line-height: 96rpx;
+  box-shadow: 0 8rpx 28rpx rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.prime-action-btn:active {
+  transform: scale(0.96);
+}
+
+.premium-btn {
+  width: 100%;
+  height: 96rpx;
+  background: #1C1C1E;
+  color: #fff;
+  border-radius: 24rpx;
+  font-weight: 600;
+  font-size: 30rpx;
+  letter-spacing: 2.4rpx;
+  border: none;
+  line-height: 96rpx;
+  box-shadow: 0 8rpx 28rpx rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.premium-btn:active {
+  transform: scale(0.96);
+}

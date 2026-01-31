@@ -1,0 +1,150 @@
+.steps-container {
+  min-height: 100vh;
+  background-color: #fdf8f2;
+}
+
+.page-content {
+  padding: 32rpx 32rpx 192rpx;
+}
+
+.progress-block {
+  padding: 32rpx 40rpx;
+  background: #fff;
+  border-radius: 32rpx;
+  box-shadow: inset 0 2rpx 4rpx rgba(0, 0, 0, 0.06);
+  margin: 0 32rpx 32rpx;
+}
+
+.progress-label {
+  font-size: 26rpx;
+  color: #5a544f;
+  margin-top: 20rpx;
+  text-align: center;
+  display: block;
+}
+
+.steps-list {
+  margin-top: 0;
+}
+
+.step-card {
+  background: #fff;
+  border-radius: 40rpx;
+  padding: 40rpx;
+  margin: 0 32rpx 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(74, 69, 64, 0.06);
+  overflow: hidden;
+}
+
+.step-card.completed {
+  opacity: 0.6;
+}
+
+.step-card__header {
+  margin-bottom: 24rpx;
+}
+
+.step-card__title-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  flex-wrap: wrap;
+}
+
+.step-card__title {
+  font-weight: 700;
+  color: #1a1a1a;
+  letter-spacing: 3rpx;
+  font-size: 28rpx;
+}
+
+.role-badge {
+  font-size: 20rpx;
+  font-weight: 700;
+  letter-spacing: 1rpx;
+  padding: 6rpx 16rpx;
+  border-radius: 8rpx;
+}
+
+.role-badge.adult {
+  background: #e8f0e9;
+  color: #4a5d4e;
+}
+
+.role-badge.baby {
+  background: #feeff0;
+  color: #d67a7d;
+}
+
+.step-card__meta {
+  font-size: 24rpx;
+  color: #8e857e;
+  margin-top: 12rpx;
+}
+
+.step-card__done {
+  color: #4a5d4e;
+}
+
+.step-details {
+  margin: 0 0 32rpx;
+  padding-left: 36rpx;
+  color: #5a544f;
+  font-size: 28rpx;
+  line-height: 1.7;
+}
+
+.detail-line {
+  margin-bottom: 16rpx;
+}
+
+.detail-strong {
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.step-action-btn {
+  height: 88rpx;
+  border-radius: 16rpx;
+  font-weight: 600;
+  border: none;
+  background: #2d2d2d;
+  color: #fff;
+  font-size: 28rpx;
+  line-height: 88rpx;
+}
+
+.step-action-btn.is-done {
+  background: #efe9e2;
+  color: #5a544f;
+}
+
+.step-action-btn.is-last-step {
+  background: #07c160;
+  color: #fff;
+}
+
+.share-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 32rpx 40rpx 48rpx;
+  background: linear-gradient(to top, #fdf8f2 75%, rgba(253, 248, 242, 0));
+  display: flex;
+  flex-direction: row;
+  gap: 24rpx;
+  box-sizing: border-box;
+}
+
+.share-btn {
+  flex: 1;
+  height: 96rpx;
+  border-radius: 24rpx;
+  font-weight: 600;
+  border: none;
+  background: #2d2d2d;
+  color: #fff;
+  font-size: 32rpx;
+  line-height: 96rpx;
+}

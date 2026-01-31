@@ -1,0 +1,26 @@
+---
+description: 禁止使用 height: 100% 或 100vh，改用可滚动布局
+globs: "**/*.css,**/*.scss,**/*.vue,**/*.wxss"
+alwaysApply: false
+---
+
+# 高度规则：不使用 100% 或 100vh
+
+本项目已约定：**不再使用 `height: 100%` 或 `height/min-height: 100vh`**，以支持整页滚动、避免移动端视口和滚动问题。
+
+## 禁止写法
+
+- `height: 100%`
+- `min-height: 100%`（根/全屏容器除外，见下方）
+- `height: 100vh` / `min-height: 100vh`
+
+## 推荐写法
+
+- **根布局（html/body/#app）**：`height: auto` + `min-height: 100%` + `overflow-y: scroll`，保持整页可滚动。
+- **页面容器**：用 `min-height` 配合 `auto` 或具体数值，或使用 `flex: 1` 在 flex 布局中撑满剩余空间，不要写死 100vh。
+- **需要占满剩余高度**：在父级使用 `display: flex; flex-direction: column`，子级用 `flex: 1` 或 `min-height: 0` 控制滚动区域。
+
+## 修改代码时
+
+- 若 AI 或你写入了 `height: 100%`、`100vh`，请改为上述推荐方式。
+- 不修改 `node_modules`、`dist` 等第三方或构建产物中的样式。

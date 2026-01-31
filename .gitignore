@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# OS
+.DS_Store
+
+# IDE / Editor
+.vscode/
+.cursor/debug.log
+
+# WeChat miniprogram private config (may contain appid)
+project.private.config.json
+
+# Logs
+*.log
+npm-debug.log*
+
+# Env
+.env
+.env.local
