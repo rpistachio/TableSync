@@ -86,7 +86,8 @@ Page({
     isEmpty: true,
     todayPrepTime: 0,
     todayAllergens: [],
-    todayAllergensText: ''
+    todayAllergensText: '',
+    todayTips: []
   },
 
   onLoad: function () {
@@ -117,7 +118,11 @@ Page({
   updateList: function () {
     var pref = getPreference();
     var weeklyPrefs = buildWeeklyPreferences();
-    var todayItems = menuData.generateShoppingList(pref);
+    var cart = wx.getStorageSync('cart_ingredients') || [];
+    var isPlaceholder = Array.isArray(cart) && cart.length === 1 && cart[0].name === '请先生成菜单后查看清单';
+    var todayItems = (Array.isArray(cart) && cart.length > 0 && !isPlaceholder)
+      ? cart.slice()
+      : menuData.generateShoppingList(pref);
     var weeklyItems = wx.getStorageSync('weekly_ingredients') || [];
     if (!Array.isArray(weeklyItems) || weeklyItems.length === 0) {
       weeklyItems = menuData.generateWeeklyShoppingList(weeklyPrefs);
@@ -145,6 +150,12 @@ Page({
     var groupedToday = groupByCategory(todayItems);
     var groupedWeekly = groupByCategory(weeklyItems);
 
+    var hasFish = todayItems.some(function (it) { return (it.name || '').indexOf('鱼') !== -1; });
+    var hasShrimp = todayItems.some(function (it) { return (it.name || '').indexOf('虾') !== -1; });
+    var todayTips = [];
+    if (hasFish) todayTips.push('记得让摊主处理好内脏和鱼鳞');
+    if (hasShrimp) todayTips.push('可选冷冻虾仁或鲜虾');
+
     var meatCount = weeklyItems.filter(function (it) { return (it.category || '') === '肉类'; }).length;
     var weeklyNoticeText = weeklyItems.length === 0 ? '本周暂无食材数据，请先生成菜单。' : (meatCount > 0 ? '本周经营建议：本周共需肉类主料 ' + meatCount + ' 种，建议周一集中采购，分装冷冻可节省 30% 备菜时间。' : '本周经营建议：建议周一集中采购，按需分装冷藏/冷冻，可节省备菜时间。');
 
@@ -153,7 +164,8 @@ Page({
       weeklyItems: weeklyItems,
       groupedTodayItems: groupedToday,
       groupedWeeklyItems: groupedWeekly,
-      weeklyNoticeText: weeklyNoticeText
+      weeklyNoticeText: weeklyNoticeText,
+      todayTips: todayTips
     });
   },
 
@@ -196,16 +208,7 @@ Page({
     return isWeeklyCore(row);
   },
 
-  copyList: function () {
-    var listMode = this.data.listMode;
-    var items = listMode === 'today' ? this.data.todayItems : this.data.weeklyItems;
-    var lines = items.filter(function (item) { return !item.checked; }).map(function (item) { return item.name + ' ' + item.amount; });
-    var text = lines.join('\n');
-    var hint = listMode === 'today' ? '今日无需采购食材' : '本周无需采购食材';
-    wx.setClipboardData({
-      data: text || hint,
-      success: function () { wx.showToast({ title: '清单已复制，可粘贴到微信或备忘录' }); },
-      fail: function () { wx.showToast({ title: '复制失败', icon: 'none' }); }
-    });
+  goToSteps: function () {
+    wx.navigateTo({ url: '/pages/steps/steps' });
   }
 });

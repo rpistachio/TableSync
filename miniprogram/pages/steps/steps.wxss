@@ -7,33 +7,6 @@
   padding: 32rpx 32rpx 192rpx;
 }
 
-.ingredient-block {
-  margin: 0 32rpx 24rpx;
-  padding: 24rpx 32rpx;
-  background: #fff;
-  border-radius: 32rpx;
-  box-shadow: 0 4rpx 16rpx rgba(74, 69, 64, 0.06);
-}
-
-.ingredient-block__title {
-  display: block;
-  font-size: 24rpx;
-  font-weight: 600;
-  color: #8e857e;
-  margin-bottom: 16rpx;
-}
-
-.ingredient-block__list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx 24rpx;
-}
-
-.ingredient-line {
-  font-size: 26rpx;
-  color: #1a1a1a;
-}
-
 .progress-block {
   padding: 32rpx 40rpx;
   background: #fff;
@@ -130,6 +103,20 @@
   color: #1a1a1a;
 }
 
+/* 宝宝分拨动作：高亮整行，便于一眼识别 */
+.baby-portion-action {
+  background: linear-gradient(90deg, rgba(255, 193, 153, 0.35) 0%, rgba(255, 228, 225, 0.2) 100%);
+  border-left: 6rpx solid #e8a87c;
+  padding: 16rpx 20rpx 16rpx 24rpx;
+  margin: 0 -36rpx 16rpx -20rpx;
+  padding-left: 30rpx;
+  border-radius: 0 16rpx 16rpx 0;
+  box-shadow: 0 2rpx 8rpx rgba(232, 168, 124, 0.15);
+}
+.baby-portion-action .detail-strong {
+  color: #b85c38;
+}
+
 .step-action-btn {
   height: 88rpx;
   border-radius: 16rpx;
@@ -160,12 +147,12 @@
   background: linear-gradient(to top, #fdf8f2 75%, rgba(253, 248, 242, 0));
   display: flex;
   flex-direction: row;
-  gap: 24rpx;
   box-sizing: border-box;
 }
 
 .share-btn {
   flex: 1;
+  width: 100%;
   height: 96rpx;
   border-radius: 24rpx;
   font-weight: 600;

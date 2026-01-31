@@ -113,6 +113,26 @@
   color: #8e857e;
 }
 
+.today-tips {
+  padding: 24rpx 28rpx;
+  margin-bottom: 24rpx;
+  background: rgba(193, 102, 62, 0.06);
+  border-radius: 24rpx;
+  border-left: 6rpx solid #c1663e;
+}
+
+.today-tip-line {
+  display: block;
+  font-size: 24rpx;
+  color: #5a544f;
+  line-height: 1.6;
+  margin-bottom: 8rpx;
+}
+
+.today-tip-line:last-child {
+  margin-bottom: 0;
+}
+
 .category-card {
   margin-bottom: 24rpx;
   background: #fff;
@@ -197,22 +217,25 @@
   font-size: 28rpx;
 }
 
-.page-footer {
+.fixed-bottom-bar {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 32rpx 48rpx 48rpx;
-  background: linear-gradient(to top, #fdf8f2 85%, transparent);
+  padding: 24rpx 48rpx 48rpx;
+  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, #fdf8f2 90%, transparent);
 }
 
-.copy-btn {
-  height: 96rpx;
-  border-radius: 24rpx;
-  font-weight: 600;
-  font-size: 32rpx;
-  background: #2d2d2d;
+.btn-go-steps {
+  width: 100%;
+  height: 100rpx;
+  border-radius: 28rpx;
+  font-weight: 700;
+  font-size: 34rpx;
   color: #fff;
+  background: linear-gradient(135deg, #c1663e 0%, #a8522e 100%);
   border: none;
-  line-height: 96rpx;
+  line-height: 100rpx;
+  box-shadow: 0 8rpx 24rpx rgba(193, 102, 62, 0.35);
 }

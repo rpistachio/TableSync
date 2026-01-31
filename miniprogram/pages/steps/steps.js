@@ -47,11 +47,19 @@ function stepTag(step) {
   return '';
 }
 
+function isBabyPortionLine(line) {
+  if (!line || typeof line !== 'string') return false;
+  return /宝宝/.test(line) && /分拨|分出/.test(line);
+}
+
 function processStepsForView(steps) {
   var lastId = steps.length > 0 ? steps[steps.length - 1].id : null;
   return steps.map(function (s) {
     var detailsWithSegments = (s.details || []).map(function (line) {
-      return { segments: highlightSegments(line) };
+      return {
+        segments: highlightSegments(line),
+        isBabyPortion: isBabyPortionLine(line)
+      };
     });
     return {
       id: s.id,
@@ -69,8 +77,7 @@ Page({
   data: {
     steps: [],
     progressPercentage: 0,
-    currentStepLabel: '第 0/0 步',
-    ingredientList: []
+    currentStepLabel: '第 0/0 步'
   },
 
   onLoad: function () {
@@ -90,16 +97,6 @@ Page({
     } catch (e) {}
     this._stepsRaw = steps;
     this._updateView(steps);
-    this._loadIngredientList();
-  },
-
-  onShow: function () {
-    this._loadIngredientList();
-  },
-
-  _loadIngredientList: function () {
-    var list = wx.getStorageSync('cart_ingredients') || [];
-    this.setData({ ingredientList: Array.isArray(list) ? list : [] });
   },
 
   _updateView: function (steps) {
@@ -112,10 +109,6 @@ Page({
       progressPercentage: progress,
       currentStepLabel: currentLabel
     });
-  },
-
-  goToShopping: function () {
-    wx.navigateTo({ url: '/pages/shopping/shopping' });
   },
 
   markCompleted: function (e) {
@@ -131,7 +124,20 @@ Page({
     this._updateView(steps);
     var lastId = steps.length > 0 ? steps[steps.length - 1].id : null;
     if (step.id === lastId) {
-      wx.navigateTo({ url: '/pages/shopping/shopping' });
+      wx.showModal({
+        title: '料理完成！',
+        content: '全家人的美味已准备就绪，开启幸福用餐时光吧。',
+        confirmText: '回首页',
+        cancelText: '再看看',
+        success: function (res) {
+          if (res.confirm) {
+            try {
+              wx.removeStorageSync(stepsStorageKey());
+            } catch (e) {}
+            wx.reLaunch({ url: '/pages/home/home' });
+          }
+        }
+      });
     }
   },
 
@@ -139,3 +145,5 @@ Page({
     return { title: '今日家庭午餐 - 做菜步骤', path: '/pages/steps/steps' };
   }
 });
+
+module.exports = { stepsStorageKey: stepsStorageKey };

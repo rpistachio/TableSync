@@ -11,11 +11,14 @@
 
 .brand-header {
   margin-bottom: 6vw;
+  padding: 0 40rpx 0 40rpx;
 }
 
 .header-content {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
 }
 
 .date-badge {
@@ -32,14 +35,16 @@
 
 .main-title {
   font-size: 64rpx;
+  font-weight: bold;
   color: #2d2d2d;
   letter-spacing: -1rpx;
+  margin-bottom: 8rpx;
 }
 
 .sub-quote {
-  font-size: 28rpx;
-  color: #7d746d;
-  margin-top: 12rpx;
+  font-size: 12px;
+  color: #999;
+  margin-top: 4rpx;
 }
 
 .group-label {
@@ -116,28 +121,53 @@
   opacity: 0.9;
 }
 
-.baby-age-row {
+.baby-age-section .group-label {
+  margin-bottom: 24rpx;
+}
+
+.baby-age-stack {
   display: flex;
-  align-items: center;
-  gap: 32rpx;
-  margin-bottom: 16rpx;
+  flex-wrap: wrap;
+  gap: 20rpx;
+  margin-bottom: 32rpx;
 }
 
-.baby-age-row slider {
+.baby-age-card {
   flex: 1;
+  min-width: calc(33.33% - 14rpx);
+  padding: 28rpx 20rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  border: 2rpx solid #efe9e2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
 }
 
-.baby-month-value {
-  font-size: 28rpx;
+.baby-age-card.is-active {
+  background: #c1663e;
+  border-color: #c1663e;
+  box-shadow: 0 8rpx 24rpx rgba(193, 102, 62, 0.2);
+}
+
+.baby-age-card-label {
+  font-size: 26rpx;
   font-weight: 600;
-  color: #2d2d2d;
-  min-width: 96rpx;
+  color: #5a544f;
 }
 
-.baby-age-hint {
-  font-size: 24rpx;
+.baby-age-card.is-active .baby-age-card-label {
+  color: #fff;
+}
+
+.baby-age-card-sub {
+  font-size: 22rpx;
   color: #8e857e;
-  line-height: 1.5;
+}
+
+.baby-age-card.is-active .baby-age-card-sub {
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .adult-count-section {
@@ -156,6 +186,45 @@
 
 .count-stack .card-text {
   font-size: 24rpx;
+}
+
+.has-baby-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 40rpx 28rpx;
+}
+
+.has-baby-label {
+  font-size: 26rpx;
+  color: #4a4540;
+  font-weight: 500;
+}
+
+.combo-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20rpx;
+  margin-bottom: 32rpx;
+}
+.combo-btn {
+  padding: 24rpx 32rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  border: 2rpx solid #efe9e2;
+}
+.combo-btn.is-active {
+  background: #c1663e;
+  border-color: #c1663e;
+  box-shadow: 0 8rpx 24rpx rgba(193, 102, 62, 0.2);
+}
+.combo-text {
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #5a544f;
+}
+.combo-btn.is-active .combo-text {
+  color: #fff;
 }
 
 .card-stack {
@@ -195,6 +264,27 @@
 
 .curated-card.is-active .card-text {
   color: #fff;
+}
+
+/* 大人菜品预览区 */
+.preview-area .preview-card {
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 28rpx 32rpx;
+  border: 2rpx solid #efe9e2;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+.preview-adult {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #2d2d2d;
+}
+.preview-baby {
+  font-size: 26rpx;
+  color: #c1663e;
+  font-weight: 500;
 }
 
 /* TableSync 品牌露出 */
@@ -273,4 +363,184 @@
 
 .premium-btn:active {
   transform: scale(0.96);
+}
+
+/* 菜单预览弹层 */
+.menu-preview-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48rpx;
+  box-sizing: border-box;
+}
+.menu-preview-card {
+  width: 100%;
+  max-width: 640rpx;
+  max-height: 80vh;
+  background: #fff;
+  border-radius: 32rpx;
+  padding: 40rpx 36rpx 32rpx;
+  box-shadow: 0 24rpx 48rpx rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+}
+.menu-preview-header {
+  margin-bottom: 24rpx;
+}
+.menu-preview-title {
+  display: block;
+  font-size: 24rpx;
+  color: #8e857e;
+  margin-bottom: 8rpx;
+}
+.menu-preview-count {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #2d2d2d;
+}
+.menu-preview-combo {
+  display: block;
+  font-size: 24rpx;
+  color: #c1663e;
+  margin-top: 12rpx;
+  font-weight: 500;
+}
+.menu-preview-balance {
+  display: block;
+  font-size: 22rpx;
+  color: #8e857e;
+  margin-top: 8rpx;
+}
+.menu-preview-label {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #4a4540;
+  margin-bottom: 20rpx;
+}
+.menu-preview-list {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 32rpx;
+}
+.menu-preview-row {
+  display: flex;
+  align-items: flex-start;
+  padding: 20rpx 24rpx;
+  background: #fdf8f2;
+  border-radius: 20rpx;
+  margin-bottom: 16rpx;
+  font-size: 28rpx;
+}
+.menu-preview-row:last-child {
+  margin-bottom: 0;
+}
+.menu-row-check-wrap {
+  flex-shrink: 0;
+  margin-right: 20rpx;
+  padding: 12rpx;
+  min-width: 56rpx;
+  min-height: 56rpx;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.menu-row-checkbox {
+  width: 40rpx;
+  height: 40rpx;
+  border: 2rpx solid #c1663e;
+  border-radius: 8rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  color: #fff;
+  background: transparent;
+}
+.menu-row-checkbox.checked {
+  background: #c1663e;
+}
+.menu-row-content {
+  flex: 1;
+  min-width: 0;
+}
+.menu-row-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.menu-row-adult {
+  color: #2d2d2d;
+  font-weight: 600;
+}
+.menu-row-plus {
+  color: #b2aba4;
+  margin: 0 6rpx;
+  font-weight: 500;
+}
+.menu-row-baby {
+  color: #c1663e;
+  font-weight: 500;
+}
+.menu-row-shared-hint {
+  display: block;
+  font-size: 22rpx;
+  color: #8e857e;
+  margin-top: 8rpx;
+  padding-left: 0;
+}
+.menu-preview-row.has-baby-hint .menu-row-shared-hint {
+  margin-top: 10rpx;
+}
+.menu-preview-actions {
+  display: flex;
+  gap: 24rpx;
+}
+.menu-preview-actions .btn-shuffle,
+.menu-preview-actions .btn-replace {
+  flex: 1;
+  min-width: 0;
+  height: 88rpx;
+  line-height: 88rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #5a544f;
+  background: #f0ebe5;
+  border: none;
+  border-radius: 24rpx;
+  padding: 0 8rpx;
+  box-sizing: border-box;
+}
+.menu-preview-actions .btn-replace {
+  white-space: nowrap;
+  min-width: 180rpx;
+}
+.menu-preview-actions .btn-shuffle::after,
+.menu-preview-actions .btn-replace::after {
+  border: none;
+}
+.menu-preview-actions .btn-confirm {
+  flex: 1;
+  height: 88rpx;
+  line-height: 88rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
+  background: #c1663e;
+  border: none;
+  border-radius: 24rpx;
+}
+.menu-preview-actions .btn-confirm::after {
+  border: none;
+}
+.menu-preview-actions .btn-shuffle:active,
+.menu-preview-actions .btn-confirm:active {
+  opacity: 0.9;
 }

@@ -2,60 +2,38 @@
   <view class="brand-header">
     <view class="header-content">
       <text class="date-badge">{{currentDate}}</text>
-      <text class="main-title">Daily Nourish</text>
-      <text class="sub-quote">为职场忙碌的你，定制一份家庭暖食</text>
+      <text class="main-title">今日餐桌</text>
+      <text class="sub-quote">为您统筹一桌好饭</text>
     </view>
   </view>
 
-  <!-- Pill Segmented Control：大人 / 宝宝 药丸式分段 -->
-  <view class="member-pills-container">
-    <view class="pills-track">
-      <view class="pill-item {{activeMember === 'adult' ? 'is-active' : ''}}" bindtap="toggleMember" data-type="adult">
-        <text class="pill-text">大人</text>
-      </view>
-      <view class="pill-divider"></view>
-      <view class="pill-item {{activeMember === 'baby' ? 'is-active' : ''}}" bindtap="toggleMember" data-type="baby">
-        <text class="pill-text">宝宝</text>
-      </view>
-    </view>
-    <view wx:if="{{activeMember === 'baby'}}" class="baby-age-tag">
-      <text class="baby-age-tag-label">宝宝月龄</text>
-      <text class="baby-age-tag-value">{{babyMonth}} 月</text>
-    </view>
-    <view wx:if="{{activeMember === 'adult'}}" class="adult-count-section">
-      <text class="group-label">用餐人数</text>
+  <view class="selection-area">
+    <view class="selection-group">
+      <text class="group-label">家里几个人？</text>
       <view class="card-stack count-stack">
         <view wx:for="{{adultCountOptions}}" wx:key="*this" class="curated-card {{adultCount === item ? 'is-active' : ''}}" data-count="{{item}}" bindtap="onAdultCountTap">
           <text class="card-text">{{item}} 人</text>
         </view>
       </view>
     </view>
-  </view>
-
-  <view class="selection-area">
-    <view wx:if="{{activeMember === 'baby'}}" class="selection-group baby-age-section">
-      <view class="baby-age-row">
-        <slider min="6" max="36" step="1" value="{{babyMonth}}" activeColor="#C1663E" bindchange="onBabyMonthChange"/>
-      </view>
-      <text class="baby-age-hint">根据月龄调整辅食性状（泥/末/块）</text>
-    </view>
-
     <view class="selection-group">
-      <text class="group-label">Taste Preference / 口味偏好 {{activeMember === 'adult' ? '（大人）' : '（宝宝）'}}</text>
-      <view class="card-stack">
-        <view wx:for="{{activeMember === 'adult' ? adultTasteOptions : babyTasteOptions}}" wx:key="value" class="curated-card {{(activeMember === 'adult' ? adultTaste : babyTaste) === item.value ? 'is-active' : ''}}" data-value="{{item.value}}" bindtap="onTasteTap">
-          <text class="card-icon">{{item.icon}}</text>
-          <text class="card-text">{{item.label}}</text>
+      <text class="group-label">想吃几荤几素？</text>
+      <view class="combo-stack">
+        <view wx:for="{{comboOptions}}" wx:key="label" class="combo-btn {{item.meatCount === meatCount && item.vegCount === vegCount ? 'is-active' : ''}}" data-meat="{{item.meatCount}}" data-veg="{{item.vegCount}}" bindtap="onComboTap">
+          <text class="combo-text">{{item.label}}</text>
         </view>
       </view>
     </view>
-
-    <view class="selection-group">
-      <text class="group-label">Hero Ingredient / 主食材</text>
-      <view class="card-stack">
-        <view wx:for="{{meats}}" wx:key="value" class="curated-card {{selectedMeat === item.value ? 'is-active' : ''}}" data-value="{{item.value}}" bindtap="onMeatTap">
-          <text class="card-icon">{{item.icon}}</text>
-          <text class="card-text">{{item.label}}</text>
+    <view class="has-baby-row">
+      <text class="has-baby-label">宝宝同行？</text>
+      <switch checked="{{hasBaby}}" bindchange="onHasBabyChange" color="#C1663E"/>
+    </view>
+    <view wx:if="{{hasBaby}}" class="selection-group baby-age-section">
+      <text class="group-label">宝宝月龄</text>
+      <view class="baby-age-stack">
+        <view wx:for="{{babyAgeOptions}}" wx:key="value" class="baby-age-card {{item.value === babyMonth ? 'is-active' : ''}}" data-value="{{item.value}}" bindtap="onBabyAgeTap">
+          <text class="baby-age-card-label">{{item.label}}</text>
+          <text class="baby-age-card-sub">{{item.sub}}</text>
         </view>
       </view>
     </view>
@@ -67,6 +45,41 @@
   </view>
 
   <view class="bottom-bar">
-    <button class="premium-btn" bindtap="handleGenerate">生成今日规划</button>
+    <button class="premium-btn" bindtap="handleGenerate">看看今天吃什么</button>
+  </view>
+
+  <!-- 菜单预览弹层 -->
+  <view class="menu-preview-mask" wx:if="{{showPreview}}" catchtap="closePreview">
+    <view class="menu-preview-card" catchtap="">
+      <view class="menu-preview-header">
+        <text class="menu-preview-title">今日用餐人数</text>
+        <text class="menu-preview-count">{{previewCountText}}</text>
+        <text class="menu-preview-combo" wx:if="{{previewComboName}}">今日套餐推荐：{{previewComboName}}</text>
+        <text class="menu-preview-balance" wx:if="{{previewBalanceTip}}">口味平衡建议：{{previewBalanceTip}}</text>
+      </view>
+      <view class="menu-preview-label">🍱 今日菜单</view>
+      <view class="menu-preview-list">
+        <block wx:for="{{previewMenuRows}}" wx:key="index">
+          <view class="menu-preview-row {{item.showSharedHint ? 'has-baby-hint' : ''}}">
+            <view class="menu-row-check-wrap" data-index="{{index}}" catchtap="onCheckRow">
+              <view class="menu-row-checkbox {{item.checked ? 'checked' : ''}}" data-index="{{index}}">{{item.checked ? '✓' : ''}}</view>
+            </view>
+            <view class="menu-row-content">
+              <view class="menu-row-main">
+                <text class="menu-row-adult">{{item.adultName}}</text>
+                <text class="menu-row-plus" wx:if="{{item.babyName}}"> ＋ </text>
+                <text class="menu-row-baby" wx:if="{{item.babyName}}">{{item.babyName}}</text>
+              </view>
+              <text class="menu-row-shared-hint" wx:if="{{item.showSharedHint}}">（大人孩子共用基底，省时省力）</text>
+            </view>
+          </view>
+        </block>
+      </view>
+      <view class="menu-preview-actions">
+        <button class="btn-shuffle" catchtap="handleShuffle">换一换</button>
+        <button class="btn-replace" catchtap="handleReplaceUnchecked">换掉未勾选</button>
+        <button class="btn-confirm" catchtap="confirmAndGo">开始做饭</button>
+      </view>
+    </view>
   </view>
 </view>
