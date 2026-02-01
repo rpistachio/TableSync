@@ -19,8 +19,9 @@
     <view class="selection-group">
       <text class="group-label">想吃几荤几素？</text>
       <view class="combo-stack">
-        <view wx:for="{{comboOptions}}" wx:key="label" class="combo-btn {{item.meatCount === meatCount && item.vegCount === vegCount ? 'is-active' : ''}}" data-meat="{{item.meatCount}}" data-veg="{{item.vegCount}}" bindtap="onComboTap">
+        <view wx:for="{{comboOptions}}" wx:key="label" class="combo-btn {{item.meatCount === meatCount && item.vegCount === vegCount && (item.soupCount || 0) === (soupCount || 0) ? 'is-active' : ''}}" data-meat="{{item.meatCount}}" data-veg="{{item.vegCount}}" data-soup="{{item.soupCount || 0}}" bindtap="onComboTap">
           <text class="combo-text">{{item.label}}</text>
+          <text wx:if="{{item.tag}}" class="combo-tag">{{item.tag}}</text>
         </view>
       </view>
     </view>
@@ -79,6 +80,25 @@
           <text class="dashboard-icon">🥕</text>
           <text class="dashboard-label">食材种类</text>
           <text class="dashboard-value dashboard-value-wrap">{{previewDashboard.categoryLabels}}</text>
+        </view>
+      </view>
+      <!-- 营养/备菜/共用食材提示 -->
+      <view class="menu-preview-hints" wx:if="{{previewDashboard.nutritionHint || previewDashboard.prepOrderHint || previewDashboard.prepAheadHint || previewDashboard.sharedIngredientsHint}}">
+        <view class="hint-row" wx:if="{{previewDashboard.sharedIngredientsHint}}">
+          <text class="hint-icon">🛒</text>
+          <text class="hint-text">{{previewDashboard.sharedIngredientsHint}}</text>
+        </view>
+        <view class="hint-row" wx:if="{{previewDashboard.nutritionHint}}">
+          <text class="hint-icon">🥗</text>
+          <text class="hint-text">{{previewDashboard.nutritionHint}}</text>
+        </view>
+        <view class="hint-row" wx:if="{{previewDashboard.prepAheadHint}}">
+          <text class="hint-icon">⏱</text>
+          <text class="hint-text">{{previewDashboard.prepAheadHint}}</text>
+        </view>
+        <view class="hint-row" wx:if="{{previewDashboard.prepOrderHint}}">
+          <text class="hint-icon">📋</text>
+          <text class="hint-text">{{previewDashboard.prepOrderHint}}</text>
         </view>
       </view>
       <view class="menu-preview-label">🍱 今日菜单</view>

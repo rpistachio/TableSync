@@ -12,18 +12,70 @@ function getTodayDateKey() {
   return y + '-' + (m.length < 2 ? '0' + m : m) + '-' + (day.length < 2 ? '0' + day : day);
 }
 
+/**
+ * 餐厅套餐思路：场景化 + 结构完整 + 汤品刚需。
+ * 各人数档均以「带汤」组合为主，兼顾 1素1汤（素食/减脂）、1荤2素（清淡）、3荤3素1汤（丰盛）。
+ */
+function getComboOptionsForCount(count) {
+  var n = Math.min(6, Math.max(1, Number(count) || 2));
+  if (n === 1) {
+    return [
+      { label: '1荤1素1汤', meatCount: 1, vegCount: 1, soupCount: 1, tag: '简餐' },
+      { label: '2荤1素', meatCount: 2, vegCount: 1, soupCount: 0, tag: '' },
+      { label: '1素1汤', meatCount: 0, vegCount: 1, soupCount: 1, tag: '素食友好' }
+    ];
+  }
+  if (n === 2) {
+    return [
+      { label: '1荤1素1汤', meatCount: 1, vegCount: 1, soupCount: 1, tag: '简餐' },
+      { label: '2荤1素1汤', meatCount: 2, vegCount: 1, soupCount: 1, tag: '' },
+      { label: '2荤2素1汤', meatCount: 2, vegCount: 2, soupCount: 1, tag: '' },
+      { label: '1荤2素1汤', meatCount: 1, vegCount: 2, soupCount: 1, tag: '清淡' }
+    ];
+  }
+  if (n === 3) {
+    return [
+      { label: '2荤1素1汤', meatCount: 2, vegCount: 1, soupCount: 1, tag: '宝宝适配' },
+      { label: '2荤2素1汤', meatCount: 2, vegCount: 2, soupCount: 1, tag: '' }
+    ];
+  }
+  if (n === 4) {
+    return [
+      { label: '2荤1素1汤', meatCount: 2, vegCount: 1, soupCount: 1, tag: '' },
+      { label: '2荤2素1汤', meatCount: 2, vegCount: 2, soupCount: 1, tag: '' },
+      { label: '3荤2素1汤', meatCount: 3, vegCount: 2, soupCount: 1, tag: '丰盛' }
+    ];
+  }
+  return [
+    { label: '2荤2素1汤', meatCount: 2, vegCount: 2, soupCount: 1, tag: '' },
+    { label: '3荤2素1汤', meatCount: 3, vegCount: 2, soupCount: 1, tag: '' },
+    { label: '3荤3素1汤', meatCount: 3, vegCount: 3, soupCount: 1, tag: '丰盛' }
+  ];
+}
+
+function findComboInList(meatCount, vegCount, soupCount, options) {
+  var s = soupCount != null ? soupCount : 0;
+  for (var i = 0; i < options.length; i++) {
+    var o = options[i];
+    if (o.meatCount === meatCount && o.vegCount === vegCount && (o.soupCount != null ? o.soupCount : 0) === s) return true;
+  }
+  return false;
+}
+
 Page({
   data: {
     currentDate: getCurrentDate(),
     adultCount: 2,
     adultCountOptions: [1, 2, 3, 4, 5, 6],
     comboOptions: [
-      { label: '1荤1素', meatCount: 1, vegCount: 1 },
-      { label: '2荤1素', meatCount: 2, vegCount: 1 },
-      { label: '2荤2素', meatCount: 2, vegCount: 2 }
+      { label: '1荤1素1汤', meatCount: 1, vegCount: 1, soupCount: 1, tag: '简餐' },
+      { label: '2荤1素1汤', meatCount: 2, vegCount: 1, soupCount: 1, tag: '' },
+      { label: '2荤2素1汤', meatCount: 2, vegCount: 2, soupCount: 1, tag: '' },
+      { label: '1荤2素1汤', meatCount: 1, vegCount: 2, soupCount: 1, tag: '清淡' }
     ],
     meatCount: 1,
     vegCount: 1,
+    soupCount: 1,
     hasBaby: false,
     babyMonth: 12,
     babyAgeOptions: [
@@ -39,7 +91,7 @@ Page({
     previewCountText: '',
     previewComboName: '',
     previewBalanceTip: '',
-    previewDashboard: { estimatedTime: '', stoveCount: 0, categoryLabels: '' },
+    previewDashboard: { estimatedTime: '', stoveCount: 0, categoryLabels: '', nutritionHint: '', prepOrderHint: '', prepAheadHint: '', sharedIngredientsHint: '' },
     previewHasSharedBase: false
   },
 
@@ -54,11 +106,29 @@ Page({
       wx.removeStorageSync('today_prep_time');
       wx.removeStorageSync('today_allergens');
     }
+    // 预加载菜单/菜谱模块，避免首次点击「看看今天吃什么」时同步加载导致卡顿
+    setTimeout(function () { try { require('../../data/menuData.js'); } catch (e) {} }, 50);
     var app = getApp();
     var pref = (app && app.globalData && app.globalData.preference) || {};
     var storedMonth = pref.babyMonth != null ? Number(pref.babyMonth) : 12;
     var normalized = storedMonth <= 8 ? 8 : storedMonth <= 12 ? 12 : storedMonth <= 18 ? 18 : storedMonth <= 24 ? 24 : 36;
-    if (normalized !== this.data.babyMonth) this.setData({ babyMonth: normalized });
+    var adultCount = Math.min(6, Math.max(1, Number(pref.adultCount) || this.data.adultCount));
+    var comboOptions = getComboOptionsForCount(adultCount);
+    var meatCount = this.data.meatCount;
+    var vegCount = this.data.vegCount;
+    var soupCount = this.data.soupCount != null ? this.data.soupCount : 0;
+    if (!findComboInList(meatCount, vegCount, soupCount, comboOptions)) {
+      meatCount = comboOptions[0].meatCount;
+      vegCount = comboOptions[0].vegCount;
+      soupCount = comboOptions[0].soupCount != null ? comboOptions[0].soupCount : 0;
+    }
+    var updates = { comboOptions: comboOptions };
+    if (normalized !== this.data.babyMonth) updates.babyMonth = normalized;
+    if (adultCount !== this.data.adultCount) updates.adultCount = adultCount;
+    if (meatCount !== this.data.meatCount) updates.meatCount = meatCount;
+    if (vegCount !== this.data.vegCount) updates.vegCount = vegCount;
+    if (soupCount !== this.data.soupCount) updates.soupCount = soupCount;
+    this.setData(updates);
   },
 
   onHasBabyChange: function (e) {
@@ -72,13 +142,31 @@ Page({
 
   onAdultCountTap: function (e) {
     var count = parseInt(e.currentTarget.dataset.count, 10);
-    if (count >= 1 && count <= 6) this.setData({ adultCount: count });
+    if (count < 1 || count > 6) return;
+    var newOptions = getComboOptionsForCount(count);
+    var curMeat = this.data.meatCount;
+    var curVeg = this.data.vegCount;
+    var curSoup = this.data.soupCount != null ? this.data.soupCount : 0;
+    if (!findComboInList(curMeat, curVeg, curSoup, newOptions)) {
+      curMeat = newOptions[0].meatCount;
+      curVeg = newOptions[0].vegCount;
+      curSoup = newOptions[0].soupCount != null ? newOptions[0].soupCount : 0;
+    }
+    this.setData({
+      adultCount: count,
+      comboOptions: newOptions,
+      meatCount: curMeat,
+      vegCount: curVeg,
+      soupCount: curSoup
+    });
   },
 
   onComboTap: function (e) {
     var meat = parseInt(e.currentTarget.dataset.meat, 10);
     var veg = parseInt(e.currentTarget.dataset.veg, 10);
-    this.setData({ meatCount: meat, vegCount: veg });
+    var soup = parseInt(e.currentTarget.dataset.soup, 10);
+    if (isNaN(soup)) soup = 0;
+    this.setData({ meatCount: meat, vegCount: veg, soupCount: soup });
   },
 
   handleGenerate: function () {
@@ -86,17 +174,26 @@ Page({
     if (that._generating) return;
     that._generating = true;
     wx.showLoading({ title: '统筹算法运行中', mask: true });
-    // 延后执行，让 Loading 先渲染，避免点击后界面卡死
+    // 先让出主线程，确保 Loading 能先渲染，再执行耗时逻辑
     setTimeout(function () {
+      var menuService;
+      var pref;
+      var result;
+      var menus;
+      var rows;
+      var dashboard;
+      var countText;
+      var hasSharedBase;
+      var balanceTip;
       try {
-        var menuService = require('../../data/menuData.js');
-        var pref = that._buildPreference();
-        var result = menuService.getTodayMenusByCombo(pref);
-        var menus = result.menus || result;
+        menuService = require('../../data/menuData.js');
+        pref = that._buildPreference();
+        result = menuService.getTodayMenusByCombo(pref);
+        menus = result.menus || result;
         var hasBaby = pref.hasBaby === true;
-        var countText = pref.adultCount + '个大人';
+        countText = pref.adultCount + '个大人';
         if (hasBaby) countText += '，1个宝宝';
-        var rows = [];
+        rows = [];
         for (var i = 0; i < menus.length; i++) {
           var m = menus[i];
           m.checked = true;
@@ -109,25 +206,41 @@ Page({
           rows.push({ adultName: adultName, babyName: babyName, showSharedHint: hasBaby && babyName && i === 0, checked: true, recommendReason: reason });
         }
         that._fullPreviewMenus = menus;
-        var dashboard = that._computePreviewDashboard(menus, pref);
-        var hasSharedBase = rows.some(function (r) { return r.showSharedHint; });
-        that.setData({
-          showPreview: true,
-          previewMenuRows: rows,
-          previewCountText: countText,
-          previewComboName: result.comboName || '',
-          previewBalanceTip: '',
-          previewDashboard: dashboard,
-          previewHasSharedBase: hasSharedBase
-        });
+        dashboard = that._computePreviewDashboard(menus, pref);
+        hasSharedBase = rows.some(function (r) { return r.showSharedHint; });
+        balanceTip = '';
+        var hasSpicy = false, hasLightOrSweet = false;
+        for (var b = 0; b < menus.length; b++) {
+          var fl = (menus[b].adultRecipe && menus[b].adultRecipe.flavor_profile) || '';
+          if (fl === 'spicy') hasSpicy = true;
+          if (fl === 'light' || fl === 'sweet_sour' || fl === 'sour_fresh') hasLightOrSweet = true;
+        }
+        if (hasSpicy && hasLightOrSweet) balanceTip = '口味互补：辣配清淡/酸甜，味觉更舒适';
       } catch (e) {
         console.error('生成失败:', e);
-        wx.showModal({ title: '提示', content: (e && e.message ? e.message : String(e)), showCancel: false });
-      } finally {
-        that._generating = false;
         wx.hideLoading();
+        that._generating = false;
+        wx.showModal({ title: '提示', content: (e && e.message ? e.message : String(e)), showCancel: false });
+        return;
       }
-    }, 80);
+      // 再让出一帧再 setData，减少单次主线程占用，避免界面卡死
+      setTimeout(function () {
+        try {
+          that.setData({
+            showPreview: true,
+            previewMenuRows: rows,
+            previewCountText: countText,
+            previewComboName: (result && result.comboName) || '',
+            previewBalanceTip: balanceTip,
+            previewDashboard: dashboard,
+            previewHasSharedBase: hasSharedBase
+          });
+        } finally {
+          that._generating = false;
+          wx.hideLoading();
+        }
+      }, 0);
+    }, 120);
   },
 
   handleShuffle: function () {
@@ -159,7 +272,15 @@ Page({
       that._fullPreviewMenus = newMenus;
       var dashboard = that._computePreviewDashboard(newMenus, pref);
       var hasSharedBase = newRows.some(function (r) { return r.showSharedHint; });
-      that.setData({ previewMenuRows: newRows, previewComboName: result.comboName || '', previewBalanceTip: '', previewDashboard: dashboard, previewHasSharedBase: hasSharedBase });
+      var balanceTip = '';
+      var hasSpicy = false, hasLightOrSweet = false;
+      for (var b = 0; b < newMenus.length; b++) {
+        var fl = (newMenus[b].adultRecipe && newMenus[b].adultRecipe.flavor_profile) || '';
+        if (fl === 'spicy') hasSpicy = true;
+        if (fl === 'light' || fl === 'sweet_sour' || fl === 'sour_fresh') hasLightOrSweet = true;
+      }
+      if (hasSpicy && hasLightOrSweet) balanceTip = '口味互补：辣配清淡/酸甜，味觉更舒适';
+      that.setData({ previewMenuRows: newRows, previewComboName: result.comboName || '', previewBalanceTip: balanceTip, previewDashboard: dashboard, previewHasSharedBase: hasSharedBase });
     } catch (e) {
       console.error('换一换失败:', e);
       wx.showToast({ title: '换一换失败', icon: 'none' });
@@ -306,7 +427,7 @@ Page({
 
       var weeklyPrefs = [];
       for (var i = 0; i < 7; i++) {
-        weeklyPrefs.push({ adultCount: pref.adultCount, hasBaby: pref.hasBaby, babyMonth: pref.babyMonth, meatCount: pref.meatCount, vegCount: pref.vegCount });
+        weeklyPrefs.push({ adultCount: pref.adultCount, hasBaby: pref.hasBaby, babyMonth: pref.babyMonth, meatCount: pref.meatCount, vegCount: pref.vegCount, soupCount: pref.soupCount != null ? pref.soupCount : 0 });
       }
       var weeklyList = menuService.generateWeeklyShoppingList(weeklyPrefs);
       wx.setStorageSync('weekly_ingredients', weeklyList || []);
@@ -338,14 +459,16 @@ Page({
       hasBaby: !!hasBaby,
       babyMonth: Math.min(36, Math.max(6, d.babyMonth)),
       meatCount: d.meatCount,
-      vegCount: d.vegCount
+      vegCount: d.vegCount,
+      soupCount: d.soupCount != null ? Math.min(1, Math.max(0, d.soupCount)) : 0
     };
   },
 
-  /** 根据当前菜单计算仪表盘：预计耗时、灶台占用、食材种类 */
+  /** 根据当前菜单计算仪表盘：预计耗时、灶台占用、食材种类、营养提示、备菜与烹饪顺序建议、共用食材提示 */
   _computePreviewDashboard: function (menus, pref) {
-    if (!menus || menus.length === 0) return { estimatedTime: '', stoveCount: 0, categoryLabels: '' };
+    if (!menus || menus.length === 0) return { estimatedTime: '', stoveCount: 0, categoryLabels: '', nutritionHint: '', prepOrderHint: '', prepAheadHint: '', sharedIngredientsHint: '' };
     var maxMinutes = 0;
+    var maxPrep = 0;
     var hasStirFry = false, hasStew = false, hasSteam = false;
     var catSet = {};
     var catOrder = { '蔬菜': 1, '肉类': 2, '蛋类': 3, '干货': 4, '其他': 5 };
@@ -353,6 +476,7 @@ Page({
       var r = menus[i].adultRecipe;
       if (!r) continue;
       var prep = typeof r.prep_time === 'number' ? r.prep_time : 0;
+      if (prep > maxPrep) maxPrep = prep;
       var cook = r.cook_minutes != null ? r.cook_minutes : (r.taste === 'slow_stew' ? 60 : 15);
       if (prep + cook > maxMinutes) maxMinutes = prep + cook;
       var ct = r.cook_type || '';
@@ -377,10 +501,47 @@ Page({
     var estimatedMinutes = maxMinutes + 10;
     var stoveCount = (hasStirFry ? 1 : 0) + (hasStew ? 1 : 0) + (hasSteam ? 1 : 0);
     var cats = Object.keys(catSet).sort(function (a, b) { return (catSet[a] || 99) - (catSet[b] || 99); });
+    var categoryLabels = cats.length > 0 ? cats.join('、') : '';
+    var nutritionParts = [];
+    if (cats.indexOf('肉类') !== -1 || cats.indexOf('蛋类') !== -1) nutritionParts.push('蛋白质');
+    if (cats.indexOf('蔬菜') !== -1) nutritionParts.push('维生素与膳食纤维');
+    if (cats.indexOf('干货') !== -1) nutritionParts.push('多种营养素');
+    if (cats.indexOf('其他') !== -1 && nutritionParts.length === 0) nutritionParts.push('多种营养素');
+    var nutritionHint = nutritionParts.length > 0 ? '本餐营养覆盖：' + nutritionParts.join('、') : '';
+    var orderParts = [];
+    if (hasStew) orderParts.push('炖/煲');
+    if (hasSteam) orderParts.push('蒸');
+    if (hasStirFry) orderParts.push('快炒');
+    var prepOrderHint = orderParts.length >= 2 ? '烹饪顺序建议：' + orderParts.join('→') : '';
+    var prepAheadHint = '';
+    if (maxPrep >= 10) prepAheadHint = '备菜建议：可提前约 ' + maxPrep + ' 分钟准备葱姜蒜及腌制食材，下锅更从容';
+    var sharedIngredientsHint = '';
+    var ingCount = {};
+    for (var si = 0; si < menus.length; si++) {
+      var rec = menus[si].adultRecipe;
+      if (!rec || !Array.isArray(rec.ingredients)) continue;
+      var seen = {};
+      for (var sj = 0; sj < rec.ingredients.length; sj++) {
+        var ing = rec.ingredients[sj];
+        if (!ing || (ing.category && String(ing.category).trim() === '调料')) continue;
+        var n = (ing.name && String(ing.name).trim()) || '';
+        if (n && !seen[n]) { seen[n] = true; ingCount[n] = (ingCount[n] || 0) + 1; }
+      }
+    }
+    var shared = [];
+    for (var name in ingCount) { if (ingCount[name] >= 2) shared.push(name); }
+    if (shared.length > 0) {
+      shared = shared.slice(0, 6);
+      sharedIngredientsHint = '本餐可共用：' + shared.join('、') + '，备菜更省';
+    }
     return {
       estimatedTime: estimatedMinutes > 0 ? estimatedMinutes + ' 分钟' : '',
       stoveCount: stoveCount,
-      categoryLabels: cats.length > 0 ? cats.join('、') : ''
+      categoryLabels: categoryLabels,
+      nutritionHint: nutritionHint,
+      prepOrderHint: prepOrderHint,
+      prepAheadHint: prepAheadHint,
+      sharedIngredientsHint: sharedIngredientsHint
     };
   }
 });

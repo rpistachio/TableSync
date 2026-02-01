@@ -229,7 +229,11 @@
   margin-bottom: 32rpx;
 }
 .combo-btn {
-  padding: 24rpx 32rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6rpx;
+  padding: 20rpx 28rpx;
   background: #fff;
   border-radius: 24rpx;
   border: 2rpx solid #efe9e2;
@@ -246,6 +250,14 @@
 }
 .combo-btn.is-active .combo-text {
   color: #fff;
+}
+.combo-tag {
+  font-size: 20rpx;
+  color: #8e857e;
+  line-height: 1.2;
+}
+.combo-btn.is-active .combo-tag {
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .card-stack {
@@ -493,6 +505,33 @@
   word-break: break-all;
   white-space: normal;
   line-height: 1.4;
+}
+/* 营养/备菜提示 */
+.menu-preview-hints {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  padding: 16rpx 24rpx;
+  margin-bottom: 20rpx;
+  background: rgba(193, 102, 62, 0.06);
+  border-radius: 16rpx;
+  border-left: 4rpx solid rgba(193, 102, 62, 0.35);
+}
+.menu-preview-hints .hint-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10rpx;
+}
+.menu-preview-hints .hint-icon {
+  font-size: 26rpx;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+.menu-preview-hints .hint-text {
+  font-size: 24rpx;
+  color: #4a4540;
+  line-height: 1.4;
+  flex: 1;
 }
 .menu-preview-label {
   font-size: 26rpx;

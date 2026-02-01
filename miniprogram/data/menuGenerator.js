@@ -57,6 +57,18 @@ function copyBabyRecipe(r) {
   return out;
 }
 
+var _adultPoolCache = {};
+function getAdultPool(taste, meatKey) {
+  var key = (taste || '') + '_' + (meatKey || '');
+  if (!_adultPoolCache[key]) {
+    var arr = adultRecipes.filter(function (r) { return r.taste === taste && r.meat === meatKey; });
+    if (meatKey === 'vegetable' && arr.length === 0) arr = adultRecipes.filter(function (r) { return r.meat === 'vegetable'; });
+    if (arr.length === 0) arr = adultRecipes;
+    _adultPoolCache[key] = arr;
+  }
+  return _adultPoolCache[key];
+}
+
 function generateMenu(taste, meat, babyMonth, hasBaby, adultCount, babyTaste) {
   adultCount = adultCount == null ? 2 : adultCount;
   var meatKey = normalizeMeat(meat);
@@ -65,11 +77,8 @@ function generateMenu(taste, meat, babyMonth, hasBaby, adultCount, babyTaste) {
   var validBabyTastes = ['soft_porridge', 'finger_food', 'braised_mash'];
   var babyTasteKey = (babyTaste && validBabyTastes.indexOf(babyTaste) !== -1) ? babyTaste : 'soft_porridge';
 
-  var aPool = adultRecipes.filter(function (r) { return r.taste === taste && r.meat === meatKey; });
-  if (meatKey === 'vegetable' && aPool.length === 0) {
-    aPool = adultRecipes.filter(function (r) { return r.meat === 'vegetable'; });
-  }
-  var fallbackPool = aPool.length > 0 ? aPool : (meatKey === 'vegetable' ? aPool : adultRecipes);
+  var aPool = getAdultPool(taste, meatKey);
+  var fallbackPool = aPool.length > 0 ? aPool : adultRecipes;
   var adultRaw = fallbackPool[Math.floor(Math.random() * (fallbackPool.length || 1))];
   var adult = adultRaw ? copyAdultRecipe(adultRaw) : null;
 
@@ -205,7 +214,24 @@ function checkFlavorBalance(menus) {
   return { preferredFlavor: preferredFlavor, preferQuick: preferQuick };
 }
 
-/** 按口味/烹饪方式筛选补位：meat + filters(preferredFlavor, preferQuick)，返回与 generateMenu 相同结构 */
+/** 菜谱是否包含指定食材名之一（排除调料），ingredientNames 用 Set 做 O(1) 查找 */
+function recipeUsesAnyIngredient(recipe, ingredientNames) {
+  if (!recipe || !Array.isArray(recipe.ingredients) || !Array.isArray(ingredientNames) || ingredientNames.length === 0) return false;
+  var set = {};
+  for (var j = 0; j < ingredientNames.length; j++) {
+    var t = ingredientNames[j] && String(ingredientNames[j]).trim();
+    if (t) set[t] = true;
+  }
+  for (var i = 0; i < recipe.ingredients.length; i++) {
+    var ing = recipe.ingredients[i];
+    if (ing && ing.category && String(ing.category).trim() === '调料') continue;
+    var n = (ing && ing.name && String(ing.name).trim()) || '';
+    if (n && set[n]) return true;
+  }
+  return false;
+}
+
+/** 按口味/烹饪方式/共用食材筛选补位：meat + filters(preferredFlavor, preferQuick, preferredIngredients)，返回与 generateMenu 相同结构 */
 function generateMenuWithFilters(meat, babyMonth, hasBaby, adultCount, babyTaste, filters) {
   adultCount = adultCount == null ? 2 : adultCount;
   var meatKey = normalizeMeat(meat);
@@ -215,6 +241,7 @@ function generateMenuWithFilters(meat, babyMonth, hasBaby, adultCount, babyTaste
   var babyTasteKey = (babyTaste && validBabyTastes.indexOf(babyTaste) !== -1) ? babyTaste : 'soft_porridge';
   var preferredFlavor = (filters && filters.preferredFlavor) || null;
   var preferQuick = (filters && filters.preferQuick) === true;
+  var preferredIngredients = (filters && Array.isArray(filters.preferredIngredients)) ? filters.preferredIngredients : null;
 
   var aPool = adultRecipes.filter(function (r) { return r.meat === meatKey; });
   if (meatKey === 'vegetable' && aPool.length === 0) aPool = adultRecipes.filter(function (r) { return r.meat === 'vegetable'; });
@@ -223,6 +250,10 @@ function generateMenuWithFilters(meat, babyMonth, hasBaby, adultCount, babyTaste
   if (preferQuick && aPool.length > 0) {
     var quickPool = aPool.filter(function (r) { return (r.cook_type || '') === 'stir_fry'; });
     if (quickPool.length > 0) aPool = quickPool;
+  }
+  if (preferredIngredients && preferredIngredients.length > 0 && aPool.length > 0) {
+    var overlapPool = aPool.filter(function (r) { return recipeUsesAnyIngredient(r, preferredIngredients); });
+    if (overlapPool.length > 0) aPool = overlapPool;
   }
   if (aPool.length === 0) aPool = adultRecipes.filter(function (r) { return r.meat === meatKey; });
   if (aPool.length === 0 && meatKey === 'vegetable') aPool = adultRecipes.filter(function (r) { return r.meat === 'vegetable'; });
