@@ -13,6 +13,10 @@
       <view class="tab-item {{listMode === 'today' ? 'active' : ''}}" data-mode="today" bindtap="onTabChange">今日</view>
       <view class="tab-item {{listMode === 'weekly' ? 'active' : ''}}" data-mode="weekly" bindtap="onTabChange">本周</view>
     </view>
+    <view class="tabs-link-hint">
+      <text wx:if="{{listMode === 'today'}}">今日清单来自首页生成的菜单；切换「本周」可查看 7 天参考、查漏补缺</text>
+      <text wx:else>本周清单为 7 天参考，可与今日菜单搭配采购；切换「今日」查看当前菜单所需</text>
+    </view>
 
     <view wx:if="{{listMode === 'weekly'}}" class="notice-card">
       <text class="notice-icon">📅</text>

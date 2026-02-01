@@ -81,6 +81,18 @@
   box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
 }
 
+.tabs-link-hint {
+  margin-bottom: 20rpx;
+  padding: 16rpx 24rpx;
+  background: rgba(142, 133, 126, 0.08);
+  border-radius: 16rpx;
+}
+.tabs-link-hint text {
+  font-size: 24rpx;
+  color: #8e857e;
+  line-height: 1.5;
+}
+
 .notice-card {
   display: flex;
   align-items: flex-start;

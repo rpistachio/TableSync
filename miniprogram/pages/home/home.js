@@ -38,7 +38,9 @@ Page({
     previewMenuRows: [],
     previewCountText: '',
     previewComboName: '',
-    previewBalanceTip: ''
+    previewBalanceTip: '',
+    previewDashboard: { estimatedTime: '', stoveCount: 0, categoryLabels: '' },
+    previewHasSharedBase: false
   },
 
   onLoad: function () {
@@ -81,37 +83,51 @@ Page({
 
   handleGenerate: function () {
     var that = this;
-    try {
-      var menuService = require('../../data/menuData.js');
-      var pref = that._buildPreference();
-      var result = menuService.getTodayMenusByCombo(pref);
-      var menus = result.menus || result;
-      var hasBaby = pref.hasBaby === true;
-      if (!hasBaby) {
-        menus.forEach(function (m) { m.babyRecipe = null; });
+    if (that._generating) return;
+    that._generating = true;
+    wx.showLoading({ title: '统筹算法运行中', mask: true });
+    // 延后执行，让 Loading 先渲染，避免点击后界面卡死
+    setTimeout(function () {
+      try {
+        var menuService = require('../../data/menuData.js');
+        var pref = that._buildPreference();
+        var result = menuService.getTodayMenusByCombo(pref);
+        var menus = result.menus || result;
+        var hasBaby = pref.hasBaby === true;
+        var countText = pref.adultCount + '个大人';
+        if (hasBaby) countText += '，1个宝宝';
+        var rows = [];
+        for (var i = 0; i < menus.length; i++) {
+          var m = menus[i];
+          m.checked = true;
+          if (!hasBaby) m.babyRecipe = null;
+          var ar = m.adultRecipe;
+          var adultName = (ar && ar.name) ? ar.name : '—';
+          var stage = hasBaby && menuService.getBabyVariantByAge && menuService.getBabyVariantByAge(ar, pref.babyMonth);
+          var babyName = hasBaby ? ((stage && stage.name) || (m.babyRecipe && m.babyRecipe.name) || '') : '';
+          var reason = (ar && ar.recommend_reason) ? ar.recommend_reason : '';
+          rows.push({ adultName: adultName, babyName: babyName, showSharedHint: hasBaby && babyName && i === 0, checked: true, recommendReason: reason });
+        }
+        that._fullPreviewMenus = menus;
+        var dashboard = that._computePreviewDashboard(menus, pref);
+        var hasSharedBase = rows.some(function (r) { return r.showSharedHint; });
+        that.setData({
+          showPreview: true,
+          previewMenuRows: rows,
+          previewCountText: countText,
+          previewComboName: result.comboName || '',
+          previewBalanceTip: '',
+          previewDashboard: dashboard,
+          previewHasSharedBase: hasSharedBase
+        });
+      } catch (e) {
+        console.error('生成失败:', e);
+        wx.showModal({ title: '提示', content: (e && e.message ? e.message : String(e)), showCancel: false });
+      } finally {
+        that._generating = false;
+        wx.hideLoading();
       }
-      menus.forEach(function (m) { m.checked = true; });
-      var rows = menus.map(function (m, idx) {
-        var adultName = (m.adultRecipe && m.adultRecipe.name) ? m.adultRecipe.name : '—';
-        var stage = hasBaby && menuService.getBabyVariantByAge && menuService.getBabyVariantByAge(m.adultRecipe, pref.babyMonth);
-        var babyName = hasBaby ? ((stage && stage.name) || (m.babyRecipe && m.babyRecipe.name) || '') : '';
-        var showSharedHint = hasBaby && babyName && idx === 0;
-        return { adultName: adultName, babyName: babyName, showSharedHint: showSharedHint, checked: true };
-      });
-      var countText = pref.adultCount + '个大人';
-      if (hasBaby) countText += '，1个宝宝';
-      that._fullPreviewMenus = menus;
-      that.setData({
-        showPreview: true,
-        previewMenuRows: rows,
-        previewCountText: countText,
-        previewComboName: result.comboName || '',
-        previewBalanceTip: ''
-      });
-    } catch (e) {
-      console.error('生成失败:', e);
-      wx.showModal({ title: '提示', content: (e && e.message ? e.message : String(e)), showCancel: false });
-    }
+    }, 80);
   },
 
   handleShuffle: function () {
@@ -130,15 +146,20 @@ Page({
       var hasBaby = pref.hasBaby === true;
       if (!hasBaby) rawMenus.forEach(function (m) { m.babyRecipe = null; });
       var newMenus = rawMenus.map(function (m) { return Object.assign({}, m, { checked: true }); });
-      var newRows = newMenus.map(function (m, idx) {
-        var adultName = (m.adultRecipe && m.adultRecipe.name) ? m.adultRecipe.name : '—';
-        var stage = hasBaby && menuService.getBabyVariantByAge && menuService.getBabyVariantByAge(m.adultRecipe, pref.babyMonth);
+      var newRows = [];
+      for (var idx = 0; idx < newMenus.length; idx++) {
+        var m = newMenus[idx];
+        var ar = m.adultRecipe;
+        var adultName = (ar && ar.name) ? ar.name : '—';
+        var stage = hasBaby && menuService.getBabyVariantByAge && menuService.getBabyVariantByAge(ar, pref.babyMonth);
         var babyName = hasBaby ? ((stage && stage.name) || (m.babyRecipe && m.babyRecipe.name) || '') : '';
-        var showSharedHint = hasBaby && babyName && idx === 0;
-        return { adultName: adultName, babyName: babyName, showSharedHint: showSharedHint, checked: true };
-      });
+        var reason = (ar && ar.recommend_reason) ? ar.recommend_reason : '';
+        newRows.push({ adultName: adultName, babyName: babyName, showSharedHint: hasBaby && babyName && idx === 0, checked: true, recommendReason: reason });
+      }
       that._fullPreviewMenus = newMenus;
-      that.setData({ previewMenuRows: newRows, previewComboName: result.comboName || '', previewBalanceTip: '' });
+      var dashboard = that._computePreviewDashboard(newMenus, pref);
+      var hasSharedBase = newRows.some(function (r) { return r.showSharedHint; });
+      that.setData({ previewMenuRows: newRows, previewComboName: result.comboName || '', previewBalanceTip: '', previewDashboard: dashboard, previewHasSharedBase: hasSharedBase });
     } catch (e) {
       console.error('换一换失败:', e);
       wx.showToast({ title: '换一换失败', icon: 'none' });
@@ -228,16 +249,20 @@ Page({
             if (ct === 'stir_fry') curStirFry++;
             else if (ct === 'stew') curStew++;
           }
+          var ar = newSlot.adultRecipe;
           newRows.push({
-            adultName: (newSlot.adultRecipe && newSlot.adultRecipe.name) ? newSlot.adultRecipe.name : '—',
-            babyName: (function () { var st = menuService.getBabyVariantByAge && menuService.getBabyVariantByAge(newSlot.adultRecipe, pref.babyMonth); return (st && st.name) || (newSlot.babyRecipe && newSlot.babyRecipe.name) || ''; })(),
+            adultName: (ar && ar.name) ? ar.name : '—',
+            babyName: (function () { var st = menuService.getBabyVariantByAge && menuService.getBabyVariantByAge(ar, pref.babyMonth); return (st && st.name) || (newSlot.babyRecipe && newSlot.babyRecipe.name) || ''; })(),
             showSharedHint: hasBaby && newSlot.babyRecipe && i === firstMeatIndex,
-            checked: true
+            checked: true,
+            recommendReason: (ar && ar.recommend_reason) ? ar.recommend_reason : ''
           });
         }
       }
       that._fullPreviewMenus = newMenus;
-      that.setData({ previewMenuRows: newRows, previewBalanceTip: balanceTip });
+      var dashboard = that._computePreviewDashboard(newMenus, pref);
+      var hasSharedBase = newRows.some(function (r) { return r.showSharedHint; });
+      that.setData({ previewMenuRows: newRows, previewBalanceTip: balanceTip, previewDashboard: dashboard, previewHasSharedBase: hasSharedBase });
       wx.showToast({ title: '已为您选出更均衡的搭配', icon: 'none' });
     } catch (e) {
       console.error('换掉未勾选失败:', e);
@@ -314,6 +339,48 @@ Page({
       babyMonth: Math.min(36, Math.max(6, d.babyMonth)),
       meatCount: d.meatCount,
       vegCount: d.vegCount
+    };
+  },
+
+  /** 根据当前菜单计算仪表盘：预计耗时、灶台占用、食材种类 */
+  _computePreviewDashboard: function (menus, pref) {
+    if (!menus || menus.length === 0) return { estimatedTime: '', stoveCount: 0, categoryLabels: '' };
+    var maxMinutes = 0;
+    var hasStirFry = false, hasStew = false, hasSteam = false;
+    var catSet = {};
+    var catOrder = { '蔬菜': 1, '肉类': 2, '蛋类': 3, '干货': 4, '其他': 5 };
+    for (var i = 0; i < menus.length; i++) {
+      var r = menus[i].adultRecipe;
+      if (!r) continue;
+      var prep = typeof r.prep_time === 'number' ? r.prep_time : 0;
+      var cook = r.cook_minutes != null ? r.cook_minutes : (r.taste === 'slow_stew' ? 60 : 15);
+      if (prep + cook > maxMinutes) maxMinutes = prep + cook;
+      var ct = r.cook_type || '';
+      if (ct === 'stir_fry') hasStirFry = true;
+      else if (ct === 'stew') hasStew = true;
+      else if (ct === 'steam') hasSteam = true;
+      var ings = r.ingredients;
+      if (Array.isArray(ings)) {
+        for (var j = 0; j < ings.length; j++) {
+          var c = (ings[j] && ings[j].category) ? String(ings[j].category).trim() : '';
+          if (c && c !== '调料') catSet[c] = (catOrder[c] != null ? catOrder[c] : 99);
+        }
+      }
+      var br = menus[i].babyRecipe;
+      if (br && Array.isArray(br.ingredients)) {
+        for (var k = 0; k < br.ingredients.length; k++) {
+          var bc = (br.ingredients[k] && br.ingredients[k].category) ? String(br.ingredients[k].category).trim() : '';
+          if (bc && bc !== '调料') catSet[bc] = (catOrder[bc] != null ? catOrder[bc] : 99);
+        }
+      }
+    }
+    var estimatedMinutes = maxMinutes + 10;
+    var stoveCount = (hasStirFry ? 1 : 0) + (hasStew ? 1 : 0) + (hasSteam ? 1 : 0);
+    var cats = Object.keys(catSet).sort(function (a, b) { return (catSet[a] || 99) - (catSet[b] || 99); });
+    return {
+      estimatedTime: estimatedMinutes > 0 ? estimatedMinutes + ' 分钟' : '',
+      stoveCount: stoveCount,
+      categoryLabels: cats.length > 0 ? cats.join('、') : ''
     };
   }
 });

@@ -35,6 +35,16 @@ function defaultCookType(r) {
   if (r.taste === 'steamed_salad') return 'steam';
   return 'stir_fry';
 }
+function defaultRecommendReason(r) {
+  if (r.taste === 'slow_stew') return '暖心炖煮，营养入味';
+  if (r.taste === 'steamed_salad') return '清淡少油，健康之选';
+  return '快手小炒，下饭必备';
+}
+function defaultCookMinutes(r) {
+  if (r.taste === 'slow_stew') return 60;
+  if (r.taste === 'steamed_salad') return 15;
+  return 15;
+}
 var adultRecipes = [
   { id: 'a-soup-1', name: '花旗参石斛炖鸡汤', type: 'adult', taste: 'slow_stew', meat: 'chicken',
     prep_time: 15,
@@ -1423,6 +1433,8 @@ var babyRecipes = [
 adultRecipes.forEach(function (r) {
   if (r.flavor_profile == null) r.flavor_profile = defaultFlavorProfile(r);
   if (r.cook_type == null) r.cook_type = defaultCookType(r);
+  if (r.recommend_reason == null) r.recommend_reason = defaultRecommendReason(r);
+  if (r.cook_minutes == null) r.cook_minutes = defaultCookMinutes(r);
 });
 
 /** 经典「2荤2素1汤」模板库：预设套餐，口味与烹饪方式已配好 */

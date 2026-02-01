@@ -88,14 +88,18 @@
 
 .step-details {
   margin: 0 0 32rpx;
-  padding-left: 36rpx;
+  padding: 24rpx 32rpx 28rpx;
   color: #5a544f;
   font-size: 28rpx;
-  line-height: 1.7;
+  line-height: 1.9;
+  text-align: left;
 }
 
 .detail-line {
-  margin-bottom: 16rpx;
+  margin-bottom: 20rpx;
+}
+.detail-line:last-child {
+  margin-bottom: 0;
 }
 
 .detail-strong {
@@ -108,8 +112,8 @@
   background: linear-gradient(90deg, rgba(255, 193, 153, 0.35) 0%, rgba(255, 228, 225, 0.2) 100%);
   border-left: 6rpx solid #e8a87c;
   padding: 16rpx 20rpx 16rpx 24rpx;
-  margin: 0 -36rpx 16rpx -20rpx;
-  padding-left: 30rpx;
+  margin: 0 -32rpx 20rpx -32rpx;
+  padding-left: 38rpx;
   border-radius: 0 16rpx 16rpx 0;
   box-shadow: 0 2rpx 8rpx rgba(232, 168, 124, 0.15);
 }
@@ -134,7 +138,7 @@
 }
 
 .step-action-btn.is-last-step {
-  background: #07c160;
+  background: #2d2d2d;
   color: #fff;
 }
 

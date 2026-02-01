@@ -36,6 +36,27 @@ function getBabyVariantByAge(recipe, babyMonth) {
   return stages[stages.length - 1] || null;
 }
 
+/** 浅拷贝菜谱并仅克隆 steps，避免整份 JSON 深拷贝带来的卡顿 */
+function copyAdultRecipe(r) {
+  if (!r) return null;
+  var out = {};
+  for (var k in r) { if (r.hasOwnProperty(k) && k !== 'steps') out[k] = r[k]; }
+  out.steps = (r.steps || []).map(function (s) {
+    return typeof s === 'string' ? { action: 'prep', text: s } : Object.assign({}, s);
+  });
+  return out;
+}
+
+function copyBabyRecipe(r) {
+  if (!r) return null;
+  var out = {};
+  for (var k in r) { if (r.hasOwnProperty(k) && k !== 'steps') out[k] = r[k]; }
+  out.steps = (r.steps || []).map(function (s) {
+    return typeof s === 'string' ? { action: 'cook', text: s } : Object.assign({}, s);
+  });
+  return out;
+}
+
 function generateMenu(taste, meat, babyMonth, hasBaby, adultCount, babyTaste) {
   adultCount = adultCount == null ? 2 : adultCount;
   var meatKey = normalizeMeat(meat);
@@ -50,7 +71,7 @@ function generateMenu(taste, meat, babyMonth, hasBaby, adultCount, babyTaste) {
   }
   var fallbackPool = aPool.length > 0 ? aPool : (meatKey === 'vegetable' ? aPool : adultRecipes);
   var adultRaw = fallbackPool[Math.floor(Math.random() * (fallbackPool.length || 1))];
-  var adult = adultRaw ? JSON.parse(JSON.stringify(adultRaw)) : null;
+  var adult = adultRaw ? copyAdultRecipe(adultRaw) : null;
 
   var baby = null;
   if (meatKey !== 'vegetable') {
@@ -68,7 +89,7 @@ function generateMenu(taste, meat, babyMonth, hasBaby, adultCount, babyTaste) {
   if (meatKey !== 'vegetable' && hasBaby) {
     rawBaby = rawBaby || babyRecipes[0];
     if (rawBaby) {
-      baby = JSON.parse(JSON.stringify(rawBaby));
+      baby = copyBabyRecipe(rawBaby);
       var stage = getBabyVariantByAge(adult, babyMonth);
       baby.name = (stage && stage.name) || (rawBaby.name || '宝宝餐');
       baby.meat = meatKey;
@@ -118,7 +139,7 @@ function generateMenuFromRecipe(recipe, babyMonth, hasBaby, adultCount, babyTast
   var m = Math.min(36, Math.max(6, Number(babyMonth) || 6));
   var config = getBabyConfig(m);
   var meatKey = normalizeMeat(recipe.meat);
-  var adult = JSON.parse(JSON.stringify(recipe));
+  var adult = copyAdultRecipe(recipe);
   if (adult && Array.isArray(adult.steps)) {
     var scale = Math.max(1, Number(adultCount) || 2) / 2;
     var scaleText = scale % 1 === 0 ? String(scale) : scale.toFixed(1);
@@ -148,7 +169,7 @@ function generateMenuFromRecipe(recipe, babyMonth, hasBaby, adultCount, babyTast
     if (bPool.length === 0) bPool = babyRecipes.filter(function (r) { return r.meat === meatKey; });
     var rawBaby = (bPool.length > 0 ? bPool : babyRecipes)[Math.floor(Math.random() * (bPool.length || babyRecipes.length))];
     if (rawBaby) {
-      baby = JSON.parse(JSON.stringify(rawBaby));
+      baby = copyBabyRecipe(rawBaby);
       var stage = getBabyVariantByAge(recipe, babyMonth);
       baby.name = (stage && stage.name) || (rawBaby.name || '宝宝餐');
       baby.meat = meatKey;
@@ -207,7 +228,7 @@ function generateMenuWithFilters(meat, babyMonth, hasBaby, adultCount, babyTaste
   if (aPool.length === 0 && meatKey === 'vegetable') aPool = adultRecipes.filter(function (r) { return r.meat === 'vegetable'; });
 
   var adultRaw = aPool[Math.floor(Math.random() * (aPool.length || 1))];
-  var adult = adultRaw ? JSON.parse(JSON.stringify(adultRaw)) : null;
+  var adult = adultRaw ? copyAdultRecipe(adultRaw) : null;
 
   var baby = null;
   if (meatKey !== 'vegetable') {
@@ -218,7 +239,7 @@ function generateMenuWithFilters(meat, babyMonth, hasBaby, adultCount, babyTaste
     var rawBaby = (meatKey === 'fish') ? (bPool.find(function (r) { return r.id === 'b-fish-detail'; }) || bPool[0] || babyRecipes[0])
       : ((bPool.length > 0 ? bPool : babyRecipes)[Math.floor(Math.random() * (bPool.length || babyRecipes.length))]);
     if (meatKey !== 'vegetable' && hasBaby && rawBaby) {
-      baby = JSON.parse(JSON.stringify(rawBaby));
+      baby = copyBabyRecipe(rawBaby);
       var stage = getBabyVariantByAge(adult, babyMonth);
       baby.name = (stage && stage.name) || (rawBaby.name || '宝宝餐');
       baby.meat = meatKey;
