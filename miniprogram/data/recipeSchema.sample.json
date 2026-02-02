@@ -1,0 +1,41 @@
+[
+  {
+    "id": "a-chi-1",
+    "name": "清蒸柠檬鸡里脊",
+    "type": "adult",
+    "taste": "steamed_salad",
+    "meat": "chicken",
+    "prep_time": 10,
+    "cook_time": 10,
+    "cover_image_url": "cloud://xxx.png",
+    "is_baby_friendly": true,
+    "can_share_base": true,
+    "common_allergens": [],
+    "main_ingredients": [
+      { "name": "鸡里脊", "amount": 300, "unit": "g", "category": "肉类", "sub_type": "chicken_tenderloin" },
+      { "name": "柠檬", "amount": 30, "unit": "g", "category": "蔬菜" }
+    ],
+    "seasonings": [
+      { "name": "姜片", "amount": 0, "unit": "适量" },
+      { "name": "生抽", "amount": 0, "unit": "适量" }
+    ],
+    "steps": [
+      {
+        "step_index": 1,
+        "step_type": "prep",
+        "duration_num": 5,
+        "action": "prep",
+        "text": "鸡里脊去筋膜，逆纹切成薄片，铺在盘内，撒少许盐。柠檬切薄片，姜切薄片备用。",
+        "step_image_url": "cloud://steps/step1.png"
+      },
+      {
+        "step_index": 2,
+        "step_type": "cook",
+        "duration_num": 10,
+        "action": "cook",
+        "text": "鸡片上铺姜片、柠檬片，水开后上锅大火蒸 10 分钟，取出淋少许生抽即可。",
+        "step_image_url": "cloud://steps/step2.png"
+      }
+    ]
+  }
+]

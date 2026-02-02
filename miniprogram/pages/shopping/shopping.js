@@ -1,4 +1,6 @@
 var menuData = require('../../data/menuData.js');
+var recipeResources = require('../../data/recipeResources.js');
+var IMAGE_CONFIG = recipeResources.IMAGE_CONFIG;
 
 var STORAGE_KEY_TODAY = 'tablesync_shopping_checked_today';
 var MEAT_KEY_MAP = menuData.MEAT_KEY_MAP;
@@ -64,10 +66,12 @@ Page({
     todayPrepTime: 0,
     todayAllergens: [],
     todayAllergensText: '',
-    todayTips: []
+    todayTips: [],
+    heroCoverImage: ''
   },
 
   onLoad: function () {
+    this.setData({ heroCoverImage: IMAGE_CONFIG.pageCovers.shopping });
     this.updateList();
   },
 
@@ -148,3 +152,4 @@ Page({
     wx.navigateTo({ url: '/pages/steps/steps' });
   }
 });
+

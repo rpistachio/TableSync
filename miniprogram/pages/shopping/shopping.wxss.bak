@@ -1,44 +1,12 @@
 .shopping-page {
   min-height: 100vh;
-  background-color: #fdf8f2;
+  background-color: #FAF9F7;
   padding-bottom: 200rpx;
 }
 
 .page-header {
-  position: relative;
   padding: 32rpx 48rpx 24rpx;
   margin-bottom: 16rpx;
-  overflow: hidden;
-}
-
-.page-header-bg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
-  opacity: 0.3;
-}
-
-.recipe-thumbnail {
-  width: 160rpx;
-  height: 160rpx;
-  border-radius: 24rpx;
-  margin-bottom: 16rpx;
-  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.15);
-  position: relative;
-  z-index: 1;
-}
-
-.dish-name {
-  display: block;
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #2d2d2d;
-  margin-bottom: 24rpx;
-  position: relative;
-  z-index: 1;
 }
 
 .curation-tag {
@@ -46,24 +14,18 @@
   letter-spacing: 4rpx;
   color: #c1663e;
   font-weight: 700;
-  position: relative;
-  z-index: 1;
 }
 
 .main-title {
   display: block;
   font-size: 52rpx;
-  color: #2d2d2d;
+  color: #2C2C2E;
   margin: 16rpx 0 8rpx;
-  position: relative;
-  z-index: 1;
 }
 
 .sub-title {
   font-size: 26rpx;
   color: #8e857e;
-  position: relative;
-  z-index: 1;
 }
 
 .meta-tags {
@@ -71,8 +33,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: 16rpx;
-  position: relative;
-  z-index: 1;
 }
 
 .meta-tag {
@@ -127,10 +87,10 @@
 
 .category-card {
   margin-bottom: 24rpx;
-  background: #fff;
+  background: #FFFFFF;
   border-radius: 40rpx;
   overflow: hidden;
-  box-shadow: 0 4rpx 16rpx rgba(74, 69, 64, 0.06);
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.03);
 }
 
 .category-card__title {
@@ -144,20 +104,37 @@
 }
 
 .category-card__list {
-  padding: 16rpx 0;
+  padding: 0;
+}
+
+/* 行高亮：奇偶行背景微差（stripe） */
+.list-row.stripe-even {
+  background: #FAF9F7;
+}
+.list-row.stripe-odd {
+  background: #FFFFFF;
 }
 
 .list-row {
   display: flex;
   align-items: flex-start;
   gap: 24rpx;
-  padding: 20rpx 32rpx;
+  padding: 30rpx 32rpx;
   min-height: 104rpx;
+  box-sizing: border-box;
 }
 
-.list-row.is-done .list-row__name {
+/* 点击标记：已处理行透明度 0.3 + 中划线 */
+.list-row.is-done {
+  opacity: 0.3;
+}
+.list-row.is-done .list-row__name,
+.list-row.is-done .list-row__amount {
   text-decoration: line-through;
-  color: #969799;
+  color: #999999;
+}
+.list-row__checkbox {
+  flex-shrink: 0;
 }
 
 .list-row__body {

@@ -224,7 +224,11 @@ Page({
       var shoppingList = menuService.generateShoppingListFromMenus(pref, menus);
 
       wx.setStorageSync('cart_ingredients', shoppingList || []);
-      wx.setStorageSync('today_menus', JSON.stringify(menus));
+      // 使用精简格式存储菜单（仅含菜谱 ID），缩减 storage 体积
+      var slimMenus = menuService.serializeMenusForStorage(menus);
+      wx.setStorageSync('today_menus', JSON.stringify(slimMenus));
+      // 同时存储 preference，用于还原时传递参数
+      wx.setStorageSync('today_menus_preference', JSON.stringify(pref));
       wx.setStorageSync('menu_generated_date', getTodayDateKey());
 
       var dishNames = [];

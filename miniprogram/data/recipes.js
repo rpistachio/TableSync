@@ -1430,11 +1430,51 @@ var babyRecipes = [
     ] }
 ];
 
+/** 引入步骤标准化模块 */
+var recipeSchema = require('./recipeSchema.js');
+var STEP_TYPES = recipeSchema.STEP_TYPES;
+var STEP_DEFAULT_DURATION = recipeSchema.STEP_DEFAULT_DURATION;
+
+/**
+ * 标准化单个步骤，补全 step_type 和 duration_num
+ * - prep -> step_type: 'prep'
+ * - cook/process/seasoning -> step_type: 'cook'
+ */
+function normalizeStep(step) {
+  if (!step) return step;
+  // 确定 step_type
+  if (step.step_type == null) {
+    step.step_type = step.action === 'prep' ? STEP_TYPES.PREP : STEP_TYPES.COOK;
+  }
+  // 确定 duration_num（优先读取 duration_minutes，否则使用默认值）
+  if (typeof step.duration_num !== 'number') {
+    if (typeof step.duration_minutes === 'number') {
+      step.duration_num = step.duration_minutes;
+    } else {
+      step.duration_num = STEP_DEFAULT_DURATION[step.step_type] || 5;
+    }
+  }
+  return step;
+}
+
+/** 标准化菜谱的所有步骤 */
+function normalizeRecipeSteps(recipe) {
+  if (!recipe || !Array.isArray(recipe.steps)) return;
+  recipe.steps.forEach(normalizeStep);
+}
+
 adultRecipes.forEach(function (r) {
   if (r.flavor_profile == null) r.flavor_profile = defaultFlavorProfile(r);
   if (r.cook_type == null) r.cook_type = defaultCookType(r);
   if (r.recommend_reason == null) r.recommend_reason = defaultRecommendReason(r);
   if (r.cook_minutes == null) r.cook_minutes = defaultCookMinutes(r);
+  // 标准化步骤
+  normalizeRecipeSteps(r);
+});
+
+babyRecipes.forEach(function (r) {
+  // 标准化宝宝菜谱步骤
+  normalizeRecipeSteps(r);
 });
 
 /** 经典「2荤2素1汤」模板库：预设套餐，口味与烹饪方式已配好 */

@@ -113,7 +113,11 @@ function extractSeasonings(details) {
 }
 
 function processStepsForView(steps) {
-  var lastId = steps.length > 0 ? steps[steps.length - 1].id : null;
+  // 入参容错：避免传入 null/undefined 时报错
+  if (!Array.isArray(steps) || steps.length === 0) {
+    return [];
+  }
+  var lastId = steps[steps.length - 1].id;
   return steps.map(function (s) {
     var detailsWithSegments = [];
     (s.details || []).forEach(function (line) {
@@ -164,10 +168,26 @@ Page({
 
   onLoad: function () {
     var preference = getStepsPreference();
-    var steps = menuData.generateSteps(preference);
+    var steps;
+    
+    // 容错：menuData.generateSteps 可能返回 null/undefined
+    try {
+      steps = menuData.generateSteps(preference);
+    } catch (e) {
+      console.error('生成步骤失败:', e);
+      steps = null;
+    }
+    
+    // 确保 steps 是数组
+    if (!Array.isArray(steps)) {
+      steps = [];
+      console.warn('步骤数据为空或格式错误，已降级为空数组');
+    }
+    
+    // 恢复已完成状态
     try {
       var raw = wx.getStorageSync(stepsStorageKey());
-      if (raw) {
+      if (raw && steps.length > 0) {
         var arr = JSON.parse(raw);
         if (Array.isArray(arr)) {
           arr.forEach(function (item) {
@@ -176,16 +196,23 @@ Page({
           });
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('恢复步骤状态失败:', e);
+    }
+    
     this._stepsRaw = steps;
     this._updateView(steps);
   },
 
   _updateView: function (steps) {
+    // 入参容错：避免传入 null/undefined 时报错导致页面崩溃
+    if (!Array.isArray(steps)) {
+      steps = [];
+    }
     var completedCount = steps.filter(function (s) { return s.completed; }).length;
     var total = steps.length;
     var progress = total === 0 ? 0 : Math.round((completedCount / total) * 100);
-    var currentLabel = '第 ' + Math.min(completedCount + 1, total) + '/' + total + ' 步';
+    var currentLabel = total === 0 ? '暂无步骤' : '第 ' + Math.min(completedCount + 1, total) + '/' + total + ' 步';
     this.setData({
       steps: processStepsForView(steps),
       progressPercentage: progress,
@@ -196,15 +223,24 @@ Page({
   markCompleted: function (e) {
     var id = e.currentTarget.dataset.id;
     var steps = this._stepsRaw;
+    
+    // 容错：确保 steps 是有效数组
+    if (!Array.isArray(steps) || steps.length === 0) {
+      console.warn('markCompleted: 步骤数据无效');
+      return;
+    }
+    
     var step = steps.find(function (s) { return s.id === id; });
     if (!step) return;
     step.completed = true;
     try {
       var payload = steps.map(function (s) { return { id: s.id, completed: s.completed }; });
       wx.setStorageSync(stepsStorageKey(), JSON.stringify(payload));
-    } catch (err) {}
+    } catch (err) {
+      console.warn('保存步骤状态失败:', err);
+    }
     this._updateView(steps);
-    var lastId = steps.length > 0 ? steps[steps.length - 1].id : null;
+    var lastId = steps[steps.length - 1].id;
     if (step.id === lastId) {
       wx.showModal({
         title: '料理完成！',

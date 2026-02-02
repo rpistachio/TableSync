@@ -49,8 +49,19 @@ Page({
     try {
       var menusJson = wx.getStorageSync('today_menus');
       if (menusJson && menusJson.length > 0) {
-        var menus = JSON.parse(menusJson);
-        if (Array.isArray(menus) && menus.length > 0) {
+        var parsed = JSON.parse(menusJson);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // 检查是否为精简格式，如果是则还原
+          var menus = parsed;
+          if (menuData.isSlimMenuFormat && menuData.isSlimMenuFormat(parsed)) {
+            var storedPref = null;
+            try {
+              var prefRaw = wx.getStorageSync('today_menus_preference');
+              if (prefRaw) storedPref = JSON.parse(prefRaw);
+            } catch (e) {}
+            menus = menuData.deserializeMenusFromStorage(parsed, storedPref || pref);
+          }
+          
           var names = [];
           menus.forEach(function (m) {
             if (m.adultRecipe && m.adultRecipe.name) names.push(m.adultRecipe.name);

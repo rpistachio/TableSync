@@ -1,6 +1,5 @@
 <view class="shopping-page">
   <view class="page-header">
-    <image class="page-header-bg" src="{{heroCoverImage}}" mode="aspectFill"></image>
     <text class="curation-tag">Shopping List</text>
     <text class="main-title">采购清单</text>
     <text class="sub-title">今日菜单所需食材，按分类查看</text>
@@ -24,8 +23,15 @@
       <view wx:for="{{groupedTodayItems}}" wx:key="category" class="category-card">
         <view class="category-card__title">{{item.category}}</view>
         <view class="category-card__list">
-          <view wx:for="{{item.items}}" wx:for-item="row" wx:key="id" class="list-row {{row.checked ? 'is-done' : ''}}">
-            <checkbox value="{{row.id}}" checked="{{row.checked}}" bindtap="onCheckToday" data-item="{{row}}"/>
+          <view
+            wx:for="{{item.items}}"
+            wx:for-item="row"
+            wx:key="id"
+            class="list-row {{row.checked ? 'is-done' : ''}} stripe-{{index % 2 === 0 ? 'even' : 'odd'}}"
+            bindtap="onCheckToday"
+            data-item="{{row}}"
+          >
+            <checkbox value="{{row.id}}" checked="{{row.checked}}" class="list-row__checkbox"/>
             <view class="list-row__body">
               <text class="list-row__name">{{row.name}}</text>
               <text class="list-row__amount">{{row.amount}}</text>

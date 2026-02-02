@@ -23,23 +23,160 @@ var cache = {};
 var adultByNameCache = null;
 var adultByFlavorCache = null;
 var adultByMeatCache = null;
+var adultByIdCache = null;  // 按 ID 索引的缓存
+var babyByIdCache = null;   // 宝宝菜谱按 ID 索引的缓存
 
-/** 无感构建：仅用一次遍历 adultRecipes 同时填满 ByName / ByFlavor / ByMeat，不重复扫描 */
+/** 无感构建：仅用一次遍历 adultRecipes 同时填满 ByName / ByFlavor / ByMeat / ById，不重复扫描 */
 function ensureAdultCache(recipesModule, adultRecipesList) {
   if (adultByNameCache != null) return;
   var list = adultRecipesList || (recipesModule && recipesModule.adultRecipes) || [];
   adultByNameCache = {};
   adultByFlavorCache = { light: [], salty_umami: [], spicy: [], sweet_sour: [], sour_fresh: [] };
   adultByMeatCache = { chicken: [], pork: [], beef: [], fish: [], shrimp: [], vegetable: [] };
+  adultByIdCache = {};
   for (var i = 0; i < list.length; i++) {
     var r = list[i];
     if (r.name) adultByNameCache[r.name] = r;
+    if (r.id) adultByIdCache[r.id] = r;
     var f = r.flavor_profile || 'salty_umami';
     if (adultByFlavorCache[f]) adultByFlavorCache[f].push(r);
     var m = r.meat || 'vegetable';
     if (adultByMeatCache[m]) adultByMeatCache[m].push(r);
   }
 }
+
+/** 构建宝宝菜谱 ID 缓存 */
+function ensureBabyCache(recipesModule) {
+  if (babyByIdCache != null) return;
+  var list = (recipesModule && recipesModule.babyRecipes) || [];
+  babyByIdCache = {};
+  for (var i = 0; i < list.length; i++) {
+    var r = list[i];
+    if (r.id) babyByIdCache[r.id] = r;
+  }
+}
+
+/** 根据 ID 获取大人菜谱 */
+function getAdultRecipeById(id) {
+  if (!id) return null;
+  try {
+    var recipesModule = require('./recipes.js');
+    ensureAdultCache(recipesModule, recipesModule.adultRecipes);
+    return adultByIdCache[id] || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/** 根据 ID 获取宝宝菜谱 */
+function getBabyRecipeById(id) {
+  if (!id) return null;
+  try {
+    var recipesModule = require('./recipes.js');
+    ensureBabyCache(recipesModule);
+    return babyByIdCache[id] || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * ========== Menu 精简存储/还原 ==========
+ * 
+ * MenuSlim 格式（仅存 ID，缩减 storage 体积）：
+ * {
+ *   adultRecipeId: string | null,
+ *   babyRecipeId: string | null,
+ *   meat: string,
+ *   taste: string,
+ *   checked: boolean
+ * }
+ */
+
+/**
+ * 将完整菜单数组序列化为精简格式（仅含 ID）
+ * @param {Array} menus - 完整菜单数组
+ * @returns {Array} 精简格式数组
+ */
+exports.serializeMenusForStorage = function (menus) {
+  if (!Array.isArray(menus)) return [];
+  return menus.map(function (m) {
+    return {
+      adultRecipeId: (m.adultRecipe && m.adultRecipe.id) || null,
+      babyRecipeId: (m.babyRecipe && m.babyRecipe.id) || null,
+      meat: m.meat || 'vegetable',
+      taste: m.taste || 'quick_stir_fry',
+      checked: m.checked !== false
+    };
+  });
+};
+
+/**
+ * 将精简格式还原为完整菜单数组
+ * @param {Array} slimMenus - 精简格式数组
+ * @param {Object} options - 可选参数 { babyMonth, adultCount, hasBaby, babyTaste }
+ * @returns {Array} 完整菜单数组
+ */
+exports.deserializeMenusFromStorage = function (slimMenus, options) {
+  if (!Array.isArray(slimMenus)) return [];
+  var opts = options || {};
+  var babyMonth = opts.babyMonth || 12;
+  var adultCount = opts.adultCount || 2;
+  var hasBaby = opts.hasBaby === true;
+  var babyTaste = opts.babyTaste || 'soft_porridge';
+  
+  return slimMenus.map(function (slim, index) {
+    var adultRecipe = null;
+    var babyRecipe = null;
+    
+    // 还原大人菜谱
+    if (slim.adultRecipeId) {
+      var rawAdult = getAdultRecipeById(slim.adultRecipeId);
+      if (rawAdult) {
+        // 使用 generator 来处理人数缩放等逻辑
+        var res = generator.generateMenuFromRecipe(rawAdult, babyMonth, false, adultCount, babyTaste);
+        adultRecipe = res.adultRecipe;
+      }
+    }
+    
+    // 还原宝宝菜谱
+    if (slim.babyRecipeId && hasBaby) {
+      babyRecipe = getBabyRecipeById(slim.babyRecipeId);
+      // 如果没有单独的宝宝菜谱 ID，且有大人菜谱，尝试从大人菜谱生成
+      if (!babyRecipe && adultRecipe && slim.meat !== 'vegetable' && index === 0) {
+        var rawAdult = getAdultRecipeById(slim.adultRecipeId);
+        if (rawAdult) {
+          var res = generator.generateMenuFromRecipe(rawAdult, babyMonth, true, adultCount, babyTaste);
+          babyRecipe = res.babyRecipe;
+        }
+      }
+    }
+    
+    return {
+      adultRecipe: adultRecipe,
+      babyRecipe: babyRecipe,
+      meat: slim.meat || 'vegetable',
+      taste: slim.taste || 'quick_stir_fry',
+      checked: slim.checked !== false
+    };
+  });
+};
+
+/**
+ * 判断是否为精简格式（有 adultRecipeId 字段）
+ * @param {Array} menus - 菜单数组
+ * @returns {boolean}
+ */
+exports.isSlimMenuFormat = function (menus) {
+  if (!Array.isArray(menus) || menus.length === 0) return false;
+  var first = menus[0];
+  // 精简格式有 adultRecipeId，完整格式有 adultRecipe
+  return first.hasOwnProperty('adultRecipeId') && !first.hasOwnProperty('adultRecipe');
+};
+
+/** 导出 ID 查找函数供其他模块使用 */
+exports.getAdultRecipeById = getAdultRecipeById;
+exports.getBabyRecipeById = getBabyRecipeById;
 
 function normalizePreference(preference) {
   if (preference == null || typeof preference !== 'object') {
@@ -511,29 +648,46 @@ exports.getTodayMenu = function (preference) {
 exports.generateSteps = function (preference) {
   var app = typeof getApp === 'function' ? getApp() : null;
   var todayMenus = app && app.globalData ? app.globalData.todayMenus : null;
+  var storedPref = null;
+  
   if (!todayMenus || todayMenus.length === 0) {
     try {
       var raw = typeof wx !== 'undefined' && wx.getStorageSync ? wx.getStorageSync('today_menus') : '';
       if (raw && typeof JSON.parse === 'function') {
         var parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          todayMenus = parsed;
-          if (app && app.globalData) app.globalData.todayMenus = parsed;
+          // 检查是否为精简格式，如果是则还原为完整格式
+          if (exports.isSlimMenuFormat(parsed)) {
+            // 读取存储的 preference
+            try {
+              var prefRaw = wx.getStorageSync('today_menus_preference');
+              if (prefRaw) storedPref = JSON.parse(prefRaw);
+            } catch (e) {}
+            var restoreOptions = storedPref || preference || {};
+            todayMenus = exports.deserializeMenusFromStorage(parsed, restoreOptions);
+          } else {
+            todayMenus = parsed;
+          }
+          if (app && app.globalData) app.globalData.todayMenus = todayMenus;
           if (app && app.globalData && (!app.globalData.mergedShoppingList || app.globalData.mergedShoppingList.length === 0))
             app.globalData.mergedShoppingList = wx.getStorageSync('cart_ingredients') || [];
         }
       }
     } catch (e) {}
   }
+  
+  // 使用存储的 preference 或传入的 preference
+  var effectivePref = storedPref || preference || {};
+  
   if (todayMenus && todayMenus.length > 0) {
     var first = todayMenus[0];
-    var list = (app && app.globalData && app.globalData.mergedShoppingList && app.globalData.mergedShoppingList.length > 0) ? app.globalData.mergedShoppingList : exports.generateShoppingListFromMenus(preference, todayMenus);
+    var list = (app && app.globalData && app.globalData.mergedShoppingList && app.globalData.mergedShoppingList.length > 0) ? app.globalData.mergedShoppingList : exports.generateShoppingListFromMenus(effectivePref, todayMenus);
     if (todayMenus.length > 1 && generator.generateUnifiedSteps) {
       return generator.generateUnifiedSteps(todayMenus, list);
     }
     var steps = generator.generateSteps(first.adultRecipe, first.babyRecipe, list);
-    if (steps.length > 0 && !first.babyRecipe && first.adultRecipe && first.adultRecipe.baby_variant && preference && (preference.hasBaby === true || preference.hasBaby === '1')) {
-      var stage = exports.getBabyVariantByAge(first.adultRecipe, preference.babyMonth);
+    if (steps.length > 0 && !first.babyRecipe && first.adultRecipe && first.adultRecipe.baby_variant && effectivePref && (effectivePref.hasBaby === true || effectivePref.hasBaby === '1')) {
+      var stage = exports.getBabyVariantByAge(first.adultRecipe, effectivePref.babyMonth);
       if (stage && stage.same_as_adult_hint) {
         var last = steps[steps.length - 1];
         if (last && Array.isArray(last.details)) last.details = last.details.concat(['✨ ' + stage.same_as_adult_hint]);
@@ -541,8 +695,8 @@ exports.generateSteps = function (preference) {
     }
     return steps;
   }
-  var adapted = getAdaptedRecipes(preference);
-  var shoppingList = exports.generateShoppingList(preference);
+  var adapted = getAdaptedRecipes(effectivePref);
+  var shoppingList = exports.generateShoppingList(effectivePref);
   return generator.generateSteps(adapted.adultRecipe, adapted.babyRecipe, shoppingList);
 };
 
