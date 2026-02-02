@@ -8,6 +8,29 @@ var babyRecipes = recipes.babyRecipes;
 var MEAT_LABEL = { chicken: '鸡肉', pork: '猪肉', beef: '牛肉', fish: '鳕鱼', shrimp: '虾仁', vegetable: '素菜' };
 var MEAT_KEY_MAP = { 鸡肉: 'chicken', 猪肉: 'pork', 牛肉: 'beef', 鱼肉: 'fish', 虾仁: 'shrimp', 素菜: 'vegetable', chicken: 'chicken', pork: 'pork', beef: 'beef', fish: 'fish', shrimp: 'shrimp', vegetable: 'vegetable' };
 
+/** 模糊调料词汇 → 阿姨更有体感的分量单位（勺=汤匙） */
+var VAGUE_SEASONING_TO_PORTION = { '适量': '约1勺', '少许': '半勺', '少量': '半勺', '一点': '半勺', '若干': '约1勺' };
+
+/** 将单个用量文案替换为分量单位，用于购物清单/备菜/步骤展示 */
+function formatSeasoningAmountForDisplay(amount) {
+  if (amount == null || String(amount).trim() === '') return '约1勺';
+  var s = String(amount).trim();
+  return VAGUE_SEASONING_TO_PORTION[s] != null ? VAGUE_SEASONING_TO_PORTION[s] : s;
+}
+
+/** 将步骤文案中的模糊调料词替换为分量单位，便于阿姨执行 */
+function replaceVagueSeasoningInText(text) {
+  if (!text || typeof text !== 'string') return text;
+  var t = text;
+  t = t.replace(/一点点/g, '约半勺');
+  t = t.replace(/适量/g, '约1勺');
+  t = t.replace(/少许/g, '半勺');
+  t = t.replace(/少量/g, '半勺');
+  t = t.replace(/若干/g, '约1勺');
+  t = t.replace(/一点/g, '半勺');
+  return t;
+}
+
 function normalizeMeat(meat) {
   var key = MEAT_KEY_MAP[meat] || meat;
   return typeof key === 'string' ? key : 'chicken';
@@ -334,7 +357,7 @@ function buildIngredientsInfo(recipe, shoppingList) {
     var subType = (typeof it === 'object' && it != null && it.sub_type != null) ? it.sub_type : '';
     var key = name + '\u0001' + subType;
     var amount = amountByKey[key] != null ? amountByKey[key] : '适量';
-    mainParts.push(name + ' (' + amount + ')');
+    mainParts.push(name + ' (' + formatSeasoningAmountForDisplay(amount) + ')');
   });
   if (mainParts.length === 0) return '主食材';
   return '主食材 ' + mainParts.join('、');
@@ -417,9 +440,8 @@ function generateSteps(adultRecipe, babyRecipe, shoppingList) {
 
   if (shareBase) {
     var sharedMain = (adultRecipe && MEAT_LABEL[adultRecipe.meat]) || (babyRecipe && MEAT_LABEL[babyRecipe.meat]) || '主料';
-    steps.push({ id: id++, title: '步骤 1：联合备菜', details: ['✨ 今日共用食材：' + sharedMain + '。', '👨 【大人端】🔥 请一次性洗净、去刺/去腥，按比例预留份量。', '👶 【宝宝端】🔥 从中分出约 50g 单独装小碗备用，剩余留给大人。'], role: 'both', completed: false, duration: 10 });
+    steps.push({ id: id++, title: '步骤 1：联合备菜', details: ['✨ 今日共用食材：' + sharedMain + '。', '👨 【大人端】🔥 ' + adultPrepText, '👶 【宝宝端】🔥 从中分出约 50g 单独装小碗备用，剩余留给大人。'], role: 'both', completed: false, duration: 10 });
     var parallelDetails = babyCookTexts.map(function (line) { return '👶 【宝宝端】🔥 ' + line; });
-    parallelDetails.push('👨 【大人端】⏳ 大人端利用间隙：' + adultPrepText);
     parallelDetails.push('✨ 省时窍门：共用蒸锅可分层放置，一锅同蒸省时省气。');
     steps.push({ id: id++, title: '步骤 2：并行烹饪（利用宝宝蒸煮间隙处理成人菜）', details: parallelDetails, role: 'both', completed: false, duration: Math.max(babySteamMins, adultSteps.prep.reduce(function (s, t) { return s + estimateMinutes(t); }, 0) || 10) });
   } else {
@@ -452,11 +474,7 @@ function buildMergedPrepLine(shoppingList) {
     if (!item || item.name == null) return;
     var name = item.name;
     var amount = (item.amount != null && String(item.amount).trim() !== '') ? String(item.amount).trim() : '适量';
-    if (amount === '适量') {
-      parts.push(name + ' 适量');
-    } else {
-      parts.push(name + ' (' + amount + ')');
-    }
+    parts.push(name + ' (' + formatSeasoningAmountForDisplay(amount) + ')');
   });
   if (parts.length === 0) return '洗净、切配今日所需食材。';
   return '准备好 ' + parts.join('、') + ' 并切配。';
@@ -476,7 +494,7 @@ function getBabyReserveHint(menu) {
     if (!name) continue;
     var baseAmount = (typeof it === 'object' && it != null && typeof it.baseAmount === 'number') ? it.baseAmount : 0;
     var unit = (typeof it === 'object' && it != null && it.unit != null) ? String(it.unit).trim() : 'g';
-    var amountStr = (baseAmount === 0 || unit === '适量') ? '适量' : baseAmount + unit;
+    var amountStr = (baseAmount === 0 || unit === '适量') ? formatSeasoningAmountForDisplay('适量') : baseAmount + unit;
     return '[分拨] 预留宝宝所需的 ' + amountStr + ' ' + name + '，暂不调味。';
   }
   return null;
@@ -611,53 +629,6 @@ function generateShoppingListRaw(adultRecipe, babyRecipe) {
   return items;
 }
 
-var AGGREGATE_EMPTY_PLACEHOLDER = [{ name: '暂无全周食材数据', amount: '-', category: '其他', isShared: false, isWeekly: true }];
-
-function aggregateWeeklyIngredients(ingredientsArray) {
-  if (!Array.isArray(ingredientsArray) || ingredientsArray.length === 0) return AGGREGATE_EMPTY_PLACEHOLDER;
-  var re = /(\d+(?:\.\d+)?)\s*([a-zA-Z\u4e00-\u9fa5]*)/;
-  var map = new Map();
-  function getCategory(it) { return (typeof it === 'object' && it != null && it.category != null) ? it.category : '其他'; }
-  ingredientsArray.forEach(function (it) {
-    var name = typeof it === 'string' ? it : (it && (it.name != null ? it.name : it.ingredient != null ? it.ingredient : ''));
-    if (!name) return;
-    if (!map.has(name)) map.set(name, { category: getCategory(it), byUnit: new Map() });
-    var row = map.get(name);
-    var value;
-    var unit;
-    if (typeof it === 'object' && it != null && typeof it.baseAmount === 'number' && it.unit != null) {
-      value = it.baseAmount;
-      unit = String(it.unit).trim() || '份';
-      if (unit === '适量') return;
-    } else {
-      var amountStr = (typeof it === 'object' && it != null && it.amount != null) ? String(it.amount).trim() : '适量';
-      var match = amountStr.match(re);
-      if (!match) return;
-      value = parseFloat(match[1]);
-      unit = (match[2] || '').trim() || '份';
-    }
-    row.byUnit.set(unit, (row.byUnit.get(unit) || 0) + value);
-  });
-  var items = [];
-  map.forEach(function (val, name) {
-    var category = val.category;
-    var byUnit = val.byUnit;
-    var amount;
-    if (byUnit.size === 0) amount = '适量';
-    else {
-      var parts = [];
-      byUnit.forEach(function (sum, unit) {
-        var display = Number.isInteger(sum) ? sum : parseFloat(sum.toFixed(2));
-        var suffix = unit === '份' ? '' : unit;
-        parts.push(display + suffix + ' (全周累计)');
-      });
-      amount = parts.join('、');
-    }
-    items.push({ name: name, amount: amount, category: category, isShared: false, isWeekly: true });
-  });
-  return items.length > 0 ? items : AGGREGATE_EMPTY_PLACEHOLDER;
-}
-
 module.exports = {
   generateMenu: generateMenu,
   generateMenuFromRecipe: generateMenuFromRecipe,
@@ -668,5 +639,6 @@ module.exports = {
   generateUnifiedSteps: generateUnifiedSteps,
   generateExplanation: generateExplanation,
   generateShoppingList: generateShoppingListRaw,
-  aggregateWeeklyIngredients: aggregateWeeklyIngredients
+  formatSeasoningAmountForDisplay: formatSeasoningAmountForDisplay,
+  replaceVagueSeasoningInText: replaceVagueSeasoningInText
 };

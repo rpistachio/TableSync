@@ -11,6 +11,7 @@
           <view class="step-card__title-row">
             <text class="step-card__title">{{item.title}}</text>
             <text wx:if="{{item.roleTag}}" class="role-badge {{item.roleTag === '成人餐' ? 'adult' : 'baby'}}">{{item.roleTag}}</text>
+            <text wx:if="{{item.knifeWorkLabel}}" class="type-badge">刀工：{{item.knifeWorkLabel}}</text>
           </view>
           <view class="step-card__meta">
             预计用时：{{item.duration}} 分钟
@@ -22,6 +23,9 @@
             <view wx:for="{{item.details}}" wx:for-item="line" wx:key="index" class="detail-line {{line.isBabyPortion ? 'baby-portion-action' : ''}}">
               <text wx:for="{{line.segments}}" wx:for-item="seg" wx:key="index" class="{{seg.strong ? 'detail-strong' : ''}}">{{seg.text}}</text>
             </view>
+          </view>
+          <view wx:if="{{item.showSeasoningsList}}" class="ingredients-check">
+            <text wx:for="{{item.seasoningsList}}" wx:for-item="ing" wx:key="name" class="ingredients-check__item">{{ing.name}} {{ing.amount}}</text>
           </view>
           <button class="step-action-btn {{item.completed ? 'is-done' : ''}} {{item.isLast && !item.completed ? 'is-last-step' : ''}}" disabled="{{item.completed}}" bindtap="markCompleted" data-id="{{item.id}}">
             {{item.completed ? '已达成 ✅' : '标记为完成'}}

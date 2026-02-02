@@ -76,6 +76,16 @@
   color: #d67a7d;
 }
 
+.type-badge {
+  margin-left: auto;
+  font-size: 32rpx;
+  font-weight: 700;
+  padding: 8rpx 20rpx;
+  border-radius: 12rpx;
+  background: #2d2d2d;
+  color: #fff;
+}
+
 .step-card__meta {
   font-size: 24rpx;
   color: #8e857e;
@@ -105,6 +115,21 @@
 .detail-strong {
   font-weight: 600;
   color: #1a1a1a;
+  background: linear-gradient(to bottom, transparent 60%, rgba(255, 213, 79, 0.45) 60%);
+}
+
+.ingredients-check {
+  margin: 0 0 32rpx;
+  padding: 24rpx 28rpx;
+  background: #f0ebe6;
+  border-radius: 16rpx;
+}
+
+.ingredients-check__item {
+  display: block;
+  font-size: 34rpx;
+  color: #5a544f;
+  line-height: 1.7;
 }
 
 /* 宝宝分拨动作：高亮整行，便于一眼识别 */

@@ -990,7 +990,7 @@ var adultRecipes = [
     baby_variant: {
       stages: [
         { max_month: 8, name: '细腻蒸蛋黄', action: '仅用蛋黄兑温水蒸制，过筛保证无气泡' },
-        { max_month: 36, name: '全蛋蒸水蛋', action: '全蛋加温水蒸，12个月前不加盐和酱油' }
+        { max_month: 36, name: '全蛋蒸水蛋', action: '全蛋加温水蒸，12个月前不加盐和酱油', same_as_adult_hint: '大人蒸水蛋与宝宝全蛋蒸水蛋可一锅同蒸：蒸好后先分出一小份少盐/无盐给宝宝，再给大人撒葱花和调味。' }
       ]
     }
   },

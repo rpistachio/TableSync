@@ -2,6 +2,7 @@ var menuData = require('../../data/menuData.js');
 
 var STORAGE_PREFIX = 'tablesync_steps_completed_';
 var KEY_ACTIONS = ['下锅', '打泥', '切', '炒', '煮', '蒸', '煎', '搅拌', '焯水', '腌制', '加盐', '装盘', '翻炒', '焖', '烤', '炖', '剁'];
+var KEY_ACTIONS_RE = new RegExp('(' + KEY_ACTIONS.join('|') + ')', 'g');
 
 function getStepsPreference() {
   var app = getApp();
@@ -23,16 +24,13 @@ function stepsStorageKey() {
 
 function highlightSegments(text) {
   if (!text || typeof text !== 'string') return [{ text: String(text), strong: false }];
+  var parts = text.split(KEY_ACTIONS_RE);
+  if (parts.length <= 1) return [{ text: text, strong: false }];
   var segments = [];
-  var re = new RegExp(KEY_ACTIONS.join('|'), 'g');
-  var lastIndex = 0;
-  var m;
-  while ((m = re.exec(text)) !== null) {
-    if (m.index > lastIndex) segments.push({ text: text.slice(lastIndex, m.index), strong: false });
-    segments.push({ text: m[0], strong: true });
-    lastIndex = re.lastIndex;
+  for (var i = 0; i < parts.length; i++) {
+    if (!parts[i]) continue;
+    segments.push({ text: parts[i], strong: i % 2 === 1 });
   }
-  if (lastIndex < text.length) segments.push({ text: text.slice(lastIndex), strong: false });
   return segments.length > 0 ? segments : [{ text: text, strong: false }];
 }
 
@@ -52,15 +50,96 @@ function isBabyPortionLine(line) {
   return /宝宝/.test(line) && /分拨|分出/.test(line);
 }
 
+/** 短句序号：①～⑩，超过用 "11." "12." */
+var ORDINAL_CIRCLED = '\u2460\u2461\u2462\u2463\u2464\u2465\u2466\u2467\u2468\u2469'; /* ①②③④⑤⑥⑦⑧⑨⑩ */
+function getOrdinalPrefix(n) {
+  if (n >= 1 && n <= 10) return ORDINAL_CIRCLED[n - 1];
+  return n + '.';
+}
+
+/** 短句上限，避免单行拆出过多导致卡顿 */
+var MAX_PHRASES_PER_LINE = 6;
+
+/**
+ * 用正则把长句拆成短句（按。！？；换行断句；过长再按，、断句），便于逐条加序号。控制条数防卡顿。
+ */
+function splitIntoShortPhrases(text) {
+  if (!text || typeof text !== 'string') return [];
+  var trimmed = text.trim();
+  if (!trimmed) return [];
+  var parts = trimmed.split(/[。！？；\n]+/);
+  var result = [];
+  var maxClauseLen = 18;
+  for (var i = 0; i < parts.length && result.length < MAX_PHRASES_PER_LINE; i++) {
+    var p = parts[i].trim();
+    if (!p) continue;
+    if (p.length > maxClauseLen && /[，、]/.test(p) && result.length < MAX_PHRASES_PER_LINE - 1) {
+      var clauses = p.split(/[，、]+/);
+      for (var j = 0; j < clauses.length && result.length < MAX_PHRASES_PER_LINE; j++) {
+        var c = clauses[j].trim();
+        if (c) result.push(c);
+      }
+    } else {
+      result.push(p);
+    }
+  }
+  return result;
+}
+
+/** 刀工：用 match 一次取第一个，避免全局正则状态 */
+function extractKnifeWork(details) {
+  if (!Array.isArray(details) || details.length === 0) return '';
+  var full = details.join('');
+  var m = full.match(/切(成)?(大?)(块|片|丁|丝|段|末)/);
+  return m ? '切' + m[3] : '';
+}
+
+/** 调料：只匹配常见 12 项、最多返回 8 条，减轻 setData 与渲染 */
+var SEASONING_NAMES = ['生抽', '老抽', '料酒', '蚝油', '盐', '酱油', '醋', '糖', '淀粉', '姜片', '蒜', '葱'];
+var AMOUNT_RE = /(少许|适量|一点|半勺|一勺|1勺|2勺|少量)\s*$/;
+function extractSeasonings(details) {
+  if (!Array.isArray(details) || details.length === 0) return [];
+  var full = details.join('');
+  var list = [];
+  for (var i = 0; i < SEASONING_NAMES.length && list.length < 8; i++) {
+    var name = SEASONING_NAMES[i];
+    var idx = full.indexOf(name);
+    if (idx === -1) continue;
+    var before = full.slice(Math.max(0, idx - 12), idx);
+    var amount = AMOUNT_RE.test(before) ? before.match(AMOUNT_RE)[1] : '适量';
+    list.push({ name: name, amount: menuData.formatSeasoningAmountForDisplay ? menuData.formatSeasoningAmountForDisplay(amount) : amount });
+  }
+  return list;
+}
+
 function processStepsForView(steps) {
   var lastId = steps.length > 0 ? steps[steps.length - 1].id : null;
   return steps.map(function (s) {
-    var detailsWithSegments = (s.details || []).map(function (line) {
-      return {
-        segments: highlightSegments(line),
-        isBabyPortion: isBabyPortionLine(line)
-      };
+    var detailsWithSegments = [];
+    (s.details || []).forEach(function (line) {
+      var displayLine = menuData.replaceVagueSeasoningInText ? menuData.replaceVagueSeasoningInText(line) : line;
+      var phrases = splitIntoShortPhrases(displayLine);
+      var isBaby = isBabyPortionLine(line);
+      if (phrases.length === 0) {
+        detailsWithSegments.push({
+          segments: highlightSegments(displayLine),
+          isBabyPortion: isBaby
+        });
+        return;
+      }
+      phrases.forEach(function (phrase, idx) {
+        var prefix = getOrdinalPrefix(idx + 1) + ' ';
+        var fullText = prefix + phrase;
+        detailsWithSegments.push({
+          segments: highlightSegments(fullText),
+          isBabyPortion: isBaby && idx === 0
+        });
+      });
     });
+    var rawDetails = s.details || [];
+    var title = (s.title || '').toString();
+    var isPrepStep = /备菜/.test(title);
+    var seasoningsList = extractSeasonings(rawDetails);
     return {
       id: s.id,
       title: s.title,
@@ -68,7 +147,10 @@ function processStepsForView(steps) {
       duration: s.duration,
       completed: s.completed,
       roleTag: stepTag(s),
-      isLast: lastId !== null && s.id === lastId
+      isLast: lastId !== null && s.id === lastId,
+      knifeWorkLabel: extractKnifeWork(rawDetails),
+      seasoningsList: seasoningsList,
+      showSeasoningsList: seasoningsList.length > 0 && !isPrepStep
     };
   });
 }
