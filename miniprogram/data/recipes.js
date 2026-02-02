@@ -13,6 +13,14 @@
  *
  * flavor_profile：辣(spicy)、咸鲜(salty_umami)、清淡(light)、酸甜(sweet_sour)、酸爽解腻(sour_fresh)
  * cook_type：炖(stew)、蒸(steam)、炒(stir_fry)
+ *
+ * ============ 统筹算法支持字段（自动填充） ============
+ * base_serving: (Number) 默认份量基数，默认 2 人份
+ * cook_method: (String) 烹饪方式，枚举值：stir_fry(快炒)、steam(清蒸)、stew(慢炖)、cold_dress(凉拌)
+ * tags: (Array) 标签数组，可选值：quick(快手)、no_oil(少油)、spicy(辣味)、soup(汤类)、
+ *               high_protein(高蛋白)、vegetarian(素食)、baby_friendly(宝宝友好)
+ * main_ingredients: (Array) 主料名数组，从 ingredients 中自动提取，用于食材去重
+ * difficulty: (Number) 难度等级 1-3（1=简单，2=中等，3=复杂）
  */
 var FLAVOR_KEYWORDS = [
   { key: '宫保', flavor: 'spicy' }, { key: '辣椒', flavor: 'spicy' }, { key: '干辣椒', flavor: 'spicy' }, { key: '花椒', flavor: 'spicy' },
@@ -44,6 +52,116 @@ function defaultCookMinutes(r) {
   if (r.taste === 'slow_stew') return 60;
   if (r.taste === 'steamed_salad') return 15;
   return 15;
+}
+
+/**
+ * ============ 统筹算法支持字段 - 默认值函数 ============
+ */
+
+/** 默认份量基数，始终返回 2 人份 */
+function defaultBaseServing() {
+  return 2;
+}
+
+/**
+ * 根据菜谱特征判断烹饪方式
+ * @returns {String} stir_fry | steam | stew | cold_dress
+ */
+function defaultCookMethod(r) {
+  var n = (r.name || '');
+  // 凉拌类
+  if (n.indexOf('凉拌') !== -1 || n.indexOf('拍黄瓜') !== -1) return 'cold_dress';
+  // 清蒸/白切类
+  if (r.taste === 'steamed_salad' || n.indexOf('清蒸') !== -1 || n.indexOf('蒸') !== -1 || n.indexOf('白切') !== -1 || n.indexOf('白灼') !== -1) return 'steam';
+  // 慢炖/煲汤类
+  if (r.taste === 'slow_stew' || n.indexOf('炖') !== -1 || n.indexOf('煲') !== -1 || n.indexOf('汤') !== -1 || n.indexOf('焖') !== -1) return 'stew';
+  // 默认快炒
+  return 'stir_fry';
+}
+
+/**
+ * 根据菜谱特征生成标签数组
+ * @returns {Array} 标签数组，如 ['quick', 'spicy', 'high_protein']
+ */
+function defaultTags(r) {
+  var tags = [];
+  var n = (r.name || '');
+  var prepTime = r.prep_time || 15;
+  var cookMins = r.cook_minutes || defaultCookMinutes(r);
+
+  // 快手菜：准备+烹饪时间 <= 25 分钟
+  if (prepTime + cookMins <= 25) tags.push('quick');
+
+  // 少油/无油：清蒸、凉拌、白切、白灼类
+  if (r.taste === 'steamed_salad' || n.indexOf('清蒸') !== -1 || n.indexOf('凉拌') !== -1 || n.indexOf('白切') !== -1 || n.indexOf('白灼') !== -1) {
+    tags.push('no_oil');
+  }
+
+  // 辣味
+  if (r.flavor_profile === 'spicy' || n.indexOf('辣') !== -1 || n.indexOf('宫保') !== -1 || n.indexOf('麻婆') !== -1) {
+    tags.push('spicy');
+  }
+
+  // 汤类
+  if (n.indexOf('汤') !== -1 || (r.id && r.id.indexOf('soup') !== -1)) {
+    tags.push('soup');
+  }
+
+  // 高蛋白：肉类、鱼虾类
+  if (r.meat && r.meat !== 'vegetable') {
+    tags.push('high_protein');
+  }
+
+  // 素食
+  if (r.meat === 'vegetable') {
+    tags.push('vegetarian');
+  }
+
+  // 宝宝友好
+  if (r.is_baby_friendly) {
+    tags.push('baby_friendly');
+  }
+
+  return tags;
+}
+
+/**
+ * 从食材列表中提取主料名称（非调料类）
+ * @returns {Array} 主料名数组，如 ['鸡腿', '板栗']
+ */
+function defaultMainIngredients(r) {
+  if (!r.ingredients || !Array.isArray(r.ingredients)) return [];
+  var mainList = [];
+  for (var i = 0; i < r.ingredients.length; i++) {
+    var ing = r.ingredients[i];
+    // 排除调料类
+    if (ing.category !== '调料' && ing.baseAmount !== 0) {
+      mainList.push(ing.name);
+    }
+  }
+  return mainList;
+}
+
+/**
+ * 根据菜谱复杂度判断难度等级
+ * @returns {Number} 1-3 级（1=简单，2=中等，3=复杂）
+ */
+function defaultDifficulty(r) {
+  var n = (r.name || '');
+  var prepTime = r.prep_time || 15;
+  var cookMins = r.cook_minutes || defaultCookMinutes(r);
+  var stepCount = (r.steps && r.steps.length) || 2;
+
+  // 复杂菜谱：炖煮超过 45 分钟，或多步骤，或特殊技法
+  if (cookMins >= 45 || stepCount >= 4 || n.indexOf('孔雀开屏') !== -1 || n.indexOf('红烧肉') !== -1) {
+    return 3;
+  }
+  // 简单菜谱：准备时间 <= 8 分钟，且烹饪时间 <= 15 分钟
+  if (prepTime <= 8 && cookMins <= 15) {
+    return 1;
+  }
+  // 中等难度
+  return 2;
 }
 var adultRecipes = [
   { id: 'a-soup-1', name: '花旗参石斛炖鸡汤', type: 'adult', taste: 'slow_stew', meat: 'chicken',
@@ -1468,6 +1586,12 @@ adultRecipes.forEach(function (r) {
   if (r.cook_type == null) r.cook_type = defaultCookType(r);
   if (r.recommend_reason == null) r.recommend_reason = defaultRecommendReason(r);
   if (r.cook_minutes == null) r.cook_minutes = defaultCookMinutes(r);
+  // ============ 统筹算法支持字段 ============
+  if (r.base_serving == null) r.base_serving = defaultBaseServing();
+  if (r.cook_method == null) r.cook_method = defaultCookMethod(r);
+  if (r.tags == null) r.tags = defaultTags(r);
+  if (r.main_ingredients == null) r.main_ingredients = defaultMainIngredients(r);
+  if (r.difficulty == null) r.difficulty = defaultDifficulty(r);
   // 标准化步骤
   normalizeRecipeSteps(r);
 });

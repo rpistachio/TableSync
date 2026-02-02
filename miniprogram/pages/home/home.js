@@ -109,7 +109,26 @@ Page({
     previewComboName: '',
     previewBalanceTip: '',
     previewDashboard: { estimatedTime: '', stoveCount: 0, categoryLabels: '', nutritionHint: '', prepOrderHint: '', prepAheadHint: '', sharedIngredientsHint: '' },
-    previewHasSharedBase: false
+    previewHasSharedBase: false,
+    // ============ 个性化偏好配置 ============
+    prefExpanded: false,
+    avoidOptions: [
+      { label: '海鲜', value: 'seafood' },
+      { label: '辣', value: 'spicy' },
+      { label: '牛羊肉', value: 'beef_lamb' },
+      { label: '鸡蛋', value: 'egg' },
+      { label: '大豆', value: 'soy' }
+    ],
+    dietOptions: [
+      { label: '清淡', value: 'light' },
+      { label: '下饭', value: 'hearty' },
+      { label: '快手', value: 'quick' }
+    ],
+    userPreference: {
+      avoidList: [],      // 忌口列表（多选）
+      dietStyle: '',      // 饮食偏好（单选）
+      is_time_save: false // 省时模式
+    }
   },
 
   onLoad: function () {
@@ -187,6 +206,39 @@ Page({
     let soup = parseInt(e.currentTarget.dataset.soup, 10);
     if (isNaN(soup)) soup = 0;
     this.setData({ meatCount: meat, vegCount: veg, soupCount: soup });
+  },
+
+  // ============ 个性化偏好交互 ============
+  
+  /** 展开/收起偏好面板 */
+  togglePrefPanel: function () {
+    this.setData({ prefExpanded: !this.data.prefExpanded });
+  },
+
+  /** 忌口多选切换 */
+  onAvoidTap: function (e) {
+    const value = e.currentTarget.dataset.value;
+    const avoidList = this.data.userPreference.avoidList.slice();
+    const idx = avoidList.indexOf(value);
+    if (idx > -1) {
+      avoidList.splice(idx, 1);
+    } else {
+      avoidList.push(value);
+    }
+    this.setData({ 'userPreference.avoidList': avoidList });
+  },
+
+  /** 饮食偏好单选 */
+  onDietTap: function (e) {
+    const value = e.currentTarget.dataset.value;
+    const current = this.data.userPreference.dietStyle;
+    // 点击已选中的则取消选中
+    this.setData({ 'userPreference.dietStyle': current === value ? '' : value });
+  },
+
+  /** 省时模式开关 */
+  onTimeSaveChange: function (e) {
+    this.setData({ 'userPreference.is_time_save': e.detail.value === true || e.detail.value === 'true' });
   },
 
   /**
@@ -297,13 +349,18 @@ Page({
   _buildPreference: function () {
     const d = this.data;
     const hasBaby = d.hasBaby === true || d.hasBaby === 'true';
+    const up = d.userPreference || {};
     return {
       adultCount: Math.min(6, Math.max(1, d.adultCount || 2)),
       hasBaby: !!hasBaby,
       babyMonth: Math.min(36, Math.max(6, d.babyMonth)),
       meatCount: d.meatCount,
       vegCount: d.vegCount,
-      soupCount: d.soupCount != null ? Math.min(1, Math.max(0, d.soupCount)) : 0
+      soupCount: d.soupCount != null ? Math.min(1, Math.max(0, d.soupCount)) : 0,
+      // 个性化偏好
+      avoidList: Array.isArray(up.avoidList) ? up.avoidList.slice() : [],
+      dietStyle: up.dietStyle || '',
+      is_time_save: !!up.is_time_save
     };
   },
 
