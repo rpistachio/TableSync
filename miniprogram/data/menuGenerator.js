@@ -210,8 +210,153 @@ function filterByPreference(recipes, userPreference) {
 }
 
 // ============ 第二层：Core Selection & Balancing（核心筛选与做法均衡） ============
+
 /**
- * 从池中随机抽一道；若当前已有 stewCount >= 1 且抽到的是 stew，则舍弃并改从「非炖煮」池中重抽。
+ * ========== 设备互斥算法 ==========
+ * 
+ * 核心思想：不同 cook_type 映射到不同设备，每种设备有数量上限。
+ * 生成菜单时自动平衡，避免同时抢占同一设备（如两个锅同时炒）。
+ * 
+ * 示例组合：
+ * - 1个炖菜 + 1个快炒 + 1个凉菜（炖锅、炒锅、无设备，不冲突）
+ * - 1个蒸菜 + 2个炒菜（蒸锅 + 炒锅，不冲突）
+ * - 避免：2个炖菜 + 1个炒菜（2个炖菜同时占用灶台太久）
+ */
+
+/** cook_type → 设备类型映射 */
+var COOK_TYPE_TO_DEVICE = {
+  stir_fry: 'wok',           // 炒菜 → 炒锅
+  quick_stir_fry: 'wok',     // 快炒 → 炒锅
+  fry: 'wok',                // 煎炸 → 炒锅
+  braise: 'wok',             // 红烧 → 炒锅
+  stew: 'stove_long',        // 炖菜 → 长时间占灶（炖锅/砂锅）
+  steam: 'steamer',          // 蒸菜 → 蒸锅
+  cold: 'none',              // 凉菜 → 无需设备
+  salad: 'none',             // 拌菜 → 无需设备
+  boil: 'pot'                // 煮汤 → 汤锅
+};
+
+/** 设备数量限制（普通家庭厨房配置） */
+var DEVICE_LIMITS = {
+  wok: 2,                    // 最多 2 道炒菜（1-2 个炒锅）
+  stove_long: 1,             // 最多 1 道长时间占灶（炖菜）
+  steamer: 1,                // 最多 1 道蒸菜
+  pot: 1,                    // 最多 1 道汤
+  none: 99                   // 凉菜无限制
+};
+
+/**
+ * 获取菜谱的设备类型
+ * @param {Object} recipe - 菜谱对象
+ * @returns {String} 设备类型
+ */
+function getRecipeDevice(recipe) {
+  if (!recipe) return 'wok';
+  var cookType = recipe.cook_type || recipe.cook_method || 'stir_fry';
+  return COOK_TYPE_TO_DEVICE[cookType] || 'wok';
+}
+
+/**
+ * 初始化设备计数器
+ * @returns {Object} { wok: 0, stove_long: 0, steamer: 0, pot: 0, none: 0 }
+ */
+function initDeviceCounts() {
+  return { wok: 0, stove_long: 0, steamer: 0, pot: 0, none: 0 };
+}
+
+/**
+ * 从已有菜单计算当前设备占用
+ * @param {Array} existingMenus - 已选菜单数组
+ * @returns {Object} 设备计数
+ */
+function countDevicesFromMenus(existingMenus) {
+  var counts = initDeviceCounts();
+  if (!Array.isArray(existingMenus)) return counts;
+  
+  for (var i = 0; i < existingMenus.length; i++) {
+    var recipe = existingMenus[i].adultRecipe;
+    if (!recipe) continue;
+    var device = getRecipeDevice(recipe);
+    if (counts[device] != null) {
+      counts[device]++;
+    }
+  }
+  return counts;
+}
+
+/**
+ * 检查添加某道菜后是否会超出设备限制
+ * @param {Object} recipe - 待添加的菜谱
+ * @param {Object} deviceCounts - 当前设备计数
+ * @returns {Boolean} true = 会超限，应该跳过
+ */
+function wouldExceedDeviceLimit(recipe, deviceCounts) {
+  if (!recipe) return false;
+  var device = getRecipeDevice(recipe);
+  var limit = DEVICE_LIMITS[device];
+  if (limit == null) return false;
+  var current = deviceCounts[device] || 0;
+  return current >= limit;
+}
+
+/**
+ * 过滤掉会导致设备超限的菜谱
+ * @param {Array} pool - 候选菜谱池
+ * @param {Object} deviceCounts - 当前设备计数
+ * @returns {Array} 过滤后的池
+ */
+function filterByDeviceLimits(pool, deviceCounts) {
+  if (!Array.isArray(pool) || pool.length === 0) return pool;
+  
+  var filtered = pool.filter(function (r) {
+    return !wouldExceedDeviceLimit(r, deviceCounts);
+  });
+  
+  // 如果全部超限，返回原池（避免无菜可选）
+  return filtered.length > 0 ? filtered : pool;
+}
+
+/**
+ * 【升级版】从池中随机抽一道，综合考虑设备互斥约束。
+ * 
+ * 算法流程：
+ * 1. 根据当前设备计数过滤候选池，排除会导致超限的菜谱
+ * 2. 从过滤后的池中随机抽选
+ * 3. 更新设备计数并返回
+ * 
+ * @param {Array} pool - 已做 preFilter 的池
+ * @param {Object} deviceCountsRef - { wok, stove_long, steamer, pot, none }，会原地更新
+ * @returns {{ recipe: Object, deviceCounts: Object }} 选中的菜谱与更新后的设备计数
+ */
+function pickOneWithDeviceBalance(pool, deviceCountsRef) {
+  if (!Array.isArray(pool) || pool.length === 0) {
+    return { recipe: null, deviceCounts: deviceCountsRef || initDeviceCounts() };
+  }
+  
+  var counts = deviceCountsRef || initDeviceCounts();
+  
+  // 过滤掉会导致设备超限的菜谱
+  var availablePool = filterByDeviceLimits(pool, counts);
+  
+  // 随机抽选
+  var pick = availablePool[Math.floor(Math.random() * availablePool.length)];
+  
+  // 更新设备计数
+  if (pick) {
+    var device = getRecipeDevice(pick);
+    if (counts[device] != null) {
+      counts[device]++;
+    }
+  }
+  
+  return { recipe: pick, deviceCounts: counts };
+}
+
+/**
+ * 【兼容旧版】从池中随机抽一道；若当前已有 stewCount >= 1 且抽到的是 stew，则舍弃并改从「非炖煮」池中重抽。
+ * 
+ * 注意：此函数保留用于向后兼容，内部已升级为使用 pickOneWithDeviceBalance。
+ * 
  * @param {Array} pool - 已做 preFilter 的池
  * @param {number} stewCount - 当前已选中的 stew 数量
  * @returns {{ recipe: Object, stewCount: number }} 选中的菜谱与更新后的 stewCount
@@ -219,23 +364,18 @@ function filterByPreference(recipes, userPreference) {
 function pickOneWithStewBalance(pool, stewCount) {
   if (!Array.isArray(pool) || pool.length === 0) return { recipe: null, stewCount: stewCount };
 
-  var nonStewPool = pool.filter(function (r) {
-    var method = r.cook_method || r.cook_type || 'stir_fry';
-    return method !== 'stew';
-  });
-
-  var pick = pool[Math.floor(Math.random() * pool.length)];
-  var method = pick.cook_method || pick.cook_type || 'stir_fry';
-
-  if (method === 'stew') {
-    stewCount += 1;
-    if (stewCount > 1 && nonStewPool.length > 0) {
-      pick = nonStewPool[Math.floor(Math.random() * nonStewPool.length)];
-      stewCount -= 1;
-    }
-  }
-
-  return { recipe: pick, stewCount: stewCount };
+  // 将 stewCount 转换为设备计数格式
+  var deviceCounts = initDeviceCounts();
+  deviceCounts.stove_long = stewCount || 0;
+  
+  // 使用新的设备平衡算法
+  var result = pickOneWithDeviceBalance(pool, deviceCounts);
+  
+  // 返回兼容旧格式的结果
+  return {
+    recipe: result.recipe,
+    stewCount: result.deviceCounts.stove_long
+  };
 }
 
 // ============ 第三层：Dynamic Scaling（动态缩放） ============
@@ -1364,6 +1504,51 @@ function getFallbackMessage(reasons) {
   return FALLBACK_REASON_MESSAGES[uniqueReasons[0]] || '';
 }
 
+// ============ 从 menuData 提取的纯计算函数 ============
+
+/** 从菜谱列表中筛出汤品，优先使用 dish_type 字段判断，兼容名称检测 */
+function getSoupRecipes(adultRecipes) {
+  if (!Array.isArray(adultRecipes)) return [];
+  var out = [];
+  for (var i = 0; i < adultRecipes.length; i++) {
+    var r = adultRecipes[i];
+    if (r.dish_type === 'soup' || (r.name && r.name.indexOf('汤') !== -1)) out.push(r);
+  }
+  return out;
+}
+
+/** 统计套餐内口味和做法数量 */
+function getFlavorAndCookCounts(menus) {
+  var spicy = 0, savory = 0, stirFry = 0, stew = 0;
+  if (!Array.isArray(menus)) return { spicy: 0, savory: 0, stirFry: 0, stew: 0 };
+  for (var i = 0; i < menus.length; i++) {
+    var r = menus[i].adultRecipe;
+    if (!r) continue;
+    var f = r.flavor_profile || '';
+    if (f === 'spicy') spicy++;
+    else if (f === 'salty_umami') savory++;
+    var ct = r.cook_type || '';
+    if (ct === 'stir_fry') stirFry++;
+    else if (ct === 'stew') stew++;
+  }
+  return { spicy: spicy, savory: savory, stirFry: stirFry, stew: stew };
+}
+
+/** 统计套餐内各口味数量，用于口味互补 */
+function getFlavorProfileCounts(menus) {
+  var spicy = 0, light = 0, sweet_sour = 0, sour_fresh = 0, salty_umami = 0;
+  if (!Array.isArray(menus)) return { spicy: 0, light: 0, sweet_sour: 0, sour_fresh: 0, salty_umami: 0 };
+  for (var i = 0; i < menus.length; i++) {
+    var f = (menus[i].adultRecipe && menus[i].adultRecipe.flavor_profile) || '';
+    if (f === 'spicy') spicy++;
+    else if (f === 'light') light++;
+    else if (f === 'sweet_sour') sweet_sour++;
+    else if (f === 'sour_fresh') sour_fresh++;
+    else if (f === 'salty_umami') salty_umami++;
+  }
+  return { spicy: spicy, light: light, sweet_sour: sweet_sour, sour_fresh: sour_fresh, salty_umami: salty_umami };
+}
+
 module.exports = {
   // ---------- 接口人（页面必须通过 require 引入并使用） ----------
   filterByPreference: filterByPreference,
@@ -1397,5 +1582,9 @@ module.exports = {
   computeBalanceTip: logicDashboard.computeBalanceTip,
   menusToPreviewRows: logicDashboard.menusToPreviewRows,
   getComboOptionsForCount: logicCombo.getComboOptionsForCount,
-  findComboInList: logicCombo.findComboInList
+  findComboInList: logicCombo.findComboInList,
+  // ---------- 从 menuData 提取的统计函数 ----------
+  getSoupRecipes: getSoupRecipes,
+  getFlavorAndCookCounts: getFlavorAndCookCounts,
+  getFlavorProfileCounts: getFlavorProfileCounts
 };

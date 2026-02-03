@@ -194,6 +194,28 @@ function getYesterdayDishes() {
 }
 
 /**
+ * 获取本周（过去 7 天）吃过的菜品名称列表（去重）
+ * @param {Number} maxItems - 最多返回数量，默认 20
+ * @returns {Array<String>}
+ */
+function getWeekDishNames(maxItems) {
+  maxItems = maxItems || 20;
+  var recent = getRecentHistory(MAX_HISTORY_DAYS);
+  var set = {};
+  for (var i = 0; i < recent.length; i++) {
+    var day = recent[i];
+    if (day.menus && Array.isArray(day.menus)) {
+      day.menus.forEach(function (m) {
+        if (m.adultName && !set[m.adultName]) set[m.adultName] = true;
+        if (m.babyName && !set[m.babyName]) set[m.babyName] = true;
+      });
+    }
+  }
+  var list = Object.keys(set);
+  return list.length > maxItems ? list.slice(0, maxItems) : list;
+}
+
+/**
  * 获取指定日期的历史记录
  * @param {String} dateKey - 日期 Key
  * @returns {Object|null}
@@ -225,6 +247,7 @@ module.exports = {
   getRecentHistory: getRecentHistory,
   wasEatenYesterday: wasEatenYesterday,
   getYesterdayDishes: getYesterdayDishes,
+  getWeekDishNames: getWeekDishNames,
   getHistoryByDate: getHistoryByDate,
   clearAllHistory: clearAllHistory
 };

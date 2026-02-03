@@ -351,16 +351,9 @@ var PREDEFINED_COMBOS = [
 ];
 exports.PREDEFINED_COMBOS = PREDEFINED_COMBOS;
 
-/** 从菜谱列表中筛出汤品，优先使用 dish_type 字段判断，兼容名称检测 */
+/** 从菜谱列表中筛出汤品 - 委托给 generator */
 function getSoupRecipes(adultRecipes) {
-  if (!Array.isArray(adultRecipes)) return [];
-  var out = [];
-  for (var i = 0; i < adultRecipes.length; i++) {
-    var r = adultRecipes[i];
-    // 优先使用 dish_type 字段判断，兼容名称检测
-    if (r.dish_type === 'soup' || (r.name && r.name.indexOf('汤') !== -1)) out.push(r);
-  }
-  return out;
+  return generator.getSoupRecipes ? generator.getSoupRecipes(adultRecipes) : [];
 }
 
 /**
@@ -581,38 +574,14 @@ function ensureAtMostOneSoup(menus, preference) {
   return menus;
 }
 
+/** 统计口味和做法数量 - 委托给 generator */
 exports.getFlavorAndCookCounts = function (menus) {
-  var spicy = 0;
-  var savory = 0;
-  var stirFry = 0;
-  var stew = 0;
-  if (!Array.isArray(menus)) return { spicy: 0, savory: 0, stirFry: 0, stew: 0 };
-  for (var i = 0; i < menus.length; i++) {
-    var r = menus[i].adultRecipe;
-    if (!r) continue;
-    var f = r.flavor_profile || '';
-    if (f === 'spicy') spicy++;
-    else if (f === 'salty_umami') savory++;
-    var ct = r.cook_type || '';
-    if (ct === 'stir_fry') stirFry++;
-    else if (ct === 'stew') stew++;
-  }
-  return { spicy: spicy, savory: savory, stirFry: stirFry, stew: stew };
-}
+  return generator.getFlavorAndCookCounts ? generator.getFlavorAndCookCounts(menus) : { spicy: 0, savory: 0, stirFry: 0, stew: 0 };
+};
 
-/** 统计套餐内各口味数量，用于口味互补 */
+/** 统计套餐内各口味数量 - 委托给 generator */
 function getFlavorProfileCounts(menus) {
-  var spicy = 0, light = 0, sweet_sour = 0, sour_fresh = 0, salty_umami = 0;
-  if (!Array.isArray(menus)) return { spicy: 0, light: 0, sweet_sour: 0, sour_fresh: 0, salty_umami: 0 };
-  for (var i = 0; i < menus.length; i++) {
-    var f = (menus[i].adultRecipe && menus[i].adultRecipe.flavor_profile) || '';
-    if (f === 'spicy') spicy++;
-    else if (f === 'light') light++;
-    else if (f === 'sweet_sour') sweet_sour++;
-    else if (f === 'sour_fresh') sour_fresh++;
-    else if (f === 'salty_umami') salty_umami++;
-  }
-  return { spicy: spicy, light: light, sweet_sour: sweet_sour, sour_fresh: sour_fresh, salty_umami: salty_umami };
+  return generator.getFlavorProfileCounts ? generator.getFlavorProfileCounts(menus) : { spicy: 0, light: 0, sweet_sour: 0, sour_fresh: 0, salty_umami: 0 };
 }
 
 /**
@@ -892,6 +861,29 @@ function groupsMapToList(groupsMap, adultCount) {
   return list;
 }
 
+/** 合并同名食材为最终清单，统一走 groupsMapToList 输出 */
+function buildMergedShoppingList(rawItems, adultCount) {
+  adultCount = adultCount == null ? 2 : Math.min(6, Math.max(1, Number(adultCount) || 2));
+  var groupsMap = new Map();
+  
+  for (var i = 0; i < rawItems.length; i++) {
+    var item = rawItems[i];
+    var key = groupKey(item);
+    if (!groupsMap.has(key)) {
+      groupsMap.set(key, {
+        name: item.name,
+        sub_type: item.sub_type,
+        category: item.category || '其他',
+        unit: item.unit || '份',
+        rows: []
+      });
+    }
+    groupsMap.get(key).rows.push(item);
+  }
+  
+  return groupsMapToList(groupsMap, adultCount);
+}
+
 exports.generateShoppingList = function (preference) {
   var adapted = getAdaptedRecipes(preference);
   var adultCount = preference && typeof preference.adultCount !== 'undefined' ? Math.min(6, Math.max(1, Number(preference.adultCount) || 2)) : 2;
@@ -972,71 +964,37 @@ exports.getDataSourceInfo = function () {
   };
 };
 
-ap, adultCount);
-};
+// ============ 历史菜单管理 ============
+var HISTORY_STORAGE_KEY = 'menu_history';
+var HISTORY_MAX_DAYS = 7;
 
-// ============ 云端菜谱同步相关 ============
-
-/**
- * 刷新菜谱缓存（云端数据更新后调用）
- * 清空内存缓存，下次访问时会重新从云端/本地加载
- */
-exports.refreshRecipeCache = function () {
-  adultByNameCache = null;
-  adultByFlavorCache = null;
-  adultByMeatCache = null;
-  adultByIdCache = null;
-  babyByIdCache = null;
-  cache = {};
-  console.log('[menuData] 菜谱缓存已刷新');
-};
-
-/**
- * 获取云端菜谱同步状态
- * @returns {Object}
- */
-exports.getCloudSyncState = function () {
-  return cloudRecipeService.getSyncState();
-};
-
-/**
- * 触发云端菜谱同步
- * @param {Object} options
- * @param {Boolean} options.forceRefresh - 是否强制全量刷新
- * @returns {Promise}
- */
-exports.syncCloudRecipes = function (options) {
-  return cloudRecipeService.syncFromCloud(options).then(function (result) {
-    // 同步完成后刷新缓存
-    if (result.fromCloud) {
-      exports.refreshRecipeCache();
-    }
-    return result;
-  });
-};
-
-/**
- * 检查是否有云端数据可用
- * @returns {Boolean}
- */
-exports.hasCloudData = function () {
-  return cloudRecipeService.hasCloudData();
-};
-
-/**
- * 获取当前数据源信息
- * @returns {{ source: String, adultCount: Number, babyCount: Number }}
- */
-exports.getDataSourceInfo = function () {
-  var source = getRecipeSource();
+/** 格式化日期信息 */
+function formatDateInfo(date) {
+  var d = date || new Date();
+  var year = d.getFullYear();
+  var month = String(d.getMonth() + 1).padStart(2, '0');
+  var day = String(d.getDate()).padStart(2, '0');
+  var weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
   return {
-    source: source.source,
-    adultCount: source.adultRecipes.length,
-    babyCount: source.babyRecipes.length
+    dateKey: year + '-' + month + '-' + day,
+    dateLabel: month + '月' + day + '日',
+    weekday: weekdays[d.getDay()]
   };
-};
+}
 
-o.dateKey;
+/**
+ * 保存菜单到历史记录
+ * @param {Array} menus - 完整菜单数组
+ * @param {Object} preference - 偏好设置
+ * @param {String} dateKey - 可选，指定日期 key
+ */
+exports.saveMenuToHistory = function (menus, preference, dateKey) {
+  if (!Array.isArray(menus) || menus.length === 0) return;
+  
+  try {
+    var history = wx.getStorageSync(HISTORY_STORAGE_KEY) || {};
+    var dateInfo = formatDateInfo(new Date());
+    var key = dateKey || dateInfo.dateKey;
     
     // 如果传入了自定义 dateKey，需要重新计算 dateLabel 和 weekday
     if (dateKey && dateKey !== dateInfo.dateKey) {
