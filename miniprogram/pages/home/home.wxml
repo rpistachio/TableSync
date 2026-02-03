@@ -1,4 +1,4 @@
-<wxs src="./home.wxs" module="utils" />
+//<wxs src="./home.wxs" module="utils" />
 <view class="home-container">
   <view class="brand-header">
     <view class="header-content">

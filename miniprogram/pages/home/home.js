@@ -274,7 +274,7 @@ Page({
     // 延迟一帧再执行重计算，确保 loading 先渲染，减轻卡顿
     var runGenerate = function () {
       try {
-        var recipeCoverSlugs = require('../../data/recipeCoverSlugs.js');
+        var recipeCoverSlugs = require('../../data/recipeCoverSlugs');
         var pref = that._buildPreference();
         var result = menuData.getTodayMenusByCombo(pref);
         var menus = result.menus || result;

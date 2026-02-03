@@ -1,21 +1,12 @@
 /**
- * home.wxs - 用于 WXML 中的辅助函数
+ * 修复回滚后缺失的辅助脚本
  */
+var includes = function(array, value) {
+  if (!array || !value) return false;
+  return array.indexOf(value) !== -1;
+};
 
-/**
- * 检查数组是否包含某个值
- * @param {Array} arr - 数组
- * @param {*} val - 要查找的值
- * @returns {boolean}
- */
-function includes(arr, val) {
-  if (!arr || !arr.length) return false;
-  for (var i = 0; i < arr.length; i++) {
-    if (arr[i] === val) return true;
-  }
-  return false;
-}
-
+// 检查某个值是否在数组中，用于忌口按钮的高亮显示
 module.exports = {
   includes: includes
 };
