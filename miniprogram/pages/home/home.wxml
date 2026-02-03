@@ -1,3 +1,4 @@
+<wxs src="./home.wxs" module="utils" />
 <view class="home-container">
   <view class="brand-header">
     <view class="header-content">
@@ -58,7 +59,7 @@
           <view 
             wx:for="{{avoidOptions}}" 
             wx:key="value" 
-            class="pref-tag {{userPreference.avoidList.indexOf(item.value) > -1 ? 'is-selected' : ''}}"
+            class="pref-tag {{utils.includes(userPreference.avoidList, item.value) ? 'is-selected' : ''}}"
             data-value="{{item.value}}"
             bindtap="onAvoidTap"
           >
@@ -84,9 +85,9 @@
       <!-- 省时开关 -->
       <view class="pref-section pref-switch-row">
         <text class="pref-label">省时模式</text>
-        <switch checked="{{userPreference.is_time_save}}" bindchange="onTimeSaveChange" color="#C1663E"/>
+        <switch checked="{{userPreference.isTimeSave}}" bindchange="onTimeSaveChange" color="#C1663E"/>
       </view>
-      <view class="pref-hint" wx:if="{{userPreference.is_time_save}}">
+      <view class="pref-hint" wx:if="{{userPreference.isTimeSave}}">
         <text class="pref-hint-icon">⏱️</text>
         <text class="pref-hint-text">优先推荐快手菜，让做饭更轻松</text>
       </view>

@@ -1,5 +1,8 @@
 var menuData = require('../../data/menuData.js');
+var recipeResources = require('../../data/recipeResources.js');
+var imageLib = require('../../utils/imageLib.js');
 
+var IMAGE_CONFIG = recipeResources.IMAGE_CONFIG;
 var STORAGE_PREFIX = 'tablesync_steps_completed_';
 var KEY_ACTIONS = ['下锅', '打泥', '切', '炒', '煮', '蒸', '煎', '搅拌', '焯水', '腌制', '加盐', '装盘', '翻炒', '焖', '烤', '炖', '剁'];
 var KEY_ACTIONS_RE = new RegExp('(' + KEY_ACTIONS.join('|') + ')', 'g');
@@ -112,6 +115,18 @@ function extractSeasonings(details) {
   return list;
 }
 
+/**
+ * 判断步骤类型：备菜 or 烹饪
+ * 优先使用 step_type 字段，否则从 title 推断
+ */
+function getStepType(step) {
+  if (step.step_type) return step.step_type;
+  var title = (step.title || '').toString();
+  // 通过 title 关键词判断
+  if (/备菜|准备|切配|腌制/.test(title)) return 'prep';
+  return 'cook';
+}
+
 function processStepsForView(steps) {
   // 入参容错：避免传入 null/undefined 时报错
   if (!Array.isArray(steps) || steps.length === 0) {
@@ -142,11 +157,14 @@ function processStepsForView(steps) {
     });
     var rawDetails = s.details || [];
     var title = (s.title || '').toString();
-    var isPrepStep = /备菜/.test(title);
+    var stepType = getStepType(s);
+    var isPrepStep = stepType === 'prep';
     var seasoningsList = extractSeasonings(rawDetails);
     return {
       id: s.id,
       title: s.title,
+      stepType: stepType,          // 添加步骤类型
+      recipeName: s.recipeName,    // 关联的菜品名（如果有）
       details: detailsWithSegments,
       duration: s.duration,
       completed: s.completed,
@@ -163,10 +181,15 @@ Page({
   data: {
     steps: [],
     progressPercentage: 0,
-    currentStepLabel: '第 0/0 步'
+    currentStepLabel: '第 0/0 步',
+    // 动态头图相关
+    currentStepImage: '',
+    currentStepTitle: '开始烹饪',
+    currentStepSubtitle: '跟随步骤，轻松完成美味'
   },
 
   onLoad: function () {
+    var that = this;
     var preference = getStepsPreference();
     var steps;
     
@@ -200,8 +223,135 @@ Page({
       console.warn('恢复步骤状态失败:', e);
     }
     
+    // 获取菜单数据，用于获取菜品图片
+    that._loadMenuData();
+    
     this._stepsRaw = steps;
+    this._currentStepIndex = 0;
     this._updateView(steps);
+    this._updateHeaderImage(steps, 0);
+  },
+  
+  /**
+   * 加载菜单数据，用于获取菜品图片
+   */
+  _loadMenuData: function () {
+    var that = this;
+    that._menuRecipes = [];
+    
+    try {
+      // 优先从全局数据获取
+      var app = getApp();
+      var todayMenus = app && app.globalData ? app.globalData.todayMenus : null;
+      
+      // 如果全局没有，从 Storage 读取并还原
+      if (!todayMenus || todayMenus.length === 0) {
+        var raw = wx.getStorageSync('today_menus');
+        if (raw) {
+          var parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            // 检查是否为精简格式
+            if (menuData.isSlimMenuFormat && menuData.isSlimMenuFormat(parsed)) {
+              var prefRaw = wx.getStorageSync('today_menus_preference');
+              var pref = prefRaw ? JSON.parse(prefRaw) : {};
+              todayMenus = menuData.deserializeMenusFromStorage(parsed, pref);
+            } else {
+              todayMenus = parsed;
+            }
+          }
+        }
+      }
+      
+      // 提取菜品名称列表
+      if (Array.isArray(todayMenus)) {
+        that._menuRecipes = todayMenus.map(function (m) {
+          return {
+            name: (m.adultRecipe && m.adultRecipe.name) || '',
+            type: 'adult'
+          };
+        }).filter(function (r) { return r.name; });
+      }
+    } catch (e) {
+      console.warn('加载菜单数据失败:', e);
+    }
+  },
+  
+  /**
+   * 更新头图：备菜步显示全局备菜图，烹饪步显示当前菜品的 MJ 成品图
+   */
+  _updateHeaderImage: function (steps, stepIndex) {
+    if (!Array.isArray(steps) || steps.length === 0) {
+      this.setData({
+        currentStepImage: IMAGE_CONFIG.defaultCover,
+        currentStepTitle: '暂无步骤',
+        currentStepSubtitle: '请先生成菜单'
+      });
+      return;
+    }
+    
+    // 找到当前未完成的步骤，或者使用指定索引
+    var currentStep = null;
+    var effectiveIndex = stepIndex;
+    
+    if (typeof stepIndex === 'number' && stepIndex >= 0 && stepIndex < steps.length) {
+      currentStep = steps[stepIndex];
+    } else {
+      // 找第一个未完成的步骤
+      for (var i = 0; i < steps.length; i++) {
+        if (!steps[i].completed) {
+          currentStep = steps[i];
+          effectiveIndex = i;
+          break;
+        }
+      }
+      // 如果全部完成，显示最后一步
+      if (!currentStep) {
+        currentStep = steps[steps.length - 1];
+        effectiveIndex = steps.length - 1;
+      }
+    }
+    
+    this._currentStepIndex = effectiveIndex;
+    
+    var stepType = getStepType(currentStep);
+    var image = '';
+    var title = currentStep.title || '当前步骤';
+    var subtitle = '';
+    
+    if (stepType === 'prep') {
+      // 备菜步骤：显示全局备菜图
+      image = IMAGE_CONFIG.pageCovers.prep || IMAGE_CONFIG.defaultCover;
+      subtitle = '准备食材，为美味打好基础';
+    } else {
+      // 烹饪步骤：尝试获取当前菜品的 MJ 成品图
+      var recipeName = currentStep.recipeName || '';
+      
+      // 如果步骤没有关联菜品名，尝试从菜单中获取
+      if (!recipeName && this._menuRecipes && this._menuRecipes.length > 0) {
+        // 尝试从步骤标题中提取菜品索引
+        var titleMatch = (currentStep.title || '').match(/第\s*(\d+)\s*道/);
+        var recipeIndex = 0;
+        if (titleMatch) {
+          recipeIndex = Math.min(parseInt(titleMatch[1], 10) - 1, this._menuRecipes.length - 1);
+          recipeIndex = Math.max(0, recipeIndex);
+        }
+        recipeName = this._menuRecipes[recipeIndex] ? this._menuRecipes[recipeIndex].name : '';
+      }
+      
+      if (recipeName) {
+        image = imageLib.getRecipeImage(recipeName, 'adult');
+        subtitle = recipeName;
+      } else {
+        image = IMAGE_CONFIG.defaultCover;
+        subtitle = '美味即将完成';
+      }
+    }
+    
+    this.setData({
+      currentStepImage: image,
+      currentStepTitle: title,
+      currentStepSubtitle: subtitle
+    });
   },
 
   _updateView: function (steps) {

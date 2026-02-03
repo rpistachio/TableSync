@@ -23,21 +23,67 @@ Page({
   },
 
   onLoad: function () {
-    var payload = getApp().globalData.menuPreview;
-    if (!payload || !payload.rows || payload.rows.length === 0) {
-      wx.showToast({ title: '暂无菜单数据', icon: 'none' });
-      setTimeout(function () { wx.navigateBack(); }, 1500);
-      return;
+    var that = this;
+    try {
+      // 1. 优先从 Storage 读取核心数据
+      var menusJson = wx.getStorageSync('today_menus');
+      if (!menusJson) {
+        wx.showModal({
+          title: '提示',
+          content: '数据已失效，请重新生成',
+          showCancel: false,
+          success: function () { wx.navigateBack(); }
+        });
+        return;
+      }
+
+      var menus = JSON.parse(menusJson);
+      var pref = getApp().globalData.preference || {};
+
+      // 2. 映射 UI 渲染所需的 rows 结构
+      var rows = menus.map(function (m) {
+        return {
+          adultName: m.adultRecipe ? m.adultRecipe.name : '未知菜谱',
+          babyName: m.babyRecipe ? m.babyRecipe.name : '',
+          recommendReason: m.adultRecipe ? (m.adultRecipe.recommend_reason || '营养均衡，口味适宜') : '',
+          checked: true
+        };
+      });
+
+      // 3. 计算看板数据（Dashboard）
+      var dashboard = {};
+      if (typeof that._computePreviewDashboard === 'function') {
+        dashboard = that._computePreviewDashboard(menus, pref);
+      }
+
+      // 4. 一次性 setData
+      that.setData({
+        previewMenuRows: rows,
+        previewDashboard: dashboard,
+        previewComboName: (pref.meatCount || 2) + '荤' + (pref.vegCount || 1) + '素' + (pref.soupCount ? '1汤' : '')
+      });
+
+      // 5. 将解析后的对象同步回 globalData 以便「换一换」逻辑使用
+      that._fullPreviewMenus = menus;
+      getApp().globalData.todayMenus = menus;
+      getApp().globalData.menuPreview = {
+        menus: menus,
+        rows: rows,
+        preference: pref,
+        dashboard: dashboard,
+        comboName: (pref.meatCount || 2) + '荤' + (pref.vegCount || 1) + '素' + (pref.soupCount ? '1汤' : ''),
+        balanceTip: '',
+        hasSharedBase: rows.some(function (r) { return r.showSharedHint; })
+      };
+    } catch (e) {
+      console.error('Preview onLoad Error:', e);
+      wx.showModal({
+        title: '提示',
+        content: '数据已失效，请返回首页重新生成',
+        showCancel: false,
+        success: function () { wx.navigateBack(); }
+      });
     }
-    this.setData({
-      previewMenuRows: payload.rows,
-      previewCountText: payload.countText || '',
-      previewComboName: payload.comboName || '',
-      previewBalanceTip: payload.balanceTip || '',
-      previewDashboard: payload.dashboard || this.data.previewDashboard,
-      previewHasSharedBase: !!payload.hasSharedBase,
-      previewHasBaby: !!(payload.preference && payload.preference.hasBaby)
-    });
   },
 
   onCheckRow: function (e) {
@@ -287,6 +333,67 @@ Page({
       else if (ct === 'steam') hasSteam = true;
       var ings = r.ingredients;
       if (Array.isArray(ings)) {
+        for (var j = 0; j < ings.length; j++) {
+          var c = (ings[j] && ings[j].category) ? String(ings[j].category).trim() : '';
+          if (c && c !== '调料') catSet[c] = (catOrder[c] != null ? catOrder[c] : 99);
+        }
+      }
+      var br = menus[i].babyRecipe;
+      if (br && Array.isArray(br.ingredients)) {
+        for (var k = 0; k < br.ingredients.length; k++) {
+          var bc = (br.ingredients[k] && br.ingredients[k].category) ? String(br.ingredients[k].category).trim() : '';
+          if (bc && bc !== '调料') catSet[bc] = (catOrder[bc] != null ? catOrder[bc] : 99);
+        }
+      }
+    }
+    var estimatedMinutes = maxMinutes + 10;
+    var stoveCount = (hasStirFry ? 1 : 0) + (hasStew ? 1 : 0) + (hasSteam ? 1 : 0);
+    var cats = Object.keys(catSet).sort(function (a, b) { return (catSet[a] || 99) - (catSet[b] || 99); });
+    var categoryLabels = cats.length > 0 ? cats.join('、') : '';
+    var nutritionParts = [];
+    if (cats.indexOf('肉类') !== -1 || cats.indexOf('蛋类') !== -1) nutritionParts.push('蛋白质');
+    if (cats.indexOf('蔬菜') !== -1) nutritionParts.push('维生素与膳食纤维');
+    if (cats.indexOf('干货') !== -1) nutritionParts.push('多种营养素');
+    if (cats.indexOf('其他') !== -1 && nutritionParts.length === 0) nutritionParts.push('多种营养素');
+    var nutritionHint = nutritionParts.length > 0 ? '本餐营养覆盖：' + nutritionParts.join('、') : '';
+    var orderParts = [];
+    if (hasStew) orderParts.push('炖/煲');
+    if (hasSteam) orderParts.push('蒸');
+    if (hasStirFry) orderParts.push('快炒');
+    var prepOrderHint = orderParts.length >= 2 ? '烹饪顺序建议：' + orderParts.join('→') : '';
+    var prepAheadHint = '';
+    if (maxPrep >= 10) prepAheadHint = '备菜建议：可提前约 ' + maxPrep + ' 分钟准备葱姜蒜及腌制食材，下锅更从容';
+    var sharedIngredientsHint = '';
+    var ingCount = {};
+    for (var si = 0; si < menus.length; si++) {
+      var rec = menus[si].adultRecipe;
+      if (!rec || !Array.isArray(rec.ingredients)) continue;
+      var seen = {};
+      for (var sj = 0; sj < rec.ingredients.length; sj++) {
+        var ing = rec.ingredients[sj];
+        if (!ing || (ing.category && String(ing.category).trim() === '调料')) continue;
+        var n = (ing.name && String(ing.name).trim()) || '';
+        if (n && !seen[n]) { seen[n] = true; ingCount[n] = (ingCount[n] || 0) + 1; }
+      }
+    }
+    var shared = [];
+    for (var name in ingCount) { if (ingCount[name] >= 2) shared.push(name); }
+    if (shared.length > 0) {
+      shared = shared.slice(0, 6);
+      sharedIngredientsHint = '本餐可共用：' + shared.join('、') + '，备菜更省';
+    }
+    return {
+      estimatedTime: estimatedMinutes > 0 ? estimatedMinutes + ' 分钟' : '',
+      stoveCount: stoveCount,
+      categoryLabels: categoryLabels,
+      nutritionHint: nutritionHint,
+      prepOrderHint: prepOrderHint,
+      prepAheadHint: prepAheadHint,
+      sharedIngredientsHint: sharedIngredientsHint
+    };
+  }
+});
+     if (Array.isArray(ings)) {
         for (var j = 0; j < ings.length; j++) {
           var c = (ings[j] && ings[j].category) ? String(ings[j].category).trim() : '';
           if (c && c !== '调料') catSet[c] = (catOrder[c] != null ? catOrder[c] : 99);

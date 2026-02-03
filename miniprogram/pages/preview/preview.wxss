@@ -101,6 +101,31 @@
   margin-top: 8rpx;
 }
 
+/* 菜谱池降级提示：温和的蓝色调，与错误提示区分 */
+.preview-fallback-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+  padding: 20rpx 28rpx;
+  margin: 16rpx 32rpx 0;
+  background: rgba(100, 149, 237, 0.12);
+  border-radius: 16rpx;
+  border-left: 6rpx solid rgba(100, 149, 237, 0.6);
+}
+
+.preview-fallback-notice .fallback-icon {
+  font-size: 28rpx;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+.preview-fallback-notice .fallback-text {
+  font-size: 26rpx;
+  color: #4a5d6e;
+  line-height: 1.5;
+  flex: 1;
+}
+
 .preview-dashboard {
   display: flex;
   flex-direction: column;
@@ -415,6 +440,7 @@
 .preview-page.large-text-mode .preview-hints,
 .preview-page.large-text-mode .preview-baby-diff,
 .preview-page.large-text-mode .preview-menu-label,
+.preview-page.large-text-mode .preview-fallback-notice,
 .preview-page.large-text-mode .dish-card-reason {
   display: none !important;
 }

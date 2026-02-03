@@ -14,6 +14,12 @@
         <text class="preview-combo" wx:if="{{previewComboName}}">{{previewComboName}}</text>
         <text class="preview-balance" wx:if="{{previewBalanceTip}}">{{previewBalanceTip}}</text>
       </view>
+      
+      <!-- 菜谱池降级提示 -->
+      <view class="preview-fallback-notice" wx:if="{{previewFallbackMessage}}">
+        <text class="fallback-icon">💡</text>
+        <text class="fallback-text">{{previewFallbackMessage}}</text>
+      </view>
 
       <view class="preview-dashboard" wx:if="{{previewDashboard.estimatedTime || previewDashboard.stoveCount > 0 || previewDashboard.categoryLabels}}">
         <view class="dashboard-row">

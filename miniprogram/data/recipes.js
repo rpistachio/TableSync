@@ -13,6 +13,7 @@
  *
  * flavor_profile：辣(spicy)、咸鲜(salty_umami)、清淡(light)、酸甜(sweet_sour)、酸爽解腻(sour_fresh)
  * cook_type：炖(stew)、蒸(steam)、炒(stir_fry)
+ * dish_type：菜品类型，枚举值：soup(汤类)，用于替代名称包含"汤"的判断逻辑
  *
  * ============ 统筹算法支持字段（自动填充） ============
  * base_serving: (Number) 默认份量基数，默认 2 人份
@@ -73,8 +74,8 @@ function defaultCookMethod(r) {
   if (n.indexOf('凉拌') !== -1 || n.indexOf('拍黄瓜') !== -1) return 'cold_dress';
   // 清蒸/白切类
   if (r.taste === 'steamed_salad' || n.indexOf('清蒸') !== -1 || n.indexOf('蒸') !== -1 || n.indexOf('白切') !== -1 || n.indexOf('白灼') !== -1) return 'steam';
-  // 慢炖/煲汤类
-  if (r.taste === 'slow_stew' || n.indexOf('炖') !== -1 || n.indexOf('煲') !== -1 || n.indexOf('汤') !== -1 || n.indexOf('焖') !== -1) return 'stew';
+  // 慢炖/煲汤类：优先使用 dish_type 字段判断，兼容名称检测
+  if (r.dish_type === 'soup' || r.taste === 'slow_stew' || n.indexOf('炖') !== -1 || n.indexOf('煲') !== -1 || n.indexOf('汤') !== -1 || n.indexOf('焖') !== -1) return 'stew';
   // 默认快炒
   return 'stir_fry';
 }
@@ -102,8 +103,8 @@ function defaultTags(r) {
     tags.push('spicy');
   }
 
-  // 汤类
-  if (n.indexOf('汤') !== -1 || (r.id && r.id.indexOf('soup') !== -1)) {
+  // 汤类：优先使用 dish_type 字段判断，兼容名称检测
+  if (r.dish_type === 'soup' || n.indexOf('汤') !== -1 || (r.id && r.id.indexOf('soup') !== -1)) {
     tags.push('soup');
   }
 
@@ -164,7 +165,7 @@ function defaultDifficulty(r) {
   return 2;
 }
 var adultRecipes = [
-  { id: 'a-soup-1', name: '花旗参石斛炖鸡汤', type: 'adult', taste: 'slow_stew', meat: 'chicken',
+  { id: 'a-soup-1', name: '花旗参石斛炖鸡汤', type: 'adult', dish_type: 'soup', taste: 'slow_stew', meat: 'chicken',
     prep_time: 15,
     is_baby_friendly: false,
     common_allergens: [],
@@ -180,7 +181,7 @@ var adultRecipes = [
       { action: 'prep', text: '鸡腿切大块，冷水下锅焯水，撇净浮沫后捞出洗净。石斛、花旗参用清水稍冲洗，与鸡肉、姜片一同放入炖盅，加足量清水。' },
       { action: 'cook', text: '炖盅盖盖，隔水大火烧开后转小火慢炖 2 小时，出锅前加盐调味即可。' }
     ] },
-  { id: 'a-soup-2', name: '五指毛桃排骨汤', type: 'adult', taste: 'slow_stew', meat: 'pork',
+  { id: 'a-soup-2', name: '五指毛桃排骨汤', type: 'adult', dish_type: 'soup', taste: 'slow_stew', meat: 'pork',
     prep_time: 15,
     is_baby_friendly: false,
     common_allergens: [],
@@ -198,7 +199,7 @@ var adultRecipes = [
       { action: 'prep', text: '排骨冷水下锅，加姜片、料酒焯水，撇净浮沫后捞出洗净。五指毛桃、红枣、芡实洗净，与排骨、姜片一同入锅，加足量清水。' },
       { action: 'cook', text: '大火烧开后转小火煲 1.5 小时，汤色奶白香浓，出锅前加盐调味即可。' }
     ] },
-  { id: 'a-soup-3', name: '鲜淮山炖牛肉汤', type: 'adult', taste: 'slow_stew', meat: 'beef',
+  { id: 'a-soup-3', name: '鲜淮山炖牛肉汤', type: 'adult', dish_type: 'soup', taste: 'slow_stew', meat: 'beef',
     prep_time: 15,
     is_baby_friendly: false,
     common_allergens: [],
@@ -292,7 +293,7 @@ var adultRecipes = [
       { action: 'prep', text: '牛柳逆纹切丝。关键：先加少许水抓至粘手，再加生抽、胡椒粉、干淀粉腌制15分钟。最后封一层油。' },
       { action: 'cook', text: '热锅凉油，下牛柳大火滑炒至8成熟迅速盛出。利用余油炒香姜蒜和杭椒，待杭椒皮起皱，倒入牛柳，沿锅边淋入生抽大火翻匀，30秒内出锅。' }
     ] },
-  { id: 'a-pork-1', name: '玉米排骨汤', type: 'adult', taste: 'slow_stew', meat: 'pork',
+  { id: 'a-pork-1', name: '玉米排骨汤', type: 'adult', dish_type: 'soup', taste: 'slow_stew', meat: 'pork',
     prep_time: 15,
     is_baby_friendly: false,
     common_allergens: [],
@@ -688,7 +689,7 @@ var adultRecipes = [
       { action: 'prep', text: '土豆、茄子切滚刀块，青椒切块，蒜拍碎。调好淀粉水（生抽、淀粉、少许水）。' },
       { action: 'cook', text: '锅内多油，土豆、茄子分别过油或煎至表面微黄盛出。余油爆香蒜，下青椒略炒，倒回土豆、茄子，淋淀粉水大火翻炒均匀即可。' }
     ] },
-  { id: 'a-soup-4', name: '番茄蛋花汤', type: 'adult', taste: 'quick_stir_fry', meat: 'vegetable',
+  { id: 'a-soup-4', name: '番茄蛋花汤', type: 'adult', dish_type: 'soup', taste: 'quick_stir_fry', meat: 'vegetable',
     prep_time: 8,
     is_baby_friendly: true,
     common_allergens: ['蛋'],
@@ -704,7 +705,7 @@ var adultRecipes = [
       { action: 'prep', text: '番茄切小块，鸡蛋打散，葱切花。' },
       { action: 'cook', text: '锅中少油炒番茄至出汁，加适量清水烧开，淋入蛋液搅成蛋花，加盐、香油，撒葱花即可。' }
     ] },
-  { id: 'a-soup-5', name: '紫菜蛋花汤', type: 'adult', taste: 'quick_stir_fry', meat: 'vegetable',
+  { id: 'a-soup-5', name: '紫菜蛋花汤', type: 'adult', dish_type: 'soup', taste: 'quick_stir_fry', meat: 'vegetable',
     prep_time: 5,
     is_baby_friendly: true,
     common_allergens: ['蛋'],
@@ -805,7 +806,7 @@ var adultRecipes = [
       { action: 'prep', text: '黄瓜洗净，用擀面杖拍碎后切小段，放入碗中加少许盐腌制5分钟，沥干水分' },
       { action: 'cook', text: '大蒜切末，放入黄瓜中，加半勺{{ingredients_info}}香醋搅拌均匀即可' }
     ] },
-  { id: 's001', name: '紫菜蛋花汤', type: 'adult', taste: 'quick_stir_fry', meat: 'vegetable',
+  { id: 's001', name: '紫菜蛋花汤', type: 'adult', dish_type: 'soup', taste: 'quick_stir_fry', meat: 'vegetable',
     prep_time: 5,
     is_baby_friendly: true,
     common_allergens: ['蛋'],
@@ -900,7 +901,7 @@ var adultRecipes = [
       { action: 'prep', text: '山药去皮切薄片，放入清水中浸泡防氧化；胡萝卜去皮切薄片；葱花切好备用' },
       { action: 'cook', text: '锅中倒油烧热，放入葱花爆香，倒入{{ingredients_info}}山药片和胡萝卜片翻炒至变软，加少许盐调味，加半勺清水焖煮1分钟即可' }
     ] },
-  { id: 's002', name: '冬瓜海带排骨汤', type: 'adult', taste: 'slow_stew', meat: 'pork',
+  { id: 's002', name: '冬瓜海带排骨汤', type: 'adult', dish_type: 'soup', taste: 'slow_stew', meat: 'pork',
     prep_time: 15,
     is_baby_friendly: true,
     common_allergens: [],
@@ -1010,7 +1011,7 @@ var adultRecipes = [
       { action: 'prep', text: '茄子切滚刀块，用清水浸泡5分钟；番茄去皮切小块；大蒜拍碎切末备用' },
       { action: 'cook', text: '锅中倒油烧热，放入蒜末爆香，倒入{{ingredients_info}}茄子块翻炒至变软，放入番茄块翻炒出汁，加白砂糖和少许盐调味，加半勺清水焖煮3分钟即可' }
     ] },
-  { id: 's003', name: '丝瓜蛋花汤', type: 'adult', taste: 'quick_stir_fry', meat: 'vegetable',
+  { id: 's003', name: '丝瓜蛋花汤', type: 'adult', dish_type: 'soup', taste: 'quick_stir_fry', meat: 'vegetable',
     prep_time: 5,
     is_baby_friendly: true,
     common_allergens: ['蛋'],
@@ -1112,7 +1113,7 @@ var adultRecipes = [
       ]
     }
   },
-  { id: 's004', name: '玉米排骨汤', type: 'adult', taste: 'slow_stew', meat: 'pork',
+  { id: 's004', name: '玉米排骨汤', type: 'adult', dish_type: 'soup', taste: 'slow_stew', meat: 'pork',
     prep_time: 10,
     is_baby_friendly: true,
     common_allergens: [],
@@ -1210,7 +1211,7 @@ var adultRecipes = [
       { action: 'prep', text: '娃娃菜去根洗净，切成段；大蒜拍碎切末备用' },
       { action: 'cook', text: '锅中倒油烧热，放入蒜末爆香，倒入{{ingredients_info}}娃娃菜大火快速翻炒至菜叶变软，加少许盐调味即可' }
     ] },
-  { id: 's005', name: '番茄金针菇蛋花汤', type: 'adult', taste: 'quick_stir_fry', meat: 'vegetable',
+  { id: 's005', name: '番茄金针菇蛋花汤', type: 'adult', dish_type: 'soup', taste: 'quick_stir_fry', meat: 'vegetable',
     prep_time: 8,
     is_baby_friendly: true,
     common_allergens: ['蛋'],
