@@ -39,6 +39,19 @@ var STEP_TYPES = {
   COOK: 'cook'    // 烹饪
 };
 
+/**
+ * 步骤行动类型枚举常量（多线程统筹用）
+ *
+ * - LONG_TERM: 长耗时（炖、焖、烤、煮汤等，需要长时间加热或静置）
+ * - ACTIVE: 主动操作（爆炒、调汁、下锅等需要持续关注的操作）
+ * - IDLE_PREP: 空档期备菜（在其他菜长时间等待过程中穿插的切配/腌制等）
+ */
+var ACTION_TYPES = {
+  LONG_TERM: 'long_term',
+  ACTIVE: 'active',
+  IDLE_PREP: 'idle_prep'
+};
+
 /** 步骤默认耗时（分钟） */
 var STEP_DEFAULT_DURATION = {
   prep: 5,
@@ -72,8 +85,11 @@ var STEP_DEFAULT_DURATION = {
   steps: [
     {
       step_index: number,
-      step_type: 'prep' | 'cook',       // 必填，步骤类型枚举
-      duration_num: number,              // 必填，数字耗时（分钟）
+      step_type: 'prep' | 'cook',                 // 必填，步骤类型枚举
+      actionType: 'long_term' | 'active' | 'idle_prep',  // 新增：行动类型（统筹调度用）
+      parallel: boolean,                           // 新增：是否可与其他菜并行
+      waitTime: number,                            // 新增：被动等待时间（分钟，用于长耗时步骤）
+      duration_num: number,                        // 必填，数字耗时（分钟）
       action: 'prep' | 'cook' | 'process' | 'seasoning',  // 兼容旧字段，可用于更细粒度分类
       text: string,
       step_image_url: string            // 必填，该步骤配图
@@ -109,6 +125,9 @@ var SAMPLE_RECIPE = {
     {
       step_index: 1,
       step_type: 'prep',           // 核心字段：步骤类型
+      actionType: 'idle_prep',     // 新增：默认视为可穿插的备菜
+      parallel: true,
+      waitTime: 0,
       duration_num: 5,             // 核心字段：数字耗时
       action: 'prep',
       text: '鸡里脊去筋膜，逆纹切成薄片，铺在盘内，撒少许盐。柠檬切薄片，姜切薄片备用。',
@@ -117,6 +136,9 @@ var SAMPLE_RECIPE = {
     {
       step_index: 2,
       step_type: 'cook',           // 核心字段：步骤类型
+      actionType: 'active',        // 新增：短时间主动烹饪
+      parallel: false,
+      waitTime: 0,
       duration_num: 10,            // 核心字段：数字耗时
       action: 'cook',
       text: '鸡片上铺姜片、柠檬片，水开后上锅大火蒸 10 分钟，取出淋少许生抽即可。',
@@ -152,6 +174,9 @@ var SAMPLE_BABY_RECIPE = {
     {
       step_index: 1,
       step_type: 'prep',           // 核心字段：步骤类型
+      actionType: 'idle_prep',     // 新增：可穿插的备菜
+      parallel: true,
+      waitTime: 0,
       duration_num: 5,             // 核心字段：数字耗时
       action: 'prep',
       text: '鸡胸肉焯水后切末，南瓜去皮切小块，大米洗净。',
@@ -160,6 +185,9 @@ var SAMPLE_BABY_RECIPE = {
     {
       step_index: 2,
       step_type: 'cook',           // 核心字段：步骤类型
+      actionType: 'long_term',     // 新增：相对长耗时的慢煮粥
+      parallel: true,
+      waitTime: 15,
       duration_num: 20,            // 核心字段：数字耗时
       action: 'cook',
       text: '大米与南瓜同煮成粥，加入鸡肉末煮至软烂，滴入核桃油即可。',
@@ -216,6 +244,7 @@ function normalizeRecipeSteps(recipe) {
 module.exports = {
   // 常量
   STEP_TYPES: STEP_TYPES,
+  ACTION_TYPES: ACTION_TYPES,
   STEP_DEFAULT_DURATION: STEP_DEFAULT_DURATION,
   // 示例数据
   SAMPLE_RECIPE: SAMPLE_RECIPE,

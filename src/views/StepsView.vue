@@ -42,7 +42,7 @@
           </div>
           <div class="step-card__body">
             <ul class="step-details">
-              <li v-for="(item, index) in step.details" :key="index">
+              <li v-for="(item, index) in normalizedDetails(step.details)" :key="index">
                 <template v-for="(seg, i) in highlightSegments(item)" :key="i">
                   <span v-if="seg.strong" class="detail-strong">{{ seg.text }}</span>
                   <span v-else>{{ seg.text }}</span>
@@ -79,7 +79,7 @@
           <div v-for="step in steps" :key="`share-${step.id}`" class="share-step">
             <div class="share-step__name">{{ step.title }}</div>
             <ul class="share-step__details">
-              <li v-for="(item, index) in step.details" :key="index">{{ item }}</li>
+              <li v-for="(item, index) in normalizedDetails(step.details)" :key="index">{{ item }}</li>
             </ul>
           </div>
         </div>
@@ -170,6 +170,56 @@ const shareCardDate = computed(() => {
 
 /** 核心动作词，用于在步骤详情中加粗 */
 const KEY_ACTIONS = ['下锅', '打泥', '切', '炒', '煮', '蒸', '煎', '搅拌', '焯水', '腌制', '加盐', '装盘', '翻炒', '焖', '烤', '炖', '剁'];
+
+/**
+ * 归一化步骤详情：合并“孤立动作词行”到下一行。
+ * 例：['蒸', '10分钟'] -> ['蒸：10分钟']
+ */
+function normalizedDetails(details) {
+  if (!Array.isArray(details)) return [];
+  const out = [];
+  const KEY_ACTIONS_SET = new Set(KEY_ACTIONS);
+
+  function extractPureKeyAction(text) {
+    const raw = (text ?? '').toString();
+    let s = raw.trim();
+    if (!s) return '';
+    s = s.replace(/^(?:[\u2460-\u2469]|\d+\.)\s+/, '');
+    s = s.replace(/^(?:👨|👶)\s*/, '');
+    s = s.replace(/^【[^】]{1,12}】\s*/, '');
+    s = s.replace(/^(?:[✨🔥⏳🍼✅🔪]\s*)+/, '');
+    s = s
+      .replace(/^[：:\-•·\u00B7\s]+/, '')
+      .replace(/[：:，,。．；;！？!?…\s]+$/, '')
+      .trim();
+    return KEY_ACTIONS_SET.has(s) ? s : '';
+  }
+
+  // 辅助函数：清理换行符和多余空格
+  function cleanLine(text) {
+    return text.replace(/[\n\r]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
+  }
+
+  for (let i = 0; i < details.length; i++) {
+    const curRaw = details[i];
+    const cur = (curRaw ?? '').toString();
+    const curTrim = cur.trim();
+    const action = extractPureKeyAction(curTrim);
+    if (action) {
+      const nextRaw = details[i + 1];
+      if (nextRaw !== undefined && nextRaw !== null) {
+        const nextTrim = nextRaw.toString().trim();
+        if (nextTrim) {
+          out.push(cleanLine(`${action}：${nextTrim}`));
+          i += 1;
+          continue;
+        }
+      }
+    }
+    out.push(cleanLine(cur));
+  }
+  return out;
+}
 
 /** 根据 step.role 或 step.title 推断成人餐/宝宝餐标签 */
 function stepTag(step) {
@@ -264,11 +314,10 @@ async function generateShareImage() {
 
 <style scoped>
 .steps-container {
-  min-height: 100vh;
   background-color: #fdf8f2;
   padding-bottom: env(safe-area-inset-bottom);
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  /* 避免容器自带滚动造成“顶部卡住/双滚动” */
+  overflow: visible;
 }
 
 .page-content {

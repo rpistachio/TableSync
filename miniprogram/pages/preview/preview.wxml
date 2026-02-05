@@ -9,7 +9,7 @@
         </view>
       </view>
       <view class="preview-header">
-        <image class="header-bg-image" src="cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/prep_cover_pic/table.jpg" mode="aspectFill" />
+        <image wx:if="{{isImageReady && headerBgUrl}}" class="header-bg-image" src="{{headerBgUrl}}" mode="aspectFill" />
         <view class="header-bg-overlay"></view>
         <view class="header-brand-lines"></view>
         <text class="preview-heading">今日用餐</text>
@@ -69,7 +69,7 @@
       <view class="preview-dish-list">
         <view wx:for="{{previewMenuRows}}" wx:key="index" class="dish-card-wrap" data-index="{{index}}" bindtap="onCheckRow">
           <view class="dish-card-modern {{item.checked ? '' : 'is-unchecked'}} {{item.hasCover ? '' : 'no-cover'}}" style="animation-delay: {{index * 120}}ms">
-            <image wx:if="{{item.hasCover}}" class="card-bg" src="{{item.coverUrl}}" mode="aspectFill" />
+            <image wx:if="{{item.hasCover && isImageReady && item.coverTempUrl}}" class="card-bg" src="{{item.coverTempUrl}}" mode="aspectFill" />
             <view class="card-overlay"></view>
             <view class="card-info">
               <view class="card-header">

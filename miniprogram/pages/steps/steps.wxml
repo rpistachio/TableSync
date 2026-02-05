@@ -1,13 +1,13 @@
 <view class="steps-container">
   <view class="steps-header">
-    <image wx:if="{{currentStepImage}}" class="header-ambient-bg" src="{{currentStepImage}}" mode="aspectFill" />
+    <image wx:if="{{currentStepImage && currentStepImage.length > 0}}" class="header-ambient-bg" src="{{currentStepImage}}" mode="aspectFill" />
     <view class="header-mask"></view>
     
     <view class="header-content">
       <view class="hero-section">
         <view class="progress-visual">
           <view class="progress-ring" style="background: conic-gradient(#E8A87C {{progressPercentage}}%, rgba(255,255,255,0.2) 0%)"></view>
-          <image wx:if="{{currentStepImage}}" class="dish-mini-img" src="{{currentStepImage}}" mode="aspectFill" />
+          <image wx:if="{{currentStepImage && currentStepImage.length > 0}}" class="dish-mini-img" src="{{currentStepImage}}" mode="aspectFill" />
         </view>
         
         <view class="step-info">
@@ -29,14 +29,21 @@
         bindtap="onStepTap"
         data-index="{{index}}"
       >
-        <!-- 阶段分隔横幅：备菜阶段 / 烹饪阶段 -->
-        <view wx:if="{{item.isPhaseStart && item.phaseType === 'prep'}}" class="phase-divider prep-phase">
-          <view class="phase-icon">🔪</view>
-          <text class="phase-title">备菜阶段</text>
-        </view>
-        <view wx:if="{{item.isPhaseStart && item.phaseType === 'cook'}}" class="phase-divider cook-phase">
-          <view class="phase-icon">🔥</view>
-          <text class="phase-title">开火烹饪</text>
+        <!-- 阶段横幅（支持文案配置） -->
+        <view wx:if="{{item.isPhaseStart}}" class="phase-banner {{item.phaseType}}">
+          <view class="phase-banner-main">
+            <view class="phase-icon">
+              <text wx:if="{{item.phaseType === 'prep'}}">🥬</text>
+              <text wx:elif="{{item.phaseType === 'long_term'}}">🍲</text>
+              <text wx:elif="{{item.phaseType === 'gap'}}">⚡</text>
+              <text wx:elif="{{item.phaseType === 'cook'}}">🔥</text>
+              <text wx:elif="{{item.phaseType === 'finish'}}">🍽️</text>
+            </view>
+            <view class="phase-texts">
+              <text class="phase-title">{{item.phaseTitle}}</text>
+              <text wx:if="{{item.phaseSubtitle}}" class="phase-subtitle">{{item.phaseSubtitle}}</text>
+            </view>
+          </view>
         </view>
 
         <!-- 左侧时间轴线 -->
@@ -55,48 +62,59 @@
             <view class="step-card__header">
               <view class="step-card__title-row">
                 <text class="step-card__title">{{item.title}}</text>
-                <text wx:if="{{item.roleTag}}" class="role-badge {{item.roleTag === '成人餐' ? 'adult' : 'baby'}}">{{item.roleTag}}</text>
-                <text wx:if="{{item.knifeWorkLabel}}" class="type-badge">{{item.knifeWorkLabel}}</text>
+                <view class="tag-group">
+                  <text wx:if="{{item.roleTag === '成人餐'}}" class="mini-badge adult">大人</text>
+                  <text wx:if="{{item.roleTag === '宝宝餐'}}" class="mini-badge baby">宝宝</text>
+                  <block wx:if="{{item.roleTag === '成人+宝宝'}}">
+                    <text class="mini-badge adult">大人</text>
+                    <text class="mini-badge baby">宝宝</text>
+                  </block>
+                  <text wx:if="{{item.knifeWorkLabel}}" class="mini-badge knife">{{item.knifeWorkLabel}}</text>
+                </view>
               </view>
-              <view class="step-card__meta">
-                预计用时：{{item.duration}} 分钟
+              <view wx:if="{{item.duration != null}}" class="step-card__meta-mini">
+                <text class="meta-time">🕒 {{item.duration}}'</text>
               </view>
             </view>
 
             <view class="step-card__body">
-              <view class="step-details">
+              <!-- 并行上下文提示 -->
+              <view wx:if="{{item.parallelContext}}" class="context-pill">
+                <text class="pill-text">{{item.parallelContext.hint}}</text>
+                <text wx:if="{{item.parallelContext.remainingMinutes != null}}" class="pill-timer">
+                  {{item.parallelContext.remainingMinutes}}'
+                </text>
+              </view>
+
+              <view class="step-details condensed">
                 <view
                   wx:for="{{item.details}}"
                   wx:for-item="line"
                   wx:key="index"
                   class="detail-line {{line.isBabyPortion ? 'baby-portion-action' : ''}}"
                 >
-                  <text
-                    wx:for="{{line.segments}}"
-                    wx:for-item="seg"
-                    wx:key="index"
-                    class="{{seg.strong ? 'detail-strong' : ''}}"
-                  >
-                    {{seg.text}}
-                  </text>
+                  <!-- 使用 rich-text 渲染，避免嵌套 <text> 在部分设备上导致意外换行 -->
+                  <rich-text class="detail-line-text" nodes="{{line.richTextHtml}}"></rich-text>
                 </view>
               </view>
 
-              <view wx:if="{{item.showSeasoningsList}}" class="ingredients-check">
-                <view class="ing-grid seasonings-slider">
-                  <text wx:for="{{item.seasoningsList}}" wx:for-item="ing" wx:key="name" class="ing-item">
-                    <text class="ing-n">{{ing.name}}</text>
-                    <text class="ing-a">{{ing.amount}}</text>
-                  </text>
-                </view>
+              <view wx:if="{{item.showSeasoningsList}}" class="seasoning-inline">
+                <scroll-view class="seasoning-scroll" scroll-x="true" show-scrollbar="false">
+                  <view class="seasoning-row">
+                    <view wx:for="{{item.seasoningsList}}" wx:for-item="ing" wx:key="name" class="ing-tag">
+                      <text class="n">{{ing.name}}</text>
+                      <text class="a">{{ing.amount}}</text>
+                    </view>
+                  </view>
+                </scroll-view>
               </view>
 
               <button
                 class="step-action-btn {{item.completed ? 'is-done' : ''}}"
-                bindtap="markCompleted"
+                catchtap="markCompleted"
                 data-id="{{item.id}}"
               >
-                {{item.completed ? '步骤达成' : '标记完成'}}
+                {{item.completed ? '已达成' : '完成'}}
               </button>
             </view>
           </view>

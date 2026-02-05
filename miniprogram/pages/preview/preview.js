@@ -1,4 +1,27 @@
 var coverService = require('../../data/recipeCoverSlugs.js');
+var recipeResources = require('../../data/recipeResources.js');
+
+var ENV_ID = 'cloud1-7g5mdmib90e9f670';
+var CLOUD_ROOT = recipeResources && recipeResources.CLOUD_ROOT ? recipeResources.CLOUD_ROOT : ('cloud://' + ENV_ID);
+
+function toFullFileId(fileId) {
+  if (typeof fileId !== 'string') return '';
+  var envPrefix = 'cloud://' + ENV_ID + '/';
+  // 传入的是 env 简写形式：cloud://env-id/xxx → cloud://env-id.<appid>/xxx
+  if (fileId.indexOf(envPrefix) === 0 && CLOUD_ROOT && CLOUD_ROOT.indexOf('cloud://' + ENV_ID + '.') === 0) {
+    return CLOUD_ROOT + '/' + fileId.slice(envPrefix.length);
+  }
+  return fileId;
+}
+
+function toEnvOnlyFileId(fileId) {
+  if (typeof fileId !== 'string') return '';
+  var fullPrefix = CLOUD_ROOT ? (CLOUD_ROOT + '/') : '';
+  if (fullPrefix && fileId.indexOf(fullPrefix) === 0) {
+    return 'cloud://' + ENV_ID + '/' + fileId.slice(fullPrefix.length);
+  }
+  return fileId;
+}
 
 function getTodayDateKey() {
   var d = new Date();
@@ -17,6 +40,8 @@ Page({
     previewDashboard: { estimatedTime: '', stoveCount: 0, categoryLabels: '', nutritionHint: '', prepOrderHint: '', prepAheadHint: '', sharedIngredientsHint: '' },
     previewHasSharedBase: false,
     previewHasBaby: false,
+    headerBgUrl: '',
+    isImageReady: false,
     largeTextMode: false,
     isEntering: false
   },
@@ -28,6 +53,14 @@ Page({
   onLoad: function () {
     var that = this;
     try {
+      // 图片（cloud://）解析放到 onReady：避免渲染层过早创建 <image> 导致 500 / 被当作本地资源
+      that.setData({ isImageReady: false, headerBgUrl: '' });
+      that._pageReady = false;
+      that._pendingResolve = false;
+      that._resolveTimer = null;
+      that._tempUrlCache = Object.create(null); // fileID -> https temp url
+      that._lastResolveKey = '';
+
       // 1. 优先从 Storage 读取核心数据
       var menusJson = wx.getStorageSync('today_menus');
       if (!menusJson) {
@@ -46,12 +79,14 @@ Page({
       // 2. 映射 UI 渲染所需的 rows 结构
       var rows = menus.map(function (m) {
         var recipeName = m.adultRecipe ? m.adultRecipe.name : '';
+        var coverFileId = coverService.getRecipeCoverImageUrl(recipeName);
         return {
           adultName: recipeName || '未知菜谱',
           babyName: m.babyRecipe ? m.babyRecipe.name : '',
           recommendReason: m.adultRecipe ? (m.adultRecipe.recommend_reason || '营养均衡，口味适宜') : '',
           checked: true,
-          coverUrl: coverService.getRecipeCoverImageUrl(recipeName),
+          coverFileId: coverFileId,   // cloud:// fileID（不直接用于 <image>）
+          coverTempUrl: '',           // https 临时 URL（用于 <image>）
           hasCover: !!coverService.RECIPE_NAME_TO_SLUG[recipeName]
         };
       });
@@ -67,42 +102,13 @@ Page({
         previewMenuRows: rows,
         previewDashboard: dashboard,
         previewComboName: (pref.meatCount || 2) + '荤' + (pref.vegCount || 1) + '素' + (pref.soupCount ? '1汤' : '')
+      }, function () {
+        // rows 真正进入视图层后，再按 onReady 规则触发图片解析
+        if (that._pageReady) that._scheduleResolvePreviewImages();
+        else that._pendingResolve = true;
       });
 
-      // #region agent log
-      try {
-        var sampleRows = (rows || []).slice(0, 5).map(function (r) {
-          return {
-            adultName: r.adultName,
-            coverUrl: r.coverUrl,
-            hasCover: r.hasCover
-          };
-        });
-        var payloadH1 = {
-            sessionId: 'debug-session',
-            runId: 'pre-fix',
-            hypothesisId: 'H1',
-            location: 'miniprogram/pages/preview/preview.js:onLoad',
-            message: 'preview onLoad rows cover urls',
-            data: { rows: sampleRows },
-            timestamp: Date.now()
-          };
-        if (typeof fetch === 'function') {
-          fetch('http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payloadH1)
-          }).catch(function () { });
-        } else if (typeof wx !== 'undefined' && wx.request) {
-          wx.request({
-            url: 'http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3',
-            method: 'POST',
-            header: { 'Content-Type': 'application/json' },
-            data: payloadH1
-          });
-        }
-      } catch (logErr) { }
-      // #endregion
+      
 
       // 5. 延迟触发微缩转盘入场动画
       setTimeout(function () {
@@ -130,6 +136,197 @@ Page({
         success: function () { wx.navigateBack(); }
       });
     }
+  },
+
+  onReady: function () {
+    // 统一在 onReady 解析 cloud:// 到临时 HTTPS URL，
+    // 并用 isImageReady 门控，让 <image> 只在 URL 就绪后才出现在 WXML 中。
+    this._pageReady = true;
+    if (this._pendingResolve) {
+      this._pendingResolve = false;
+      this._scheduleResolvePreviewImages();
+      return;
+    }
+    // 兜底：如果 rows 已经在 onLoad 中写入，则正常执行；否则稍后由 onLoad 的 setData callback 触发
+    if ((this.data.previewMenuRows || []).length > 0) {
+      this._scheduleResolvePreviewImages();
+    }
+  },
+
+  _scheduleResolvePreviewImages: function () {
+    var that = this;
+    if (that._resolveTimer) {
+      clearTimeout(that._resolveTimer);
+      that._resolveTimer = null;
+    }
+    that._resolveTimer = setTimeout(function () {
+      that._resolveTimer = null;
+      that._resolvePreviewImages();
+    }, 50); // 防抖：避免换一换/批量 setData 触发多次
+  },
+
+  _swapImageExt: function (fileId) {
+    if (typeof fileId !== 'string') return '';
+    if (/\.png$/i.test(fileId)) return fileId.replace(/\.png$/i, '.jpg');
+    if (/\.jpe?g$/i.test(fileId)) return fileId.replace(/\.jpe?g$/i, '.png');
+    return '';
+  },
+
+  _resolvePreviewImages: function () {
+    var that = this;
+    if (!(wx.cloud && wx.cloud.getTempFileURL)) {
+      // 没有云能力时不渲染任何云图，避免 src 走本地路径触发异常
+      that.setData({ isImageReady: false });
+      return;
+    }
+
+    var rows = that.data.previewMenuRows || [];
+    // 视图层使用 env 简写形式，getTempFileURL 请求用完整 fileID（带 appid 后缀）的形式更稳
+    var headerFileId = 'cloud://' + ENV_ID + '/prep_cover_pic/table.jpg';
+    var headerReqId = toFullFileId(headerFileId);
+
+    var fileIds = [headerReqId];
+    for (var i = 0; i < rows.length; i++) {
+      var fid = rows[i] && rows[i].hasCover ? rows[i].coverFileId : '';
+      if (typeof fid === 'string' && fid.indexOf('cloud://') === 0) {
+        fileIds.push(toFullFileId(fid));
+      }
+    }
+
+    // 去重，避免重复请求
+    var uniq = [];
+    var seen = Object.create(null);
+    for (var u = 0; u < fileIds.length; u++) {
+      var id = fileIds[u];
+      if (!id || seen[id]) continue;
+      seen[id] = true;
+      uniq.push(id);
+    }
+
+    // 生成 resolveKey：若 fileIds 集合没变化，且 cache 命中率足够，就不重复请求
+    var resolveKey = uniq.join('|');
+    if (resolveKey === that._lastResolveKey) {
+      // 仍然做一次轻量 setData（把 cache 写回 rows），避免边界情况下 coverTempUrl 丢失
+    } else {
+      that._lastResolveKey = resolveKey;
+    }
+
+    that.setData({ isImageReady: false });
+
+    function applyFromCache() {
+      var newRows = rows.map(function (r) {
+        if (!r) return r;
+        if (!r.hasCover) return r;
+        var cf = r.coverFileId;
+        if (typeof cf !== 'string' || cf.indexOf('cloud://') !== 0) return Object.assign({}, r, { coverTempUrl: '' });
+        var reqId = toFullFileId(cf);
+        var tmp = that._tempUrlCache[reqId] || that._tempUrlCache[toEnvOnlyFileId(reqId)] || '';
+        return Object.assign({}, r, { coverTempUrl: tmp });
+      });
+
+      var headerTmp = that._tempUrlCache[headerReqId] || that._tempUrlCache[toEnvOnlyFileId(headerReqId)] || '';
+      that.setData({
+        headerBgUrl: headerTmp,
+        previewMenuRows: newRows,
+        isImageReady: true
+      });
+
+      // 同步回 globalData：确保后续页面/逻辑读到的是可渲染的 URL
+      try {
+        var payload = getApp().globalData.menuPreview;
+        if (payload && Array.isArray(payload.rows)) {
+          payload.rows = newRows;
+        }
+      } catch (e) {}
+    }
+
+    // 只请求 cache 未命中的 fileID，减少卡顿
+    var need = [];
+    for (var n = 0; n < uniq.length; n++) {
+      var id = uniq[n];
+      if (!id) continue;
+      if (that._tempUrlCache[id]) continue;
+      need.push(id);
+    }
+    if (need.length === 0) {
+      applyFromCache();
+      return;
+    }
+
+    // 分批请求，避免一次 fileList 太大造成阻塞
+    var BATCH_SIZE = 30;
+    var cursor = 0;
+
+    function requestNextBatch() {
+      if (cursor >= need.length) {
+        applyFromCache();
+        return;
+      }
+      var batch = need.slice(cursor, cursor + BATCH_SIZE);
+      cursor += BATCH_SIZE;
+
+      wx.cloud.getTempFileURL({
+        fileList: batch,
+        success: function (res) {
+          var list = (res && res.fileList) ? res.fileList : [];
+          var failed = [];
+          for (var i = 0; i < list.length; i++) {
+            var it = list[i] || {};
+            if (it.fileID && it.tempFileURL) {
+              that._tempUrlCache[it.fileID] = it.tempFileURL;
+              that._tempUrlCache[toEnvOnlyFileId(it.fileID)] = it.tempFileURL;
+            } else if (it.fileID) {
+              failed.push(it.fileID);
+            }
+          }
+
+          // 对失败项做一次扩展名切换重试（同样分批）
+          if (failed.length === 0) {
+            requestNextBatch();
+            return;
+          }
+
+          var retry = [];
+          for (var j = 0; j < failed.length; j++) {
+            var alt = that._swapImageExt(failed[j]);
+            if (alt) retry.push(alt);
+          }
+          if (retry.length === 0) {
+            requestNextBatch();
+            return;
+          }
+
+          wx.cloud.getTempFileURL({
+            fileList: retry,
+            success: function (res2) {
+              var list2 = (res2 && res2.fileList) ? res2.fileList : [];
+              for (var k = 0; k < list2.length; k++) {
+                var it2 = list2[k] || {};
+                if (it2.fileID && it2.tempFileURL) {
+                  that._tempUrlCache[it2.fileID] = it2.tempFileURL;
+                  that._tempUrlCache[toEnvOnlyFileId(it2.fileID)] = it2.tempFileURL;
+                  var back = that._swapImageExt(it2.fileID);
+                  if (back) {
+                    that._tempUrlCache[back] = it2.tempFileURL;
+                    that._tempUrlCache[toEnvOnlyFileId(back)] = it2.tempFileURL;
+                  }
+                }
+              }
+              requestNextBatch();
+            },
+            fail: function () {
+              requestNextBatch();
+            }
+          });
+        },
+        fail: function () {
+          requestNextBatch();
+        }
+      });
+    }
+
+    requestNextBatch();
+
   },
 
   onCheckRow: function (e) {
@@ -180,7 +377,8 @@ Page({
           checked: true,
           recommendReason: reason,
           sameAsAdultHint: sameAsAdultHint,
-          coverUrl: coverService.getRecipeCoverImageUrl(adultName),
+          coverFileId: coverService.getRecipeCoverImageUrl(adultName),
+          coverTempUrl: '',
           hasCover: !!coverService.RECIPE_NAME_TO_SLUG[adultName]
         });
       }
@@ -203,41 +401,9 @@ Page({
         getApp().globalData.menuPreview.balanceTip = balanceTip;
       }
       that.setData({ previewMenuRows: newRows, previewComboName: result.comboName || '', previewBalanceTip: balanceTip, previewDashboard: dashboard, previewHasSharedBase: hasSharedBase });
+      that._scheduleResolvePreviewImages();
 
-      // #region agent log
-      try {
-        var sampleNewRows = (newRows || []).slice(0, 5).map(function (r) {
-          return {
-            adultName: r.adultName,
-            coverUrl: r.coverUrl,
-            hasCover: r.hasCover
-          };
-        });
-        var payloadH2 = {
-            sessionId: 'debug-session',
-            runId: 'pre-fix',
-            hypothesisId: 'H2',
-            location: 'miniprogram/pages/preview/preview.js:handleShuffle',
-            message: 'preview handleShuffle rows cover urls',
-            data: { rows: sampleNewRows },
-            timestamp: Date.now()
-          };
-        if (typeof fetch === 'function') {
-          fetch('http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payloadH2)
-          }).catch(function () { });
-        } else if (typeof wx !== 'undefined' && wx.request) {
-          wx.request({
-            url: 'http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3',
-            method: 'POST',
-            header: { 'Content-Type': 'application/json' },
-            data: payloadH2
-          });
-        }
-      } catch (logErr2) { }
-      // #endregion
+      
     } catch (e) {
       console.error('换一换失败:', e);
       wx.showToast({ title: '换一换失败', icon: 'none' });
@@ -325,7 +491,8 @@ Page({
             checked: true,
             recommendReason: (ar && ar.recommend_reason) ? ar.recommend_reason : '',
             sameAsAdultHint: (st && st.same_as_adult_hint) ? '与大人同款，分装即可' : '',
-            coverUrl: coverService.getRecipeCoverImageUrl(adultNameNew),
+            coverFileId: coverService.getRecipeCoverImageUrl(adultNameNew),
+            coverTempUrl: '',
             hasCover: !!coverService.RECIPE_NAME_TO_SLUG[adultNameNew]
           });
         }
@@ -343,41 +510,9 @@ Page({
         previewDashboard: that._computePreviewDashboard(newMenus, pref),
         previewHasSharedBase: newRows.some(function (r) { return r.showSharedHint; })
       });
+      that._scheduleResolvePreviewImages();
 
-      // #region agent log
-      try {
-        var sampleReplacedRows = (newRows || []).slice(0, 5).map(function (r) {
-          return {
-            adultName: r.adultName,
-            coverUrl: r.coverUrl,
-            hasCover: r.hasCover
-          };
-        });
-        var payloadH3 = {
-            sessionId: 'debug-session',
-            runId: 'pre-fix',
-            hypothesisId: 'H3',
-            location: 'miniprogram/pages/preview/preview.js:handleReplaceUnchecked',
-            message: 'preview handleReplaceUnchecked rows cover urls',
-            data: { rows: sampleReplacedRows },
-            timestamp: Date.now()
-          };
-        if (typeof fetch === 'function') {
-          fetch('http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payloadH3)
-          }).catch(function () { });
-        } else if (typeof wx !== 'undefined' && wx.request) {
-          wx.request({
-            url: 'http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3',
-            method: 'POST',
-            header: { 'Content-Type': 'application/json' },
-            data: payloadH3
-          });
-        }
-      } catch (logErr3) { }
-      // #endregion
+      
       wx.showToast({ title: '已为您选出更均衡的搭配', icon: 'none' });
     } catch (e) {
       console.error('换掉未勾选失败:', e);

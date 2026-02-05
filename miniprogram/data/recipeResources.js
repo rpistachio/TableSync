@@ -1,24 +1,28 @@
 // miniprogram/data/recipeResources.js
 // 统一管理云端图片路径
 
+// cloud:// 格式（用于 wx.cloud.getTempFileURL 等云 API）
 const CLOUD_ROOT = "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193";
 
+// HTTP 格式（可直接用于 <image> src，但需要云存储开启公开访问）
+const CLOUD_HTTP_ROOT = "https://636c-cloud1-7g5mdmib90e9f670-1401654193.tcb.qcloud.la";
+
 const IMAGE_CONFIG = {
-  // 基础文件夹路径
+  // 基础文件夹路径（使用 HTTP 格式，可直接用于 <image> src）
   folders: {
-    adults: `${CLOUD_ROOT}/adults_recipes/`,
-    babies: `${CLOUD_ROOT}/babies_recipes/`,
-    prep: `${CLOUD_ROOT}/prep_cover_pic/`,
-    shopping: `${CLOUD_ROOT}/shopping_cover_pic/`
+    adults: `${CLOUD_HTTP_ROOT}/adults_recipes/`,
+    babies: `${CLOUD_HTTP_ROOT}/babies_recipes/`,
+    prep: `${CLOUD_HTTP_ROOT}/prep_cover_pic/`,
+    shopping: `${CLOUD_HTTP_ROOT}/shopping_cover_pic/`
   },
 
   // 默认兜底图
-  defaultCover: `${CLOUD_ROOT}/basic_cut_0_3_ar4.5.jpeg`,
+  defaultCover: `${CLOUD_HTTP_ROOT}/basic_cut_0_3_ar4.5.jpeg`,
 
   // 页面固定头图
   pageCovers: {
-    shopping: `${CLOUD_ROOT}/shopping_cover_pic/basic-prep-01.png`,
-    prep: `${CLOUD_ROOT}/prep_cover_pic/basic-veg-cut-01.jpeg`
+    shopping: `${CLOUD_HTTP_ROOT}/shopping_cover_pic/basic-prep-01.png`,
+    prep: `${CLOUD_HTTP_ROOT}/prep_cover_pic/basic-veg-cut-01.jpeg`
   },
 
   // 大人菜名 -> 英文文件名 (Slug) 映射表
@@ -38,5 +42,6 @@ const IMAGE_CONFIG = {
 
 module.exports = {
   CLOUD_ROOT,
+  CLOUD_HTTP_ROOT,
   IMAGE_CONFIG
 };

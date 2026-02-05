@@ -21,6 +21,7 @@
  */
 var recipes = require('./recipes.js');
 var cloudRecipeService = null;
+var recipeSchema = null;
 
 // 延迟加载云端菜谱服务，避免循环依赖
 function getCloudRecipeService() {
@@ -32,6 +33,18 @@ function getCloudRecipeService() {
     }
   }
   return cloudRecipeService;
+}
+
+// 延迟加载 recipeSchema，避免循环依赖
+function getRecipeSchema() {
+  if (!recipeSchema) {
+    try {
+      recipeSchema = require('./recipeSchema.js');
+    } catch (e) {
+      recipeSchema = null;
+    }
+  }
+  return recipeSchema;
 }
 
 /**
@@ -1232,6 +1245,601 @@ function estimateMinutes(text) {
   return 5;
 }
 
+/**
+ * 推断单个步骤的 actionType（long_term/active/idle_prep）
+ * 规则示意：
+ * 1. step_type === 'prep'        → idle_prep（默认视为可穿插备菜）
+ * 2. step_type === 'cook' 且：
+ *    - recipe.cook_type === 'stew' 且 duration >= 20
+ *    - 或步骤文案中包含「炖/焖/煲/小火慢煮/煮汤」等长耗时关键词
+ *    → long_term
+ * 3. 其他烹饪类步骤 → active
+ *
+ * @param {Object|String} step - 单个步骤对象或字符串
+ * @param {Object} recipe - 所属菜谱（用于读取 cook_type 等信息，可选）
+ * @returns {'long_term'|'active'|'idle_prep'}
+ */
+function inferActionType(step, recipe) {
+  var schema = getRecipeSchema();
+  var ACTION_TYPES =
+    schema && schema.ACTION_TYPES
+      ? schema.ACTION_TYPES
+      : { LONG_TERM: 'long_term', ACTIVE: 'active', IDLE_PREP: 'idle_prep' };
+
+  if (!step) {
+    return ACTION_TYPES.ACTIVE;
+  }
+
+  // 统一拿到文本
+  var text = getStepText(step);
+
+  // 推断 step_type
+  var stepType;
+  if (typeof step === 'object') {
+    stepType = step.step_type || (step.action === 'prep' ? 'prep' : 'cook');
+  } else {
+    // 纯字符串：默认视为烹饪步骤
+    stepType = 'cook';
+  }
+
+  // 备菜步骤默认 idle_prep，后续可结合全局时间线再细化
+  if (stepType === 'prep') {
+    return ACTION_TYPES.IDLE_PREP;
+  }
+
+  // 估算时长：优先使用标准字段 duration_num，其次根据文本估算
+  var duration = typeof step === 'object' && typeof step.duration_num === 'number'
+    ? step.duration_num
+    : estimateMinutes(text);
+
+  // 识别长耗时炖煮/慢煮
+  var cookType = recipe && (recipe.cook_type || recipe.cook_method) || '';
+  var isStewCookType = cookType === 'stew' || cookType === 'stove_long' || cookType === 'soup';
+  // 扩展长耗时关键词匹配：支持"小火煲"、"煲 1.5 小时"、"炖 30 分钟"等变体
+  var hasLongTermKeyword = /炖|小火慢煮|慢煮|焖|煲汤|小火煲|煲\s*[\d.]+\s*(分钟|小时)|炖\s*[\d.]+\s*(分钟|小时)|煮汤/.test(text);
+
+  if ((isStewCookType && duration >= 20) || hasLongTermKeyword || duration >= 30) {
+    return ACTION_TYPES.LONG_TERM;
+  }
+
+  // 其余烹饪步骤默认为主动操作
+  return ACTION_TYPES.ACTIVE;
+}
+
+/**
+ * 判断是否为「收尾/装盘」类步骤，用于阶段 4 聚合到末尾。
+ * 仅基于文案关键字做启发式判断，保证兼容旧数据。
+ * 
+ * 修复：避免误判中间步骤为收尾步骤。
+ * - "盛出"、"出锅前" 等常出现在中间步骤，不应作为收尾判断
+ * - 只有当步骤以明确的收尾短语结尾时才判定为收尾
+ * 
+ * @param {Object|String} step
+ * @returns {Boolean}
+ */
+function isFinishStep(step) {
+  var text = getStepText(step);
+  if (!text) return false;
+  
+  // 明确的收尾关键词（必须出现在步骤末尾，且是最终动作）
+  // 注意：排除 "出锅前xxx" 这种中间步骤
+  var strongFinishPattern = /(装盘即可|出锅即可|关火即可|收汁完成|最后一步|最后一道|摆盘即可|装盘上桌|出锅上桌|撒葱花即可|淋上.*即可)$/;
+  if (strongFinishPattern.test(text)) return true;
+  
+  // 非常短的纯收尾指令（如单独的"装盘"、"出锅"，不含其他内容）
+  if (text.length <= 6 && /^(装盘|出锅|关火|摆盘|上桌)$/.test(text.trim())) return true;
+  
+  return false;
+}
+
+/** 浅拷贝单个步骤对象，避免原数据被修改 */
+function cloneStep(step) {
+  if (!step || typeof step !== 'object') return step;
+  var out = {};
+  for (var k in step) {
+    if (step.hasOwnProperty(k)) out[k] = step[k];
+  }
+  return out;
+}
+
+/**
+ * 规范化步骤结构，补全 step_type / actionType / duration_num / waitTime 等字段，
+ * 便于后续统一排序。
+ * @param {Object|String} step
+ * @param {Object} recipe 可选：所属菜谱，用于推断 actionType
+ * @returns {Object}
+ */
+function normalizeStepForPipeline(step, recipe) {
+  if (!step) return null;
+
+  var s = typeof step === 'object'
+    ? cloneStep(step)
+    : { text: String(step), step_type: 'cook' };
+
+  // 统一 step_type
+  if (!s.step_type) {
+    if (s.action === 'prep') s.step_type = 'prep';
+    else s.step_type = 'cook';
+  }
+
+  // 推断 actionType
+  if (!s.actionType) {
+    s.actionType = inferActionType(s, recipe || s.recipe || null);
+  }
+
+  // 规范化时长
+  if (typeof s.duration_num !== 'number') {
+    s.duration_num = estimateMinutes(getStepText(s));
+  }
+
+  // 等待时间：长耗时步骤默认 = duration_num，其余为 0
+  if (typeof s.waitTime !== 'number') {
+    s.waitTime = s.actionType === 'long_term' ? s.duration_num : 0;
+  }
+
+  return s;
+}
+
+/**
+ * 合并/去重备菜步骤：
+ * - 只做轻量级去重：根据清洗/切配等关键词与去掉菜名前缀后的文案做 key
+ * - 避免复杂语义分析，保证对旧数据兼容且不改变含义
+ * @param {Array} prepSteps
+ * @returns {Array} 处理后的备菜步骤列表
+ */
+function mergeEssentialPrep(prepSteps) {
+  if (!Array.isArray(prepSteps) || prepSteps.length === 0) return [];
+
+  var map = {};
+  var orderedKeys = [];
+
+  for (var i = 0; i < prepSteps.length; i++) {
+    var step = prepSteps[i];
+    var text = getStepText(step);
+    if (!text) continue;
+
+    // 去掉类似「【番茄牛腩】」「番茄牛腩 - 」等菜名前缀
+    var cleaned = text
+      .replace(/^[\[\【][^\]\】]+[\]\】\s]*/, '')
+      .replace(/^[^：:\-]+[：:\-]\s*/, '');
+
+    var type = 'other';
+    if (/[洗冲清理去泥]/.test(cleaned)) type = 'wash';
+    else if (/[切剁改刀块片丝丁段]/.test(cleaned)) type = 'cut';
+
+    var key = type + '|' + cleaned;
+    if (!map[key]) {
+      map[key] = cloneStep(step) || { text: cleaned };
+      map[key].text = cleaned;
+      map[key].pipelineStage = 'prep';
+      orderedKeys.push(key);
+    }
+  }
+
+  return orderedKeys.map(function (k) { return map[k]; });
+}
+
+/**
+ * 根据长耗时步骤构建一个简易时间线。
+ * 当前实现主要负责为后续 gap 填充提供有序的 long_term 列表与窗口大小。
+ * @param {Array} longTermSteps
+ * @returns {Array} 带有 startAt / endAt 字段的长耗时步骤列表
+ */
+function buildTimeline(longTermSteps) {
+  if (!Array.isArray(longTermSteps) || longTermSteps.length === 0) return [];
+  var sorted = longTermSteps.slice().sort(function (a, b) {
+    var wa = typeof a.waitTime === 'number' ? a.waitTime : a.duration_num || 0;
+    var wb = typeof b.waitTime === 'number' ? b.waitTime : b.duration_num || 0;
+    return wb - wa; // 按等待时间降序：长耗时先启动
+  });
+
+  var timeline = [];
+  var currentStart = 0;
+  for (var i = 0; i < sorted.length; i++) {
+    var s = sorted[i];
+    var w = typeof s.waitTime === 'number' ? s.waitTime : s.duration_num || 0;
+    var node = cloneStep(s);
+    node.startAt = currentStart;
+    node.endAt = currentStart + w;
+    node.pipelineStage = 'long_term';
+    timeline.push(node);
+    // 长耗时任务可以部分重叠，这里只做轻量递增，避免时间线为 0
+    currentStart += Math.max(5, Math.round(w * 0.25));
+  }
+  return timeline;
+}
+
+/**
+ * 在长耗时步骤的等待窗口中插入 active/idle_prep 步骤。
+ * 简化逻辑：按原始顺序遍历 activeSteps，在每个 long_term 窗口内尽量填满但不过载。
+ * @param {Array} timeline 来自 buildTimeline
+ * @param {Array} activeSteps 非 long_term 且非收尾步骤
+ * @returns {Array} 填充后的步骤列表（不包含全局备菜/收尾）
+ */
+function fillGaps(timeline, activeSteps) {
+  if (!Array.isArray(timeline) || timeline.length === 0) {
+    // 没有长耗时任务时，直接返回 activeSteps 原顺序
+    return Array.isArray(activeSteps) ? activeSteps.slice() : [];
+  }
+  var result = [];
+  var usedIndex = {};
+
+  function isUsed(idx) {
+    return usedIndex[idx] === true;
+  }
+
+  function markUsed(idx) {
+    usedIndex[idx] = true;
+  }
+
+  for (var t = 0; t < timeline.length; t++) {
+    var longTask = timeline[t];
+    var windowSize = typeof longTask.waitTime === 'number'
+      ? longTask.waitTime
+      : longTask.duration_num || 0;
+
+    // Stage 2：长耗时任务自身
+    result.push(longTask);
+
+    // Stage 3：在等待窗口内穿插 active / idle_prep
+    if (!Array.isArray(activeSteps) || activeSteps.length === 0 || windowSize <= 0) {
+      continue;
+    }
+
+    var usedTime = 0;
+    for (var i = 0; i < activeSteps.length; i++) {
+      if (isUsed(i)) continue;
+      var step = activeSteps[i];
+      var dur = typeof step.duration_num === 'number'
+        ? step.duration_num
+        : estimateMinutes(getStepText(step));
+
+      // 预留 3 分钟缓冲，避免精确等于窗口导致时间线过满
+      if (usedTime + dur > Math.max(0, windowSize - 3)) {
+        continue;
+      }
+
+      var s = cloneStep(step);
+      s.pipelineStage = (s.step_type === 'prep') ? 'idle_gap' : 'active_gap';
+      result.push(s);
+      markUsed(i);
+      usedTime += dur;
+    }
+  }
+
+  // 将剩余未使用的 active/idle 步骤顺序追加（长耗时任务之后）
+  if (Array.isArray(activeSteps)) {
+    for (var j = 0; j < activeSteps.length; j++) {
+      if (isUsed(j)) continue;
+      var leftover = cloneStep(activeSteps[j]);
+      leftover.pipelineStage = leftover.pipelineStage || 'active_tail';
+      result.push(leftover);
+    }
+  }
+  return result;
+}
+
+/**
+ * 为基于流水线重排后的步骤数组生成并行上下文信息（parallelContext）。
+ *
+ * 设计目标：
+ * - 不改变现有步骤含义，仅在适合的步骤上挂载提示信息；
+ * - 纯计算函数，不依赖 wx / this，方便测试与复用；
+ * - 对旧数据与未来扩展保持兼容，字段缺失时自动降级。
+ *
+ * 约定：
+ * - 长耗时任务：actionType === 'long_term'（由 normalizeStepForPipeline / inferActionType 预先填充）
+ * - 时长字段：
+ *   - waitTime：优先作为长耗时任务的被动等待时长（分钟）
+ *   - duration_num：步骤主动操作时长（分钟），若缺失则由 estimateMinutes(text) 估算
+ *
+ * 时间推进模型（简化版）：
+ * - 遍历流水线数组 steps[]
+ * - 维护一个 activeLongTasks 列表，记录当前仍在进行中的长耗时任务及剩余时间
+ * - 每处理完一个步骤，用该步骤的时长 duration_num 去“消耗”所有长耗时任务的 remainingMinutes
+ * - 当 remainingMinutes <= 0 时，将该长耗时任务视为完成并从 activeLongTasks 中移除
+ * - 对于非 long_term 步骤，若 activeLongTasks 非空，则生成 parallelContext 提示
+ *
+ * parallelContext 结构：
+ * {
+ *   activeTaskName: '牛腩炖煮',
+ *   remainingMinutes: 25,
+ *   hint: '此时「牛腩炖煮」正在烹饪中，请利用空档完成此步'
+ * }
+ *
+ * @param {Array} steps - 已经过 reorderStepsForPipeline 等处理后的步骤数组
+ * @returns {Array} 新数组：在合适的步骤上附带 parallelContext 字段
+ */
+function buildParallelContext(steps) {
+  if (!Array.isArray(steps) || steps.length === 0) return [];
+
+  // 当前仍在进行中的长耗时任务列表
+  // 元素形式：{ task: <stepObject>, remainingMinutes: number }
+  var activeLongTasks = [];
+
+  /**
+   * 从步骤中提取一个适合展示给用户的任务名称。
+   * 优先级：dishName → recipeName → title → name → 文本前 12 个字符 → '长耗时菜'
+   */
+  function getTaskDisplayName(step) {
+    if (!step) return '长耗时菜';
+    var name =
+      step.dishName ||
+      step.recipeName ||
+      step.title ||
+      step.name ||
+      '';
+    if (!name) {
+      var text = getStepText(step);
+      if (text) {
+        var trimmed = String(text).replace(/^\s+|\s+$/g, '');
+        if (trimmed.length > 0) {
+          return trimmed.length > 12 ? trimmed.slice(0, 12) + '…' : trimmed;
+        }
+      }
+    }
+    return name || '长耗时菜';
+  }
+
+  /**
+   * 根据步骤对象估算其主动操作时长（分钟）。
+   * 优先使用 duration_num，其次回落到 estimateMinutes(text)。
+   */
+  function getActiveDuration(step) {
+    if (!step) return 5;
+    if (typeof step.duration_num === 'number' && step.duration_num > 0) {
+      return step.duration_num;
+    }
+    return estimateMinutes(getStepText(step));
+  }
+
+  /**
+   * 新启动一个长耗时任务。
+   */
+  function startLongTask(step) {
+    if (!step) return;
+    var base =
+      (typeof step.waitTime === 'number' && step.waitTime > 0)
+        ? step.waitTime
+        : (typeof step.duration_num === 'number' && step.duration_num > 0
+          ? step.duration_num
+          : estimateMinutes(getStepText(step)));
+    if (base <= 0) return;
+    activeLongTasks.push({
+      task: step,
+      remainingMinutes: base
+    });
+  }
+
+  /**
+   * 根据刚刚消耗的时间（当前步骤的 duration）推进所有长耗时任务的剩余时间。
+   */
+  function elapseForAllLongTasks(deltaMinutes) {
+    if (!deltaMinutes || deltaMinutes <= 0) return;
+    for (var i = 0; i < activeLongTasks.length; i++) {
+      activeLongTasks[i].remainingMinutes -= deltaMinutes;
+    }
+    // 移除已完成的任务
+    var stillActive = [];
+    for (var j = 0; j < activeLongTasks.length; j++) {
+      if (activeLongTasks[j].remainingMinutes > 0) {
+        stillActive.push(activeLongTasks[j]);
+      }
+    }
+    activeLongTasks = stillActive;
+  }
+
+  /**
+   * 从当前 activeLongTasks 中选出一个最适合作为提示主语的任务。
+   * 默认选择剩余时间最长的任务，以强调“厨房里还有一个大工程在进行”。
+   */
+  function pickPrimaryLongTask() {
+    if (!activeLongTasks.length) return null;
+    var selected = activeLongTasks[0];
+    for (var i = 1; i < activeLongTasks.length; i++) {
+      if (activeLongTasks[i].remainingMinutes > selected.remainingMinutes) {
+        selected = activeLongTasks[i];
+      }
+    }
+    return selected;
+  }
+
+  var output = [];
+
+  for (var idx = 0; idx < steps.length; idx++) {
+    var originalStep = steps[idx];
+    var step = cloneStep(originalStep) || originalStep;
+
+    // 先基于“上一个步骤的耗时”推进所有长耗时任务的剩余时间
+    // 注意：这里的推进在上一轮循环末尾进行更直观，但为了简化代码，
+    // 我们在本轮循环开始时基于“上一轮步骤时长”推进。
+    // 实现上通过在循环尾部调用 elapseForAllLongTasks 与 getActiveDuration 配合完成。
+
+    // 标记当前是否为长耗时步骤
+    var isLongTerm = step && step.actionType === 'long_term';
+
+    // 如果当前步骤本身是长耗时任务，则先启动它（让后续步骤能感知它的存在）
+    if (isLongTerm) {
+      startLongTask(step);
+    } else {
+      // 非长耗时步骤：若此刻存在正在进行的长耗时任务，则生成并行上下文
+      var primary = pickPrimaryLongTask();
+      if (primary && !step.parallelContext) {
+        var remaining = primary.remainingMinutes;
+        if (remaining != null && remaining > 0) {
+          var displayName = getTaskDisplayName(primary.task);
+          step.parallelContext = {
+            activeTaskName: displayName,
+            remainingMinutes: Math.max(1, Math.round(remaining)),
+            hint: '此时「' + displayName + '」正在烹饪中，请利用空档完成此步'
+          };
+        }
+      }
+    }
+
+    output.push(step);
+
+    // 当前步骤执行完毕后，消耗对应的时间，以推进所有长耗时任务进度
+    var consume = getActiveDuration(step);
+    // 为了避免过于精细，设置一个下限 1 分钟
+    if (consume < 1) consume = 1;
+    elapseForAllLongTasks(consume);
+  }
+
+  return output;
+}
+
+/**
+ * 四阶段重排：prep → long_term → gap(active/idle_prep) → finish
+ * @param {Array} allSteps 原始步骤数组（可混合多个菜）
+ * @param {Array} menus    当前菜单列表（暂未强依赖，预留扩展）
+ * @returns {Array} 重排后的步骤数组
+ */
+function reorderStepsForPipeline(allSteps, menus) {
+  if (!Array.isArray(allSteps) || allSteps.length === 0) return [];
+  // menus 暂留作扩展（如按菜品权重排序），当前实现中未强依赖
+  void menus;
+
+  // 1. 规范化所有步骤
+  var normalized = [];
+  for (var i = 0; i < allSteps.length; i++) {
+    var ns = normalizeStepForPipeline(allSteps[i], allSteps[i] && allSteps[i].recipe);
+    if (ns) normalized.push(ns);
+  }
+  if (normalized.length === 0) return [];
+
+  // 2. 分类
+  var prepSteps = [];
+  var longTermSteps = [];
+  var otherSteps = [];
+
+  for (var j = 0; j < normalized.length; j++) {
+    var s = normalized[j];
+    if (s.step_type === 'prep') {
+      prepSteps.push(s);
+    } else if (s.actionType === 'long_term') {
+      longTermSteps.push(s);
+    } else {
+      otherSteps.push(s);
+    }
+  }
+
+  // 收尾步骤单独拿出来，后面整体推到 Stage 4
+  var finishSteps = [];
+  var activeAndIdle = [];
+  for (var k = 0; k < otherSteps.length; k++) {
+    var os = otherSteps[k];
+    if (isFinishStep(os)) finishSteps.push(os);
+    else activeAndIdle.push(os);
+  }
+
+  // 3. Stage 1：合并备菜（洗/切等去重）
+  var mergedPrep = mergeEssentialPrep(prepSteps);
+
+  // 4. 若无长耗时任务，则简化为：prep → active/idle → finish
+  if (longTermSteps.length === 0) {
+    var simple = [];
+    Array.prototype.push.apply(simple, mergedPrep);
+    Array.prototype.push.apply(simple, activeAndIdle);
+    Array.prototype.push.apply(simple, finishSteps);
+    return simple;
+  }
+
+  // 5. Stage 2+3：基于长耗时任务构建时间线并填充间隙
+  var timeline = buildTimeline(longTermSteps);
+  var gapFilled = fillGaps(timeline, activeAndIdle);
+
+  // 6. Stage 4：收尾步骤整体放在最后
+  var output = [];
+  Array.prototype.push.apply(output, mergedPrep);
+  Array.prototype.push.apply(output, gapFilled);
+
+  for (var f = 0; f < finishSteps.length; f++) {
+    var fs = cloneStep(finishSteps[f]);
+    fs.pipelineStage = fs.pipelineStage || 'finish';
+    output.push(fs);
+  }
+
+  return output;
+}
+
+/**
+ * 为流水线步骤打上阶段标记与文案，方便前端渲染阶段横幅。
+ *
+ * 阶段约定：
+ * - prep         → 阶段一：全局备菜
+ * - long_term    → 阶段二：长耗时启动
+ * - active_gap   → 阶段三：空档穿插
+ * - idle_gap     → 阶段三：空档穿插
+ * - active_tail  → 阶段三：空档穿插（尾部收拢）
+ * - finish       → 阶段四：集中收尾
+ *
+ * 仅标记每一阶段的首个步骤 isPhaseStart = true，其余为 false。
+ *
+ * @param {Array} steps - 已经过 reorderStepsForPipeline & buildParallelContext 的步骤数组
+ * @returns {Array} 带阶段标记的新数组
+ */
+function annotatePhases(steps) {
+  if (!Array.isArray(steps) || steps.length === 0) return [];
+
+  var firstPrep = -1;
+  var firstLong = -1;
+  var firstGap = -1;
+  var firstFinish = -1;
+
+  for (var i = 0; i < steps.length; i++) {
+    var s = steps[i];
+    var stage = s && s.pipelineStage;
+    var stepType = s && s.step_type;
+
+    if (stepType === 'prep') {
+      if (firstPrep === -1) firstPrep = i;
+    } else if (stage === 'long_term') {
+      if (firstLong === -1) firstLong = i;
+    } else if (stage === 'active_gap' || stage === 'idle_gap' || stage === 'active_tail') {
+      if (firstGap === -1) firstGap = i;
+    } else if (stage === 'finish' || isFinishStep(s)) {
+      if (firstFinish === -1) firstFinish = i;
+    }
+  }
+
+  var out = [];
+  for (var j = 0; j < steps.length; j++) {
+    var orig = steps[j];
+    var step = cloneStep(orig) || orig;
+    step.isPhaseStart = false;
+    step.phaseType = step.phaseType || null;
+    step.phaseTitle = step.phaseTitle || '';
+    step.phaseSubtitle = step.phaseSubtitle || '';
+
+    if (j === firstPrep && firstPrep !== -1) {
+      step.isPhaseStart = true;
+      step.phaseType = 'prep';
+      step.phaseTitle = '切配阶段';
+      step.phaseSubtitle = '按菜品完成洗、切、腌等准备';
+    } else if (j === firstLong && firstLong !== -1) {
+      step.isPhaseStart = true;
+      step.phaseType = 'long_term';
+      step.phaseTitle = '炖煮阶段';
+      step.phaseSubtitle = '先启动耗时长的菜，释放后续空档';
+    } else if (j === firstGap && firstGap !== -1) {
+      step.isPhaseStart = true;
+      step.phaseType = 'gap';
+      step.phaseTitle = '快炒阶段';
+      step.phaseSubtitle = '利用等待空档完成快手菜';
+    } else if (j === firstFinish && firstFinish !== -1) {
+      step.isPhaseStart = true;
+      step.phaseType = 'finish';
+      step.phaseTitle = '收尾装盘';
+      step.phaseSubtitle = '收汁、调味、装盘，一起上桌';
+    }
+
+    out.push(step);
+  }
+
+  return out;
+}
+
 function generateSteps(adultRecipe, babyRecipe, shoppingList) {
   var steps = [];
   var id = 1;
@@ -1335,18 +1943,20 @@ function getBabyReserveHint(menu) {
 
 /**
  * 多菜并行：统筹做饭步骤
- * Step 1 全局备菜：合并所有食材为一句（如：准备好 鸡腿(600g)、番茄(250g)、姜片 适量 并切配）；若 hasBaby 且 can_share_base 则追加分拨提示。
- * Step 2+ 烹饪按优先级：slow_stew 先下锅 → steamed_salad 中场蒸 → quick_stir_fry 最后冲刺（保证上菜时都是热的）。
+ * 旧版逻辑：按菜品顺序生成「步骤卡片」，仅区分 slow_stew / steamed_salad / quick_stir_fry。
+ * 新版逻辑：先将所有菜品的原子步骤摊平成流水线，使用 reorderStepsForPipeline 做多菜并行重排，
+ *          再通过 buildParallelContext / annotatePhases 增强并行提示与阶段信息，
+ *          最终仍返回兼容 steps 页面使用的结构（id/title/details/role/duration 等）。
  */
 function generateUnifiedSteps(menus, shoppingList) {
   var list = Array.isArray(shoppingList) ? shoppingList : [];
+  if (!Array.isArray(menus) || menus.length === 0) {
+    return [];
+  }
   var steps = [];
   var id = 1;
 
-  if (!Array.isArray(menus) || menus.length === 0) {
-    return steps;
-  }
-
+  // ---------- 阶段 0：保留「全局备菜」汇总文案 ----------
   var prepDetails = [];
   var mergedPrep = buildMergedPrepLine(list);
   prepDetails.push(mergedPrep);
@@ -1354,61 +1964,173 @@ function generateUnifiedSteps(menus, shoppingList) {
   var reserveHint = getBabyReserveHint(firstMenu);
   if (reserveHint) prepDetails.push(reserveHint);
 
-  steps.push({ id: id++, title: '步骤 1：全局备菜', details: prepDetails, role: 'both', completed: false, duration: 15 });
+  steps.push({
+    id: id++,
+    title: '步骤 1：全局备菜',
+    details: prepDetails,
+    role: 'both',
+    completed: false,
+    duration: 15,
+    step_type: 'prep',
+    // 标记为阶段起点，避免与后续 prep 步骤的阶段横幅重复
+    isPhaseStart: true,
+    phaseType: 'prep',
+    phaseTitle: '备料总览',
+    phaseSubtitle: '清点今日所需食材'
+  });
 
-  var babyMenu = null;
-  for (var b = 0; b < menus.length; b++) {
-    if (menus[b].babyRecipe && menus[b].babyRecipe.steps && menus[b].babyRecipe.steps.length > 0) {
-      babyMenu = menus[b];
-      break;
+  // ---------- 阶段 1：将所有菜品的原子步骤摊平 ----------
+  var rawPipelineSteps = [];
+
+  for (var m = 0; m < menus.length; m++) {
+    var menu = menus[m];
+    var adult = menu.adultRecipe;
+    var baby = menu.babyRecipe;
+
+    // 成人菜步骤
+    if (adult && Array.isArray(adult.steps)) {
+      for (var ai = 0; ai < adult.steps.length; ai++) {
+        var aStep = adult.steps[ai];
+        var aTextRaw = getStepText(aStep);
+        if (!aTextRaw) continue;
+        var aText = replaceStepPlaceholders(aTextRaw, adult, list, '');
+        if (!aText) continue;
+
+        var aObj = typeof aStep === 'object' ? cloneStep(aStep) : {};
+        aObj.text = aText;
+        if (!aObj.step_type) {
+          aObj.step_type = aObj.action === 'prep' ? 'prep' : 'cook';
+        }
+        aObj.role = 'adult';
+        aObj.recipeName = adult.name || '';
+        aObj.taste = menu.taste || '';
+        aObj.meat = adult.meat || menu.meat || '';
+        aObj.recipe = adult;
+
+        rawPipelineSteps.push(aObj);
+      }
+    }
+
+    // 宝宝餐步骤（若存在）
+    if (baby && Array.isArray(baby.steps)) {
+      for (var bi = 0; bi < baby.steps.length; bi++) {
+        var bStep = baby.steps[bi];
+        var bTextRaw = getStepText(bStep);
+        if (!bTextRaw) continue;
+        var bText = replaceStepPlaceholders(bTextRaw, baby, list, '');
+        if (!bText) continue;
+
+        var bObj = typeof bStep === 'object' ? cloneStep(bStep) : {};
+        bObj.text = bText;
+        if (!bObj.step_type) {
+          bObj.step_type = bObj.action === 'prep' ? 'prep' : 'cook';
+        }
+        bObj.role = 'baby';
+        bObj.recipeName = baby.name || '';
+        bObj.taste = menu.taste || '';
+        bObj.meat = baby.meat || menu.meat || '';
+        bObj.recipe = baby;
+
+        rawPipelineSteps.push(bObj);
+      }
     }
   }
-  if (babyMenu && babyMenu.babyRecipe) {
-    var babyRecipe = babyMenu.babyRecipe;
-    var babyStepsByAction = getStepsByAction(babyRecipe);
-    var babyPrepLines = (babyStepsByAction.prep || []).map(function (t) { return replaceStepPlaceholders(t, babyRecipe, list, ''); }).filter(Boolean);
-    var babyCookLines = (babyStepsByAction.cook || []).map(function (t) { return replaceStepPlaceholders(t, babyRecipe, list, ''); }).filter(Boolean);
-    var babyDetails = babyPrepLines.concat(babyCookLines);
-    if (babyDetails.length === 0) babyDetails = ['👶 按宝宝月龄处理：蒸熟/压泥/切碎后装盘。'];
-    else babyDetails = babyDetails.map(function (line) { return '👶 ' + line; });
-    var babyDur = babyCookLines.reduce(function (sum, t) { return sum + estimateMinutes(t); }, 0) || 10;
+
+  if (rawPipelineSteps.length === 0) {
+    // 降级：若没有可用原子步骤，退回旧版仅按汇总+菜品顺序展示
+    return steps;
+  }
+
+  // ---------- 阶段 2：多菜并行重排 + 并行上下文 + 阶段标记 ----------
+  var reordered = reorderStepsForPipeline(rawPipelineSteps, menus);
+  var withContext = buildParallelContext(reordered);
+  var annotated = annotatePhases(withContext);
+
+  // ---------- 阶段 3：映射为 steps 页面可用结构 ----------
+  for (var si = 0; si < annotated.length; si++) {
+    var s = annotated[si];
+    var text = getStepText(s);
+    if (!text) continue;
+
+    var role = s.role || (s.step_type === 'prep' ? 'both' : 'adult');
+    var prefix = role === 'baby' ? '👶 ' : (role === 'adult' ? '👨 ' : '');
+    var detailLine = prefix + text;
+
+    var stepType = s.step_type || 'cook';
+    var actionType = s.actionType || inferActionType(s, s.recipe || null);
+    
+    // 简化步骤标题：阶段横幅已说明烹饪类型，步骤标题只需显示菜名
+    var dishName = s.recipeName || '';
+    var title;
+    if (dishName) {
+      // 有菜名时：直接显示菜名
+      title = '步骤 ' + id + '：' + dishName;
+    } else if (stepType === 'prep') {
+      title = '步骤 ' + id + '：备菜';
+    } else {
+      title = '步骤 ' + id + '：烹饪';
+    }
+
+    var duration = typeof s.duration_num === 'number' ? s.duration_num : estimateMinutes(text);
+
     steps.push({
       id: id++,
-      title: '步骤 2：宝宝餐 - ' + (babyRecipe.name || '辅食'),
-      details: babyDetails,
-      role: 'baby',
+      title: title,
+      details: [detailLine],
+      role: role,
       completed: false,
-      duration: babyDur
+      duration: duration,
+      step_type: stepType,
+      recipeName: dishName,
+      // 为后续 UI 扩展预留字段（当前 steps.js 不强依赖）
+      actionType: actionType,
+      pipelineStage: s.pipelineStage,
+      parallelContext: s.parallelContext || null,
+      isPhaseStart: s.isPhaseStart || false,
+      phaseType: s.phaseType || null,
+      phaseTitle: s.phaseTitle || '',
+      phaseSubtitle: s.phaseSubtitle || ''
     });
   }
 
-  var sortedMenus = menus.slice().sort(function (a, b) {
-    var oa = TASTE_ORDER[a.taste] != null ? TASTE_ORDER[a.taste] : 3;
-    var ob = TASTE_ORDER[b.taste] != null ? TASTE_ORDER[b.taste] : 3;
-    return oa - ob;
-  });
+  return steps;
+}
 
-  var stepNum = (babyMenu && babyMenu.babyRecipe) ? 3 : 2;
-  sortedMenus.forEach(function (menu) {
-    var adult = menu.adultRecipe;
-    if (!adult) return;
-    var adultSteps = getStepsByAction(adult);
-    var cookTexts = adultSteps.cook;
-    var tasteLabel = TASTE_LABEL[menu.taste] || menu.taste;
-    var dishName = adult.name || '主菜';
-    var lines = cookTexts.map(function (t) { return replaceStepPlaceholders(t, adult, list, ''); }).filter(Boolean);
-    if (lines.length === 0) lines = ['大火烹制、调味装盘。'];
-    var dur = lines.reduce(function (sum, t) { return sum + estimateMinutes(t); }, 0) || 10;
-    steps.push({
-      id: id++,
-      title: '步骤 ' + stepNum + '：' + tasteLabel + ' - ' + dishName,
-      details: lines,
-      role: 'adult',
-      completed: false,
-      duration: dur
-    });
-    stepNum++;
-  });
+/**
+ * 线性降级：按菜品顺序串行生成步骤（不做多菜并行/阶段重排）。
+ *
+ * 适用场景：
+ * - 购物清单中存在未勾选的关键食材，说明有部分菜可能做不齐；
+ * - 或并行流水线逻辑出现异常时，作为兜底方案。
+ *
+ * 实现思路：
+ * - 复用现有 generateSteps(adultRecipe, babyRecipe, shoppingList) 单菜逻辑；
+ * - 按 menus 原顺序依次生成步骤并重排 id，保持 steps.js 的存储/勾选逻辑稳定；
+ * - 不再附加 pipelineStage/parallelContext 等多线程字段，前端自然退化为简单列表。
+ *
+ * @param {Array} menus - 今日菜单数组（形如 { adultRecipe, babyRecipe, meat, taste }）
+ * @param {Array} shoppingList - 合并后的购物清单
+ * @returns {Array} 线性步骤数组
+ */
+function linearFallback(menus, shoppingList) {
+  if (!Array.isArray(menus) || menus.length === 0) return [];
+  var list = Array.isArray(shoppingList) ? shoppingList : [];
+  var steps = [];
+  var id = 1;
+
+  for (var i = 0; i < menus.length; i++) {
+    var menu = menus[i];
+    if (!menu || (!menu.adultRecipe && !menu.babyRecipe)) continue;
+
+    // 复用单菜步骤生成逻辑
+    var singleSteps = generateSteps(menu.adultRecipe || null, menu.babyRecipe || null, list) || [];
+    for (var j = 0; j < singleSteps.length; j++) {
+      var s = cloneStep(singleSteps[j]) || singleSteps[j];
+      // 重新分配全局唯一 id，避免与流水线模式的 id 冲突
+      s.id = id++;
+      steps.push(s);
+    }
+  }
 
   return steps;
 }
@@ -1559,6 +2281,7 @@ module.exports = {
   // ---------- 原有导出（兼容与内部使用） ----------
   generateMenu: generateMenu,
   generateMenuFromRecipe: generateMenuFromRecipe,
+  linearFallback: linearFallback,
   generateMenuWithFilters: generateMenuWithFilters,
   getBabyVariantByAge: getBabyVariantByAge,
   checkFlavorBalance: checkFlavorBalance,
@@ -1578,6 +2301,7 @@ module.exports = {
   recipeDietScore: recipeDietScore,
   countCookMethod: countCookMethod,
   getScaledAmount: getScaledAmount,
+  inferActionType: inferActionType,
   computePreviewDashboard: logicDashboard.computePreviewDashboard,
   computeBalanceTip: logicDashboard.computeBalanceTip,
   menusToPreviewRows: logicDashboard.menusToPreviewRows,

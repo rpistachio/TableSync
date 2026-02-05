@@ -184,10 +184,6 @@ const { adultRecipe, babyRecipe } = getAdaptedRecipes(preference);
 
 const raw = generator.generateShoppingList(adultRecipe, babyRecipe);
 
-// #region agent log
-fetch('http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'menuData.js:185',message:'generateShoppingList output',data:{listLength:raw?.length,firstItem:raw?.[0]},hypothesisId:'D',timestamp:Date.now(),sessionId:'debug-session'})}).catch(()=>{});
-// #endregion
-
 let list = raw.map((item, idx) => ({
   id: idx + 1,
   name: item.name ?? '未知',

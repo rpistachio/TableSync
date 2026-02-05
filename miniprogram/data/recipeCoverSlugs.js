@@ -9,95 +9,97 @@
  */
 
 /** 成人菜封面图所在云目录（英文 slug 图片在此目录下，如 xxx.png） */
-var CLOUD_STORAGE_BASE = 'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes';
+// 注意：这里必须使用「环境 ID」形式的 fileID（cloud://<env-id>/...）
+// 不要带控制台复制出来的冗余后缀（如 ".636c-...-140..."），否则在渲染层直接使用 cloud:// 可能触发 500。
+var CLOUD_STORAGE_BASE = 'cloud://cloud1-7g5mdmib90e9f670/adults_recipes';
 
 /** 兜底图完整 URL（未在 RECIPE_NAME_TO_SLUG 中的菜或异常时使用，避免渲染层 500） */
-var DEFAULT_COVER_URL = 'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/basic_cut_0_3_ar4.5.jpeg';
+var DEFAULT_COVER_URL = 'cloud://cloud1-7g5mdmib90e9f670/basic_cut_0_3_ar4.5.jpeg';
 
-/** 菜名(中文) -> 文件名（无扩展名），小写下划线，与云端格式一致，如 kung_pao_chicken_with_peanut */
+/** 菜名(中文) -> 文件名（含扩展名），如 kung_pao_chicken_with_peanut.png */
 var RECIPE_NAME_TO_SLUG = {
   /* 成人菜 - 汤 */
-  '花旗参石斛炖鸡汤': 'double_boiled_chicken_soup_with_ginseng_and_dendrobium',
-  '五指毛桃排骨汤': 'pork_rib_soup_with_hairy_fig_root',
-  '鲜淮山炖牛肉汤': 'beef_soup_with_fresh_yam',
-  '玉米排骨汤': 'pork_rib_soup_with_corn',
-  '番茄蛋花汤': 'tomato_and_egg_drop_soup',
-  '紫菜蛋花汤': 'seaweed_and_egg_drop_soup',
-  '冬瓜海带排骨汤': 'winter_melon_and_kelp_soup_with_pork_ribs',
-  '丝瓜蛋花汤': 'luffa_and_egg_drop_soup',
-  '番茄金针菇蛋花汤': 'tomato_and_enoki_mushroom_egg_soup',
+  '花旗参石斛炖鸡汤': 'double_boiled_chicken_soup_with_ginseng_and_dendrobium.png',
+  '五指毛桃排骨汤': 'pork_rib_soup_with_hairy_fig_root.png',
+  '鲜淮山炖牛肉汤': 'beef_soup_with_fresh_yam.png',
+  '玉米排骨汤': 'pork_rib_soup_with_corn.png',
+  '番茄蛋花汤': 'tomato_and_egg_drop_soup.png',
+  '紫菜蛋花汤': 'seaweed_and_egg_drop_soup.jpg',
+  '冬瓜海带排骨汤': 'winter_melon_and_kelp_soup_with_pork_ribs.png',
+  '丝瓜蛋花汤': 'luffa_and_egg_drop_soup.png',
+  '番茄金针菇蛋花汤': 'tomato_and_enoki_mushroom_egg_soup.png',
   /* 成人菜 - 鸡 */
-  '清蒸柠檬鸡里脊': 'steamed_lemon_chicken_fillet',
-  '宫保鸡丁': 'kung_pao_chicken_with_peanut',
-  '栗子焖鸡': 'braised_chicken_with_chestnuts',
-  '白切鸡': 'poached_chicken_bai_zhan_ji',
-  '可乐鸡翅': 'coca_cola_chicken_wings',
+  '清蒸柠檬鸡里脊': 'steamed_lemon_chicken_fillet.png',
+  '宫保鸡丁': 'kung_pao_chicken_with_peanut.png',
+  '栗子焖鸡': 'braised_chicken_with_chestnuts.png',
+  '白切鸡': 'poached_chicken_bai_zhan_ji.png',
+  '可乐鸡翅': 'coca_cola_chicken_wings.png',
   /* 成人菜 - 鱼 */
-  '清蒸鳕鱼配葱丝': 'steamed_cod_with_scallions_and_ginger',
-  '孔雀开屏鱼': 'steamed_whole_fish_peacock_style',
-  '红烧鱼块': 'braised_fish_chunks_in_brown_sauce',
-  '清蒸鲈鱼': 'steamed_sea_bass',
+  '清蒸鳕鱼配葱丝': 'steamed_cod_with_scallions_and_ginger.png',
+  '孔雀开屏鱼': 'steamed_whole_fish_peacock_style.png',
+  '红烧鱼块': 'braised_fish_chunks_in_brown_sauce.png',
+  '清蒸鲈鱼': 'steamed_sea_bass.png',
   /* 成人菜 - 虾 */
-  '蒜蓉粉丝蒸虾': 'steamed_prawns_with_garlic_and_vermicelli',
-  '滑蛋虾仁': 'scrambled_eggs_with_shrimp',
-  '避风塘炒虾': 'bi_feng_tang_crispy_garlic_prawns',
+  '蒜蓉粉丝蒸虾': 'steamed_prawns_with_garlic_and_vermicelli.png',
+  '滑蛋虾仁': 'scrambled_eggs_with_shrimp.png',
+  '避风塘炒虾': 'bi_feng_tang_crispy_garlic_prawns.png',
   /* 成人菜 - 牛 */
-  '杭椒牛柳': 'stir_fried_beef_with_long_green_peppers',
-  '番茄牛腩': 'stewed_beef_brisket_with_tomatoes',
-  '番茄炖牛腩': 'tomato_and_beef_brisket_stew',
-  '小炒黄牛肉': 'stir_fried_spicy_beef',
-  '咖喱牛腩': 'beef_brisket_curry',
-  '蚝油牛肉': 'beef_with_oyster_sauce',
-  '土豆炖牛肉': 'beef_stew_with_potatoes',
+  '杭椒牛柳': 'stir_fried_beef_with_long_green_peppers.png',
+  '番茄牛腩': 'stewed_beef_brisket_with_tomatoes.png',
+  '番茄炖牛腩': 'tomato_and_beef_brisket_stew.png',
+  '小炒黄牛肉': 'stir_fried_spicy_beef.png',
+  '咖喱牛腩': 'beef_brisket_curry.png',
+  '蚝油牛肉': 'beef_with_oyster_sauce.png',
+  '土豆炖牛肉': 'beef_stew_with_potatoes.png',
   /* 成人菜 - 猪 */
-  '蒜香蒸排骨': 'steamed_pork_ribs_with_garlic',
-  '滑溜里脊片': 'sauteed_sliced_pork_loin',
-  '白菜豆腐炖五花': 'braised_pork_belly_with_cabbage_and_tofu',
-  '回锅肉': 'twice_cooked_pork_belly',
-  '鱼香肉丝': 'yuxiang_shredded_pork',
-  '红烧肉': 'braised_pork_belly_hong_shao_rou',
-  '麻婆豆腐': 'mapo_tofu',
-  '葱爆羊肉': 'stir_fried_mutton_with_scallions',
+  '蒜香蒸排骨': 'steamed_pork_ribs_with_garlic.png',
+  '滑溜里脊片': 'sauteed_sliced_pork_loin.png',
+  '白菜豆腐炖五花': 'braised_pork_belly_with_cabbage_and_tofu.png',
+  '回锅肉': 'twice_cooked_pork_belly.png',
+  '鱼香肉丝': 'yuxiang_shredded_pork.png',
+  '红烧肉': 'braised_pork_belly_hong_shao_rou.png',
+  '麻婆豆腐': 'mapo_tofu.png',
+  '葱爆羊肉': 'stir_fried_mutton_with_scallions.png',
   /* 成人菜 - 素/蛋 */
-  '手撕包菜': 'hand_torn_sauteed_cabbage',
-  '蒜蓉西兰花': 'sauteed_broccoli_with_garlic',
-  '清炒时蔬': 'stir_fried_seasonal_greens',
-  '拍黄瓜': 'smashed_cucumber_salad',
-  '西红柿炒蛋': 'tomato_and_scrambled_eggs',
-  '地三鲜': 'sauteed_potato_eggplant_and_pepper',
-  '番茄炒蛋': 'stir_fried_tomato_and_eggs',
-  '青椒炒肉丝': 'shredded_pork_with_green_peppers',
-  '清炒上海青': 'sauteed_bok_choy',
-  '凉拌黄瓜': 'garlic_cucumber_salad',
-  '蒜蓉油麦菜': 'sauteed_lettuce_with_garlic',
-  '清炒山药': 'stir_fried_chinese_yam',
-  '白灼西兰花': 'blanched_broccoli_with_soy_sauce',
-  '番茄烧茄子': 'braised_eggplant_with_tomato',
-  '清炒荷兰豆': 'sauteed_snow_peas',
-  '蒸水蛋': 'steamed_egg_custard',
-  '酸辣土豆丝': 'sour_and_spicy_potato_strips',
-  '清炒娃娃菜': 'sauteed_baby_cabbage',
-  /* 宝宝菜（暂无英文封面图，保留拼音 slug 或后续补充） */
-  '板栗鲜鸡泥': 'ban_li_xian_ji_ni',
-  '柠檬清蒸鳕鱼': 'ning_meng_qing_zheng_xue_yu',
-  '山药瘦肉末': 'shan_yao_shou_rou_mo',
-  '猪肉土豆小软饼': 'zhu_rou_tu_dou_xiao_ruan_bing',
-  '猪肉白菜南瓜烩面': 'zhu_rou_bai_cai_nan_gua_hui_mian',
-  '山药排骨碎碎粥': 'shan_yao_pai_gu_sui_sui_zhou',
-  '西兰花虾仁滑': 'xi_lan_hua_xia_ren_hua',
-  '番茄牛肉软饭': 'fan_qie_niu_rou_ruan_fan',
-  '土豆牛肉泥': 'tu_dou_niu_rou_ni',
-  '虾仁豆腐饼': 'xia_ren_dou_fu_bing',
-  '虾仁豆腐蒸蛋': 'xia_ren_dou_fu_zheng_dan',
-  '鱼肉碎碎面': 'yu_rou_sui_sui_mian',
-  '南瓜猪肉烩饭': 'nan_gua_zhu_rou_hui_fan',
-  '里脊时蔬软面': 'li_ji_shi_shu_ruan_mian',
-  '鸡肉土豆泥': 'ji_rou_tu_dou_ni',
-  '鸡肉西兰花饼': 'ji_rou_xi_lan_hua_bing',
-  '牛肉山药粥': 'niu_rou_shan_yao_zhou',
-  '土豆牛肉软饭': 'tu_dou_niu_rou_ruan_fan',
-  '清蒸鱼肉泥': 'qing_zheng_yu_rou_ni',
-  '虾仁蒸蛋': 'xia_ren_zheng_dan'
+  '手撕包菜': 'hand_torn_sauteed_cabbage.png',
+  '蒜蓉西兰花': 'sauteed_broccoli_with_garlic.png',
+  '清炒时蔬': 'stir_fried_seasonal_greens.png',
+  '拍黄瓜': 'smashed_cucumber_salad.png',
+  '西红柿炒蛋': 'tomato_and_scrambled_eggs.png',
+  '地三鲜': 'sauteed_potato_eggplant_and_pepper.png',
+  '番茄炒蛋': 'stir_fried_tomato_and_eggs.png',
+  '青椒炒肉丝': 'shredded_pork_with_green_peppers.png',
+  '清炒上海青': 'sauteed_bok_choy.png',
+  '凉拌黄瓜': 'garlic_cucumber_salad.png',
+  '蒜蓉油麦菜': 'sauteed_lettuce_with_garlic.png',
+  '清炒山药': 'stir_fried_chinese_yam.png',
+  '白灼西兰花': 'blanched_broccoli_with_soy_sauce.png',
+  '番茄烧茄子': 'braised_eggplant_with_tomato.png',
+  '清炒荷兰豆': 'sauteed_snow_peas.png',
+  '蒸水蛋': 'steamed_egg_custard.png',
+  '酸辣土豆丝': 'sour_and_spicy_potato_strips.png',
+  '清炒娃娃菜': 'sauteed_baby_cabbage.png',
+  /* 宝宝菜 */
+  '板栗鲜鸡泥': 'chestnut_chicken_puree.png',
+  '柠檬清蒸鳕鱼': 'lemon_steamed_cod.png',
+  '山药瘦肉末': 'yam_minced_pork.png',
+  '猪肉土豆小软饼': 'pork_potato_patties.png',
+  '猪肉白菜南瓜烩面': 'pork_pumpkin_noodles.png',
+  '山药排骨碎碎粥': 'yam_rib_porridge.png',
+  '西兰花虾仁滑': 'broccoli_shrimp_paste.png',
+  '番茄牛肉软饭': 'tomato_beef_soft_rice.png',
+  '土豆牛肉泥': 'potato_beef_puree.png',
+  '虾仁豆腐饼': 'shrimp_tofu_cakes.png',
+  '虾仁豆腐蒸蛋': 'shrimp_tofu_custard.png',
+  '鱼肉碎碎面': 'fish_minced_noodles.png',
+  '南瓜猪肉烩饭': 'pumpkin_pork_risotto.png',
+  '里脊时蔬软面': 'pork_veggie_noodles.png',
+  '鸡肉土豆泥': 'chicken_potato_puree.png',
+  '鸡肉西兰花饼': 'chicken_broccoli_patties.png',
+  '牛肉山药粥': 'beef_yam_porridge.png',
+  '土豆牛肉软饭': 'potato_beef_soft_rice.png',
+  '清蒸鱼肉泥': 'steamed_fish_puree.png',
+  '虾仁蒸蛋': 'shrimp_steamed_egg.png'
 };
 
 /** 兜底图文件名（无扩展名），仅用于 getCoverSlug 返回值 */
@@ -111,57 +113,56 @@ var DEFAULT_COVER_SLUG = 'basic_cut_0_3_ar4.5';
 function getCoverSlug(dishName) {
   if (typeof dishName !== 'string' || !dishName.trim()) return DEFAULT_COVER_SLUG;
   var name = dishName.trim();
-  return RECIPE_NAME_TO_SLUG[name] || DEFAULT_COVER_SLUG;
+  var filename = RECIPE_NAME_TO_SLUG[name] || DEFAULT_COVER_SLUG;
+  // 保持兼容：对外仍返回「无扩展名」的 slug（历史上 getCoverSlug 就是无扩展名）
+  return (typeof filename === 'string')
+    ? filename.replace(/\.(png|jpe?g|webp)$/i, '')
+    : DEFAULT_COVER_SLUG;
+}
+
+function hasFileExtension(s) {
+  return typeof s === 'string' && /\.(png|jpe?g|webp)$/i.test(s);
+}
+
+function ensureCoverFilename(slugOrFilename) {
+  if (!slugOrFilename || typeof slugOrFilename !== 'string') return '';
+  var v = slugOrFilename.trim();
+  if (!v) return '';
+  return hasFileExtension(v) ? v : (v + '.png');
 }
 
 /**
  * 根据菜名拼出完整封面图 URL（云存储）
- * - 在 RECIPE_NAME_TO_SLUG 中则返回：CLOUD_STORAGE_BASE/slug.png
+ * - 在 RECIPE_NAME_TO_SLUG 中则返回：CLOUD_STORAGE_BASE/<filename>
+ *   - 若映射值已带扩展名（.jpg/.png），则直接使用
+ *   - 若映射值不带扩展名（兼容旧写法），默认补 .png
  * - 未找到（如未上传图片的菜）则返回兜底图 DEFAULT_COVER_URL
  * - 保证返回值包含 //，避免小程序渲染层 500 路径错误
  * @param {string} dishName - recipes.js 里的 name
  * @returns {string} 完整 cloud://... 或可用的 URL
  */
 function getRecipeCoverImageUrl(dishName) {
-  var name = typeof dishName === 'string' ? dishName.trim() : '';
-  var slug = name ? RECIPE_NAME_TO_SLUG[name] : null;
-  var url;
-  if (slug) {
-    url = CLOUD_STORAGE_BASE + '/' + slug + '.png';
-  } else {
-    url = DEFAULT_COVER_URL;
-  }
-  if (url.indexOf('//') === -1) {
-    url = DEFAULT_COVER_URL;
+  // 1. 基础校验：确保输入是字符串
+  var name = (typeof dishName === 'string') ? dishName.trim() : '';
+  
+  // 2. 匹配文件名：如果找不到，直接给默认图，防止拼接出无效路径
+  var mapped = name ? RECIPE_NAME_TO_SLUG[name] : null;
+  
+  // 3. 构建 URL
+  var url = DEFAULT_COVER_URL;
+  if (mapped) {
+    // mapped 可能是：
+    // - 'xxx.png' / 'xxx.jpg'（推荐：RECIPE_NAME_TO_SLUG 直接存完整文件名）
+    // - 'xxx'（兼容旧写法：这里会自动补成 'xxx.png'）
+    var filename = ensureCoverFilename(mapped);
+    if (filename) url = CLOUD_STORAGE_BASE + '/' + filename;
   }
 
-  // #region agent log
-  try {
-    var payloadCover = {
-      sessionId: 'debug-session',
-      runId: 'pre-fix',
-      hypothesisId: slug ? 'H1' : 'H4',
-      location: 'miniprogram/data/recipeCoverSlugs.js:getRecipeCoverImageUrl',
-      message: 'cover image url resolved',
-      data: { dishName: name, slug: slug, url: url },
-      timestamp: Date.now()
-    };
-    if (typeof fetch === 'function') {
-      fetch('http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payloadCover)
-      }).catch(function () { });
-    } else if (typeof wx !== 'undefined' && wx.request) {
-      wx.request({
-        url: 'http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3',
-        method: 'POST',
-        header: { 'Content-Type': 'application/json' },
-        data: payloadCover
-      });
-    }
-  } catch (logErr4) { }
-  // #endregion
+  // 4. 终极防御：如果 URL 格式不对（比如 CLOUD_STORAGE_BASE 没定义好），回退到默认图
+  // 同时确保 url 存在且不是 "undefined" 字符串
+  if (!url || typeof url !== 'string' || url.indexOf('//') === -1 || url.indexOf('undefined') !== -1) {
+    return DEFAULT_COVER_URL;
+  }
 
   return url;
 }

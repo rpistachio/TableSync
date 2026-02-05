@@ -263,9 +263,6 @@ function getIngredientNames(list) {
 }
 
 export function generateShoppingList(adultRecipe, babyRecipe) {
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'menuGenerator.js:265',message:'Entering generateShoppingList',data:{adultRecipeName:adultRecipe?.name,hasAdultIngredients:!!adultRecipe?.ingredients,babyRecipeName:babyRecipe?.name,hasBabyIngredients:!!babyRecipe?.ingredients},hypothesisId:'A',timestamp:Date.now(),sessionId:'debug-session'})}).catch(()=>{});
-  // #endregion
   const aNames = new Set(getIngredientNames(adultRecipe?.ingredients));
   const bNames = new Set(getIngredientNames(babyRecipe?.ingredients));
   const sharedNames = [...aNames].filter((n) => bNames.has(n));

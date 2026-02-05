@@ -721,7 +721,15 @@ exports.getTodayMenu = function (preference) {
   return Object.assign({}, menu, { adultRecipe: adapted.adultRecipe || null, babyRecipe: adapted.babyRecipe || null });
 };
 
-exports.generateSteps = function (preference) {
+/**
+ * 生成做菜步骤：
+ * - 默认优先使用多菜并行流水线（generateUnifiedSteps）
+ * - 在 options.forceLinear === true 时，强制退回按菜品顺序的线性逻辑
+ *
+ * @param {Object} preference - 用户偏好
+ * @param {Object} [options]  - 可选项，如 { forceLinear: true }
+ */
+exports.generateSteps = function (preference, options) {
   var app = typeof getApp === 'function' ? getApp() : null;
   var todayMenus = app && app.globalData ? app.globalData.todayMenus : null;
   var storedPref = null;
@@ -757,10 +765,23 @@ exports.generateSteps = function (preference) {
   
   if (todayMenus && todayMenus.length > 0) {
     var first = todayMenus[0];
-    var list = (app && app.globalData && app.globalData.mergedShoppingList && app.globalData.mergedShoppingList.length > 0) ? app.globalData.mergedShoppingList : exports.generateShoppingListFromMenus(effectivePref, todayMenus);
-    if (todayMenus.length > 1 && generator.generateUnifiedSteps) {
-      return generator.generateUnifiedSteps(todayMenus, list);
+    var list = (app && app.globalData && app.globalData.mergedShoppingList && app.globalData.mergedShoppingList.length > 0)
+      ? app.globalData.mergedShoppingList
+      : exports.generateShoppingListFromMenus(effectivePref, todayMenus);
+
+    var forceLinear = options && options.forceLinear === true;
+
+    // 多菜场景：根据是否强制线性选择策略
+    if (todayMenus.length > 1) {
+      if (!forceLinear && generator.generateUnifiedSteps) {
+        return generator.generateUnifiedSteps(todayMenus, list);
+      }
+      if (generator.linearFallback) {
+        return generator.linearFallback(todayMenus, list);
+      }
     }
+
+    // 单菜场景或兜底：退回旧版单菜 steps 生成逻辑
     var steps = generator.generateSteps(first.adultRecipe, first.babyRecipe, list);
     if (steps.length > 0 && !first.babyRecipe && first.adultRecipe && first.adultRecipe.baby_variant && effectivePref && (effectivePref.hasBaby === true || effectivePref.hasBaby === '1')) {
       var stage = exports.getBabyVariantByAge(first.adultRecipe, effectivePref.babyMonth);

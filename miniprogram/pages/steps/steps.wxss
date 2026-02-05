@@ -1,5 +1,4 @@
 .steps-container {
-  min-height: 100vh;
   background-color: #fdf8f2;
 }
 
@@ -244,10 +243,164 @@
   margin-bottom: 0;
 }
 
+.detail-line text {
+  /* 关键：segments 会渲染成多个 <text>，必须保持行内，
+     否则会出现“切 / 丁”被拆成多行的怪异效果。 */
+  display: inline;
+  white-space: pre-wrap;
+}
+
+.detail-line-text {
+  /* 统一包裹一层 <text>，确保同一行内排版 */
+  white-space: pre-wrap;
+}
+
 .detail-strong {
   font-weight: 600;
-  color: #1a1a1a;
-  background: linear-gradient(to bottom, transparent 60%, rgba(255, 213, 79, 0.45) 60%);
+  color: #2d2d2d;
+  padding: 0 4rpx;
+  border-radius: 6rpx;
+  /* 荧光笔：强调词更“浮”但不变成整块背景 */
+  background: linear-gradient(to top, #fff3e0 40%, transparent 40%);
+}
+
+/* 非重点文本：降噪 */
+.detail-light {
+  color: #666;
+  font-size: 28rpx;
+}
+
+/* 正文块收敛：更像清单而不是“卡片里的卡片” */
+.step-details.condensed {
+  margin: 0 0 24rpx;
+  padding: 8rpx 0 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* --- 视觉降噪新增：Header 小徽标 / Meta mini --- */
+.tag-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 12rpx;
+  flex-wrap: wrap;
+}
+
+.mini-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 40rpx;
+  padding: 0 14rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  line-height: 40rpx;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.05);
+  color: #4a4a4a;
+}
+
+.mini-badge.adult {
+  background: rgba(108, 181, 139, 0.16);
+  color: #295c3a;
+}
+.mini-badge.baby {
+  background: rgba(214, 122, 125, 0.16);
+  color: #9d4a4d;
+}
+.mini-badge.knife {
+  background: rgba(232, 168, 124, 0.18);
+  color: #7b4120;
+}
+
+.step-card__meta-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 10rpx;
+  font-size: 24rpx;
+  color: #8e857e;
+  margin-top: 10rpx;
+}
+
+.step-card__meta-mini .iconfont,
+.step-card__meta-mini .iconfont-time {
+  font-size: 26rpx;
+  line-height: 1;
+  transform: translateY(1rpx);
+}
+
+/* --- 视觉降噪新增：并行提示 pill（替代 context-hint 的更轻形态） --- */
+.context-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 14rpx;
+  padding: 10rpx 16rpx;
+  border-radius: 999rpx;
+  background: rgba(232, 168, 124, 0.16);
+  border: 1rpx solid rgba(232, 168, 124, 0.22);
+  color: #4b3b33;
+  margin: 0 0 18rpx;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.pill-text {
+  font-size: 24rpx;
+  line-height: 1.4;
+  color: #4b3b33;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pill-timer {
+  flex: 0 0 auto;
+  font-size: 22rpx;
+  font-weight: 700;
+  padding: 6rpx 12rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.75);
+  color: #b46535;
+}
+
+/* --- 视觉降噪新增：调料标签化（横向滚动） --- */
+.seasoning-inline {
+  margin: 16rpx 0 18rpx;
+}
+
+.seasoning-scroll {
+  display: flex;
+  gap: 12rpx;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 6rpx;
+  scroll-snap-type: x proximity;
+}
+
+.ing-tag {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 10rpx;
+  padding: 10rpx 16rpx;
+  border-radius: 999rpx;
+  background: rgba(0, 0, 0, 0.03);
+  border: 1rpx solid rgba(0, 0, 0, 0.06);
+  scroll-snap-align: start;
+}
+
+.ing-tag .n {
+  font-size: 22rpx;
+  color: #5a544f;
+  white-space: nowrap;
+}
+
+.ing-tag .a {
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #E8A87C;
+  white-space: nowrap;
 }
 
 /* 调料网格优化 */
@@ -362,4 +515,207 @@
   color: #fff;
   font-size: 32rpx;
   line-height: 96rpx;
+}
+
+/* --- 阶段横幅 & 多阶段引导 --- */
+.phase-banner {
+  margin: 32rpx 0 20rpx;
+  padding: 22rpx 28rpx;
+  border-radius: 24rpx;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 8rpx 28rpx rgba(0, 0, 0, 0.06);
+}
+
+.phase-banner-main {
+  display: flex;
+  align-items: center;
+}
+
+.phase-icon {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 999rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40rpx;
+  margin-right: 20rpx;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.phase-texts {
+  display: flex;
+  flex-direction: column;
+}
+
+.phase-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  letter-spacing: 3rpx;
+}
+
+.phase-subtitle {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #7c746d;
+}
+
+/* 不同阶段的主题色调 - 加深背景增强层次感 */
+.phase-banner.prep {
+  background: linear-gradient(135deg, #c8e6c9 0%, #e8f5e9 100%);
+  border-left: 6rpx solid #4caf50;
+  color: #1b5e20;
+}
+
+.phase-banner.long_term {
+  background: linear-gradient(135deg, #ffe0b2 0%, #fff3e0 100%);
+  border-left: 6rpx solid #ff9800;
+  color: #e65100;
+}
+
+.phase-banner.gap {
+  background: linear-gradient(135deg, #bbdefb 0%, #e3f2fd 100%);
+  border-left: 6rpx solid #2196f3;
+  color: #0d47a1;
+}
+
+.phase-banner.cook {
+  background: linear-gradient(135deg, #ffccbc 0%, #fbe9e7 100%);
+  border-left: 6rpx solid #ff5722;
+  color: #bf360c;
+}
+
+.phase-banner.finish {
+  background: linear-gradient(135deg, #d1c4e9 0%, #ede7f6 100%);
+  border-left: 6rpx solid #673ab7;
+  color: #311b92;
+}
+
+/* --- 左侧时间轴导轨（配合阶段与并行） --- */
+.timeline-rail {
+  position: absolute;
+  left: -36rpx;
+  top: 12rpx;
+  bottom: 12rpx;
+  width: 40rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.timeline-dot {
+  width: 20rpx;
+  height: 20rpx;
+  border-radius: 50%;
+  margin-bottom: 8rpx;
+  box-shadow: 0 0 0 6rpx rgba(255, 255, 255, 0.8);
+}
+
+.dot-knife {
+  background: #6cb58b;
+}
+
+.dot-fire {
+  background: #f29b64;
+}
+
+.timeline-line {
+  flex: 1;
+  width: 4rpx;
+}
+
+.line-dashed {
+  border-right: 4rpx dashed rgba(108, 181, 139, 0.5);
+}
+
+.line-solid {
+  border-right: 4rpx solid rgba(242, 155, 100, 0.5);
+}
+
+.baby-branch {
+  margin-top: 10rpx;
+}
+
+.baby-dot {
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 50%;
+  background: #ffe5e7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20rpx;
+  box-shadow: 0 4rpx 10rpx rgba(214, 122, 125, 0.35);
+}
+
+/* --- 并行上下文提示区域 --- */
+.context-hint {
+  margin: 0 -12rpx 20rpx;
+  padding: 18rpx 22rpx;
+  border-radius: 20rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  background: linear-gradient(120deg, rgba(250, 227, 204, 0.7), rgba(253, 244, 232, 0.9));
+  border-left: 8rpx solid #e8a87c;
+}
+
+.timeline-item.active .context-hint {
+  box-shadow: 0 8rpx 24rpx rgba(193, 102, 62, 0.18);
+}
+
+.context-hint-icon {
+  width: 42rpx;
+  height: 42rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.85);
+  font-size: 26rpx;
+  margin-right: 18rpx;
+}
+
+.context-hint-texts {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.context-hint-main {
+  font-size: 26rpx;
+  color: #4b3b33;
+  line-height: 1.6;
+}
+
+.remaining-time {
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: #b46535;
+}
+
+/* 预留：并行任务状态指示器与时间轴进度条（后续扩展可直接使用） */
+.parallel-indicator {
+  display: inline-flex;
+  align-items: center;
+  padding: 4rpx 12rpx;
+  border-radius: 999rpx;
+  font-size: 20rpx;
+  background: rgba(232, 168, 124, 0.12);
+  color: #b46535;
+}
+
+.timeline-gantt {
+  margin-top: 12rpx;
+  height: 12rpx;
+  border-radius: 999rpx;
+  background: rgba(0, 0, 0, 0.03);
+  overflow: hidden;
+}
+
+.timeline-gantt__fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #e8a87c, #f7c28a);
 }

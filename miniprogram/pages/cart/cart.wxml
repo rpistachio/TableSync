@@ -1,9 +1,2 @@
-<view class="cart-page">
-  <view class="dish-name">当前菜品：{{currentDishName}}</view>
-  <block wx:if="{{!isEmpty}}">
-    <view class="list">
-      <view wx:for="{{ingredientsList}}" wx:key="name" class="list-item">{{item.name}} {{item.amount || ''}}</view>
-    </view>
-  </block>
-  <view wx:else class="empty">暂无配料，请从首页选择菜品</view>
-</view>
+<!--pages/cart/cart.wxml-->
+<text>pages/cart/cart.wxml</text>

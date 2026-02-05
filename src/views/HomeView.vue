@@ -119,9 +119,6 @@ const toggleMember = (type) => {
 };
 
 const handleGenerate = () => {
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'HomeView.vue:121',message:'handleGenerate clicked',data:{selectedTaste:selectedTaste.value,selectedMeat:selectedMeat.value,activeMember:activeMember.value},hypothesisId:'C',timestamp:Date.now(),sessionId:'debug-session'})}).catch(()=>{});
-  // #endregion
   showLoadingToast({
     message: '正在编排方案...',
     forbidClick: true
