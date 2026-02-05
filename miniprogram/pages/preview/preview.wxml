@@ -9,34 +9,13 @@
         </view>
       </view>
       <view class="preview-header">
-        <image
-          class="header-ambient-bg"
-          src="cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/prep_cover_pic/table.jpg"
-          mode="aspectFill"
-          lazy-load
-        />
-        <view class="header-mask"></view>
+        <image class="header-bg-image" src="cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/prep_cover_pic/table.jpg" mode="aspectFill" />
+        <view class="header-bg-overlay"></view>
         <view class="header-brand-lines"></view>
-        <view class="header-content">
-          <view class="title-row">
-            <view class="title-text">
-              <text class="preview-heading">今日用餐</text>
-              <text class="preview-count">{{previewCountText}}</text>
-            </view>
-            <view class="mini-spinner-wrap">
-              <view class="mini-spinner {{isEntering ? 'pop-and-expand' : ''}}">
-                <view class="mini-ring ring-1"></view>
-                <view class="mini-ring ring-2"></view>
-                <view class="mini-ring ring-3"></view>
-                <image class="mini-logo" src="cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/logo/logo-remove-removebg-preview.png" mode="aspectFit" />
-              </view>
-            </view>
-          </view>
-          <view class="header-sub-info">
-            <text class="preview-combo" wx:if="{{previewComboName}}">{{previewComboName}}</text>
-            <text class="preview-balance" wx:if="{{previewBalanceTip}}">{{previewBalanceTip}}</text>
-          </view>
-        </view>
+        <text class="preview-heading">今日用餐</text>
+        <text class="preview-count">{{previewCountText}}</text>
+        <text class="preview-combo" wx:if="{{previewComboName}}">{{previewComboName}}</text>
+        <text class="preview-balance" wx:if="{{previewBalanceTip}}">{{previewBalanceTip}}</text>
       </view>
       
       <!-- 菜谱池降级提示 -->

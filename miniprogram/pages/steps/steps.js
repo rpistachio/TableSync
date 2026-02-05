@@ -132,8 +132,22 @@ function processStepsForView(steps) {
   if (!Array.isArray(steps) || steps.length === 0) {
     return [];
   }
+
+  // 预计算阶段信息：首个烹饪步骤索引、是否存在备菜/烹饪阶段
+  var firstCookIndex = -1;
+  var hasPrepPhase = false;
+  var hasCookPhase = false;
+  for (var i = 0; i < steps.length; i++) {
+    var t = getStepType(steps[i]);
+    if (t === 'prep') hasPrepPhase = true;
+    if (t === 'cook') {
+      hasCookPhase = true;
+      if (firstCookIndex === -1) firstCookIndex = i;
+    }
+  }
+
   var lastId = steps[steps.length - 1].id;
-  return steps.map(function (s) {
+  return steps.map(function (s, index) {
     var detailsWithSegments = [];
     (s.details || []).forEach(function (line) {
       var displayLine = menuData.replaceVagueSeasoningInText ? menuData.replaceVagueSeasoningInText(line) : line;
@@ -156,10 +170,21 @@ function processStepsForView(steps) {
       });
     });
     var rawDetails = s.details || [];
-    var title = (s.title || '').toString();
     var stepType = getStepType(s);
     var isPrepStep = stepType === 'prep';
     var seasoningsList = extractSeasonings(rawDetails);
+
+    // 阶段起点标记：首个备菜步骤 + 首个烹饪步骤
+    var isPhaseStart = false;
+    var phaseType = stepType;
+    if (hasPrepPhase && stepType === 'prep' && index === 0) {
+      isPhaseStart = true;
+      phaseType = 'prep';
+    } else if (hasCookPhase && stepType === 'cook' && index === firstCookIndex) {
+      isPhaseStart = true;
+      phaseType = 'cook';
+    }
+
     return {
       id: s.id,
       title: s.title,
@@ -172,7 +197,10 @@ function processStepsForView(steps) {
       isLast: lastId !== null && s.id === lastId,
       knifeWorkLabel: extractKnifeWork(rawDetails),
       seasoningsList: seasoningsList,
-      showSeasoningsList: seasoningsList.length > 0 && !isPrepStep
+      showSeasoningsList: seasoningsList.length > 0 && !isPrepStep,
+      // 阶段分隔相关
+      isPhaseStart: isPhaseStart,
+      phaseType: phaseType
     };
   });
 }
@@ -180,8 +208,15 @@ function processStepsForView(steps) {
 Page({
   data: {
     steps: [],
+    viewSteps: [],
     progressPercentage: 0,
     currentStepLabel: '第 0/0 步',
+    completedCount: 0,
+    totalSteps: 0,
+    completionRate: 0,
+    currentIndex: 0,
+    showPrepPhase: false,
+    showCookPhase: false,
     // 动态头图相关
     currentStepImage: '',
     currentStepTitle: '开始烹饪',
@@ -363,11 +398,64 @@ Page({
     var total = steps.length;
     var progress = total === 0 ? 0 : Math.round((completedCount / total) * 100);
     var currentLabel = total === 0 ? '暂无步骤' : '第 ' + Math.min(completedCount + 1, total) + '/' + total + ' 步';
+
+    // 生成用于视图渲染的步骤数据（包含阶段信息）
+    var viewSteps = processStepsForView(steps);
+    var hasPrepPhase = false;
+    var hasCookPhase = false;
+    for (var i = 0; i < viewSteps.length; i++) {
+      if (viewSteps[i].stepType === 'prep') hasPrepPhase = true;
+      if (viewSteps[i].stepType === 'cook') hasCookPhase = true;
+    }
+
+    // 计算当前高亮步骤下标：优先第一个未完成，否则最后一个
+    var currentIndex = 0;
+    if (total > 0) {
+      currentIndex = -1;
+      for (var j = 0; j < steps.length; j++) {
+        if (!steps[j].completed) {
+          currentIndex = j;
+          break;
+        }
+      }
+      if (currentIndex === -1) {
+        currentIndex = total - 1;
+      }
+    }
+    this._currentStepIndex = currentIndex;
+
     this.setData({
-      steps: processStepsForView(steps),
+      steps: viewSteps,
+      viewSteps: viewSteps,
       progressPercentage: progress,
-      currentStepLabel: currentLabel
+      currentStepLabel: currentLabel,
+      completedCount: completedCount,
+      totalSteps: total,
+      completionRate: progress,
+      currentIndex: currentIndex,
+      showPrepPhase: hasPrepPhase,
+      showCookPhase: hasCookPhase
     });
+  },
+
+  /**
+   * 点击时间轴任意步骤：将其设为当前高亮，并刷新头图
+   */
+  onStepTap: function (e) {
+    var index = e.currentTarget.dataset.index;
+    if (typeof index !== 'number') {
+      index = Number(index);
+    }
+    if (isNaN(index)) return;
+    if (!Array.isArray(this._stepsRaw) || this._stepsRaw.length === 0) return;
+
+    index = Math.max(0, Math.min(index, this._stepsRaw.length - 1));
+
+    this.setData({
+      currentIndex: index
+    });
+    this._currentStepIndex = index;
+    this._updateHeaderImage(this._stepsRaw, index);
   },
 
   markCompleted: function (e) {
@@ -390,6 +478,34 @@ Page({
       console.warn('保存步骤状态失败:', err);
     }
     this._updateView(steps);
+
+    // 根据最新进度，自动滚动到当前高亮（下一未完成）步骤，并刷新头图
+    var nextIndex = this._currentStepIndex;
+    if (typeof nextIndex !== 'number') {
+      nextIndex = Number(nextIndex);
+    }
+    if (!isNaN(nextIndex) && nextIndex >= 0 && nextIndex < steps.length) {
+      var nextStep = steps[nextIndex];
+      // 仅当存在未完成步骤时才滚动（全部完成时不滚动）
+      if (nextStep && !nextStep.completed) {
+        var selector = '#step-' + nextStep.id;
+        try {
+          wx.pageScrollTo({
+            selector: selector,
+            duration: 300,
+            offsetTop: -200 // 留出头图区域
+          });
+        } catch (scrollErr) {
+          console.warn('自动滚动到下一步骤失败:', scrollErr);
+        }
+      }
+      // 无论是否存在未完成步骤，都根据当前索引更新头图
+      this._updateHeaderImage(steps, nextIndex);
+    } else {
+      // 索引异常时降级为使用最后一步更新头图
+      this._updateHeaderImage(steps, steps.length - 1);
+    }
+
     var lastId = steps[steps.length - 1].id;
     if (step.id === lastId) {
       wx.showModal({

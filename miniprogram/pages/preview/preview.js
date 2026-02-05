@@ -69,6 +69,41 @@ Page({
         previewComboName: (pref.meatCount || 2) + '荤' + (pref.vegCount || 1) + '素' + (pref.soupCount ? '1汤' : '')
       });
 
+      // #region agent log
+      try {
+        var sampleRows = (rows || []).slice(0, 5).map(function (r) {
+          return {
+            adultName: r.adultName,
+            coverUrl: r.coverUrl,
+            hasCover: r.hasCover
+          };
+        });
+        var payloadH1 = {
+            sessionId: 'debug-session',
+            runId: 'pre-fix',
+            hypothesisId: 'H1',
+            location: 'miniprogram/pages/preview/preview.js:onLoad',
+            message: 'preview onLoad rows cover urls',
+            data: { rows: sampleRows },
+            timestamp: Date.now()
+          };
+        if (typeof fetch === 'function') {
+          fetch('http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payloadH1)
+          }).catch(function () { });
+        } else if (typeof wx !== 'undefined' && wx.request) {
+          wx.request({
+            url: 'http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3',
+            method: 'POST',
+            header: { 'Content-Type': 'application/json' },
+            data: payloadH1
+          });
+        }
+      } catch (logErr) { }
+      // #endregion
+
       // 5. 延迟触发微缩转盘入场动画
       setTimeout(function () {
         that.setData({ isEntering: true });
@@ -168,6 +203,41 @@ Page({
         getApp().globalData.menuPreview.balanceTip = balanceTip;
       }
       that.setData({ previewMenuRows: newRows, previewComboName: result.comboName || '', previewBalanceTip: balanceTip, previewDashboard: dashboard, previewHasSharedBase: hasSharedBase });
+
+      // #region agent log
+      try {
+        var sampleNewRows = (newRows || []).slice(0, 5).map(function (r) {
+          return {
+            adultName: r.adultName,
+            coverUrl: r.coverUrl,
+            hasCover: r.hasCover
+          };
+        });
+        var payloadH2 = {
+            sessionId: 'debug-session',
+            runId: 'pre-fix',
+            hypothesisId: 'H2',
+            location: 'miniprogram/pages/preview/preview.js:handleShuffle',
+            message: 'preview handleShuffle rows cover urls',
+            data: { rows: sampleNewRows },
+            timestamp: Date.now()
+          };
+        if (typeof fetch === 'function') {
+          fetch('http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payloadH2)
+          }).catch(function () { });
+        } else if (typeof wx !== 'undefined' && wx.request) {
+          wx.request({
+            url: 'http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3',
+            method: 'POST',
+            header: { 'Content-Type': 'application/json' },
+            data: payloadH2
+          });
+        }
+      } catch (logErr2) { }
+      // #endregion
     } catch (e) {
       console.error('换一换失败:', e);
       wx.showToast({ title: '换一换失败', icon: 'none' });
@@ -273,6 +343,41 @@ Page({
         previewDashboard: that._computePreviewDashboard(newMenus, pref),
         previewHasSharedBase: newRows.some(function (r) { return r.showSharedHint; })
       });
+
+      // #region agent log
+      try {
+        var sampleReplacedRows = (newRows || []).slice(0, 5).map(function (r) {
+          return {
+            adultName: r.adultName,
+            coverUrl: r.coverUrl,
+            hasCover: r.hasCover
+          };
+        });
+        var payloadH3 = {
+            sessionId: 'debug-session',
+            runId: 'pre-fix',
+            hypothesisId: 'H3',
+            location: 'miniprogram/pages/preview/preview.js:handleReplaceUnchecked',
+            message: 'preview handleReplaceUnchecked rows cover urls',
+            data: { rows: sampleReplacedRows },
+            timestamp: Date.now()
+          };
+        if (typeof fetch === 'function') {
+          fetch('http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payloadH3)
+          }).catch(function () { });
+        } else if (typeof wx !== 'undefined' && wx.request) {
+          wx.request({
+            url: 'http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3',
+            method: 'POST',
+            header: { 'Content-Type': 'application/json' },
+            data: payloadH3
+          });
+        }
+      } catch (logErr3) { }
+      // #endregion
       wx.showToast({ title: '已为您选出更均衡的搭配', icon: 'none' });
     } catch (e) {
       console.error('换掉未勾选失败:', e);

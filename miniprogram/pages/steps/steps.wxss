@@ -3,24 +3,153 @@
   background-color: #fdf8f2;
 }
 
+/* --- 1. 沉浸式头图区域 --- */
+.steps-header {
+  position: relative;
+  height: 440rpx;
+  display: flex;
+  align-items: flex-end;
+  padding: 40rpx;
+  overflow: hidden;
+}
+
+.header-ambient-bg {
+  position: absolute;
+  top: -20rpx; left: -20rpx;
+  width: 110%; height: 110%;
+  filter: blur(25px) brightness(0.7); /* 强模糊+暗处理 */
+  z-index: 1;
+}
+
+.header-mask {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: linear-gradient(to top, #fdf8f2 0%, rgba(0,0,0,0.2) 100%);
+  z-index: 2;
+}
+
+.header-content {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+}
+
+.hero-section {
+  display: flex;
+  align-items: center;
+  gap: 32rpx;
+}
+
+/* 进度环核心逻辑 */
+.progress-visual {
+  position: relative;
+  width: 150rpx;
+  height: 150rpx;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  padding: 8rpx;
+}
+
+.progress-ring {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  /* 镂空技术：只保留外圈 */
+  -webkit-mask: radial-gradient(transparent 60%, black 64%);
+  mask: radial-gradient(transparent 60%, black 64%);
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dish-mini-img {
+  position: absolute;
+  top: 15%; left: 15%;
+  width: 70%; height: 70%;
+  border-radius: 50%;
+  border: 4rpx solid #fff;
+}
+
+.step-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.progress-text {
+  font-size: 22rpx;
+  color: #E8A87C;
+  font-weight: bold;
+  letter-spacing: 2rpx;
+}
+
+.step-main-title {
+  font-size: 38rpx;
+  font-weight: 800;
+  color: #2d2d2d;
+  margin: 4rpx 0;
+}
+
+.step-sub-title {
+  font-size: 24rpx;
+  color: #8e857e;
+}
+
+/* --- 2. 步骤列表区域 --- */
 .page-content {
-  padding: 32rpx 32rpx 192rpx;
+  padding: 20rpx 32rpx 240rpx;
 }
 
-.progress-block {
-  padding: 32rpx 40rpx;
-  background: #fff;
-  border-radius: 32rpx;
-  box-shadow: inset 0 2rpx 4rpx rgba(0, 0, 0, 0.06);
-  margin: 0 32rpx 32rpx;
+.timeline-container {
+  margin-top: 12rpx;
 }
 
-.progress-label {
-  font-size: 26rpx;
-  color: #5a544f;
-  margin-top: 20rpx;
-  text-align: center;
-  display: block;
+.timeline-item {
+  position: relative;
+}
+
+.timeline-content {
+  transition: all 0.3s ease;
+}
+
+/* 非当前步骤：整体轻微缩小、半透明并折叠内容 */
+.timeline-item:not(.active) .timeline-content {
+  opacity: 0.55;
+  transform: scale(0.95);
+  max-height: 260rpx;
+  overflow: hidden;
+}
+
+/* 当前步骤：完全展开，视觉权重更高 */
+.timeline-item.active .timeline-content {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* 阶段分隔横幅：备菜 / 烹饪 */
+.phase-divider {
+  display: inline-flex;
+  align-items: center;
+  padding: 12rpx 28rpx;
+  margin: 24rpx 0 12rpx;
+  border-radius: 999rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.phase-icon {
+  margin-right: 12rpx;
+}
+
+.phase-title {
+  letter-spacing: 2rpx;
+}
+
+.prep-phase {
+  background: linear-gradient(90deg, rgba(203, 231, 213, 0.95), rgba(232, 245, 237, 0.95));
+  color: #295c3a;
+}
+
+.cook-phase {
+  background: linear-gradient(90deg, rgba(255, 207, 166, 0.95), rgba(255, 234, 210, 0.95));
+  color: #7b4120;
 }
 
 .steps-list {
@@ -29,15 +158,28 @@
 
 .step-card {
   background: #fff;
-  border-radius: 40rpx;
+  border-radius: 36rpx;
   padding: 40rpx;
-  margin: 0 32rpx 24rpx;
-  box-shadow: 0 4rpx 16rpx rgba(74, 69, 64, 0.06);
-  overflow: hidden;
+  margin-bottom: 32rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease;
+}
+
+/* 当前步骤卡片：更亮的渐变背景与更强阴影 */
+.timeline-item.active .step-card {
+  background: linear-gradient(135deg, #ffffff 0%, #fef9f5 100%);
+  box-shadow: 0 16rpx 48rpx rgba(193, 102, 62, 0.12);
+}
+
+/* 非当前步骤卡片：略微收敛阴影，弱化存在感 */
+.timeline-item:not(.active) .step-card {
+  box-shadow: 0 6rpx 18rpx rgba(0, 0, 0, 0.03);
 }
 
 .step-card.completed {
-  opacity: 0.6;
+  opacity: 0.5;
+  transform: scale(0.96);
+  filter: grayscale(0.8);
 }
 
 .step-card__header {
@@ -52,38 +194,28 @@
 }
 
 .step-card__title {
+  font-size: 32rpx;
   font-weight: 700;
   color: #1a1a1a;
-  letter-spacing: 3rpx;
-  font-size: 28rpx;
 }
 
 .role-badge {
   font-size: 20rpx;
-  font-weight: 700;
-  letter-spacing: 1rpx;
-  padding: 6rpx 16rpx;
+  padding: 4rpx 16rpx;
   border-radius: 8rpx;
+  margin-left: 16rpx;
 }
 
-.role-badge.adult {
-  background: #e8f0e9;
-  color: #4a5d4e;
-}
-
-.role-badge.baby {
-  background: #feeff0;
-  color: #d67a7d;
-}
+.role-badge.adult { background: #e8f0e9; color: #4a5d4e; }
+.role-badge.baby { background: #feeff0; color: #d67a7d; }
 
 .type-badge {
-  margin-left: auto;
-  font-size: 32rpx;
-  font-weight: 700;
-  padding: 8rpx 20rpx;
-  border-radius: 12rpx;
+  float: right;
   background: #2d2d2d;
   color: #fff;
+  font-size: 22rpx;
+  padding: 6rpx 20rpx;
+  border-radius: 10rpx;
 }
 
 .step-card__meta {
@@ -118,11 +250,12 @@
   background: linear-gradient(to bottom, transparent 60%, rgba(255, 213, 79, 0.45) 60%);
 }
 
+/* 调料网格优化 */
 .ingredients-check {
-  margin: 0 0 32rpx;
-  padding: 24rpx 28rpx;
-  background: #f0ebe6;
-  border-radius: 16rpx;
+  background: #f8f5f2;
+  border-radius: 20rpx;
+  padding: 24rpx;
+  margin: 20rpx 0;
 }
 
 .ingredients-check__item {
@@ -131,6 +264,43 @@
   color: #5a544f;
   line-height: 1.7;
 }
+
+.ing-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+/* 调料滑块容器：默认支持多行排布，当前步骤时变为横向滑动条 */
+.seasonings-slider {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 当前步骤的调料改为横向滑动卡片，更像工具栏 */
+.timeline-item.active .seasonings-slider {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 8rpx;
+}
+
+.ing-item {
+  background: #fff;
+  padding: 8rpx 20rpx;
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  border: 1rpx solid #eee;
+}
+
+/* 当前步骤调料：更像一排可滑动的小卡片 */
+.timeline-item.active .ing-item {
+  flex: 0 0 auto;
+  min-width: 160rpx;
+  box-shadow: 0 8rpx 20rpx rgba(0, 0, 0, 0.06);
+  scroll-snap-align: start;
+}
+
+.ing-n { color: #5a544f; margin-right: 8rpx; }
+.ing-a { color: #E8A87C; font-weight: bold; }
 
 /* 宝宝分拨动作：高亮整行，便于一眼识别 */
 .baby-portion-action {
@@ -146,20 +316,22 @@
   color: #b85c38;
 }
 
+/* 按钮优化 */
 .step-action-btn {
-  height: 88rpx;
-  border-radius: 16rpx;
-  font-weight: 600;
-  border: none;
+  margin-top: 30rpx;
   background: #2d2d2d;
   color: #fff;
+  border-radius: 20rpx;
   font-size: 28rpx;
-  line-height: 88rpx;
+  height: 90rpx;
+  line-height: 90rpx;
+  border: none;
+  font-weight: 600;
 }
 
 .step-action-btn.is-done {
   background: #efe9e2;
-  color: #5a544f;
+  color: #8e857e;
 }
 
 .step-action-btn.is-last-step {

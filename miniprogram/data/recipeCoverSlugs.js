@@ -134,6 +134,35 @@ function getRecipeCoverImageUrl(dishName) {
   if (url.indexOf('//') === -1) {
     url = DEFAULT_COVER_URL;
   }
+
+  // #region agent log
+  try {
+    var payloadCover = {
+      sessionId: 'debug-session',
+      runId: 'pre-fix',
+      hypothesisId: slug ? 'H1' : 'H4',
+      location: 'miniprogram/data/recipeCoverSlugs.js:getRecipeCoverImageUrl',
+      message: 'cover image url resolved',
+      data: { dishName: name, slug: slug, url: url },
+      timestamp: Date.now()
+    };
+    if (typeof fetch === 'function') {
+      fetch('http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payloadCover)
+      }).catch(function () { });
+    } else if (typeof wx !== 'undefined' && wx.request) {
+      wx.request({
+        url: 'http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3',
+        method: 'POST',
+        header: { 'Content-Type': 'application/json' },
+        data: payloadCover
+      });
+    }
+  } catch (logErr4) { }
+  // #endregion
+
   return url;
 }
 
