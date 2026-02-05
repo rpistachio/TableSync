@@ -1,16 +1,15 @@
 <view class="shopping-page">
   <view class="page-header">
     <image class="page-header-bg" src="{{heroCoverImage}}" mode="aspectFill"></image>
-    <text class="curation-tag">Shopping List</text>
-    <text class="main-title">采购清单</text>
-    <text class="sub-title">今日菜单所需食材，按分类查看</text>
-    <view class="current-dish-row">
-      <text class="current-dish-name">{{currentDishName}}</text>
-      <image class="recipe-thumbnail" src="{{currentDishCover}}" mode="aspectFill"></image>
-    </view>
-    <view wx:if="{{todayPrepTime > 0 || todayAllergens.length > 0}}" class="meta-tags">
-      <text wx:if="{{todayPrepTime > 0}}" class="meta-tag prep-tag">准备约 {{todayPrepTime}} 分钟</text>
-      <text wx:if="{{todayAllergensText}}" class="meta-tag allergen-tag">含过敏原：{{todayAllergensText}}</text>
+    <view class="header-mask"></view>
+    <view class="header-content">
+      <text class="curation-tag">Shopping List</text>
+      <text class="main-title">采购清单</text>
+      <text class="sub-title">{{currentDishName}} · 所需食材</text>
+      <view wx:if="{{todayPrepTime > 0 || todayAllergens.length > 0}}" class="meta-tags">
+        <text wx:if="{{todayPrepTime > 0}}" class="meta-tag prep-tag">准备约 {{todayPrepTime}} 分钟</text>
+        <text wx:if="{{todayAllergensText}}" class="meta-tag allergen-tag">含过敏原：{{todayAllergensText}}</text>
+      </view>
     </view>
   </view>
   <view class="page-content">
@@ -28,14 +27,24 @@
       <view wx:for="{{groupedTodayItems}}" wx:key="category" class="category-card">
         <view class="category-card__title">{{item.category}}</view>
         <view class="category-card__list">
-          <view wx:for="{{item.items}}" wx:for-item="row" wx:key="id" class="list-row {{row.checked ? 'is-done' : ''}}">
-            <checkbox value="{{row.id}}" checked="{{row.checked}}" bindtap="onCheckToday" data-item="{{row}}"/>
+          <view
+            wx:for="{{item.items}}"
+            wx:for-item="row"
+            wx:for-index="rowIndex"
+            wx:key="id"
+            class="list-row {{row.checked ? 'is-done' : ''}} {{rowIndex % 2 === 1 ? 'stripe' : ''}}"
+            bindtap="onCheckToday"
+            data-item="{{row}}"
+          >
+            <view class="custom-check">
+              <icon wx:if="{{row.checked}}" type="success_no_circle" size="12" color="#fff"/>
+            </view>
             <view class="list-row__body">
-              <text class="list-row__name">{{row.name}}</text>
-              <text class="list-row__amount">{{row.amount}}</text>
-              <view class="list-row__tags">
-                <text wx:if="{{row.isShared}}" class="tag tag-success">共用</text>
+              <view class="name-amount-row">
+                <text class="list-row__name">{{row.name}}</text>
+                <text class="list-row__amount">{{row.amount}}</text>
               </view>
+              <text wx:if="{{row.isShared}}" class="shared-tag">多菜共用</text>
             </view>
           </view>
         </view>
@@ -45,6 +54,6 @@
   </view>
 
   <view class="fixed-bottom-bar">
-    <button class="btn-go-steps" bindtap="goToSteps">食材已买齐，去备菜做饭</button>
+    <button class="btn-go-steps" bindtap="goToSteps">食材已买齐</button>
   </view>
 </view>

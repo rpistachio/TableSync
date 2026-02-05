@@ -1,12 +1,17 @@
 .shopping-page {
   min-height: 100vh;
-  background-color: #fdf8f2;
+  background-color: #FAF9F7;
   padding-bottom: 200rpx;
 }
 
+/* Header 三层结构（与预览页一致） */
 .page-header {
   position: relative;
-  padding: 32rpx 48rpx 24rpx;
+  min-height: 360rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 48rpx 40rpx 40rpx;
   margin-bottom: 16rpx;
   overflow: hidden;
 }
@@ -17,62 +22,57 @@
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 0;
-  opacity: 0.3;
+  z-index: 1;
+  filter: blur(4px) brightness(0.9);
 }
 
-.recipe-thumbnail {
-  width: 160rpx;
-  height: 160rpx;
-  border-radius: 24rpx;
-  margin-bottom: 16rpx;
-  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.15);
-  position: relative;
-  z-index: 1;
+.header-mask {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  background: linear-gradient(to top,
+    rgba(250, 249, 247, 1) 0%,
+    rgba(250, 249, 247, 0.6) 40%,
+    transparent 100%
+  );
 }
 
-.dish-name {
-  display: block;
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #2d2d2d;
-  margin-bottom: 24rpx;
+.header-content {
   position: relative;
-  z-index: 1;
+  z-index: 3;
 }
 
 .curation-tag {
+  display: block;
   font-size: 20rpx;
   letter-spacing: 4rpx;
   color: #c1663e;
   font-weight: 700;
-  position: relative;
-  z-index: 1;
+  text-transform: uppercase;
 }
 
 .main-title {
   display: block;
-  font-size: 52rpx;
+  font-size: 48rpx;
+  font-weight: 600;
   color: #2d2d2d;
-  margin: 16rpx 0 8rpx;
-  position: relative;
-  z-index: 1;
+  margin: 12rpx 0 8rpx;
 }
 
 .sub-title {
+  display: block;
   font-size: 26rpx;
-  color: #8e857e;
-  position: relative;
-  z-index: 1;
+  color: #5a544f;
 }
 
 .meta-tags {
-  margin-top: 20rpx;
+  margin-top: 16rpx;
   display: flex;
   flex-wrap: wrap;
-  gap: 16rpx;
-  position: relative;
-  z-index: 1;
+  gap: 12rpx;
 }
 
 .meta-tag {
@@ -105,12 +105,13 @@
   color: #8e857e;
 }
 
+/* 今日提示 - 家人贴心叮嘱风格 */
 .today-tips {
   padding: 24rpx 28rpx;
   margin-bottom: 24rpx;
-  background: rgba(193, 102, 62, 0.06);
+  background: rgba(232, 168, 124, 0.1);
   border-radius: 24rpx;
-  border-left: 6rpx solid #c1663e;
+  border-left: 6rpx solid #E8A87C;
 }
 
 .today-tip-line {
@@ -133,31 +134,54 @@
   box-shadow: 0 4rpx 16rpx rgba(74, 69, 64, 0.06);
 }
 
+/* 分类卡片标题 - 像超市货架索引 */
 .category-card__title {
-  padding: 24rpx 32rpx;
-  font-size: 26rpx;
+  padding: 20rpx 32rpx;
+  font-size: 24rpx;
   font-weight: 600;
-  letter-spacing: 1rpx;
-  color: #4a4540;
-  background: #fff;
-  border-bottom: 2rpx solid #f0ede9;
+  letter-spacing: 2rpx;
+  color: #E8A87C;
+  background: rgba(232, 168, 124, 0.08);
+  border-bottom: none;
 }
 
 .category-card__list {
-  padding: 16rpx 0;
+  padding: 0;
 }
 
+/* 列表行：优雅的点击反馈 */
 .list-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 24rpx;
-  padding: 20rpx 32rpx;
-  min-height: 104rpx;
+  padding: 28rpx 32rpx;
+  transition: all 0.3s ease;
+  border-bottom: none;
 }
 
-.list-row.is-done .list-row__name {
-  text-decoration: line-through;
-  color: #969799;
+.list-row.stripe {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.list-row.is-done {
+  opacity: 0.4;
+}
+
+/* 自定义圆形勾选框 */
+.custom-check {
+  width: 40rpx;
+  height: 40rpx;
+  border: 2rpx solid #E8A87C;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.list-row.is-done .custom-check {
+  background: #E8A87C;
 }
 
 .list-row__body {
@@ -165,18 +189,37 @@
   min-width: 0;
 }
 
+.name-amount-row {
+  display: flex;
+  align-items: baseline;
+  gap: 16rpx;
+}
+
 .list-row__name {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #1a1a1a;
-  line-height: 1.4;
+  font-size: 32rpx;
+  color: #2D2D2D;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.list-row.is-done .list-row__name {
+  text-decoration: line-through;
+  color: #a0a0a0;
 }
 
 .list-row__amount {
-  font-size: 24rpx;
+  font-size: 26rpx;
   color: #8e857e;
+}
+
+.shared-tag {
+  display: inline-block;
   margin-top: 8rpx;
-  display: block;
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  background: rgba(232, 168, 124, 0.15);
+  color: #c1663e;
 }
 
 .list-row__tags {
@@ -216,18 +259,26 @@
   right: 0;
   padding: 24rpx 48rpx 48rpx;
   padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
-  background: linear-gradient(to top, #fdf8f2 90%, transparent);
+  background: linear-gradient(to top, #FAF9F7 90%, transparent);
 }
 
 .btn-go-steps {
   width: 100%;
-  height: 100rpx;
-  border-radius: 28rpx;
-  font-weight: 700;
-  font-size: 34rpx;
+  height: 96rpx;
+  border-radius: 24rpx;
+  font-weight: 600;
+  font-size: 30rpx;
   color: #fff;
-  background: linear-gradient(135deg, #c1663e 0%, #a8522e 100%);
+  background: #E8A87C;
   border: none;
-  line-height: 100rpx;
-  box-shadow: 0 8rpx 24rpx rgba(193, 102, 62, 0.35);
+  line-height: 96rpx;
+  text-align: center;
+}
+
+.btn-go-steps::after {
+  border: none;
+}
+
+.btn-go-steps:active {
+  opacity: 0.9;
 }

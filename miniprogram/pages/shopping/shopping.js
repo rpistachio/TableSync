@@ -143,6 +143,9 @@ Page({
     var row = items.find(function (it) { return it.id === item.id; });
     if (row) {
       row.checked = !row.checked;
+      if (row.checked) {
+        wx.vibrateShort({ type: 'light' });
+      }
       persistChecked(items, STORAGE_KEY_TODAY);
       this.setData({ todayItems: items, groupedTodayItems: groupByCategory(items) });
     }

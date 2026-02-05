@@ -563,6 +563,7 @@
   border-radius: 24rpx;
   padding: 0 16rpx;
   box-sizing: border-box;
+  text-align: center;
 }
 
 .preview-btn::after {
