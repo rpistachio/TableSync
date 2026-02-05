@@ -1,10 +1,10 @@
-/* 全屏预览页：温暖米白背景（护眼），整页可下拉滚动 */
+/* 全屏预览页：极浅高级灰背景，整页可下拉滚动 */
 .preview-page {
   min-height: 100vh;
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #faf6f0;
+  background-color: #F8F9FA;
   box-sizing: border-box;
 }
 
@@ -44,12 +44,12 @@
   background: rgba(255, 255, 255, 0.9);
   border-radius: 40rpx;
   box-shadow: 0 4rpx 16rpx rgba(74, 69, 64, 0.12);
-  border: 2rpx solid rgba(193, 102, 62, 0.25);
+  border: 2rpx solid rgba(232, 168, 124, 0.25);
 }
 
 .preview-large-mode-btn.is-active {
-  background: rgba(193, 102, 62, 0.15);
-  border-color: #c1663e;
+  background: rgba(232, 168, 124, 0.15);
+  border-color: #E8A87C;
 }
 
 .preview-large-mode-icon {
@@ -64,41 +64,216 @@
 }
 
 .preview-large-mode-btn.is-active .preview-large-mode-label {
-  color: #c1663e;
+  color: #E8A87C;
 }
 
+/* 三层夹心：底层图片 -> 中层渐变 -> 顶层文字 */
 .preview-header {
-  padding: 32rpx 40rpx 24rpx;
+  position: relative;
+  padding: 120rpx 40rpx 40rpx;
+  overflow: hidden;
+  min-height: 380rpx;
+  display: flex;
+  align-items: flex-end;
   flex-shrink: 0;
+}
+
+.header-ambient-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  filter: blur(4px) brightness(0.9);
+}
+
+.header-mask {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  background: linear-gradient(to top,
+    rgba(250, 246, 240, 1) 0%,
+    rgba(250, 246, 240, 0.6) 40%,
+    rgba(250, 246, 240, 0) 100%
+  );
+}
+
+/* 品牌线条水印（叉子+勺子交叉） */
+.header-brand-lines {
+  position: absolute;
+  right: 20rpx;
+  top: 40rpx;
+  width: 160rpx;
+  height: 160rpx;
+  opacity: 0.08;
+  z-index: 2;
+}
+
+/* 叉子线条 */
+.header-brand-lines::before {
+  content: "";
+  position: absolute;
+  width: 4rpx;
+  height: 120rpx;
+  background: #E8A87C;
+  left: 50%;
+  top: 20rpx;
+  transform: translateX(-50%) rotate(-15deg);
+  border-radius: 2rpx;
+}
+
+/* 勺子线条 */
+.header-brand-lines::after {
+  content: "";
+  position: absolute;
+  width: 4rpx;
+  height: 120rpx;
+  background: #E8A87C;
+  left: 50%;
+  top: 20rpx;
+  transform: translateX(-50%) rotate(15deg);
+  border-radius: 2rpx;
+}
+
+.header-content {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+}
+
+.title-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24rpx;
+}
+
+.title-text {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 微缩转盘：圆点展开为三环+logo */
+.mini-spinner-wrap {
+  width: 120rpx;
+  height: 120rpx;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.75);
+  border-radius: 50%;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
+}
+
+.mini-spinner {
+  position: relative;
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  background: #E8A87C;
+  transform: scale(0.2);
+  opacity: 0;
+}
+
+.pop-and-expand {
+  animation: expandSpinner 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes expandSpinner {
+  0% {
+    transform: scale(0.2);
+    opacity: 0;
+    background: #E8A87C;
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+    background: transparent;
+  }
+}
+
+.mini-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border: 2rpx solid rgba(139, 90, 43, 0.55);
+  border-radius: 50%;
+}
+
+.mini-ring.ring-1 {
+  width: 100%;
+  height: 100%;
+}
+
+.mini-ring.ring-2 {
+  width: 70%;
+  height: 70%;
+}
+
+.mini-ring.ring-3 {
+  width: 40%;
+  height: 40%;
+}
+
+.mini-logo {
+  position: absolute;
+  width: 40rpx;
+  height: 40rpx;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 1rpx 2rpx rgba(0, 0, 0, 0.15));
 }
 
 .preview-heading {
   display: block;
-  font-size: 26rpx;
-  color: #8e857e;
-  margin-bottom: 8rpx;
+  font-size: 28rpx;
+  color: #5a544f;
+  opacity: 0.8;
+  letter-spacing: 2rpx;
 }
 
 .preview-count {
   display: block;
-  font-size: 40rpx;
-  font-weight: 600;
+  font-size: 48rpx;
+  font-weight: 700;
   color: #2d2d2d;
+  margin-top: 10rpx;
+}
+
+.header-sub-info {
+  margin-top: 12rpx;
+}
+
+.header-sub-info .preview-combo {
+  display: block;
+}
+
+.header-sub-info .preview-balance {
+  display: block;
+  margin-top: 8rpx;
 }
 
 .preview-combo {
-  display: block;
   font-size: 28rpx;
-  color: #c1663e;
-  margin-top: 12rpx;
+  color: #E8A87C;
   font-weight: 500;
 }
 
 .preview-balance {
-  display: block;
   font-size: 26rpx;
   color: #8e857e;
-  margin-top: 8rpx;
 }
 
 /* 菜谱池降级提示：温和的蓝色调，与错误提示区分 */
@@ -126,68 +301,38 @@
   flex: 1;
 }
 
-.preview-dashboard {
+/* 横向数字看板 */
+.dashboard-bar {
   display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-  padding: 24rpx 32rpx;
-  margin: 0 32rpx 24rpx;
-  background: rgba(255, 255, 255, 0.7);
-  border-radius: 24rpx;
+  flex-direction: row;
+  white-space: nowrap;
+  padding: 16rpx 32rpx;
+  gap: 24rpx;
+  margin: 0 32rpx 20rpx;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 20rpx;
   box-shadow: 0 4rpx 20rpx rgba(74, 69, 64, 0.06);
 }
 
-.dashboard-row {
+.dash-item {
   display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  gap: 16rpx;
-}
-
-.dashboard-item {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
   align-items: center;
   gap: 8rpx;
+  padding: 12rpx 20rpx;
+  background: rgba(232, 168, 124, 0.08);
+  border-radius: 16rpx;
+  flex-shrink: 0;
 }
 
-.dashboard-item-full {
-  flex: none;
-  width: 100%;
-  align-items: flex-start;
-  padding-top: 12rpx;
-  border-top: 1rpx solid rgba(142, 133, 126, 0.15);
-}
-
-.dashboard-item-full .dashboard-value-wrap {
-  text-align: left;
-}
-
-.dashboard-icon {
-  font-size: 36rpx;
+.dash-icon {
+  font-size: 32rpx;
   line-height: 1;
 }
 
-.dashboard-label {
-  font-size: 24rpx;
-  color: #8e857e;
-}
-
-.dashboard-value {
-  font-size: 28rpx;
+.dash-value {
+  font-size: 26rpx;
   font-weight: 600;
   color: #2d2d2d;
-}
-
-.dashboard-value-wrap {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #2d2d2d;
-  word-break: break-all;
-  white-space: normal;
-  line-height: 1.45;
 }
 
 .preview-hints {
@@ -196,9 +341,9 @@
   gap: 12rpx;
   padding: 20rpx 32rpx;
   margin: 0 32rpx 20rpx;
-  background: rgba(193, 102, 62, 0.08);
+  background: rgba(232, 168, 124, 0.08);
   border-radius: 20rpx;
-  border-left: 6rpx solid rgba(193, 102, 62, 0.4);
+  border-left: 6rpx solid rgba(232, 168, 124, 0.4);
 }
 
 .preview-hints .hint-row {
@@ -226,9 +371,9 @@
   gap: 12rpx;
   padding: 20rpx 32rpx;
   margin: 0 32rpx 20rpx;
-  background: rgba(193, 102, 62, 0.08);
+  background: rgba(232, 168, 124, 0.08);
   border-radius: 20rpx;
-  border-left: 6rpx solid #c1663e;
+  border-left: 6rpx solid #E8A87C;
 }
 
 .preview-baby-diff-icon {
@@ -253,146 +398,149 @@
 .preview-baby-hint {
   margin: 0 32rpx 20rpx;
   padding: 16rpx 24rpx;
-  background: rgba(193, 102, 62, 0.08);
+  background: rgba(232, 168, 124, 0.08);
   border-radius: 16rpx;
-  border-left: 6rpx solid #c1663e;
+  border-left: 6rpx solid #E8A87C;
   font-size: 26rpx;
   color: #5a544f;
   line-height: 1.45;
 }
 
-/* 每道菜：大圆角矩形卡片，文字居中（在整页滚动内，不再单独 scroll-view） */
+/* 今日菜单列表 */
 .preview-dish-list {
   padding: 0 32rpx 48rpx;
-}
-
-.dish-card-names {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12rpx;
-}
-
-.dish-card-adult-row,
-.dish-card-baby-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12rpx;
-  flex-wrap: wrap;
-}
-
-.dish-card-role-tag {
-  font-size: 20rpx;
-  font-weight: 600;
-  padding: 4rpx 12rpx;
-  border-radius: 8rpx;
-  flex-shrink: 0;
-}
-
-.dish-card-role-tag.adult-tag {
-  background: rgba(74, 93, 78, 0.15);
-  color: #4a5d4e;
-}
-
-.dish-card-role-tag.baby-tag {
-  background: rgba(214, 122, 125, 0.2);
-  color: #c1663e;
-}
-
-.dish-card-baby-name {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #c1663e;
-  line-height: 1.4;
-}
-
-.dish-card-same-hint {
-  display: block;
-  margin-top: 12rpx;
-  font-size: 24rpx;
-  color: #8e857e;
-  line-height: 1.4;
-  text-align: center;
 }
 
 .dish-card-wrap {
   margin-bottom: 24rpx;
 }
 
-.dish-card {
+/* 瀑布流滑入动画 */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(60rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 现代菜谱卡片：封面图 + 半透明渐变遮罩 */
+.dish-card-modern {
+  position: relative;
+  height: 280rpx;
+  border-radius: 24rpx;
+  overflow: hidden;
+  box-shadow: 0 20rpx 60rpx rgba(0, 0, 0, 0.05);
+  animation: slideInUp 0.5s ease-out both;
+}
+
+.card-bg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card-overlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, transparent 60%);
+}
+
+.card-info {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 24rpx;
+  color: #fff;
+}
+
+.card-header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  min-height: 160rpx;
-  padding: 36rpx 40rpx;
-  background: #fff;
-  border-radius: 28rpx;
-  box-shadow: 0 8rpx 24rpx rgba(74, 69, 64, 0.08);
-  border: 3rpx solid rgba(193, 102, 62, 0.2);
-  text-align: center;
-  position: relative;
+  justify-content: space-between;
+  gap: 12rpx;
 }
 
-.dish-card-unchecked {
-  opacity: 0.65;
-  border-color: rgba(0, 0, 0, 0.08);
+.dish-name {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.35;
+  flex: 1;
+  min-width: 0;
 }
 
-.dish-card-check {
-  position: absolute;
-  left: 28rpx;
-  top: 50%;
-  transform: translateY(-50%);
+.check-badge {
   width: 44rpx;
   height: 44rpx;
   border-radius: 12rpx;
-  border: 3rpx solid #c1663e;
-  background: #c1663e;
+  background: #E8A87C;
   color: #fff;
   font-size: 28rpx;
   font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
-.dish-card-unchecked .dish-card-check {
-  background: transparent;
-  color: transparent;
-  border-color: #c1663e;
+.card-footer {
+  margin-top: 8rpx;
 }
 
-.dish-card-content {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding-left: 56rpx;
-  padding-right: 24rpx;
-}
-
-.dish-card-main {
-  font-size: 34rpx;
-  font-weight: 600;
-  color: #2d2d2d;
-  line-height: 1.4;
-  text-align: center;
-}
-
-.dish-card-adult-row .dish-card-main {
-  font-size: 34rpx;
-}
-
-.dish-card-reason {
+.dish-reason {
   display: block;
-  font-size: 26rpx;
-  color: #8e857e;
-  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.9);
   line-height: 1.4;
-  text-align: center;
+}
+
+.baby-tag-floating {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.4;
+}
+
+/* 无封面图：温暖渐变背景 */
+.dish-card-modern.no-cover {
+  background: linear-gradient(135deg, #f5e6d3 0%, #e8d4c0 100%);
+}
+
+.dish-card-modern.no-cover .card-overlay {
+  background: transparent;
+}
+
+.dish-card-modern.no-cover .card-info {
+  color: #4a4540;
+}
+
+.dish-card-modern.no-cover .dish-name {
+  color: #2d2d2d;
+}
+
+.dish-card-modern.no-cover .dish-reason,
+.dish-card-modern.no-cover .baby-tag-floating {
+  color: #5a544f;
+}
+
+/* 未勾选：弱化显示 */
+.dish-card-modern.is-unchecked {
+  opacity: 0.65;
+}
+
+.dish-card-modern.is-unchecked .card-bg {
+  filter: grayscale(0.5);
 }
 
 .preview-actions {
@@ -401,7 +549,7 @@
   gap: 20rpx;
   padding: 24rpx 32rpx;
   padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
-  background: linear-gradient(to top, #faf6f0 90%, rgba(250, 246, 240, 0));
+  background: linear-gradient(to top, #F8F9FA 90%, rgba(248, 249, 250, 0));
 }
 
 .preview-btn {
@@ -428,38 +576,74 @@
 
 .preview-btn-primary {
   color: #fff;
-  background: #c1663e;
+  background: #E8A87C;
 }
 
 .preview-btn:active {
   opacity: 0.9;
 }
 
-/* ---------- 大字模式：全局 class 放大 1.5 倍 + 隐藏修饰信息 ---------- */
-.preview-page.large-text-mode .preview-dashboard,
+/* ---------- 大字模式：隐藏背景图，高对比度黑白文字，确保护眼 ---------- */
+.preview-page.large-text-mode .dashboard-bar,
 .preview-page.large-text-mode .preview-hints,
 .preview-page.large-text-mode .preview-baby-diff,
 .preview-page.large-text-mode .preview-menu-label,
 .preview-page.large-text-mode .preview-fallback-notice,
-.preview-page.large-text-mode .dish-card-reason {
+.preview-page.large-text-mode .dish-reason,
+.preview-page.large-text-mode .mini-spinner-wrap,
+.preview-page.large-text-mode .header-brand-lines {
   display: none !important;
+}
+
+.preview-page.large-text-mode .card-bg {
+  display: none !important;
+}
+
+.preview-page.large-text-mode .dish-card-modern {
+  background: #fff;
+  min-height: 200rpx;
+  height: auto;
+  padding: 44rpx 40rpx;
+}
+
+.preview-page.large-text-mode .dish-card-modern.no-cover {
+  background: #fff;
+}
+
+.preview-page.large-text-mode .card-overlay {
+  display: none;
+}
+
+.preview-page.large-text-mode .card-info {
+  position: relative;
+  color: #111;
+  padding: 0;
+}
+
+.preview-page.large-text-mode .dish-name {
+  font-size: 51rpx;
+  font-weight: 600;
+  color: #111;
+}
+
+.preview-page.large-text-mode .baby-tag-floating {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 39rpx;
+  color: #333;
+}
+
+.preview-page.large-text-mode .check-badge {
+  width: 56rpx;
+  height: 56rpx;
+  font-size: 42rpx;
+  border-radius: 14rpx;
+  background: #333;
+  color: #fff;
 }
 
 .preview-page.large-text-mode .preview-baby-hint {
   font-size: 39rpx;
-}
-
-.preview-page.large-text-mode .dish-card-role-tag {
-  font-size: 30rpx;
-  padding: 6rpx 16rpx;
-}
-
-.preview-page.large-text-mode .dish-card-baby-name {
-  font-size: 45rpx;
-}
-
-.preview-page.large-text-mode .dish-card-same-hint {
-  font-size: 36rpx;
 }
 
 .preview-page.large-text-mode .preview-heading {
@@ -476,27 +660,6 @@
 
 .preview-page.large-text-mode .preview-balance {
   font-size: 39rpx;
-}
-
-.preview-page.large-text-mode .dish-card-main {
-  font-size: 51rpx;
-}
-
-.preview-page.large-text-mode .dish-card-check {
-  width: 56rpx;
-  height: 56rpx;
-  left: 32rpx;
-  font-size: 42rpx;
-  border-radius: 14rpx;
-}
-
-.preview-page.large-text-mode .dish-card-content {
-  padding-left: 72rpx;
-}
-
-.preview-page.large-text-mode .dish-card {
-  min-height: 200rpx;
-  padding: 44rpx 40rpx;
 }
 
 .preview-page.large-text-mode .preview-btn {

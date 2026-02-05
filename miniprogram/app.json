@@ -1,6 +1,7 @@
 {
   "pages": [
     "pages/home/home",
+    "pages/spinner/spinner",
     "pages/preview/preview",
     "pages/menu/menu",
     "pages/steps/steps",
@@ -10,7 +11,7 @@
   "window": {
     "backgroundTextStyle": "dark",
     "navigationBarBackgroundColor": "#fdf8f2",
-    "navigationBarTitleText": "Daily Nourish",
+    "navigationBarTitleText": "TableSync 家庭餐桌智能助手",
     "navigationBarTextStyle": "black"
   },
   "style": "v2",

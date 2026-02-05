@@ -1,3 +1,5 @@
+var coverService = require('../../data/recipeCoverSlugs.js');
+
 function getTodayDateKey() {
   var d = new Date();
   var y = d.getFullYear();
@@ -15,7 +17,8 @@ Page({
     previewDashboard: { estimatedTime: '', stoveCount: 0, categoryLabels: '', nutritionHint: '', prepOrderHint: '', prepAheadHint: '', sharedIngredientsHint: '' },
     previewHasSharedBase: false,
     previewHasBaby: false,
-    largeTextMode: false
+    largeTextMode: false,
+    isEntering: false
   },
 
   onLargeTextModeTap: function () {
@@ -42,11 +45,14 @@ Page({
 
       // 2. 映射 UI 渲染所需的 rows 结构
       var rows = menus.map(function (m) {
+        var recipeName = m.adultRecipe ? m.adultRecipe.name : '';
         return {
-          adultName: m.adultRecipe ? m.adultRecipe.name : '未知菜谱',
+          adultName: recipeName || '未知菜谱',
           babyName: m.babyRecipe ? m.babyRecipe.name : '',
           recommendReason: m.adultRecipe ? (m.adultRecipe.recommend_reason || '营养均衡，口味适宜') : '',
-          checked: true
+          checked: true,
+          coverUrl: coverService.getRecipeCoverImageUrl(recipeName),
+          hasCover: !!coverService.RECIPE_NAME_TO_SLUG[recipeName]
         };
       });
 
@@ -63,7 +69,12 @@ Page({
         previewComboName: (pref.meatCount || 2) + '荤' + (pref.vegCount || 1) + '素' + (pref.soupCount ? '1汤' : '')
       });
 
-      // 5. 将解析后的对象同步回 globalData 以便「换一换」逻辑使用
+      // 5. 延迟触发微缩转盘入场动画
+      setTimeout(function () {
+        that.setData({ isEntering: true });
+      }, 300);
+
+      // 6. 将解析后的对象同步回 globalData 以便「换一换」逻辑使用
       that._fullPreviewMenus = menus;
       getApp().globalData.todayMenus = menus;
       getApp().globalData.menuPreview = {
@@ -127,7 +138,16 @@ Page({
         var babyName = hasBaby ? ((stage && stage.name) || (m.babyRecipe && m.babyRecipe.name) || '') : '';
         var reason = (ar && ar.recommend_reason) ? ar.recommend_reason : '';
         var sameAsAdultHint = (stage && stage.same_as_adult_hint) ? '与大人同款，分装即可' : '';
-        newRows.push({ adultName: adultName, babyName: babyName, showSharedHint: hasBaby && babyName && idx === 0, checked: true, recommendReason: reason, sameAsAdultHint: sameAsAdultHint });
+        newRows.push({
+          adultName: adultName,
+          babyName: babyName,
+          showSharedHint: hasBaby && babyName && idx === 0,
+          checked: true,
+          recommendReason: reason,
+          sameAsAdultHint: sameAsAdultHint,
+          coverUrl: coverService.getRecipeCoverImageUrl(adultName),
+          hasCover: !!coverService.RECIPE_NAME_TO_SLUG[adultName]
+        });
       }
       var dashboard = that._computePreviewDashboard(newMenus, pref);
       var hasSharedBase = newRows.some(function (r) { return r.showSharedHint; });
@@ -227,13 +247,16 @@ Page({
           }
           var ar = newSlot.adultRecipe;
           var st = menuService.getBabyVariantByAge && menuService.getBabyVariantByAge(ar, pref.babyMonth);
+          var adultNameNew = (ar && ar.name) ? ar.name : '—';
           newRows.push({
-            adultName: (ar && ar.name) ? ar.name : '—',
+            adultName: adultNameNew,
             babyName: (st && st.name) || (newSlot.babyRecipe && newSlot.babyRecipe.name) || '',
             showSharedHint: hasBaby && newSlot.babyRecipe && i === firstMeatIndex,
             checked: true,
             recommendReason: (ar && ar.recommend_reason) ? ar.recommend_reason : '',
-            sameAsAdultHint: (st && st.same_as_adult_hint) ? '与大人同款，分装即可' : ''
+            sameAsAdultHint: (st && st.same_as_adult_hint) ? '与大人同款，分装即可' : '',
+            coverUrl: coverService.getRecipeCoverImageUrl(adultNameNew),
+            hasCover: !!coverService.RECIPE_NAME_TO_SLUG[adultNameNew]
           });
         }
       }

@@ -1,0 +1,45 @@
+<view class="spinner-container">
+  <view class="center-logo {{spinning ? 'spinning' : ''}}" bindtap="startSpin">
+    <image
+      class="logo-image"
+      src="cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/logo/logo-remove-removebg-preview.png"
+      mode="aspectFit"
+    />
+    <text class="start-hint" wx:if="{{!spinning && !stopped}}">点击开始</text>
+  </view>
+
+  <view class="wheel-ring outer-ring" style="transform: rotate({{outerRotation}}deg);">
+    <view
+      wx:for="{{outerDishes}}"
+      wx:key="index"
+      class="wheel-sector {{index === outerTarget ? 'target-sector' : ''}}"
+      style="transform: rotate({{index * 45}}deg);"
+    >
+      <text class="sector-text">{{item}}</text>
+    </view>
+  </view>
+
+  <view class="wheel-ring middle-ring" style="transform: rotate({{middleRotation}}deg);">
+    <view
+      wx:for="{{middleDishes}}"
+      wx:key="index"
+      class="wheel-sector {{index === middleTarget ? 'target-sector' : ''}}"
+      style="transform: rotate({{index * 45}}deg);"
+    >
+      <text class="sector-text">{{item}}</text>
+    </view>
+  </view>
+
+  <view class="wheel-ring inner-ring" style="transform: rotate({{innerRotation}}deg);">
+    <view
+      wx:for="{{innerDishes}}"
+      wx:key="index"
+      class="wheel-sector {{index === innerTarget ? 'target-sector' : ''}}"
+      style="transform: rotate({{index * 45}}deg);"
+    >
+      <text class="sector-text">{{item}}</text>
+    </view>
+  </view>
+
+  <view class="indicator-arrow"></view>
+</view>

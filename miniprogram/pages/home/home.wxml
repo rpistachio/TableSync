@@ -1,24 +1,34 @@
-//<wxs src="./home.wxs" module="utils" />
+<wxs src="./home.wxs" module="utils" />
 <view class="home-container">
   <view class="brand-header">
     <view class="header-content">
-      <text class="date-badge">{{currentDate}}</text>
-      <text class="main-title">今日餐桌</text>
-      <text class="sub-quote">为您统筹一桌好饭</text>
+      <image
+        class="brand-logo {{logoZooming ? 'zoom-out' : ''}}"
+        src="cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/logo/logo-remove-removebg-preview.png"
+        mode="widthFix"
+      />
+      <text class="brand-slogan">Eat. Connect. Automate.</text>
     </view>
   </view>
 
   <view class="selection-area">
     <view class="selection-group">
-      <text class="group-label">家里几个人？</text>
-      <view class="card-stack count-stack">
-        <view wx:for="{{adultCountOptions}}" wx:key="*this" class="curated-card {{adultCount === item ? 'is-active' : ''}}" data-count="{{item}}" bindtap="onAdultCountTap">
-          <text class="card-text">{{item}} 人</text>
+      <text class="group-label">家庭成员</text>
+      <view class="people-picker">
+        <view
+          wx:for="{{adultCountOptions}}"
+          wx:key="*this"
+          class="people-item {{adultCount >= item ? 'is-lit' : ''}}"
+          data-count="{{item}}"
+          bindtap="onAdultCountTap"
+        >
+          <text class="people-icon">👤</text>
         </view>
       </view>
+      <text class="people-count-label">{{adultCount}} 人</text>
     </view>
     <view class="selection-group">
-      <text class="group-label">想吃几荤几素？</text>
+      <text class="group-label">荤素搭配</text>
       <view class="combo-stack">
         <view wx:for="{{comboOptions}}" wx:key="label" class="combo-btn {{item.meatCount === meatCount && item.vegCount === vegCount && (item.soupCount || 0) === (soupCount || 0) ? 'is-active' : ''}}" data-meat="{{item.meatCount}}" data-veg="{{item.vegCount}}" data-soup="{{item.soupCount || 0}}" bindtap="onComboTap">
           <text class="combo-text">{{item.label}}</text>
@@ -26,9 +36,14 @@
         </view>
       </view>
     </view>
-    <view class="has-baby-row">
-      <text class="has-baby-label">宝宝同行？</text>
-      <switch checked="{{hasBaby}}" bindchange="onHasBabyChange" color="#C1663E"/>
+    <view class="baby-toggle-row">
+      <view
+        class="baby-toggle-btn {{hasBaby ? 'is-active' : ''}}"
+        bindtap="onBabyToggle"
+      >
+        <text class="baby-toggle-icon">🍼</text>
+      </view>
+      <text class="baby-toggle-label">{{hasBaby ? '宝宝同行' : '无宝宝'}}</text>
     </view>
     <view wx:if="{{hasBaby}}" class="selection-group baby-age-section">
       <text class="group-label">宝宝月龄</text>
@@ -85,7 +100,7 @@
       <!-- 省时开关 -->
       <view class="pref-section pref-switch-row">
         <text class="pref-label">省时模式</text>
-        <switch checked="{{userPreference.isTimeSave}}" bindchange="onTimeSaveChange" color="#C1663E"/>
+        <switch checked="{{userPreference.isTimeSave}}" bindchange="onTimeSaveChange" color="#E8A87C"/>
       </view>
       <view class="pref-hint" wx:if="{{userPreference.isTimeSave}}">
         <text class="pref-hint-icon">⏱️</text>
@@ -100,6 +115,14 @@
   </view>
 
   <view class="bottom-bar">
-    <button class="premium-btn" bindtap="handleGenerate">看看今天吃什么</button>
+    <button class="premium-btn {{btnShrinking ? 'shrinking' : ''}}" bindtap="handleGenerate">
+      <text class="btn-text {{btnShrinking ? 'fade-out' : ''}}">看看今天吃什么</text>
+    </button>
   </view>
+
+  <!-- 飞行圆点（转场动画） -->
+  <view
+    class="flying-dot {{dotFlying ? 'fly-to-center' : ''}}"
+    wx:if="{{showFlyingDot}}"
+  ></view>
 </view>

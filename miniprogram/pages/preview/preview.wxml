@@ -9,10 +9,34 @@
         </view>
       </view>
       <view class="preview-header">
-        <text class="preview-heading">今日用餐</text>
-        <text class="preview-count">{{previewCountText}}</text>
-        <text class="preview-combo" wx:if="{{previewComboName}}">{{previewComboName}}</text>
-        <text class="preview-balance" wx:if="{{previewBalanceTip}}">{{previewBalanceTip}}</text>
+        <image
+          class="header-ambient-bg"
+          src="cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/prep_cover_pic/table.jpg"
+          mode="aspectFill"
+          lazy-load
+        />
+        <view class="header-mask"></view>
+        <view class="header-brand-lines"></view>
+        <view class="header-content">
+          <view class="title-row">
+            <view class="title-text">
+              <text class="preview-heading">今日用餐</text>
+              <text class="preview-count">{{previewCountText}}</text>
+            </view>
+            <view class="mini-spinner-wrap">
+              <view class="mini-spinner {{isEntering ? 'pop-and-expand' : ''}}">
+                <view class="mini-ring ring-1"></view>
+                <view class="mini-ring ring-2"></view>
+                <view class="mini-ring ring-3"></view>
+                <image class="mini-logo" src="cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/logo/logo-remove-removebg-preview.png" mode="aspectFit" />
+              </view>
+            </view>
+          </view>
+          <view class="header-sub-info">
+            <text class="preview-combo" wx:if="{{previewComboName}}">{{previewComboName}}</text>
+            <text class="preview-balance" wx:if="{{previewBalanceTip}}">{{previewBalanceTip}}</text>
+          </view>
+        </view>
       </view>
       
       <!-- 菜谱池降级提示 -->
@@ -21,25 +45,20 @@
         <text class="fallback-text">{{previewFallbackMessage}}</text>
       </view>
 
-      <view class="preview-dashboard" wx:if="{{previewDashboard.estimatedTime || previewDashboard.stoveCount > 0 || previewDashboard.categoryLabels}}">
-        <view class="dashboard-row">
-          <view class="dashboard-item">
-            <text class="dashboard-icon">⏰</text>
-            <text class="dashboard-label">预计耗时</text>
-            <text class="dashboard-value">{{previewDashboard.estimatedTime}}</text>
-          </view>
-          <view class="dashboard-item">
-            <text class="dashboard-icon">🔥</text>
-            <text class="dashboard-label">灶台占用</text>
-            <text class="dashboard-value">{{previewDashboard.stoveCount}} 个火</text>
-          </view>
+      <scroll-view wx:if="{{previewDashboard.estimatedTime || previewDashboard.stoveCount > 0 || previewDashboard.categoryLabels}}" class="dashboard-bar" scroll-x enable-flex>
+        <view class="dash-item">
+          <text class="dash-icon">⏰</text>
+          <text class="dash-value">{{previewDashboard.estimatedTime}}</text>
         </view>
-        <view class="dashboard-item dashboard-item-full" wx:if="{{previewDashboard.categoryLabels}}">
-          <text class="dashboard-icon">🥕</text>
-          <text class="dashboard-label">食材种类</text>
-          <text class="dashboard-value dashboard-value-wrap">{{previewDashboard.categoryLabels}}</text>
+        <view class="dash-item">
+          <text class="dash-icon">🔥</text>
+          <text class="dash-value">{{previewDashboard.stoveCount}}火</text>
         </view>
-      </view>
+        <view class="dash-item" wx:if="{{previewDashboard.categoryLabels}}">
+          <text class="dash-icon">🥕</text>
+          <text class="dash-value">{{previewDashboard.categoryLabels}}</text>
+        </view>
+      </scroll-view>
 
       <view class="preview-hints" wx:if="{{previewDashboard.nutritionHint || previewDashboard.prepOrderHint || previewDashboard.prepAheadHint || previewDashboard.sharedIngredientsHint}}">
         <view class="hint-row" wx:if="{{previewDashboard.sharedIngredientsHint}}">
@@ -70,21 +89,18 @@
 
       <view class="preview-dish-list">
         <view wx:for="{{previewMenuRows}}" wx:key="index" class="dish-card-wrap" data-index="{{index}}" bindtap="onCheckRow">
-          <view class="dish-card {{item.checked ? '' : 'dish-card-unchecked'}}">
-            <view class="dish-card-check">{{item.checked ? '✓' : ''}}</view>
-            <view class="dish-card-content">
-              <view class="dish-card-names">
-                <view class="dish-card-adult-row">
-                  <text wx:if="{{item.babyName}}" class="dish-card-role-tag adult-tag">大人</text>
-                  <text class="dish-card-main">{{item.adultName}}</text>
-                </view>
-                <view wx:if="{{item.babyName}}" class="dish-card-baby-row">
-                  <text class="dish-card-role-tag baby-tag">宝宝</text>
-                  <text class="dish-card-baby-name">{{item.babyName}}</text>
-                </view>
-                <text wx:if="{{item.sameAsAdultHint}}" class="dish-card-same-hint">{{item.sameAsAdultHint}}</text>
+          <view class="dish-card-modern {{item.checked ? '' : 'is-unchecked'}} {{item.hasCover ? '' : 'no-cover'}}" style="animation-delay: {{index * 120}}ms">
+            <image wx:if="{{item.hasCover}}" class="card-bg" src="{{item.coverUrl}}" mode="aspectFill" />
+            <view class="card-overlay"></view>
+            <view class="card-info">
+              <view class="card-header">
+                <text class="dish-name">{{item.adultName}}</text>
+                <view class="check-badge" wx:if="{{item.checked}}">✓</view>
               </view>
-              <text class="dish-card-reason" wx:if="{{item.recommendReason}}">{{item.recommendReason}}</text>
+              <view class="card-footer">
+                <text class="dish-reason">{{item.recommendReason}}</text>
+                <view class="baby-tag-floating" wx:if="{{item.babyName}}">👶 宝宝吃：{{item.babyName}}</view>
+              </view>
             </view>
           </view>
         </view>

@@ -90,7 +90,11 @@ Page({
       avoidList: [],    // 存储选中的忌口标签
       dietStyle: 'home', // 默认口味偏好
       isTimeSave: false // 省时开关
-    }
+    },
+    logoZooming: false,  // Logo 转场动画状态
+    btnShrinking: false,
+    showFlyingDot: false,
+    dotFlying: false
   },
 
   onLoad: function () {
@@ -135,6 +139,14 @@ Page({
     this.setData(updates);
   },
 
+  onShow: function () {
+    this.setData({
+      btnShrinking: false,
+      showFlyingDot: false,
+      dotFlying: false
+    });
+  },
+
   toggleMember: function (e) {
     var type = e.currentTarget.dataset.type;
     if (type === 'adult' || type === 'baby') this.setData({ activeMember: type });
@@ -142,6 +154,10 @@ Page({
 
   onHasBabyChange: function (e) {
     this.setData({ hasBaby: e.detail.value === true || e.detail.value === 'true' });
+  },
+
+  onBabyToggle: function () {
+    this.setData({ hasBaby: !this.data.hasBaby });
   },
 
   onBabyMonthChange: function (e) {
@@ -270,16 +286,24 @@ Page({
     var that = this;
     if (that._generating) return;
     that._generating = true;
-    wx.showLoading({ title: '统筹算法运行中', mask: true });
-    // 延迟一帧再执行重计算，确保 loading 先渲染，减轻卡顿
-    var runGenerate = function () {
+
+    that.setData({ btnShrinking: true });
+
+    setTimeout(function () {
+      that.setData({ showFlyingDot: true });
+      setTimeout(function () {
+        that.setData({ dotFlying: true });
+      }, 50);
+    }, 350);
+
+    setTimeout(function () {
       try {
         var recipeCoverSlugs = require('../../data/recipeCoverSlugs');
         var pref = that._buildPreference();
         var result = menuData.getTodayMenusByCombo(pref);
         var menus = result.menus || result;
         if (!menus || menus.length === 0) {
-          throw new Error('未匹配到符合条件的菜谱，请调整忌口或偏好后再试');
+          throw new Error('未匹配到符合条件的菜谱');
         }
         var hasBaby = pref.hasBaby === true;
         menus.forEach(function (m) {
@@ -289,50 +313,35 @@ Page({
             m.adultRecipe.coverImage = recipeCoverSlugs.getRecipeCoverImageUrl(m.adultRecipe.name);
           }
         });
-        var shoppingList = menuData.generateShoppingListFromMenus(pref, menus);
-        wx.setStorageSync('cart_ingredients', shoppingList || []);
-        wx.setStorageSync('today_menus', JSON.stringify(menus));
-        wx.setStorageSync('menu_generated_date', getTodayDateKey());
-        var maxPrepTime = 0;
-        menus.forEach(function (m) {
-          var p = (m.adultRecipe && m.adultRecipe.prep_time) || 0;
-          if (p > maxPrepTime) maxPrepTime = p;
-        });
-        wx.setStorageSync('today_prep_time', maxPrepTime);
         getApp().globalData.preference = pref;
         getApp().globalData.todayMenus = menus;
-        var payload = menuData.buildPreviewPayload(menus, pref, { comboName: result.comboName || '', countText: menus.length + '道菜' });
-        getApp().globalData.menuPreview = {
-          menus: menus,
-          rows: payload.rows,
-          dashboard: payload.dashboard,
-          countText: payload.countText,
-          comboName: payload.comboName,
-          balanceTip: payload.balanceTip,
-          hasSharedBase: payload.hasSharedBase,
-          preference: pref,
-          fallbackMessage: result.fallbackMessage || ''
-        };
-        that._generating = false;
-        wx.hideLoading();
+
+        setTimeout(function () {
+          that._generating = false;
+          wx.navigateTo({ url: '/pages/spinner/spinner' });
+          setTimeout(function () {
+            that.setData({
+              btnShrinking: false,
+              showFlyingDot: false,
+              dotFlying: false
+            });
+          }, 500);
+        }, 600);
+
         if (result.fallbackMessage) {
           wx.showToast({ title: result.fallbackMessage, icon: 'none', duration: 2500 });
         }
-        wx.navigateTo({ url: '/pages/preview/preview' });
       } catch (err) {
-        console.error('生成失败详情:', err);
+        console.error('生成失败:', err);
         that._generating = false;
-        wx.hideLoading();
-        wx.showModal({ title: '生成失败', content: err.message || '算法运行出错', showCancel: false });
+        that.setData({
+          btnShrinking: false,
+          showFlyingDot: false,
+          dotFlying: false
+        });
+        wx.showModal({ title: '生成失败', content: err.message, showCancel: false });
       }
-    };
-    setTimeout(function () {
-      if (typeof wx.nextTick === 'function') {
-        wx.nextTick(runGenerate);
-      } else {
-        setTimeout(runGenerate, 0);
-      }
-    }, 300);
+    }, 100);
   },
 
   onCheckRow: function (e) {
