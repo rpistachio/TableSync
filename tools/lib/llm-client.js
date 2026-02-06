@@ -58,7 +58,7 @@ export async function generateRecipesFromInput({ mode, input, count, excludeName
 
   const msg = await client.messages.create({
     model: CONFIG.llmModel,
-    max_tokens: 4096,
+    max_tokens: 8192,
     temperature: 0.6,
     system: systemPrompt,
     messages: [

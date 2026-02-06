@@ -400,7 +400,7 @@ function pickOneWithStewBalance(pool, stewCount) {
  * @returns {Object} 同一 recipe 引用
  */
 function dynamicScaling(recipe, totalCount) {
-  if (!recipe || !Array.isArray(recipe.ingredients)) return recipe;
+  if (!recipe || !Array.isArray(recipe.ingredients) || recipe.ingredients.length === 0) return recipe;
 
   var baseServing = recipe.base_serving != null ? Number(recipe.base_serving) : 2;
   var total = Math.max(1, Number(totalCount) || 2);
@@ -434,7 +434,7 @@ function calculateScaling(recipe, totalCount) {
   for (var k in recipe) {
     if (recipe.hasOwnProperty(k)) clone[k] = recipe[k];
   }
-  if (!Array.isArray(recipe.ingredients)) return clone;
+  if (!Array.isArray(recipe.ingredients) || recipe.ingredients.length === 0) return clone;
   clone.ingredients = recipe.ingredients.map(function (item) {
     var out = {};
     for (var j in item) {
@@ -576,9 +576,10 @@ function copyAdultRecipe(r) {
   if (!r) return null;
   var out = {};
   for (var k in r) { if (r.hasOwnProperty(k) && k !== 'steps') out[k] = r[k]; }
-  out.steps = (r.steps || []).map(function (s) {
+  // 精简版 fallback 数据可能无 steps 字段，安全降级为空数组
+  out.steps = Array.isArray(r.steps) ? r.steps.map(function (s) {
     return typeof s === 'string' ? { action: 'prep', text: s } : Object.assign({}, s);
-  });
+  }) : [];
   return out;
 }
 
@@ -586,9 +587,10 @@ function copyBabyRecipe(r) {
   if (!r) return null;
   var out = {};
   for (var k in r) { if (r.hasOwnProperty(k) && k !== 'steps') out[k] = r[k]; }
-  out.steps = (r.steps || []).map(function (s) {
+  // 精简版 fallback 数据可能无 steps 字段，安全降级为空数组
+  out.steps = Array.isArray(r.steps) ? r.steps.map(function (s) {
     return typeof s === 'string' ? { action: 'cook', text: s } : Object.assign({}, s);
-  });
+  }) : [];
   return out;
 }
 
@@ -1220,6 +1222,8 @@ function generateMenuWithFilters(meat, babyMonth, hasBaby, adultCount, babyTaste
   var userPreference = (filters && filters.userPreference) || null;
   var existingMenus = (filters && filters.existingMenus) || [];
   var stewCountRef = (filters && filters.stewCountRef) || null;
+  var excludeRecipeName = (filters && filters.excludeRecipeName) || null;
+  var excludeRecipeId = (filters && filters.excludeRecipeId) || null;
   
   var fallbackReason = null;
   var originalPoolSize = 0;
@@ -1258,6 +1262,15 @@ function generateMenuWithFilters(meat, babyMonth, hasBaby, adultCount, babyTaste
   // ★ 去重：排除已选菜谱，避免同一道菜在菜单中重复出现
   var pickedIds = getPickedIds(existingMenus);
   aPool = excludeAlreadyPicked(aPool, pickedIds);
+
+  // ★ 显式排除指定菜谱（用于去重替换时强制不抽到同一道）
+  if (excludeRecipeName || excludeRecipeId) {
+    aPool = aPool.filter(function (r) {
+      if (excludeRecipeId && r.id === excludeRecipeId) return false;
+      if (excludeRecipeName && r.name === excludeRecipeName) return false;
+      return true;
+    });
+  }
 
   // ★ 多样性过滤：主料去重、做法限频、命名前缀去重（软约束）
   aPool = diversityFilter(aPool, existingMenus);
@@ -1996,6 +2009,14 @@ function generateSteps(adultRecipe, babyRecipe, shoppingList) {
   var hasBaby = babyRecipe && Array.isArray(babyRecipe.steps) && babyRecipe.steps.length > 0;
   var list = Array.isArray(shoppingList) ? shoppingList : [];
 
+  // 精简版 fallback 数据可能无 steps，返回提示性步骤引导用户联网
+  if (!hasAdult && !hasBaby) {
+    var recipeName = (adultRecipe && adultRecipe.name) || (babyRecipe && babyRecipe.name) || '';
+    var offlineHint = recipeName ? '「' + recipeName + '」的详细步骤需联网获取，请连接网络后刷新。' : '详细烹饪步骤需联网获取，请连接网络后刷新。';
+    steps.push({ id: id++, title: '提示', details: [offlineHint], role: 'both', completed: false, duration: 0, _isOfflineHint: true });
+    return steps;
+  }
+
   if (hasAdult && !hasBaby) {
     (adultRecipe.steps || []).forEach(function (step, i) {
       var raw = getStepText(step);
@@ -2186,7 +2207,16 @@ function generateUnifiedSteps(menus, shoppingList) {
   }
 
   if (rawPipelineSteps.length === 0) {
-    // 降级：若没有可用原子步骤，退回旧版仅按汇总+菜品顺序展示
+    // 精简版 fallback 数据可能无 steps，添加联网提示
+    var dishNames = [];
+    for (var dn = 0; dn < menus.length; dn++) {
+      var dnRecipe = menus[dn] && menus[dn].adultRecipe;
+      if (dnRecipe && dnRecipe.name) dishNames.push(dnRecipe.name);
+    }
+    var offlineMsg = dishNames.length > 0
+      ? '「' + dishNames.join('、') + '」的详细烹饪步骤需联网获取，请连接网络后刷新。'
+      : '详细烹饪步骤需联网获取，请连接网络后刷新。';
+    steps.push({ id: id++, title: '提示', details: [offlineMsg], role: 'both', completed: false, duration: 0, _isOfflineHint: true });
     return steps;
   }
 
@@ -2327,12 +2357,13 @@ function generateShoppingListRaw(adultRecipe, babyRecipe) {
   add(adultRecipe && adultRecipe.ingredients, false);
   add(babyRecipe && babyRecipe.ingredients, true);
   if (items.length === 0) {
+    // 精简版 fallback 数据无 ingredients，基于 meat 类型生成兜底清单条目
     var main = adultRecipe || babyRecipe;
     if (main && main.meat) {
       var mainName = MEAT_LABEL[main.meat] || main.meat;
-      items.push({ name: mainName, sub_type: undefined, category: '肉类', baseAmount: 200, unit: 'g', isFromBaby: false });
+      items.push({ name: mainName, sub_type: undefined, category: '肉类', baseAmount: 200, unit: 'g', isFromBaby: false, _isOfflineFallback: true });
     }
-    if (items.length === 0) items.push({ name: '主料', sub_type: undefined, category: '其他', baseAmount: 1, unit: '份', isFromBaby: false });
+    if (items.length === 0) items.push({ name: '主料', sub_type: undefined, category: '其他', baseAmount: 1, unit: '份', isFromBaby: false, _isOfflineFallback: true });
   }
   return items;
 }

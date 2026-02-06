@@ -56,6 +56,26 @@ function splitIngredientsForCloud(ingredients = []) {
 }
 
 /**
+ * 校验并规范化 baby_variant 供云端写入：stages 非空，每项 max_month 为 number。
+ * @param {Object} babyVariant - recipe.baby_variant
+ * @returns {Object|null} 规范化后的 baby_variant 或 null
+ */
+function normalizeBabyVariantForCloud(babyVariant) {
+  if (!babyVariant || !babyVariant.stages || !Array.isArray(babyVariant.stages) || babyVariant.stages.length === 0) {
+    return null;
+  }
+  const stages = babyVariant.stages
+    .filter((s) => s && typeof s.name === 'string' && typeof s.action === 'string')
+    .map((s) => ({
+      max_month: typeof s.max_month === 'number' ? s.max_month : Number(s.max_month) || 12,
+      name: s.name.trim(),
+      action: s.action.trim()
+    }));
+  if (stages.length === 0) return null;
+  return { stages };
+}
+
+/**
  * 将本地 steps 简单数组升级为云端标准 steps：
  * - 补 step_index
  * - 推导 step_type（prep/cook）
@@ -95,9 +115,10 @@ function normalizeStepsForCloud(steps = []) {
  * - main_ingredients / seasonings
  * - 标准化 steps
  * - cook_time（来自 cook_minutes，如有）
+ * - baby_variant（显式校验并规范化后写入，便于大手牵小手功能）
  */
 function buildCloudRecipeDoc(recipe) {
-  const { ingredients, steps, cook_minutes, ...rest } = recipe || {};
+  const { ingredients, steps, cook_minutes, baby_variant, ...rest } = recipe || {};
 
   const ing = splitIngredientsForCloud(Array.isArray(ingredients) ? ingredients : []);
   const normSteps = normalizeStepsForCloud(Array.isArray(steps) ? steps : []);
@@ -112,12 +133,17 @@ function buildCloudRecipeDoc(recipe) {
     doc.cook_time = cook_minutes;
   }
 
+  const normalizedBabyVariant = normalizeBabyVariantForCloud(baby_variant);
+  if (normalizedBabyVariant) {
+    doc.baby_variant = normalizedBabyVariant;
+  }
+
   return doc;
 }
 
 /**
  * 将成人菜谱写入云端 recipes 集合。
- * 这里只处理 type='adult' 的条目，并补充 updateTime 字段。
+ * 处理 type='adult' 的条目，并补充 updateTime 字段；若 recipe 含 baby_variant，会一并写入（大手牵小手）。
  */
 export async function insertAdultRecipeToCloud(recipe) {
   const db = getDb();

@@ -50,6 +50,38 @@ function pickPrefix(recipe) {
 }
 
 /**
+ * 校验 baby_variant 结构：stages 非空，每项含 max_month(number)、name(string)、action(string)。
+ * @param {Object} recipe - 菜谱对象
+ * @returns {Object|null} 校验通过的 baby_variant 或 null
+ */
+function validateBabyVariant(recipe) {
+  const bv = recipe && recipe.baby_variant;
+  if (!bv || !bv.stages || !Array.isArray(bv.stages) || bv.stages.length === 0) {
+    return null;
+  }
+  const validStages = [];
+  for (let i = 0; i < bv.stages.length; i++) {
+    const s = bv.stages[i];
+    if (
+      s &&
+      typeof s.max_month === 'number' &&
+      typeof s.name === 'string' &&
+      s.name.trim() !== '' &&
+      typeof s.action === 'string' &&
+      s.action.trim() !== ''
+    ) {
+      validStages.push({
+        max_month: s.max_month,
+        name: s.name.trim(),
+        action: s.action.trim()
+      });
+    }
+  }
+  if (validStages.length === 0) return null;
+  return { stages: validStages };
+}
+
+/**
  * 为 LLM 生成的 items 分配不冲突的 ID，并做基础校验。
  * @param {{items: Array}} raw
  * @returns {{items: Array}} same shape, 但 recipe.id 已规范化
@@ -87,6 +119,11 @@ export function normalizeGeneratedItems(raw) {
     counters[prefix] += 1;
     const id = `${prefix}-${counters[prefix]}`;
 
+    const validatedBabyVariant = validateBabyVariant(recipe);
+    if (!validatedBabyVariant) {
+      console.warn(`⚠ [${recipe.name}] 缺少或无效的 baby_variant，已跳过该字段（建议在 prompt 中要求每道菜附带 baby_variant）`);
+    }
+
     const fixed = {
       type: 'adult',
       taste: recipe.taste || inferTaste(recipe),
@@ -102,6 +139,9 @@ export function normalizeGeneratedItems(raw) {
       ingredients: recipe.ingredients || [],
       steps: recipe.steps || []
     };
+    if (validatedBabyVariant) {
+      fixed.baby_variant = validatedBabyVariant;
+    }
 
     normalizedItems.push({
       ...item,

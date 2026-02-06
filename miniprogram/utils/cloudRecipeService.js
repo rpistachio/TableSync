@@ -427,10 +427,15 @@ function getAdultRecipes() {
     return cached;
   }
   
-  // 降级到本地 recipes.js
+  // 降级到本地 recipes.js（精简版，仅含算法核心字段）
   try {
     var localRecipes = require('../data/recipes.js');
-    return localRecipes.adultRecipes || [];
+    var fallback = localRecipes.adultRecipes || [];
+    // 标记为离线 fallback，下游可据此判断数据是否完整
+    return fallback.map(function(r) {
+      r._isOfflineFallback = true;
+      return r;
+    });
   } catch (e) {
     return [];
   }
@@ -454,10 +459,15 @@ function getBabyRecipes() {
     return cached;
   }
   
-  // 降级到本地 recipes.js
+  // 降级到本地 recipes.js（精简版，仅含算法核心字段）
   try {
     var localRecipes = require('../data/recipes.js');
-    return localRecipes.babyRecipes || [];
+    var fallback = localRecipes.babyRecipes || [];
+    // 标记为离线 fallback，下游可据此判断数据是否完整
+    return fallback.map(function(r) {
+      r._isOfflineFallback = true;
+      return r;
+    });
   } catch (e) {
     return [];
   }

@@ -32,9 +32,9 @@
   taste: 'slow_stew',             // quick_stir_fry | slow_stew | steamed_salad
   meat: 'chicken',                // chicken | pork | beef | fish | shrimp | vegetable
   prep_time: 15,                  // 备菜分钟数
-  is_baby_friendly: false,
+  is_baby_friendly: false,        // 见下方推导规则
   common_allergens: [],           // 过敏原中文，如 ['虾', '蛋']
-  can_share_base: false,
+  can_share_base: false,          // 见下方推导规则
   flavor_profile: 'salty_umami',  // spicy | salty_umami | light | sweet_sour | sour_fresh
   cook_type: 'stew',              // stew | steam | stir_fry
   cook_minutes: 60,               // 烹饪时长（分钟）
@@ -48,7 +48,14 @@
   steps: [
     { action: 'prep',  text: '……' },
     { action: 'cook',  text: '……' }
-  ]
+  ],
+  baby_variant: {
+    stages: [
+      { max_month: 8,  name: '鸡汤泥糊', action: '取汤中鸡肉撕碎打泥，与少量过滤清汤混合' },
+      { max_month: 12, name: '鸡汤碎末粥', action: '取鸡肉切碎、汤煮软烂粥或面条' },
+      { max_month: 36, name: '宝宝版炖鸡汤', action: '同大人版少盐，取软烂鸡肉块与适量汤' }
+    ]
+  }
 }
 ```
 
@@ -98,6 +105,27 @@
    - 每道菜至少 1 条 `prep` + 1 条 `cook`
    - 文字风格参考现有菜谱，简洁、可执行
 
+8. **baby_variant（宝宝餐变体，必填）**：
+   - **每道菜必须**附带 `baby_variant` 对象，内含 `stages` 数组。
+   - `stages` 按月龄分 2–3 档：`max_month: 8`（泥糊期）、`max_month: 12`（碎末期）、`max_month: 36`（小块/接近大人版）。至少包含 2 档，建议 3 档。
+   - 每个 stage 必须包含：`max_month`（number）、`name`（string）、`action`（string）。
+   - `name`：适合宝宝的改良菜名。例如大人「酸辣笋丝」→ 宝宝「清蒸笋丝泥」或「蛋卷笋丝」；大人「番茄炒蛋」→ 宝宝「番茄蛋黄泥」「番茄碎蛋末」「宝宝番茄炒蛋」。
+   - `action`：具体改良做法，如去辣、去刺、打泥、减盐、切碎、与粥/面同煮等，一句话说清该月龄段怎么做。
+   - 示例（番茄炒蛋）：
+     ```json
+     "baby_variant": {
+       "stages": [
+         { "max_month": 8, "name": "番茄蛋黄泥", "action": "只取熟蛋黄压泥，去皮番茄煮软打泥混合" },
+         { "max_month": 12, "name": "番茄碎蛋末", "action": "全蛋液炒软切碎，番茄去皮切碎，焖煮至软烂" },
+         { "max_month": 36, "name": "宝宝番茄炒蛋", "action": "大人版少盐少油，番茄切小块，鸡蛋炒成小块" }
+       ]
+     }
+     ```
+
+9. **is_baby_friendly 与 can_share_base 推导**：
+   - 汤类、蒸菜、白灼、清淡炒菜等天然适合宝宝 → `is_baby_friendly: true`，可与宝宝共用基底 → `can_share_base: true`。
+   - 辣菜、重油重盐、油炸、含酒精等 → `is_baby_friendly: false`，`can_share_base: false`（但仍必须生成 `baby_variant`，描述如何取未调味部分或改良做法）。
+
 ## Midjourney 提示词规范
 
 每道菜需要返回 `mj_prompts` 数组，长度固定为 3，每一项为英文 + 中文菜名的长句：
@@ -125,7 +153,7 @@
 {
   "items": [
     {
-      "recipe": { /* 完整 adultRecipes 对象，遵守上面的字段规范 */ },
+      "recipe": { /* 完整 adultRecipes 对象，含 baby_variant，遵守上面的字段规范 */ },
       "slug": { "菜名": "english_slug_name.png" },
       "mj_prompts": [
         "Prompt A ... top-down view, professional food photography, Krautkopf style, minimalist, moody tones",

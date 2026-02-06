@@ -71,6 +71,19 @@ Page({
       }
 
       var menus = JSON.parse(menusJson);
+      // 防御：若历史数据中有同名重复菜，只保留每道菜第一次出现
+      var seenNames = {};
+      menus = menus.filter(function (m) {
+        var name = (m.adultRecipe && m.adultRecipe.name) || '';
+        if (!name) return true;
+        if (seenNames[name]) return false;
+        seenNames[name] = true;
+        return true;
+      });
+      if (menus.length > 0) {
+        try { wx.setStorageSync('today_menus', JSON.stringify(menus)); } catch (e) {}
+      }
+
       var pref = getApp().globalData.preference || {};
 
       // 2. 映射 UI 渲染所需的 rows 结构

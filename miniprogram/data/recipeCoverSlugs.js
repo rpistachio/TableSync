@@ -122,6 +122,11 @@ var RECIPE_NAME_TO_SLUG = {
   '凉拌腐竹': 'cold_dried_tofu_skin_salad.png',
   '老醋花生': 'aged_vinegar_peanuts.png',
   '彩椒炒木耳': 'stir_fried_bell_pepper_wood_ear.png',
+  '藕片炒五花肉': 'lotus_root_pork_belly_stir_fry.png',
+  '酸汤金针菇牛肉': 'sour_beef_enoki_mushroom_soup.png',
+  '凉拌茄子豆芽': 'cold_eggplant_bean_sprouts.png',
+  '韭菜炒鸡丝': 'chicken_chives_stir_fry.png',
+  '葱油鲜鱼片': 'scallion_oil_steamed_fish.png',
   /* 宝宝菜 */
   '板栗鲜鸡泥': 'chestnut_chicken_puree.jpg',
   '柠檬清蒸鳕鱼': 'lemon_steamed_cod.jpg',

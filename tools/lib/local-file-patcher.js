@@ -80,7 +80,8 @@ export function applyLocalPatches({ recipe, slug }) {
   if (slug && Object.keys(slug).length > 0) applySlug(slug);
 }
 
-// 仍保留一个可选的 patch 文件导出工具，方便调试或手动应用
+// 仍保留一个可选的 patch 文件导出工具，方便调试或手动应用。
+// recipe 若含 baby_variant，会随 stringifyRecipe 一并输出，写入 recipes.js 后前端可按月龄使用。
 export function buildAdultRecipePatch(recipe) {
   const recipeBlock = stringifyRecipe(recipe);
   return `// === 新增成人菜谱，手动插入到 adultRecipes 数组末尾（babyRecipes 之前） ===\n${recipeBlock},\n`;

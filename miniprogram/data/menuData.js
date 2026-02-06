@@ -574,14 +574,18 @@ function deduplicateMenus(menus, preference) {
       continue;
     }
 
-    // 发现重复，尝试重新抽取
+    // 发现重复，尝试重新抽取（显式排除当前这道，避免池子过小时再次抽到同名）
     var replaced = false;
+    var duplicateName = recipe.name || '';
+    var duplicateId = recipe.id || '';
     for (var attempt = 0; attempt < 3; attempt++) {
       var meat = menus[i].meat || 'vegetable';
       var res = generator.generateMenuWithFilters(meat, babyMonth, false, adultCount, babyTaste, {
         existingMenus: menus,
         userPreference: userPreference,
-        stewCountRef: stewCountRef
+        stewCountRef: stewCountRef,
+        excludeRecipeName: duplicateName,
+        excludeRecipeId: duplicateId
       });
       if (res && res.adultRecipe) {
         var newName = res.adultRecipe.name || '';
@@ -1094,13 +1098,38 @@ exports.generateShoppingList = function (preference) {
     });
   }
   
-  return buildMergedShoppingList(raw, adultCount);
+  var list = buildMergedShoppingList(raw, adultCount);
+
+  // 离线降级标记
+  var hasOffline = (adapted.adultRecipe && (!Array.isArray(adapted.adultRecipe.ingredients) || adapted.adultRecipe.ingredients.length === 0))
+    || (adapted.babyRecipe && (!Array.isArray(adapted.babyRecipe.ingredients) || adapted.babyRecipe.ingredients.length === 0));
+  if (hasOffline) {
+    list._isOfflineFallback = true;
+    list._offlineHint = '当前为离线模式，购物清单仅含主料参考。联网后可自动获取完整食材清单';
+  }
+
+  return list;
 }
 
 /** 合并所有选中菜单的食材，不按 category/meat 过滤，确保鱼虾等均进入清单 */
 exports.generateShoppingListFromMenus = function (preference, menus) {
   var adultCount = preference && typeof preference.adultCount !== 'undefined' ? Math.min(6, Math.max(1, Number(preference.adultCount) || 2)) : 2;
   var avoidList = (preference && preference.avoidList) || [];
+
+  // 检测是否存在无 ingredients 的精简版菜谱（离线降级）
+  var offlineCount = 0;
+  var totalCount = 0;
+  ;(menus || []).forEach(function (m) {
+    if (m.adultRecipe) {
+      totalCount++;
+      if (!Array.isArray(m.adultRecipe.ingredients) || m.adultRecipe.ingredients.length === 0) offlineCount++;
+    }
+    if (m.babyRecipe) {
+      totalCount++;
+      if (!Array.isArray(m.babyRecipe.ingredients) || m.babyRecipe.ingredients.length === 0) offlineCount++;
+    }
+  });
+
   var raw = [];
   ;(menus || []).forEach(function (m) {
     if (m.adultRecipe || m.babyRecipe) {
@@ -1116,7 +1145,15 @@ exports.generateShoppingListFromMenus = function (preference, menus) {
     });
   }
   
-  return buildMergedShoppingList(raw, adultCount);
+  var list = buildMergedShoppingList(raw, adultCount);
+
+  // 离线降级标记：精简版 recipes.js 无 ingredients，购物清单仅含主料兜底
+  if (offlineCount > 0 && totalCount > 0) {
+    list._isOfflineFallback = true;
+    list._offlineHint = '当前为离线模式，购物清单仅含主料参考。联网后可自动获取完整食材清单';
+  }
+
+  return list;
 };
 
 // ============ 云端菜谱同步相关 ============
