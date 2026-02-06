@@ -74,6 +74,11 @@ function normalizeCloudRecipe(cloudRecipe) {
     }
   }
 
+  // 兼容 sync.js 写入的 coverFileID：若本身没有 cover_image_url，则用 coverFileID 兜底
+  if (!recipe.cover_image_url && cloudRecipe.coverFileID) {
+    recipe.cover_image_url = cloudRecipe.coverFileID;
+  }
+
   // 合并 main_ingredients 和 seasonings 为 ingredients
   var ingredients = [];
   if (Array.isArray(cloudRecipe.main_ingredients)) {
@@ -196,7 +201,7 @@ function loadFromStorage(type) {
       return data;
     }
   } catch (e) {
-    console.warn('[cloudRecipeService] loadFromStorage error:', e);
+    // loadFromStorage error，静默处理
   }
   return [];
 }
@@ -213,7 +218,7 @@ function saveToStorage(type, recipes) {
     var key = type === 'baby' ? STORAGE_KEY_BABY : STORAGE_KEY_ADULT;
     wx.setStorageSync(key, JSON.stringify(recipes));
   } catch (e) {
-    console.warn('[cloudRecipeService] saveToStorage error:', e);
+    // saveToStorage error，静默处理
   }
 }
 
@@ -373,14 +378,6 @@ function syncFromCloud(options) {
     
     var fromCloud = cloudAdult.length > 0 || cloudBaby.length > 0;
     
-    console.log('[cloudRecipeService] 同步完成', {
-      cloudAdult: cloudAdult.length,
-      cloudBaby: cloudBaby.length,
-      mergedAdult: mergedAdult.length,
-      mergedBaby: mergedBaby.length,
-      fromCloud: fromCloud
-    });
-    
     return {
       adultCount: mergedAdult.length,
       babyCount: mergedBaby.length,
@@ -391,8 +388,6 @@ function syncFromCloud(options) {
   }).catch(function(err) {
     _syncState.syncing = false;
     _syncState.lastError = err;
-    
-    console.warn('[cloudRecipeService] 同步失败，使用本地缓存:', err);
     
     // 同步失败时，尝试加载本地缓存
     var localAdult = loadFromStorage('adult');
@@ -534,9 +529,9 @@ function init(options) {
     // 使用 setTimeout 确保不阻塞主线程
     setTimeout(function() {
       syncFromCloud({ forceRefresh: options.forceRefresh }).then(function(result) {
-        console.log('[cloudRecipeService] 后台同步完成:', result);
+        // 后台同步完成
       }).catch(function(err) {
-        console.warn('[cloudRecipeService] 后台同步失败:', err);
+        // 后台同步失败，静默处理
       });
     }, 1000); // 延迟 1 秒开始同步，避免与其他启动任务竞争
   }
@@ -579,10 +574,8 @@ function clearCache() {
     _memoryCache.babyRecipes = null;
     _memoryCache.lastSync = null;
     _memoryCache.initialized = false;
-    
-    console.log('[cloudRecipeService] 缓存已清除');
   } catch (e) {
-    console.warn('[cloudRecipeService] clearCache error:', e);
+    // clearCache error，静默处理
   }
 }
 

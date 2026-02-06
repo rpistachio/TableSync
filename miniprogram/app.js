@@ -25,9 +25,9 @@ App({
           env: cloudInit.DEFAULT_ENV,
           traceUser: true
         });
-        console.log('[App] 云开发初始化成功，环境:', cloudInit.DEFAULT_ENV);
+        // 云开发初始化成功
       } catch (e) {
-        console.warn('[App] 云开发初始化失败:', e);
+        // 云开发初始化失败，静默处理
       }
     }
 
@@ -37,10 +37,8 @@ App({
       forceRefresh: false
     }).then(function(result) {
       self.globalData.cloudSyncState.initialized = true;
-      console.log('[App] 云端菜谱服务初始化完成:', result);
     }).catch(function(err) {
       self.globalData.cloudSyncState.error = err;
-      console.warn('[App] 云端菜谱服务初始化失败:', err);
     });
   },
 
@@ -90,6 +88,5 @@ App({
    */
   clearRecipeCache: function() {
     cloudRecipeService.clearCache();
-    console.log('[App] 云端菜谱缓存已清除');
   }
 });

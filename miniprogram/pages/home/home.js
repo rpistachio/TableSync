@@ -78,7 +78,8 @@ Page({
       { value: 'seafood', label: '海鲜过敏' },
       { value: 'peanut', label: '花生过敏' },
       { value: 'lactose', label: '乳糖不耐' },
-      { value: 'gluten', label: '麸质过敏' }
+      { value: 'gluten', label: '麸质过敏' },
+      { value: 'cilantro', label: '不吃香菜' }
     ],
     dietOptions: [
       { value: 'home', label: '家常' },
@@ -247,16 +248,13 @@ Page({
 
   // 切换个性化偏好面板展开/折叠
   togglePrefPanel: function () {
-    console.log('[togglePrefPanel] triggered, current prefExpanded:', this.data.prefExpanded);
     this.setData({ prefExpanded: !this.data.prefExpanded });
   },
 
   // 处理忌口标签多选
   onAvoidTap: function (e) {
-    console.log('[onAvoidTap] triggered, dataset:', e.currentTarget.dataset);
     var val = e.currentTarget.dataset.value;
     if (!val) {
-      console.warn('[onAvoidTap] value is empty');
       return;
     }
     var userPref = this.data.userPreference || {};
@@ -267,7 +265,6 @@ Page({
     } else {
       avoidList.push(val);
     }
-    console.log('[onAvoidTap] new avoidList:', avoidList);
     this.setData({ 'userPreference.avoidList': avoidList });
   },
 
@@ -332,7 +329,6 @@ Page({
           wx.showToast({ title: result.fallbackMessage, icon: 'none', duration: 2500 });
         }
       } catch (err) {
-        console.error('生成失败:', err);
         that._generating = false;
         that.setData({
           btnShrinking: false,
@@ -441,7 +437,6 @@ Page({
       that.setData({ previewMenuRows: newRows, previewBalanceTip: balanceTip, previewDashboard: dashboard, previewHasSharedBase: hasSharedBase });
       wx.showToast({ title: '已为您选出更均衡的搭配', icon: 'none' });
     } catch (e) {
-      console.error('换掉未勾选失败:', e);
       wx.showToast({ title: '替换失败', icon: 'none' });
     }
   },
@@ -496,7 +491,6 @@ Page({
       that.setData({ showPreview: false });
       wx.navigateTo({ url: '/pages/shopping/shopping' });
     } catch (e) {
-      console.error('开始做饭失败:', e);
       wx.showModal({ title: '提示', content: (e && e.message ? e.message : String(e)), showCancel: false });
     }
   },

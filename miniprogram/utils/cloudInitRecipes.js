@@ -105,14 +105,12 @@ function initRecipesCollection(options) {
  */
 function initCloudAndRecipes(envId) {
   if (typeof wx === 'undefined' || !wx.cloud) {
-    console.warn('[cloudInit] 当前环境不支持云开发');
     return Promise.resolve({ success: false, message: '不支持云开发' });
   }
   var env = envId || DEFAULT_ENV;
   if (env && env !== 'your-env-id') wx.cloud.init({ env: env, traceUser: true });
   else wx.cloud.init({ traceUser: true });
   return initRecipesCollection({ env: env || undefined }).then(function (res) {
-    console.log('[cloudInit]', res.message);
     return res;
   });
 }

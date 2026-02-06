@@ -57,9 +57,6 @@ Page({
       that.setData({ isImageReady: false, headerBgUrl: '' });
       that._pageReady = false;
       that._pendingResolve = false;
-      that._resolveTimer = null;
-      that._tempUrlCache = Object.create(null); // fileID -> https temp url
-      that._lastResolveKey = '';
 
       // 1. 优先从 Storage 读取核心数据
       var menusJson = wx.getStorageSync('today_menus');
@@ -79,14 +76,14 @@ Page({
       // 2. 映射 UI 渲染所需的 rows 结构
       var rows = menus.map(function (m) {
         var recipeName = m.adultRecipe ? m.adultRecipe.name : '';
-        var coverFileId = coverService.getRecipeCoverImageUrl(recipeName);
         return {
           adultName: recipeName || '未知菜谱',
           babyName: m.babyRecipe ? m.babyRecipe.name : '',
           recommendReason: m.adultRecipe ? (m.adultRecipe.recommend_reason || '营养均衡，口味适宜') : '',
           checked: true,
-          coverFileId: coverFileId,   // cloud:// fileID（不直接用于 <image>）
-          coverTempUrl: '',           // https 临时 URL（用于 <image>）
+          // coverUrl：云端 fileID（cloud://...）；coverTempUrl：可渲染的临时 https URL
+          coverUrl: coverService.getRecipeCoverImageUrl(recipeName),
+          coverTempUrl: '',
           hasCover: !!coverService.RECIPE_NAME_TO_SLUG[recipeName]
         };
       });
@@ -104,7 +101,7 @@ Page({
         previewComboName: (pref.meatCount || 2) + '荤' + (pref.vegCount || 1) + '素' + (pref.soupCount ? '1汤' : '')
       }, function () {
         // rows 真正进入视图层后，再按 onReady 规则触发图片解析
-        if (that._pageReady) that._scheduleResolvePreviewImages();
+        if (that._pageReady) that._resolvePreviewImages();
         else that._pendingResolve = true;
       });
 
@@ -144,25 +141,13 @@ Page({
     this._pageReady = true;
     if (this._pendingResolve) {
       this._pendingResolve = false;
-      this._scheduleResolvePreviewImages();
+      this._resolvePreviewImages();
       return;
     }
     // 兜底：如果 rows 已经在 onLoad 中写入，则正常执行；否则稍后由 onLoad 的 setData callback 触发
     if ((this.data.previewMenuRows || []).length > 0) {
-      this._scheduleResolvePreviewImages();
+      this._resolvePreviewImages();
     }
-  },
-
-  _scheduleResolvePreviewImages: function () {
-    var that = this;
-    if (that._resolveTimer) {
-      clearTimeout(that._resolveTimer);
-      that._resolveTimer = null;
-    }
-    that._resolveTimer = setTimeout(function () {
-      that._resolveTimer = null;
-      that._resolvePreviewImages();
-    }, 50); // 防抖：避免换一换/批量 setData 触发多次
   },
 
   _swapImageExt: function (fileId) {
@@ -187,9 +172,8 @@ Page({
 
     var fileIds = [headerReqId];
     for (var i = 0; i < rows.length; i++) {
-      var fid = rows[i] && rows[i].hasCover ? rows[i].coverFileId : '';
-      if (typeof fid === 'string' && fid.indexOf('cloud://') === 0) {
-        fileIds.push(toFullFileId(fid));
+      if (rows[i] && rows[i].hasCover && typeof rows[i].coverUrl === 'string' && rows[i].coverUrl.indexOf('cloud://') === 0) {
+        fileIds.push(toFullFileId(rows[i].coverUrl));
       }
     }
 
@@ -203,28 +187,19 @@ Page({
       uniq.push(id);
     }
 
-    // 生成 resolveKey：若 fileIds 集合没变化，且 cache 命中率足够，就不重复请求
-    var resolveKey = uniq.join('|');
-    if (resolveKey === that._lastResolveKey) {
-      // 仍然做一次轻量 setData（把 cache 写回 rows），避免边界情况下 coverTempUrl 丢失
-    } else {
-      that._lastResolveKey = resolveKey;
-    }
-
     that.setData({ isImageReady: false });
 
-    function applyFromCache() {
+    function applyTempUrls(tempMap) {
       var newRows = rows.map(function (r) {
-        if (!r) return r;
-        if (!r.hasCover) return r;
-        var cf = r.coverFileId;
-        if (typeof cf !== 'string' || cf.indexOf('cloud://') !== 0) return Object.assign({}, r, { coverTempUrl: '' });
-        var reqId = toFullFileId(cf);
-        var tmp = that._tempUrlCache[reqId] || that._tempUrlCache[toEnvOnlyFileId(reqId)] || '';
+        if (!r || !r.hasCover) return r;
+        var cloudId = (typeof r.coverUrl === 'string' && r.coverUrl.indexOf('cloud://') === 0) ? r.coverUrl : '';
+        if (!cloudId) return r;
+        var tmp = tempMap[cloudId];
+        if (!tmp) return Object.assign({}, r, { coverTempUrl: '' });
         return Object.assign({}, r, { coverTempUrl: tmp });
       });
 
-      var headerTmp = that._tempUrlCache[headerReqId] || that._tempUrlCache[toEnvOnlyFileId(headerReqId)] || '';
+      var headerTmp = tempMap[headerFileId] || tempMap[headerReqId] || '';
       that.setData({
         headerBgUrl: headerTmp,
         previewMenuRows: newRows,
@@ -240,93 +215,64 @@ Page({
       } catch (e) {}
     }
 
-    // 只请求 cache 未命中的 fileID，减少卡顿
-    var need = [];
-    for (var n = 0; n < uniq.length; n++) {
-      var id = uniq[n];
-      if (!id) continue;
-      if (that._tempUrlCache[id]) continue;
-      need.push(id);
-    }
-    if (need.length === 0) {
-      applyFromCache();
-      return;
-    }
+    wx.cloud.getTempFileURL({
+      fileList: uniq,
+      success: function (res) {
+        var list = (res && res.fileList) ? res.fileList : [];
+        var tempMap = Object.create(null);
+        var failed = [];
 
-    // 分批请求，避免一次 fileList 太大造成阻塞
-    var BATCH_SIZE = 30;
-    var cursor = 0;
-
-    function requestNextBatch() {
-      if (cursor >= need.length) {
-        applyFromCache();
-        return;
-      }
-      var batch = need.slice(cursor, cursor + BATCH_SIZE);
-      cursor += BATCH_SIZE;
-
-      wx.cloud.getTempFileURL({
-        fileList: batch,
-        success: function (res) {
-          var list = (res && res.fileList) ? res.fileList : [];
-          var failed = [];
-          for (var i = 0; i < list.length; i++) {
-            var it = list[i] || {};
-            if (it.fileID && it.tempFileURL) {
-              that._tempUrlCache[it.fileID] = it.tempFileURL;
-              that._tempUrlCache[toEnvOnlyFileId(it.fileID)] = it.tempFileURL;
-            } else if (it.fileID) {
-              failed.push(it.fileID);
-            }
+        for (var i = 0; i < list.length; i++) {
+          var it = list[i] || {};
+          if (it.fileID && it.tempFileURL) {
+            tempMap[it.fileID] = it.tempFileURL;
+            // 同时写一份 env 简写 key，方便用原 coverUrl(简写) 来取
+            tempMap[toEnvOnlyFileId(it.fileID)] = it.tempFileURL;
+          } else if (it.fileID) {
+            failed.push(it.fileID);
           }
-
-          // 对失败项做一次扩展名切换重试（同样分批）
-          if (failed.length === 0) {
-            requestNextBatch();
-            return;
-          }
-
-          var retry = [];
-          for (var j = 0; j < failed.length; j++) {
-            var alt = that._swapImageExt(failed[j]);
-            if (alt) retry.push(alt);
-          }
-          if (retry.length === 0) {
-            requestNextBatch();
-            return;
-          }
-
-          wx.cloud.getTempFileURL({
-            fileList: retry,
-            success: function (res2) {
-              var list2 = (res2 && res2.fileList) ? res2.fileList : [];
-              for (var k = 0; k < list2.length; k++) {
-                var it2 = list2[k] || {};
-                if (it2.fileID && it2.tempFileURL) {
-                  that._tempUrlCache[it2.fileID] = it2.tempFileURL;
-                  that._tempUrlCache[toEnvOnlyFileId(it2.fileID)] = it2.tempFileURL;
-                  var back = that._swapImageExt(it2.fileID);
-                  if (back) {
-                    that._tempUrlCache[back] = it2.tempFileURL;
-                    that._tempUrlCache[toEnvOnlyFileId(back)] = it2.tempFileURL;
-                  }
-                }
-              }
-              requestNextBatch();
-            },
-            fail: function () {
-              requestNextBatch();
-            }
-          });
-        },
-        fail: function () {
-          requestNextBatch();
         }
-      });
-    }
 
-    requestNextBatch();
+        // 兜底：若扩展名不匹配（png/jpg），尝试自动切换扩展名再取一次
+        var retry = [];
+        for (var j = 0; j < failed.length; j++) {
+          var alt = that._swapImageExt(failed[j]);
+          if (alt) retry.push(alt);
+        }
 
+        if (retry.length === 0) {
+          applyTempUrls(tempMap);
+          return;
+        }
+
+        wx.cloud.getTempFileURL({
+          fileList: retry,
+          success: function (res2) {
+            var list2 = (res2 && res2.fileList) ? res2.fileList : [];
+            for (var k = 0; k < list2.length; k++) {
+              var it2 = list2[k] || {};
+              if (it2.fileID && it2.tempFileURL) {
+                // 把 alt fileID 也映射回原 fileID（通过 swap 反推）
+                var back = that._swapImageExt(it2.fileID);
+                if (back) {
+                  tempMap[back] = it2.tempFileURL;
+                  tempMap[toEnvOnlyFileId(back)] = it2.tempFileURL;
+                }
+                tempMap[it2.fileID] = it2.tempFileURL;
+                tempMap[toEnvOnlyFileId(it2.fileID)] = it2.tempFileURL;
+              }
+            }
+            applyTempUrls(tempMap);
+          },
+          fail: function () {
+            applyTempUrls(tempMap);
+          }
+        });
+      },
+      fail: function () {
+        that.setData({ isImageReady: false });
+      }
+    });
   },
 
   onCheckRow: function (e) {
@@ -377,7 +323,7 @@ Page({
           checked: true,
           recommendReason: reason,
           sameAsAdultHint: sameAsAdultHint,
-          coverFileId: coverService.getRecipeCoverImageUrl(adultName),
+          coverUrl: coverService.getRecipeCoverImageUrl(adultName),
           coverTempUrl: '',
           hasCover: !!coverService.RECIPE_NAME_TO_SLUG[adultName]
         });
@@ -400,8 +346,10 @@ Page({
         getApp().globalData.menuPreview.comboName = result.comboName || '';
         getApp().globalData.menuPreview.balanceTip = balanceTip;
       }
-      that.setData({ previewMenuRows: newRows, previewComboName: result.comboName || '', previewBalanceTip: balanceTip, previewDashboard: dashboard, previewHasSharedBase: hasSharedBase });
-      that._scheduleResolvePreviewImages();
+      that.setData(
+        { previewMenuRows: newRows, previewComboName: result.comboName || '', previewBalanceTip: balanceTip, previewDashboard: dashboard, previewHasSharedBase: hasSharedBase, isImageReady: false },
+        function () { if (that._pageReady) that._resolvePreviewImages(); }
+      );
 
       
     } catch (e) {
@@ -491,7 +439,7 @@ Page({
             checked: true,
             recommendReason: (ar && ar.recommend_reason) ? ar.recommend_reason : '',
             sameAsAdultHint: (st && st.same_as_adult_hint) ? '与大人同款，分装即可' : '',
-            coverFileId: coverService.getRecipeCoverImageUrl(adultNameNew),
+            coverUrl: coverService.getRecipeCoverImageUrl(adultNameNew),
             coverTempUrl: '',
             hasCover: !!coverService.RECIPE_NAME_TO_SLUG[adultNameNew]
           });
@@ -508,9 +456,9 @@ Page({
         previewMenuRows: newRows,
         previewBalanceTip: balanceTip,
         previewDashboard: that._computePreviewDashboard(newMenus, pref),
-        previewHasSharedBase: newRows.some(function (r) { return r.showSharedHint; })
-      });
-      that._scheduleResolvePreviewImages();
+        previewHasSharedBase: newRows.some(function (r) { return r.showSharedHint; }),
+        isImageReady: false
+      }, function () { if (that._pageReady) that._resolvePreviewImages(); });
 
       
       wx.showToast({ title: '已为您选出更均衡的搭配', icon: 'none' });

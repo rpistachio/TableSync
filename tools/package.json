@@ -1,0 +1,19 @@
+{
+  "name": "tablesync-tools",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Automation tools for TableSync recipes & assets pipeline",
+  "scripts": {
+    "generate": "node generate.js",
+    "sync": "node sync.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "latest",
+    "@cloudbase/node-sdk": "latest",
+    "chalk": "latest",
+    "commander": "latest",
+    "dotenv": "latest"
+  }
+}
+

@@ -52,9 +52,9 @@ Page({
       else if (menus[i].meat === 'vegetable' && !subDish) subDish = name;
       else if (menus[i].meat !== 'vegetable' && !mainDish) mainDish = name;
     }
-    mainDish = mainDish || '红烧肉';
-    subDish = subDish || '手撕包菜';
-    soupDish = soupDish || '番茄蛋汤';
+    mainDish = mainDish || '今日主菜';
+    subDish = subDish || '今日素菜';
+    soupDish = soupDish || '今日汤品';
 
     var outerDishes = that._generateWheel(mainDish, 'meat', pref);
     var middleDishes = that._generateWheel(subDish, 'vegetable', pref);

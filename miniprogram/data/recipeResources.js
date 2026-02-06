@@ -16,8 +16,8 @@ const IMAGE_CONFIG = {
     shopping: `${CLOUD_HTTP_ROOT}/shopping_cover_pic/`
   },
 
-  // 默认兜底图
-  defaultCover: `${CLOUD_HTTP_ROOT}/basic_cut_0_3_ar4.5.jpeg`,
+  // 默认兜底图（使用备菜封面图作为兜底）
+  defaultCover: `${CLOUD_HTTP_ROOT}/prep_cover_pic/basic-veg-cut-01.jpeg`,
 
   // 页面固定头图
   pageCovers: {

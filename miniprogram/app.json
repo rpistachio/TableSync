@@ -5,9 +5,9 @@
     "pages/preview/preview",
     "pages/menu/menu",
     "pages/steps/steps",
-    "pages/shopping/shopping",
-    "pages/cart/cart"
+    "pages/shopping/shopping"
   ],
+  "lazyCodeLoading": "requiredComponents",
   "window": {
     "backgroundTextStyle": "dark",
     "navigationBarBackgroundColor": "#fdf8f2",

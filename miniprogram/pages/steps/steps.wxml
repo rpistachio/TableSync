@@ -1,13 +1,13 @@
 <view class="steps-container">
   <view class="steps-header">
-    <image wx:if="{{currentStepImage && currentStepImage.length > 0}}" class="header-ambient-bg" src="{{currentStepImage}}" mode="aspectFill" />
+    <image wx:if="{{currentStepImage}}" class="header-ambient-bg" src="{{currentStepImage}}" mode="aspectFill" />
     <view class="header-mask"></view>
     
     <view class="header-content">
       <view class="hero-section">
         <view class="progress-visual">
           <view class="progress-ring" style="background: conic-gradient(#E8A87C {{progressPercentage}}%, rgba(255,255,255,0.2) 0%)"></view>
-          <image wx:if="{{currentStepImage && currentStepImage.length > 0}}" class="dish-mini-img" src="{{currentStepImage}}" mode="aspectFill" />
+          <image wx:if="{{currentStepImage}}" class="dish-mini-img" src="{{currentStepImage}}" mode="aspectFill" />
         </view>
         
         <view class="step-info">
@@ -32,13 +32,7 @@
         <!-- 阶段横幅（支持文案配置） -->
         <view wx:if="{{item.isPhaseStart}}" class="phase-banner {{item.phaseType}}">
           <view class="phase-banner-main">
-            <view class="phase-icon">
-              <text wx:if="{{item.phaseType === 'prep'}}">🥬</text>
-              <text wx:elif="{{item.phaseType === 'long_term'}}">🍲</text>
-              <text wx:elif="{{item.phaseType === 'gap'}}">⚡</text>
-              <text wx:elif="{{item.phaseType === 'cook'}}">🔥</text>
-              <text wx:elif="{{item.phaseType === 'finish'}}">🍽️</text>
-            </view>
+            <view class="phase-icon"></view>
             <view class="phase-texts">
               <text class="phase-title">{{item.phaseTitle}}</text>
               <text wx:if="{{item.phaseSubtitle}}" class="phase-subtitle">{{item.phaseSubtitle}}</text>
@@ -52,7 +46,7 @@
           <view class="timeline-line {{item.stepType === 'prep' ? 'line-dashed' : 'line-solid'}}"></view>
           <!-- 宝宝分支 -->
           <view class="baby-branch" wx:if="{{item.roleTag === '宝宝餐'}}">
-            <view class="baby-dot">🍼</view>
+            <view class="baby-dot"></view>
           </view>
         </view>
 
@@ -73,7 +67,7 @@
                 </view>
               </view>
               <view wx:if="{{item.duration != null}}" class="step-card__meta-mini">
-                <text class="meta-time">🕒 {{item.duration}}'</text>
+                <text class="meta-time">{{item.duration}}'</text>
               </view>
             </view>
 
@@ -93,8 +87,8 @@
                   wx:key="index"
                   class="detail-line {{line.isBabyPortion ? 'baby-portion-action' : ''}}"
                 >
-                  <!-- 使用 rich-text 渲染，避免嵌套 <text> 在部分设备上导致意外换行 -->
-                  <rich-text class="detail-line-text" nodes="{{line.richTextHtml}}"></rich-text>
+                  <!-- 使用 rich-text 渲染 HTML，彻底避免嵌套 text 导致动词孤立成行 -->
+                  <rich-text class="detail-line-text" nodes="{{line.richText}}"></rich-text>
                 </view>
               </view>
 

@@ -1228,7 +1228,1061 @@ var adultRecipes = [
     steps: [
       { action: 'prep', text: '番茄去皮切小块；金针菇去根洗净，撕成小朵；鸡蛋打入碗中搅打均匀；葱花切好备用' },
       { action: 'cook', text: '锅中加500ml清水烧开，放入{{ingredients_info}}番茄块和金针菇煮3分钟，淋入蛋液搅出蛋花，加少许盐调味，撒上葱花即可' }
-    ] }
+    ] },
+
+  // ============ 新增：牛肉 + 精选蒸拌（2 道） ============
+  { id: 'a-beef-6', name: '苹果白切牛腱', type: 'adult', taste: 'steamed_salad', meat: 'beef',
+    prep_time: 20,
+    is_baby_friendly: true,
+    common_allergens: [],
+    can_share_base: false,
+    flavor_profile: 'light',
+    cook_type: 'stew',
+    ingredients: [
+      { name: '牛腱子', baseAmount: 500, unit: 'g', category: '肉类', sub_type: 'beef_shank' },
+      { name: '苹果', baseAmount: 1, unit: '个', category: '蔬菜' },
+      { name: '姜片', baseAmount: 30, unit: 'g', category: '调料' },
+      { name: '葱段', baseAmount: 20, unit: 'g', category: '调料' },
+      { name: '料酒', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '八角', baseAmount: 2, unit: '个', category: '调料' },
+      { name: '桂皮', baseAmount: 1, unit: '小块', category: '调料' },
+      { name: '蒜蓉酱油', baseAmount: 0, unit: '适量', category: '调料' }
+    ],
+    steps: [
+      { action: 'prep', text: '牛腱子冷水浸泡 30 分钟去血水，苹果去皮切大块备用。准备姜片、葱段、八角、桂皮。' },
+      { action: 'cook', text: '牛腱子冷水入锅焯水去浮沫，捞出洗净。另起锅加足量水，放入牛腱子、苹果、姜片、葱段、八角、桂皮、料酒，大火烧开转小火炖 1.5 小时至筷子能轻松插入。关火浸泡 30 分钟后捞出放凉，逆纹切薄片，蘸蒜蓉酱油食用。' }
+    ] },
+  { id: 'a-beef-7', name: '凉拌柠檬牛腱子', type: 'adult', taste: 'steamed_salad', meat: 'beef',
+    prep_time: 15,
+    is_baby_friendly: false,
+    common_allergens: [],
+    can_share_base: false,
+    flavor_profile: 'sour_fresh',
+    cook_type: 'cold_dress',
+    ingredients: [
+      { name: '熟牛腱子', baseAmount: 300, unit: 'g', category: '肉类', sub_type: 'beef_shank' },
+      { name: '柠檬', baseAmount: 1, unit: '个', category: '蔬菜' },
+      { name: '小米辣', baseAmount: 3, unit: '个', category: '蔬菜' },
+      { name: '香菜', baseAmount: 20, unit: 'g', category: '蔬菜' },
+      { name: '蒜末', baseAmount: 10, unit: 'g', category: '调料' },
+      { name: '生抽', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '香油', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '白糖', baseAmount: 0, unit: '少许', category: '调料' }
+    ],
+    steps: [
+      { action: 'prep', text: '熟牛腱子逆纹切薄片摆盘。柠檬挤汁备用，小米辣切圈，香菜切段，蒜切末。' },
+      { action: 'cook', text: '调汁：柠檬汁 + 生抽 + 蒜末 + 少许白糖 + 香油拌匀。将调好的酱汁淋在牛肉片上，撒上小米辣圈和香菜段，拌匀即可食用。' }
+    ] },
+
+  // ============ 新增：鱼 + 暖心炖煮（2 道） ============
+  { id: 'a-fish-4', name: '番茄酸汤鱼头', type: 'adult', dish_type: 'soup', taste: 'slow_stew', meat: 'fish',
+    prep_time: 15,
+    is_baby_friendly: false,
+    common_allergens: ['鱼'],
+    can_share_base: false,
+    flavor_profile: 'sweet_sour',
+    cook_type: 'stew',
+    ingredients: [
+      { name: '鱼头', baseAmount: 1, unit: '个', category: '肉类', sub_type: 'fish_head' },
+      { name: '番茄', baseAmount: 2, unit: '个', category: '蔬菜' },
+      { name: '酸汤料', baseAmount: 50, unit: 'g', category: '调料' },
+      { name: '金针菇', baseAmount: 100, unit: 'g', category: '蔬菜' },
+      { name: '姜片', baseAmount: 20, unit: 'g', category: '调料' },
+      { name: '葱段', baseAmount: 15, unit: 'g', category: '调料' },
+      { name: '料酒', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '盐', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '香菜', baseAmount: 10, unit: 'g', category: '蔬菜' }
+    ],
+    steps: [
+      { action: 'prep', text: '鱼头对半劈开洗净，抹少许盐和料酒腌制 10 分钟。番茄切块，金针菇去根洗净，香菜切段备用。' },
+      { action: 'cook', text: '锅中少许油，放入鱼头煎至两面微黄，加入姜片、葱段爆香。倒入番茄块炒出汁，加入酸汤料和足量开水，大火烧开转中火炖 15 分钟。加入金针菇煮 3 分钟，调味后撒香菜出锅。' }
+    ] },
+  { id: 'a-fish-5', name: '菌菇豆腐炖鲈鱼', type: 'adult', dish_type: 'soup', taste: 'slow_stew', meat: 'fish',
+    prep_time: 15,
+    is_baby_friendly: true,
+    common_allergens: ['鱼'],
+    can_share_base: true,
+    flavor_profile: 'light',
+    cook_type: 'stew',
+    ingredients: [
+      { name: '鲈鱼', baseAmount: 1, unit: '条', category: '肉类', sub_type: 'fish_seabass' },
+      { name: '嫩豆腐', baseAmount: 200, unit: 'g', category: '其他' },
+      { name: '金针菇', baseAmount: 100, unit: 'g', category: '蔬菜' },
+      { name: '香菇', baseAmount: 50, unit: 'g', category: '蔬菜' },
+      { name: '姜丝', baseAmount: 15, unit: 'g', category: '调料' },
+      { name: '葱段', baseAmount: 10, unit: 'g', category: '调料' },
+      { name: '料酒', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '盐', baseAmount: 0, unit: '适量', category: '调料' }
+    ],
+    steps: [
+      { action: 'prep', text: '鲈鱼去鳞去内脏洗净，鱼身划几刀便于入味，抹少许盐和料酒腌制 10 分钟。嫩豆腐切块，金针菇去根，香菇切片。' },
+      { action: 'cook', text: '锅中少许油，放入鲈鱼煎至两面微黄，加入姜丝、葱段爆香，倒入足量开水大火烧开转中火炖 10 分钟至汤色奶白。加入豆腐、金针菇、香菇再炖 5 分钟，加盐调味即可。' }
+    ] },
+
+  // ============ 新增：虾 + 暖心炖煮（2 道） ============
+  { id: 'a-shrimp-4', name: '椰香虾仁豆腐煲', type: 'adult', dish_type: 'soup', taste: 'slow_stew', meat: 'shrimp',
+    prep_time: 15,
+    is_baby_friendly: true,
+    common_allergens: ['虾'],
+    can_share_base: false,
+    flavor_profile: 'light',
+    cook_type: 'stew',
+    ingredients: [
+      { name: '鲜虾', baseAmount: 250, unit: 'g', category: '肉类', sub_type: 'shrimp' },
+      { name: '嫩豆腐', baseAmount: 200, unit: 'g', category: '其他' },
+      { name: '椰浆', baseAmount: 200, unit: 'ml', category: '调料' },
+      { name: '胡萝卜', baseAmount: 50, unit: 'g', category: '蔬菜' },
+      { name: '玉米粒', baseAmount: 50, unit: 'g', category: '蔬菜' },
+      { name: '姜片', baseAmount: 10, unit: 'g', category: '调料' },
+      { name: '盐', baseAmount: 0, unit: '适量', category: '调料' }
+    ],
+    steps: [
+      { action: 'prep', text: '鲜虾去头去壳去虾线，嫩豆腐切小块，胡萝卜切小丁。' },
+      { action: 'cook', text: '锅中少许油，放入姜片爆香，加入胡萝卜丁和玉米粒翻炒 1 分钟。倒入椰浆和 200ml 清水，大火烧开后放入豆腐块，中火煮 5 分钟。加入虾仁煮至变色，加盐调味即可。' }
+    ] },
+  { id: 'a-shrimp-5', name: '番茄金针菇虾仁汤', type: 'adult', dish_type: 'soup', taste: 'slow_stew', meat: 'shrimp',
+    prep_time: 10,
+    is_baby_friendly: true,
+    common_allergens: ['虾'],
+    can_share_base: true,
+    flavor_profile: 'sweet_sour',
+    cook_type: 'stew',
+    ingredients: [
+      { name: '鲜虾', baseAmount: 200, unit: 'g', category: '肉类', sub_type: 'shrimp' },
+      { name: '番茄', baseAmount: 2, unit: '个', category: '蔬菜' },
+      { name: '金针菇', baseAmount: 100, unit: 'g', category: '蔬菜' },
+      { name: '姜片', baseAmount: 10, unit: 'g', category: '调料' },
+      { name: '葱花', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '盐', baseAmount: 0, unit: '适量', category: '调料' }
+    ],
+    steps: [
+      { action: 'prep', text: '鲜虾去头去壳去虾线，番茄去皮切块，金针菇去根洗净。' },
+      { action: 'cook', text: '锅中少许油，放入姜片爆香，加入番茄块炒出汁，倒入 500ml 清水大火烧开。加入金针菇煮 2 分钟，放入虾仁煮至变色（约 2 分钟），加盐调味，撒葱花即可。' }
+    ] },
+
+  // ============ 新增：素菜 + 暖心炖煮（2 道） ============
+  { id: 'a-veg-11', name: '白菜豆腐粉丝煲', type: 'adult', taste: 'slow_stew', meat: 'vegetable',
+    prep_time: 10,
+    is_baby_friendly: true,
+    common_allergens: [],
+    can_share_base: true,
+    flavor_profile: 'light',
+    cook_type: 'stew',
+    ingredients: [
+      { name: '大白菜', baseAmount: 300, unit: 'g', category: '蔬菜' },
+      { name: '冻豆腐', baseAmount: 200, unit: 'g', category: '其他' },
+      { name: '粉丝', baseAmount: 80, unit: 'g', category: '干货' },
+      { name: '姜片', baseAmount: 10, unit: 'g', category: '调料' },
+      { name: '生抽', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '盐', baseAmount: 0, unit: '适量', category: '调料' }
+    ],
+    steps: [
+      { action: 'prep', text: '大白菜洗净切大块，冻豆腐解冻挤干水分切块，粉丝用温水泡软。' },
+      { action: 'cook', text: '砂锅中少许油，放入姜片爆香，加入白菜帮翻炒至软。倒入足量清水烧开，放入冻豆腐中火炖 10 分钟。加入白菜叶和粉丝煮 5 分钟，淋少许生抽，加盐调味即可。' }
+    ] },
+  { id: 'a-veg-12', name: '山药萝卜菌菇煲', type: 'adult', taste: 'slow_stew', meat: 'vegetable',
+    prep_time: 15,
+    is_baby_friendly: true,
+    common_allergens: [],
+    can_share_base: true,
+    flavor_profile: 'light',
+    cook_type: 'stew',
+    ingredients: [
+      { name: '铁棍山药', baseAmount: 200, unit: 'g', category: '蔬菜' },
+      { name: '白萝卜', baseAmount: 200, unit: 'g', category: '蔬菜' },
+      { name: '香菇', baseAmount: 50, unit: 'g', category: '蔬菜' },
+      { name: '金针菇', baseAmount: 50, unit: 'g', category: '蔬菜' },
+      { name: '枸杞', baseAmount: 10, unit: 'g', category: '干货' },
+      { name: '姜片', baseAmount: 10, unit: 'g', category: '调料' },
+      { name: '盐', baseAmount: 0, unit: '适量', category: '调料' }
+    ],
+    steps: [
+      { action: 'prep', text: '山药去皮切滚刀块（戴手套防痒），白萝卜去皮切块，香菇切片，金针菇去根洗净，枸杞泡水备用。' },
+      { action: 'cook', text: '砂锅中加入足量清水，放入姜片、白萝卜大火烧开转中火煮 10 分钟。加入山药、香菇继续煮 10 分钟，最后加入金针菇和枸杞煮 3 分钟，加盐调味即可。' }
+    ] },
+
+  // ============ 新增：网红滇味 & 泰式凉拌系列（社媒西南/东南亚风味热榜） ============
+  { id: 'a-veg-13', name: '火烧树番茄酱拌凉皮', type: 'adult', taste: 'steamed_salad', meat: 'vegetable',
+    prep_time: 15,
+    is_baby_friendly: false,
+    common_allergens: ['花生'],
+    can_share_base: false,
+    flavor_profile: 'sour_fresh',
+    cook_method: 'cold_dress',
+    ingredients: [
+      { name: '凉皮', baseAmount: 300, unit: 'g', category: '其他' },
+      { name: '树番茄', baseAmount: 2, unit: '个', category: '蔬菜' },
+      { name: '小米辣', baseAmount: 3, unit: '个', category: '蔬菜' },
+      { name: '蒜末', baseAmount: 15, unit: 'g', category: '调料' },
+      { name: '花生碎', baseAmount: 20, unit: 'g', category: '其他' },
+      { name: '香菜', baseAmount: 15, unit: 'g', category: '蔬菜' },
+      { name: '醋', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '生抽', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '盐', baseAmount: 0, unit: '适量', category: '调料' }
+    ],
+    steps: [
+      { action: 'prep', text: '树番茄放炭火或燃气灶上烤至外皮焦黑起泡，剥皮后捣碎成酱。小米辣切圈，蒜切末，香菜切段。凉皮切宽条备用。' },
+      { action: 'cook', text: '将树番茄酱、蒜末、小米辣、醋、生抽、少许盐调成酱汁。凉皮摆盘，淋上酱汁，撒花生碎和香菜段拌匀即可。' }
+    ] },
+  { id: 'a-veg-14', name: '傣味凉拌米线', type: 'adult', taste: 'steamed_salad', meat: 'vegetable',
+    prep_time: 10,
+    is_baby_friendly: false,
+    common_allergens: ['花生'],
+    can_share_base: false,
+    flavor_profile: 'sour_fresh',
+    cook_method: 'cold_dress',
+    ingredients: [
+      { name: '米线', baseAmount: 250, unit: 'g', category: '其他' },
+      { name: '柠檬', baseAmount: 1, unit: '个', category: '蔬菜' },
+      { name: '小米辣', baseAmount: 3, unit: '个', category: '蔬菜' },
+      { name: '香菜', baseAmount: 20, unit: 'g', category: '蔬菜' },
+      { name: '薄荷叶', baseAmount: 10, unit: 'g', category: '蔬菜' },
+      { name: '花生碎', baseAmount: 20, unit: 'g', category: '其他' },
+      { name: '鱼露', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '白糖', baseAmount: 0, unit: '少许', category: '调料' },
+      { name: '盐', baseAmount: 0, unit: '适量', category: '调料' }
+    ],
+    steps: [
+      { action: 'prep', text: '米线煮熟过凉水沥干。柠檬挤汁，小米辣切圈，香菜切段，薄荷叶洗净备用。' },
+      { action: 'cook', text: '调汁：柠檬汁 + 鱼露 + 少许白糖 + 盐拌匀。米线摆盘，淋上调好的酱汁，撒小米辣、花生碎、香菜段和薄荷叶，拌匀即可。' }
+    ] },
+  { id: 'a-chi-5', name: '傣味柠檬手撕鸡', type: 'adult', taste: 'steamed_salad', meat: 'chicken',
+    prep_time: 15,
+    is_baby_friendly: false,
+    common_allergens: [],
+    can_share_base: false,
+    flavor_profile: 'sour_fresh',
+    cook_method: 'cold_dress',
+    ingredients: [
+      { name: '鸡腿', baseAmount: 350, unit: 'g', category: '肉类', sub_type: 'chicken_thigh' },
+      { name: '柠檬', baseAmount: 1, unit: '个', category: '蔬菜' },
+      { name: '小米辣', baseAmount: 5, unit: '个', category: '蔬菜' },
+      { name: '香菜', baseAmount: 20, unit: 'g', category: '蔬菜' },
+      { name: '薄荷叶', baseAmount: 10, unit: 'g', category: '蔬菜' },
+      { name: '蒜末', baseAmount: 10, unit: 'g', category: '调料' },
+      { name: '鱼露', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '白糖', baseAmount: 0, unit: '少许', category: '调料' },
+      { name: '盐', baseAmount: 0, unit: '适量', category: '调料' }
+    ],
+    steps: [
+      { action: 'prep', text: '鸡腿冷水下锅加姜片煮 18 分钟至熟透，捞出浸冰水冷却后手撕成丝。柠檬挤汁，小米辣切圈，香菜、薄荷切碎。' },
+      { action: 'cook', text: '调汁：柠檬汁 + 鱼露 + 蒜末 + 少许白糖 + 盐拌匀。鸡丝摆盘，淋上酱汁，撒小米辣、香菜和薄荷拌匀即可。' }
+    ] },
+  { id: 'a-shrimp-6', name: '泰式凉拌虾木瓜沙拉', type: 'adult', taste: 'steamed_salad', meat: 'shrimp',
+    prep_time: 15,
+    is_baby_friendly: false,
+    common_allergens: ['虾', '花生'],
+    can_share_base: false,
+    flavor_profile: 'sour_fresh',
+    cook_method: 'cold_dress',
+    ingredients: [
+      { name: '鲜虾', baseAmount: 200, unit: 'g', category: '肉类', sub_type: 'shrimp' },
+      { name: '青木瓜', baseAmount: 200, unit: 'g', category: '蔬菜' },
+      { name: '小番茄', baseAmount: 80, unit: 'g', category: '蔬菜' },
+      { name: '柠檬', baseAmount: 1, unit: '个', category: '蔬菜' },
+      { name: '小米辣', baseAmount: 3, unit: '个', category: '蔬菜' },
+      { name: '花生碎', baseAmount: 20, unit: 'g', category: '其他' },
+      { name: '鱼露', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '白糖', baseAmount: 0, unit: '少许', category: '调料' }
+    ],
+    steps: [
+      { action: 'prep', text: '鲜虾去壳去虾线，沸水焯熟捞出过冰水。青木瓜去皮去籽切丝，小番茄对半切，柠檬挤汁，小米辣切碎。' },
+      { action: 'cook', text: '调汁：柠檬汁 + 鱼露 + 白糖 + 小米辣拌匀。木瓜丝、小番茄、虾仁放入大碗，淋上酱汁，撒花生碎拌匀即可。' }
+    ] },
+
+  // ============ 新增：快手煎炒 & 网红炒饭系列（社媒懒人快手菜热榜） ============
+  { id: 'a-chi-6', name: '香煎鸡肉', type: 'adult', taste: 'quick_stir_fry', meat: 'chicken',
+    prep_time: 10,
+    is_baby_friendly: true,
+    common_allergens: [],
+    can_share_base: true,
+    ingredients: [
+      { name: '鸡胸肉', baseAmount: 300, unit: 'g', category: '肉类', sub_type: 'chicken_breast' },
+      { name: '黑胡椒', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '盐', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '食用油', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '柠檬', baseAmount: 15, unit: 'g', category: '蔬菜' }
+    ],
+    steps: [
+      { action: 'prep', text: '鸡胸肉用刀背拍松，抹少许盐和黑胡椒腌制 10 分钟。柠檬切角备用。' },
+      { action: 'cook', text: '平底锅中火加少许油，放入鸡胸肉煎至两面金黄、内部熟透（每面约 4-5 分钟），取出切片，挤柠檬汁即可。' }
+    ] },
+  { id: 'a-veg-15', name: '油糟辣椒炒饭', type: 'adult', taste: 'quick_stir_fry', meat: 'vegetable',
+    prep_time: 8,
+    is_baby_friendly: false,
+    common_allergens: ['蛋'],
+    can_share_base: false,
+    ingredients: [
+      { name: '隔夜米饭', baseAmount: 300, unit: 'g', category: '其他' },
+      { name: '油糟辣椒', baseAmount: 30, unit: 'g', category: '调料' },
+      { name: '鸡蛋', baseAmount: 2, unit: '个', category: '蛋类' },
+      { name: '葱花', baseAmount: 15, unit: 'g', category: '蔬菜' },
+      { name: '盐', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '食用油', baseAmount: 0, unit: '适量', category: '调料' }
+    ],
+    steps: [
+      { action: 'prep', text: '隔夜米饭提前打散。鸡蛋打散，葱切花。' },
+      { action: 'cook', text: '热锅多油，倒入蛋液炒散，加入米饭大火翻炒至粒粒分明。加入油糟辣椒翻炒均匀，加盐调味，撒葱花出锅。' }
+    ] },
+  { id: 'a-pork-8', name: '泰式打抛炒饭', type: 'adult', taste: 'quick_stir_fry', meat: 'pork',
+    prep_time: 10,
+    is_baby_friendly: false,
+    common_allergens: ['蛋'],
+    can_share_base: false,
+    flavor_profile: 'spicy',
+    ingredients: [
+      { name: '隔夜米饭', baseAmount: 300, unit: 'g', category: '其他' },
+      { name: '猪肉末', baseAmount: 150, unit: 'g', category: '肉类', sub_type: 'pork_mince' },
+      { name: '九层塔', baseAmount: 30, unit: 'g', category: '蔬菜' },
+      { name: '小米辣', baseAmount: 3, unit: '个', category: '蔬菜' },
+      { name: '蒜末', baseAmount: 15, unit: 'g', category: '调料' },
+      { name: '鸡蛋', baseAmount: 1, unit: '个', category: '蛋类' },
+      { name: '鱼露', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '生抽', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '白糖', baseAmount: 0, unit: '少许', category: '调料' },
+      { name: '食用油', baseAmount: 0, unit: '适量', category: '调料' }
+    ],
+    steps: [
+      { action: 'prep', text: '隔夜米饭打散。小米辣切碎，蒜切末，九层塔洗净摘叶。鸡蛋煎成太阳蛋备用。' },
+      { action: 'cook', text: '热锅下油，爆香蒜末、小米辣，下猪肉末炒散至变色。加入米饭大火翻炒，淋鱼露、生抽、少许白糖调味。出锅前撒九层塔叶翻匀，盛盘摆上太阳蛋即可。' }
+    ] },
+
+  // ============ 新增：养生滋补汤 - 乌鸡款 ============
+  { id: 'a-soup-6', name: '人参黄芪乌鸡汤', type: 'adult', dish_type: 'soup', taste: 'slow_stew', meat: 'chicken',
+    prep_time: 20,
+    cook_minutes: 120,
+    is_baby_friendly: false,
+    common_allergens: [],
+    can_share_base: false,
+    ingredients: [
+      { name: '乌鸡', baseAmount: 500, unit: 'g', category: '肉类', sub_type: 'black_chicken' },
+      { name: '人参', baseAmount: 10, unit: 'g', category: '干货' },
+      { name: '黄芪', baseAmount: 15, unit: 'g', category: '干货' },
+      { name: '红枣', baseAmount: 20, unit: 'g', category: '干货' },
+      { name: '枸杞', baseAmount: 10, unit: 'g', category: '干货' },
+      { name: '姜片', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '料酒', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '盐', baseAmount: 0, unit: '适量', category: '调料' }
+    ],
+    steps: [
+      { action: 'prep', text: '乌鸡斩块，冷水下锅加姜片、料酒焯水，撇净浮沫后捞出洗净。人参、黄芪、红枣洗净，枸杞泡水备用。' },
+      { action: 'cook', text: '乌鸡块与人参、黄芪、红枣、姜片一同入炖盅或砂锅，加足量清水。大火烧开转小火慢炖 2 小时，出锅前 10 分钟加入枸杞，加盐调味即可。' }
+    ] },
+  { id: 'a-soup-7', name: '党参枸杞乌鸡汤', type: 'adult', dish_type: 'soup', taste: 'slow_stew', meat: 'chicken',
+    prep_time: 20,
+    cook_minutes: 120,
+    is_baby_friendly: false,
+    common_allergens: [],
+    can_share_base: false,
+    ingredients: [
+      { name: '乌鸡', baseAmount: 500, unit: 'g', category: '肉类', sub_type: 'black_chicken' },
+      { name: '党参', baseAmount: 15, unit: 'g', category: '干货' },
+      { name: '枸杞', baseAmount: 15, unit: 'g', category: '干货' },
+      { name: '红枣', baseAmount: 20, unit: 'g', category: '干货' },
+      { name: '姜片', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '料酒', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '盐', baseAmount: 0, unit: '适量', category: '调料' }
+    ],
+    steps: [
+      { action: 'prep', text: '乌鸡斩块焯水去浮沫后捞出洗净。党参、红枣洗净，枸杞泡水备用。' },
+      { action: 'cook', text: '乌鸡块与党参、红枣、姜片入砂锅，加足量清水大火烧开转小火慢炖 2 小时。出锅前 10 分钟加入枸杞，加盐调味即可。' }
+    ] },
+
+  // ============ 新增：养生滋补汤 - 排骨款 ============
+  { id: 'a-soup-8', name: '黄芪党参排骨汤', type: 'adult', dish_type: 'soup', taste: 'slow_stew', meat: 'pork',
+    prep_time: 15,
+    cook_minutes: 90,
+    is_baby_friendly: false,
+    common_allergens: [],
+    can_share_base: false,
+    ingredients: [
+      { name: '排骨', baseAmount: 400, unit: 'g', category: '肉类', sub_type: 'pork_ribs' },
+      { name: '黄芪', baseAmount: 15, unit: 'g', category: '干货' },
+      { name: '党参', baseAmount: 15, unit: 'g', category: '干货' },
+      { name: '红枣', baseAmount: 20, unit: 'g', category: '干货' },
+      { name: '姜片', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '料酒', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '盐', baseAmount: 0, unit: '适量', category: '调料' }
+    ],
+    steps: [
+      { action: 'prep', text: '排骨冷水下锅加姜片、料酒焯水，撇净浮沫后捞出洗净。黄芪、党参、红枣洗净备用。' },
+      { action: 'cook', text: '排骨与黄芪、党参、红枣、姜片入砂锅，加足量清水大火烧开转小火慢炖 1.5 小时至排骨软烂，加盐调味即可。' }
+    ] },
+  { id: 'a-soup-9', name: '灵芝红枣排骨汤', type: 'adult', dish_type: 'soup', taste: 'slow_stew', meat: 'pork',
+    prep_time: 15,
+    cook_minutes: 90,
+    is_baby_friendly: false,
+    common_allergens: [],
+    can_share_base: false,
+    ingredients: [
+      { name: '排骨', baseAmount: 400, unit: 'g', category: '肉类', sub_type: 'pork_ribs' },
+      { name: '灵芝', baseAmount: 15, unit: 'g', category: '干货' },
+      { name: '红枣', baseAmount: 25, unit: 'g', category: '干货' },
+      { name: '枸杞', baseAmount: 10, unit: 'g', category: '干货' },
+      { name: '姜片', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '料酒', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '盐', baseAmount: 0, unit: '适量', category: '调料' }
+    ],
+    steps: [
+      { action: 'prep', text: '排骨冷水下锅加姜片、料酒焯水，撇净浮沫后捞出洗净。灵芝切片，红枣洗净，枸杞泡水备用。' },
+      { action: 'cook', text: '排骨与灵芝、红枣、姜片入砂锅，加足量清水大火烧开转小火慢炖 1.5 小时。出锅前 10 分钟加枸杞，加盐调味即可。' }
+    ] },
+
+  // ============ 新增：养生滋补汤 - 老母鸡款 ============
+  { id: 'a-soup-10', name: '人参桂圆老母鸡汤', type: 'adult', dish_type: 'soup', taste: 'slow_stew', meat: 'chicken',
+    prep_time: 20,
+    cook_minutes: 150,
+    is_baby_friendly: false,
+    common_allergens: [],
+    can_share_base: false,
+    ingredients: [
+      { name: '老母鸡', baseAmount: 500, unit: 'g', category: '肉类', sub_type: 'old_hen' },
+      { name: '人参', baseAmount: 10, unit: 'g', category: '干货' },
+      { name: '桂圆', baseAmount: 20, unit: 'g', category: '干货' },
+      { name: '红枣', baseAmount: 20, unit: 'g', category: '干货' },
+      { name: '枸杞', baseAmount: 10, unit: 'g', category: '干货' },
+      { name: '姜片', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '料酒', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '盐', baseAmount: 0, unit: '适量', category: '调料' }
+    ],
+    steps: [
+      { action: 'prep', text: '老母鸡斩块，冷水下锅加姜片、料酒焯水，撇净浮沫后捞出洗净。人参、桂圆、红枣洗净，枸杞泡水备用。' },
+      { action: 'cook', text: '老母鸡块与人参、桂圆、红枣、姜片入砂锅，加足量清水大火烧开转小火慢炖 2.5 小时至鸡肉酥烂。出锅前 10 分钟加枸杞，加盐调味即可。' }
+    ] },
+  { id: 'a-soup-11', name: '灵芝石斛老母鸡汤', type: 'adult', dish_type: 'soup', taste: 'slow_stew', meat: 'chicken',
+    prep_time: 20,
+    cook_minutes: 150,
+    is_baby_friendly: false,
+    common_allergens: [],
+    can_share_base: false,
+    ingredients: [
+      { name: '老母鸡', baseAmount: 500, unit: 'g', category: '肉类', sub_type: 'old_hen' },
+      { name: '灵芝', baseAmount: 15, unit: 'g', category: '干货' },
+      { name: '石斛', baseAmount: 15, unit: 'g', category: '干货' },
+      { name: '红枣', baseAmount: 20, unit: 'g', category: '干货' },
+      { name: '姜片', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '料酒', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '盐', baseAmount: 0, unit: '适量', category: '调料' }
+    ],
+    steps: [
+      { action: 'prep', text: '老母鸡斩块焯水去浮沫后捞出洗净。灵芝切片，石斛、红枣洗净备用。' },
+      { action: 'cook', text: '老母鸡块与灵芝、石斛、红枣、姜片入砂锅，加足量清水大火烧开转小火慢炖 2.5 小时至鸡肉酥烂脱骨，加盐调味即可。' }
+    ] },
+
+  // ============ 新增：养生滋补汤 - 猪蹄款 ============
+  { id: 'a-soup-12', name: '黄芪花生猪蹄汤', type: 'adult', dish_type: 'soup', taste: 'slow_stew', meat: 'pork',
+    prep_time: 20,
+    cook_minutes: 120,
+    is_baby_friendly: false,
+    common_allergens: ['花生'],
+    can_share_base: false,
+    ingredients: [
+      { name: '猪蹄', baseAmount: 500, unit: 'g', category: '肉类', sub_type: 'pig_trotter' },
+      { name: '黄芪', baseAmount: 15, unit: 'g', category: '干货' },
+      { name: '花生', baseAmount: 50, unit: 'g', category: '其他' },
+      { name: '红枣', baseAmount: 20, unit: 'g', category: '干货' },
+      { name: '姜片', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '料酒', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '盐', baseAmount: 0, unit: '适量', category: '调料' }
+    ],
+    steps: [
+      { action: 'prep', text: '猪蹄剁小块，冷水下锅加姜片、料酒焯水，撇净浮沫后捞出洗净。花生提前浸泡 1 小时，黄芪、红枣洗净备用。' },
+      { action: 'cook', text: '猪蹄与黄芪、花生、红枣、姜片入砂锅，加足量清水大火烧开转小火慢炖 2 小时至猪蹄软烂脱骨、汤色奶白，加盐调味即可。' }
+    ] },
+  { id: 'a-soup-13', name: '党参山药猪蹄汤', type: 'adult', dish_type: 'soup', taste: 'slow_stew', meat: 'pork',
+    prep_time: 20,
+    cook_minutes: 120,
+    is_baby_friendly: false,
+    common_allergens: [],
+    can_share_base: false,
+    ingredients: [
+      { name: '猪蹄', baseAmount: 500, unit: 'g', category: '肉类', sub_type: 'pig_trotter' },
+      { name: '党参', baseAmount: 15, unit: 'g', category: '干货' },
+      { name: '铁棍山药', baseAmount: 200, unit: 'g', category: '蔬菜' },
+      { name: '红枣', baseAmount: 20, unit: 'g', category: '干货' },
+      { name: '姜片', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '料酒', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '盐', baseAmount: 0, unit: '适量', category: '调料' }
+    ],
+    steps: [
+      { action: 'prep', text: '猪蹄剁小块焯水去浮沫后捞出洗净。党参、红枣洗净，山药去皮切滚刀块（戴手套防痒），泡水防氧化。' },
+      { action: 'cook', text: '猪蹄与党参、红枣、姜片入砂锅，加足量清水大火烧开转小火慢炖 1.5 小时。加入山药块继续炖 30 分钟至猪蹄软烂、山药粉糯，加盐调味即可。' }
+    ] },
+  {
+    "id": "a-veg-16",
+    "name": "酸辣炒笋",
+    "type": "adult",
+    "taste": "quick_stir_fry",
+    "meat": "vegetable",
+    "prep_time": 10,
+    "is_baby_friendly": false,
+    "common_allergens": [],
+    "can_share_base": false,
+    "dish_type": null,
+    "flavor_profile": "spicy",
+    "cook_type": "stir_fry",
+    "cook_minutes": 8,
+    "ingredients": [
+      {
+        "name": "鲜笋",
+        "baseAmount": 300,
+        "unit": "g",
+        "category": "蔬菜"
+      },
+      {
+        "name": "干辣椒",
+        "baseAmount": 5,
+        "unit": "个",
+        "category": "调料"
+      },
+      {
+        "name": "小米辣",
+        "baseAmount": 3,
+        "unit": "个",
+        "category": "调料"
+      },
+      {
+        "name": "蒜",
+        "baseAmount": 15,
+        "unit": "g",
+        "category": "蔬菜"
+      },
+      {
+        "name": "香醋",
+        "baseAmount": 15,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 10,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "白糖",
+        "baseAmount": 3,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "食用油",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "鲜笋去壳切滚刀块，入沸水焯 2 分钟去涩味，捞出沥干。干辣椒剪段去籽，小米辣斜切，蒜切末。"
+      },
+      {
+        "action": "cook",
+        "text": "热锅宽油，中火煸干辣椒段和小米辣至微焦出香，下蒜末爆香，倒入笋块大火翻炒 2 分钟至边缘微焦。"
+      },
+      {
+        "action": "cook",
+        "text": "沿锅边淋入香醋，加生抽、白糖、盐翻炒均匀，大火收汁至笋块裹汁发亮即可出锅。"
+      }
+    ],
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/stir_fried_spicy_sour_bamboo_shoots.png"
+  },
+  {
+    "id": "a-veg-17",
+    "name": "柠檬酱油手撕生菜",
+    "type": "adult",
+    "taste": "steamed_salad",
+    "meat": "vegetable",
+    "prep_time": 10,
+    "is_baby_friendly": true,
+    "common_allergens": [],
+    "can_share_base": true,
+    "flavor_profile": "sour_fresh",
+    "cook_type": "stir_fry",
+    "cook_minutes": 5,
+    "ingredients": [
+      {
+        "name": "生菜",
+        "baseAmount": 300,
+        "unit": "g",
+        "category": "蔬菜"
+      },
+      {
+        "name": "柠檬",
+        "baseAmount": 1,
+        "unit": "个",
+        "category": "其他"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "蒜末",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "香油",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "生菜洗净沥干，用手撕成小片；柠檬切半挤汁；蒜切末"
+      },
+      {
+        "action": "cook",
+        "text": "碗中混合柠檬汁、生抽、蒜末、香油调成酱汁，淋在生菜上即可"
+      }
+    ],
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/lemon_soy_lettuce.png"
+  },
+  {
+    "id": "a-shrimp-7",
+    "name": "柠檬椒盐虾",
+    "type": "adult",
+    "taste": "quick_stir_fry",
+    "meat": "shrimp",
+    "prep_time": 15,
+    "is_baby_friendly": false,
+    "common_allergens": [
+      "虾"
+    ],
+    "can_share_base": false,
+    "flavor_profile": "sour_fresh",
+    "cook_type": "stir_fry",
+    "cook_minutes": 8,
+    "ingredients": [
+      {
+        "name": "基围虾",
+        "baseAmount": 300,
+        "unit": "g",
+        "category": "肉类",
+        "sub_type": "shrimp"
+      },
+      {
+        "name": "柠檬",
+        "baseAmount": 1,
+        "unit": "个",
+        "category": "其他"
+      },
+      {
+        "name": "椒盐粉",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "葱花",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "植物油",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "虾去头去壳留尾，背部划开去虾线；柠檬切片；葱切碎"
+      },
+      {
+        "action": "cook",
+        "text": "锅中油热，放入虾快速翻炒，虾变色后撒入椒盐粉，最后淋上柠檬汁，撒葱花即可"
+      }
+    ],
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/lemon_pepper_salt_shrimp.png"
+  },
+  {
+    "id": "a-soup-14",
+    "name": "酸萝卜老鸭汤",
+    "type": "adult",
+    "dish_type": "soup",
+    "taste": "slow_stew",
+    "meat": "chicken",
+    "prep_time": 20,
+    "is_baby_friendly": false,
+    "common_allergens": [],
+    "can_share_base": false,
+    "flavor_profile": "sour_fresh",
+    "cook_type": "stew",
+    "cook_minutes": 90,
+    "ingredients": [
+      {
+        "name": "老鸭",
+        "baseAmount": 500,
+        "unit": "g",
+        "category": "肉类",
+        "sub_type": "duck"
+      },
+      {
+        "name": "酸萝卜",
+        "baseAmount": 200,
+        "unit": "g",
+        "category": "蔬菜"
+      },
+      {
+        "name": "姜片",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "料酒",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "老鸭斩块焯水；酸萝卜切块；姜切片"
+      },
+      {
+        "action": "cook",
+        "text": "锅中加水和老鸭，大火煮沸后转小火，加入姜片炖1小时，加入酸萝卜继续炖30分钟，最后调味即可"
+      }
+    ],
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/sour_radish_duck_soup.png"
+  },
+  {
+    "id": "a-veg-18",
+    "name": "蒜蓉炒菜心",
+    "type": "adult",
+    "taste": "quick_stir_fry",
+    "meat": "vegetable",
+    "prep_time": 10,
+    "is_baby_friendly": true,
+    "common_allergens": [],
+    "can_share_base": true,
+    "flavor_profile": "light",
+    "cook_type": "stir_fry",
+    "cook_minutes": 5,
+    "ingredients": [
+      {
+        "name": "菜心",
+        "baseAmount": 300,
+        "unit": "g",
+        "category": "蔬菜"
+      },
+      {
+        "name": "蒜末",
+        "baseAmount": 15,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "食用油",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "菜心洗净，切段。蒜剁成末"
+      },
+      {
+        "action": "cook",
+        "text": "锅中倒油烧热，放入蒜末爆香，加入菜心翻炒，淋入生抽，适量盐调味，大火快炒至菜心变软即可"
+      }
+    ],
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/stir_fried_choy_sum_with_garlic.png"
+  },
+  {
+    "id": "a-veg-19",
+    "name": "醋溜土豆丝",
+    "type": "adult",
+    "taste": "quick_stir_fry",
+    "meat": "vegetable",
+    "prep_time": 15,
+    "is_baby_friendly": false,
+    "common_allergens": [],
+    "can_share_base": false,
+    "dish_type": null,
+    "flavor_profile": "sour_fresh",
+    "cook_type": "stir_fry",
+    "cook_minutes": 8,
+    "ingredients": [
+      { "name": "土豆", "baseAmount": 300, "unit": "g", "category": "蔬菜" },
+      { "name": "青椒", "baseAmount": 30, "unit": "g", "category": "蔬菜" },
+      { "name": "醋", "baseAmount": 15, "unit": "ml", "category": "调料" },
+      { "name": "盐", "baseAmount": 0, "unit": "适量", "category": "调料" },
+      { "name": "食用油", "baseAmount": 0, "unit": "适量", "category": "调料" }
+    ],
+    "steps": [
+      { "action": "prep", "text": "土豆去皮切细丝，泡水去淀粉后沥干。青椒切丝。" },
+      { "action": "cook", "text": "热锅少油，中大火下土豆丝、青椒丝快炒，淋醋与盐翻炒均匀至断生即可。" }
+    ]
+  },
+  {
+    "id": "a-veg-20",
+    "name": "香煎南瓜",
+    "type": "adult",
+    "taste": "quick_stir_fry",
+    "meat": "vegetable",
+    "prep_time": 5,
+    "is_baby_friendly": true,
+    "common_allergens": [],
+    "can_share_base": false,
+    "dish_type": null,
+    "flavor_profile": "light",
+    "cook_type": "stir_fry",
+    "cook_minutes": 12,
+    "ingredients": [
+      { "name": "南瓜", "baseAmount": 400, "unit": "g", "category": "蔬菜" },
+      { "name": "盐", "baseAmount": 0, "unit": "适量", "category": "调料" },
+      { "name": "食用油", "baseAmount": 0, "unit": "适量", "category": "调料" }
+    ],
+    "steps": [
+      { "action": "prep", "text": "南瓜去籽去皮，切约 1cm 厚片。" },
+      { "action": "cook", "text": "平底锅少油，中小火将南瓜片煎至两面微黄、用筷子能轻松穿透即可，撒盐调味。" }
+    ]
+  },
+  {
+    "id": "a-veg-21",
+    "name": "蒜蓉烤口蘑",
+    "type": "adult",
+    "taste": "steamed_salad",
+    "meat": "vegetable",
+    "prep_time": 10,
+    "is_baby_friendly": false,
+    "common_allergens": [],
+    "can_share_base": false,
+    "dish_type": null,
+    "flavor_profile": "salty_umami",
+    "cook_type": "steam",
+    "cook_minutes": 15,
+    "ingredients": [
+      { "name": "口蘑", "baseAmount": 250, "unit": "g", "category": "蔬菜" },
+      { "name": "蒜", "baseAmount": 20, "unit": "g", "category": "蔬菜" },
+      { "name": "生抽", "baseAmount": 0, "unit": "适量", "category": "调料" },
+      { "name": "食用油", "baseAmount": 0, "unit": "适量", "category": "调料" }
+    ],
+    "steps": [
+      { "action": "prep", "text": "口蘑去蒂洗净，蒜切末。口蘑凹面朝上摆盘。" },
+      { "action": "cook", "text": "蒜末与生抽、少许油拌匀，填入口蘑凹面，上锅蒸或烤箱 180℃ 烤约 15 分钟至熟即可。" }
+    ]
+  },
+  {
+    "id": "a-veg-22",
+    "name": "家常豆腐",
+    "type": "adult",
+    "taste": "quick_stir_fry",
+    "meat": "vegetable",
+    "prep_time": 10,
+    "is_baby_friendly": true,
+    "common_allergens": [],
+    "can_share_base": false,
+    "dish_type": null,
+    "flavor_profile": "salty_umami",
+    "cook_type": "stir_fry",
+    "cook_minutes": 10,
+    "ingredients": [
+      { "name": "北豆腐", "baseAmount": 300, "unit": "g", "category": "蔬菜" },
+      { "name": "木耳", "baseAmount": 30, "unit": "g", "category": "干货" },
+      { "name": "青椒", "baseAmount": 50, "unit": "g", "category": "蔬菜" },
+      { "name": "生抽", "baseAmount": 10, "unit": "ml", "category": "调料" },
+      { "name": "盐", "baseAmount": 0, "unit": "适量", "category": "调料" },
+      { "name": "食用油", "baseAmount": 0, "unit": "适量", "category": "调料" }
+    ],
+    "steps": [
+      { "action": "prep", "text": "豆腐切厚片，木耳泡发撕小朵，青椒切块。" },
+      { "action": "cook", "text": "豆腐煎至两面微黄盛出。锅留底油爆香，下木耳、青椒翻炒，加豆腐、生抽和盐炒匀即可。" }
+    ]
+  },
+  {
+    "id": "a-veg-23",
+    "name": "韭菜炒蛋",
+    "type": "adult",
+    "taste": "quick_stir_fry",
+    "meat": "vegetable",
+    "prep_time": 5,
+    "is_baby_friendly": true,
+    "common_allergens": ["蛋"],
+    "can_share_base": false,
+    "dish_type": null,
+    "flavor_profile": "light",
+    "cook_type": "stir_fry",
+    "cook_minutes": 5,
+    "ingredients": [
+      { "name": "鸡蛋", "baseAmount": 2, "unit": "个", "category": "蛋类" },
+      { "name": "韭菜", "baseAmount": 150, "unit": "g", "category": "蔬菜" },
+      { "name": "盐", "baseAmount": 0, "unit": "适量", "category": "调料" },
+      { "name": "食用油", "baseAmount": 0, "unit": "适量", "category": "调料" }
+    ],
+    "steps": [
+      { "action": "prep", "text": "韭菜洗净切段，鸡蛋打散加少许盐。" },
+      { "action": "cook", "text": "热锅少油，先炒蛋至凝固盛出。再下韭菜快炒，倒入鸡蛋、盐翻炒均匀即可。" }
+    ]
+  },
+  {
+    "id": "a-veg-24",
+    "name": "苦瓜煎蛋",
+    "type": "adult",
+    "taste": "quick_stir_fry",
+    "meat": "vegetable",
+    "prep_time": 10,
+    "is_baby_friendly": false,
+    "common_allergens": ["蛋"],
+    "can_share_base": false,
+    "dish_type": null,
+    "flavor_profile": "light",
+    "cook_type": "stir_fry",
+    "cook_minutes": 8,
+    "ingredients": [
+      { "name": "鸡蛋", "baseAmount": 2, "unit": "个", "category": "蛋类" },
+      { "name": "苦瓜", "baseAmount": 200, "unit": "g", "category": "蔬菜" },
+      { "name": "盐", "baseAmount": 0, "unit": "适量", "category": "调料" },
+      { "name": "食用油", "baseAmount": 0, "unit": "适量", "category": "调料" }
+    ],
+    "steps": [
+      { "action": "prep", "text": "苦瓜去瓤切薄片，用盐略腌后挤水。鸡蛋打散。" },
+      { "action": "cook", "text": "苦瓜与蛋液混合。热锅少油，倒入蛋液摊成饼状，两面煎至金黄即可。" }
+    ]
+  },
+  {
+    "id": "a-veg-25",
+    "name": "凉拌木耳",
+    "type": "adult",
+    "taste": "steamed_salad",
+    "meat": "vegetable",
+    "prep_time": 15,
+    "is_baby_friendly": false,
+    "common_allergens": [],
+    "can_share_base": false,
+    "dish_type": null,
+    "flavor_profile": "sour_fresh",
+    "cook_type": "cold_dress",
+    "cook_minutes": 0,
+    "ingredients": [
+      { "name": "木耳", "baseAmount": 30, "unit": "g", "category": "干货" },
+      { "name": "蒜", "baseAmount": 15, "unit": "g", "category": "蔬菜" },
+      { "name": "醋", "baseAmount": 15, "unit": "ml", "category": "调料" },
+      { "name": "生抽", "baseAmount": 10, "unit": "ml", "category": "调料" },
+      { "name": "香油", "baseAmount": 0, "unit": "适量", "category": "调料" }
+    ],
+    "steps": [
+      { "action": "prep", "text": "木耳泡发洗净，入沸水焯 2 分钟捞出过凉，撕小朵。蒜切末。" },
+      { "action": "cook", "text": "木耳加蒜末、醋、生抽、香油拌匀即可。" }
+    ]
+  },
+  {
+    "id": "a-veg-26",
+    "name": "凉拌腐竹",
+    "type": "adult",
+    "taste": "steamed_salad",
+    "meat": "vegetable",
+    "prep_time": 20,
+    "is_baby_friendly": false,
+    "common_allergens": [],
+    "can_share_base": false,
+    "dish_type": null,
+    "flavor_profile": "sour_fresh",
+    "cook_type": "cold_dress",
+    "cook_minutes": 0,
+    "ingredients": [
+      { "name": "腐竹", "baseAmount": 80, "unit": "g", "category": "干货" },
+      { "name": "黄瓜", "baseAmount": 80, "unit": "g", "category": "蔬菜" },
+      { "name": "蒜", "baseAmount": 10, "unit": "g", "category": "蔬菜" },
+      { "name": "醋", "baseAmount": 10, "unit": "ml", "category": "调料" },
+      { "name": "生抽", "baseAmount": 0, "unit": "适量", "category": "调料" },
+      { "name": "香油", "baseAmount": 0, "unit": "适量", "category": "调料" }
+    ],
+    "steps": [
+      { "action": "prep", "text": "腐竹温水泡软切段，沸水焯 1 分钟捞出沥干。黄瓜拍扁切块，蒜切末。" },
+      { "action": "cook", "text": "腐竹、黄瓜、蒜末加醋、生抽、香油拌匀即可。" }
+    ]
+  },
+  {
+    "id": "a-veg-27",
+    "name": "老醋花生",
+    "type": "adult",
+    "taste": "steamed_salad",
+    "meat": "vegetable",
+    "prep_time": 5,
+    "is_baby_friendly": false,
+    "common_allergens": [],
+    "can_share_base": false,
+    "dish_type": null,
+    "flavor_profile": "sour_fresh",
+    "cook_type": "cold_dress",
+    "cook_minutes": 0,
+    "ingredients": [
+      { "name": "花生米", "baseAmount": 150, "unit": "g", "category": "干货" },
+      { "name": "醋", "baseAmount": 20, "unit": "ml", "category": "调料" },
+      { "name": "生抽", "baseAmount": 5, "unit": "ml", "category": "调料" },
+      { "name": "白糖", "baseAmount": 5, "unit": "g", "category": "调料" }
+    ],
+    "steps": [
+      { "action": "prep", "text": "花生米可油炸或烤箱烤香，放凉。" },
+      { "action": "cook", "text": "醋、生抽、白糖调成汁，淋在花生上拌匀即可。" }
+    ]
+  },
+  {
+    "id": "a-veg-28",
+    "name": "彩椒炒木耳",
+    "type": "adult",
+    "taste": "quick_stir_fry",
+    "meat": "vegetable",
+    "prep_time": 10,
+    "is_baby_friendly": true,
+    "common_allergens": [],
+    "can_share_base": false,
+    "dish_type": null,
+    "flavor_profile": "light",
+    "cook_type": "stir_fry",
+    "cook_minutes": 8,
+    "ingredients": [
+      { "name": "彩椒", "baseAmount": 150, "unit": "g", "category": "蔬菜" },
+      { "name": "木耳", "baseAmount": 40, "unit": "g", "category": "干货" },
+      { "name": "蒜", "baseAmount": 10, "unit": "g", "category": "蔬菜" },
+      { "name": "盐", "baseAmount": 0, "unit": "适量", "category": "调料" },
+      { "name": "食用油", "baseAmount": 0, "unit": "适量", "category": "调料" }
+    ],
+    "steps": [
+      { "action": "prep", "text": "彩椒去籽切块，木耳泡发洗净撕小朵，蒜切片。" },
+      { "action": "cook", "text": "热锅少油，爆香蒜片，下木耳、彩椒大火快炒，加盐调味即可。" }
+    ]
+  }
 ];
 
 var babyRecipes = [
@@ -1544,6 +2598,93 @@ var babyRecipes = [
     steps: [
       { action: 'prep', text: '将 {{ingredients_info}} 处理好：虾仁剁泥，鸡蛋打散加等量温水。' },
       { action: 'cook', text: '蛋液过筛入碗，铺虾泥，盖保鲜膜扎孔，水开后中火蒸 10 分钟。' },
+      { action: 'process', text: '{{process_action}}' },
+      { action: 'seasoning', text: '{{seasoning_hint}}' }
+    ] },
+
+  // ============ 新增：鸡肉 + 营养粥面（2 道） ============
+  { id: 'b-chi-5', name: '南瓜鸡肉碎碎粥', type: 'baby', taste: 'soft_porridge', meat: 'chicken',
+    prep_time: 10,
+    is_baby_friendly: true,
+    common_allergens: [],
+    can_share_base: true,
+    ingredients: [
+      { name: '鸡胸肉', baseAmount: 40, unit: 'g', category: '肉类', sub_type: 'chicken_breast' },
+      { name: '南瓜', baseAmount: 50, unit: 'g', category: '蔬菜' },
+      { name: '胚芽米', baseAmount: 30, unit: 'g', category: '其他' }
+    ],
+    steps: [
+      { action: 'prep', text: '将 {{ingredients_info}} 处理好：鸡胸肉剁成细末，南瓜去皮切小丁，胚芽米淘洗干净。' },
+      { action: 'cook', text: '胚芽米加 5 倍水煮成粥底（约 30 分钟）。加入南瓜丁煮至软烂，再加入鸡肉末煮熟搅散，全程约 10 分钟。' },
+      { action: 'process', text: '{{process_action}}' },
+      { action: 'seasoning', text: '{{seasoning_hint}}' }
+    ] },
+  { id: 'b-chi-6', name: '番茄鸡肉蝴蝶面', type: 'baby', taste: 'soft_porridge', meat: 'chicken',
+    prep_time: 10,
+    is_baby_friendly: true,
+    common_allergens: ['麸质'],
+    can_share_base: true,
+    ingredients: [
+      { name: '鸡胸肉', baseAmount: 40, unit: 'g', category: '肉类', sub_type: 'chicken_breast' },
+      { name: '番茄', baseAmount: 50, unit: 'g', category: '蔬菜' },
+      { name: '宝宝蝴蝶面', baseAmount: 30, unit: 'g', category: '其他' }
+    ],
+    steps: [
+      { action: 'prep', text: '将 {{ingredients_info}} 处理好：鸡胸肉剁成细末，番茄去皮去籽切碎，蝴蝶面掰成小段。' },
+      { action: 'cook', text: '锅中少许油，放入番茄碎翻炒出汁，加入少量清水煮开。放入蝴蝶面煮至软烂，加入鸡肉末煮熟搅散，收汁即可。' },
+      { action: 'process', text: '{{process_action}}' },
+      { action: 'seasoning', text: '{{seasoning_hint}}' }
+    ] },
+
+  // ============ 新增：鱼 + 趣味手口料（1 道） ============
+  { id: 'b-fish-4', name: '鳕鱼土豆小软饼', type: 'baby', taste: 'finger_food', meat: 'fish',
+    prep_time: 15,
+    is_baby_friendly: true,
+    common_allergens: ['鱼', '蛋'],
+    can_share_base: false,
+    ingredients: [
+      { name: '鳕鱼', baseAmount: 50, unit: 'g', category: '肉类', sub_type: 'fish_cod' },
+      { name: '土豆', baseAmount: 60, unit: 'g', category: '蔬菜' },
+      { name: '鸡蛋', baseAmount: 1, unit: '个', category: '蛋类' }
+    ],
+    steps: [
+      { action: 'prep', text: '将 {{ingredients_info}} 处理好：鳕鱼解冻后仔细挑去鱼刺，蒸熟后压成泥。土豆蒸熟压成泥，鸡蛋只取蛋黄打散。' },
+      { action: 'cook', text: '将鳕鱼泥、土豆泥、蛋黄混合拌匀，捏成小饼状。平底锅刷薄油，小火煎至两面金黄即可。' },
+      { action: 'process', text: '{{process_action}}' },
+      { action: 'seasoning', text: '{{seasoning_hint}}' }
+    ] },
+
+  // ============ 新增：虾 + 开胃烩菜（2 道） ============
+  { id: 'b-shrimp-5', name: '番茄虾仁烩饭', type: 'baby', taste: 'braised_mash', meat: 'shrimp',
+    prep_time: 10,
+    is_baby_friendly: true,
+    common_allergens: ['虾'],
+    can_share_base: true,
+    ingredients: [
+      { name: '鲜虾', baseAmount: 40, unit: 'g', category: '肉类', sub_type: 'shrimp' },
+      { name: '番茄', baseAmount: 50, unit: 'g', category: '蔬菜' },
+      { name: '软米饭', baseAmount: 50, unit: 'g', category: '其他' }
+    ],
+    steps: [
+      { action: 'prep', text: '将 {{ingredients_info}} 处理好：鲜虾去头去壳去虾线，剁成小粒。番茄去皮去籽切碎。' },
+      { action: 'cook', text: '锅中少许油，放入番茄碎翻炒出汁，加入少量清水煮开。放入虾仁粒煮至变色，加入软米饭拌匀，小火烩 3 分钟至入味。' },
+      { action: 'process', text: '{{process_action}}' },
+      { action: 'seasoning', text: '{{seasoning_hint}}' }
+    ] },
+  { id: 'b-shrimp-6', name: '西兰花虾仁豆腐烩面', type: 'baby', taste: 'braised_mash', meat: 'shrimp',
+    prep_time: 10,
+    is_baby_friendly: true,
+    common_allergens: ['虾'],
+    can_share_base: true,
+    ingredients: [
+      { name: '鲜虾', baseAmount: 30, unit: 'g', category: '肉类', sub_type: 'shrimp' },
+      { name: '西兰花', baseAmount: 30, unit: 'g', category: '蔬菜' },
+      { name: '嫩豆腐', baseAmount: 30, unit: 'g', category: '其他' },
+      { name: '碎碎面', baseAmount: 25, unit: 'g', category: '其他' }
+    ],
+    steps: [
+      { action: 'prep', text: '将 {{ingredients_info}} 处理好：鲜虾去壳去虾线剁成小粒，西兰花只取花蕾部分焯水切碎，嫩豆腐切小丁，碎碎面煮软。' },
+      { action: 'cook', text: '锅中加少量清水烧开，放入虾仁粒、西兰花碎、豆腐丁煮 3 分钟。加入煮好的碎碎面烩 2 分钟至入味。' },
       { action: 'process', text: '{{process_action}}' },
       { action: 'seasoning', text: '{{seasoning_hint}}' }
     ] }

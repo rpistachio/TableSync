@@ -21,3 +21,6 @@ npm-debug.log*
 # Env
 .env
 .env.local
+tools/.env
+tools/drafts/
+

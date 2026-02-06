@@ -32,7 +32,7 @@
       <view class="combo-stack">
         <view wx:for="{{comboOptions}}" wx:key="label" class="combo-btn {{item.meatCount === meatCount && item.vegCount === vegCount && (item.soupCount || 0) === (soupCount || 0) ? 'is-active' : ''}}" data-meat="{{item.meatCount}}" data-veg="{{item.vegCount}}" data-soup="{{item.soupCount || 0}}" bindtap="onComboTap">
           <text class="combo-text">{{item.label}}</text>
-          <text wx:if="{{item.tag}}" class="combo-tag">{{item.tag}}</text>
+          <text wx:if="{{item.tag && (item.tag !== '宝宝适配' || hasBaby)}}" class="combo-tag">{{item.tag}}</text>
         </view>
       </view>
     </view>

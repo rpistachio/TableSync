@@ -76,7 +76,6 @@ function getAllHistory() {
     }
     return {};
   } catch (e) {
-    console.error('[menuHistory] getAllHistory error:', e);
     return {};
   }
 }
@@ -125,7 +124,6 @@ function saveToHistory(menus, preference) {
     wx.setStorageSync(STORAGE_KEY, JSON.stringify(cleanedHistory));
     return true;
   } catch (e) {
-    console.error('[menuHistory] saveToHistory error:', e);
     return false;
   }
 }
@@ -233,7 +231,6 @@ function clearAllHistory() {
     wx.removeStorageSync(STORAGE_KEY);
     return true;
   } catch (e) {
-    console.error('[menuHistory] clearAllHistory error:', e);
     return false;
   }
 }

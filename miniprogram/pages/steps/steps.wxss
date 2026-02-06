@@ -251,8 +251,12 @@
 }
 
 .detail-line-text {
-  /* 统一包裹一层 <text>，确保同一行内排版 */
+  /* rich-text 组件：确保文本在同一行内流式排版 */
+  display: inline;
   white-space: pre-wrap;
+  font-size: 28rpx;
+  line-height: 1.6;
+  color: #666;
 }
 
 .detail-strong {
