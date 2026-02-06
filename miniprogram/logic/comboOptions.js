@@ -13,23 +13,24 @@ function getComboOptionsForCount(count) {
   var n = Math.min(6, Math.max(1, Number(count) || 2));
   if (n === 1) {
     return [
-      { label: '1荤1素1汤', meatCount: 1, vegCount: 1, soupCount: 1, tag: '简餐' },
+      { label: '1荤1素1汤', meatCount: 1, vegCount: 1, soupCount: 1, tag: '' },
       { label: '2荤1素', meatCount: 2, vegCount: 1, soupCount: 0, tag: '' },
-      { label: '1素1汤', meatCount: 0, vegCount: 1, soupCount: 1, tag: '素食友好' }
+      { label: '1素1汤', meatCount: 0, vegCount: 1, soupCount: 1, tag: '减脂' }
     ];
   }
   if (n === 2) {
     return [
-      { label: '1荤1素1汤', meatCount: 1, vegCount: 1, soupCount: 1, tag: '简餐' },
-      { label: '2荤1素1汤', meatCount: 2, vegCount: 1, soupCount: 1, tag: '' },
-      { label: '2荤2素1汤', meatCount: 2, vegCount: 2, soupCount: 1, tag: '' },
-      { label: '1荤2素1汤', meatCount: 1, vegCount: 2, soupCount: 1, tag: '清淡' }
+      { label: '1荤1素1汤', meatCount: 1, vegCount: 1, soupCount: 1, tag: '' },
+      { label: '2荤1素1汤', meatCount: 2, vegCount: 1, soupCount: 1, tag: '丰盛' },
+      { label: '2荤1素', meatCount: 2, vegCount: 1, soupCount: 0, tag: '' },
+      { label: '1荤2素', meatCount: 1, vegCount: 2, soupCount: 1, tag: '清淡' }
     ];
   }
   if (n === 3) {
     return [
-      { label: '2荤1素1汤', meatCount: 2, vegCount: 1, soupCount: 1, tag: '宝宝适配' },
-      { label: '2荤2素1汤', meatCount: 2, vegCount: 2, soupCount: 1, tag: '' }
+      { label: '2荤1素1汤', meatCount: 2, vegCount: 1, soupCount: 1, tag: '' },
+      { label: '2荤2素', meatCount: 2, vegCount: 2, soupCount: 1, tag: '' },
+      { label: '1荤2素1汤', meatCount: 1, vegCount: 2, soupCount: 1, tag: '清淡' }
     ];
   }
   if (n === 4) {

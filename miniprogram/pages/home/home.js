@@ -39,9 +39,8 @@ Page({
     /** 几荤几素选项数组（与 comboOptions 同步，供 WXML 绑定） */
     dishCounts: [
       { label: '1荤1素1汤', meatCount: 1, vegCount: 1, soupCount: 1, tag: '简餐' },
-      { label: '2荤1素1汤', meatCount: 2, vegCount: 1, soupCount: 1, tag: '' },
-      { label: '2荤2素1汤', meatCount: 2, vegCount: 2, soupCount: 1, tag: '' },
-      { label: '1荤2素1汤', meatCount: 1, vegCount: 2, soupCount: 1, tag: '清淡' }
+      { label: '2荤1素', meatCount: 2, vegCount: 1, soupCount: 0, tag: '' },
+      { label: '1素1汤', meatCount: 0, vegCount: 1, soupCount: 1, tag: '素食友好' }
     ],
     /** 当前选中的几荤几素索引（0-based） */
     selectedCount: 0,
