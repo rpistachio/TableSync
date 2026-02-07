@@ -1,0 +1,373 @@
+<view class="scan-container">
+
+  <!-- ═══ 顶部标题区 ═══ -->
+  <view class="scan-header">
+    <text class="scan-title">拍照清冰箱</text>
+    <text class="scan-subtitle">拍一张或多张冰箱照片，AI 帮你搭配今晚菜谱</text>
+  </view>
+
+  <!-- ═══ 图片选择区（多图横向滑动）═══ -->
+  <view class="photo-area">
+    <!-- 有图片时：横向滑动图片列表 + 末尾加号 -->
+    <scroll-view class="photo-list" scroll-x enhanced show-scrollbar="{{false}}" wx:if="{{imageList.length > 0}}">
+      <view class="photo-list-inner">
+        <view class="photo-thumb-wrap" wx:for="{{imageList}}" wx:key="path">
+          <image class="photo-thumb" src="{{item.path}}" mode="aspectFill" />
+          <view class="photo-thumb-remove" catchtap="onRemoveImage" data-index="{{index}}">
+            <text class="photo-thumb-remove-icon">×</text>
+          </view>
+        </view>
+        <!-- 末尾加号按钮（未满 5 张时显示）-->
+        <view class="photo-thumb-add" bindtap="onChooseImage" wx:if="{{imageList.length < 5}}">
+          <text class="photo-thumb-add-icon">+</text>
+          <text class="photo-thumb-add-text">添加</text>
+        </view>
+      </view>
+    </scroll-view>
+
+    <!-- 无图片时：空状态大占位 -->
+    <view class="photo-box" bindtap="onChooseImage" wx:else>
+      <view class="photo-placeholder">
+        <text class="photo-placeholder-icon">📷</text>
+        <text class="photo-placeholder-text">拍照 / 从相册选择</text>
+        <text class="photo-placeholder-hint">最多 5 张，建议拍摄冰箱打开后的全貌</text>
+      </view>
+    </view>
+
+    <!-- 图片计数 -->
+    <view class="photo-count" wx:if="{{imageList.length > 0}}">
+      <text class="photo-count-text">已选 {{imageList.length}} / 5 张</text>
+    </view>
+  </view>
+
+  <!-- ═══ 操作按钮区 ═══ -->
+  <view class="action-bar" wx:if="{{stage === 'idle' && imageList.length > 0}}">
+    <button class="scan-btn" bindtap="onStartScan">
+      <text class="scan-btn-text">开始识别</text>
+    </button>
+  </view>
+
+  <!-- ═══ 加载状态 ═══ -->
+  <view class="loading-area" wx:if="{{stage === 'uploading' || stage === 'scanning'}}">
+    <view class="loading-ring"></view>
+    <text class="loading-text">{{statusText}}</text>
+    <view class="loading-steps">
+      <view class="loading-step {{stage === 'uploading' || stage === 'scanning' ? 'is-done' : ''}}">
+        <text class="step-dot">{{stage === 'scanning' ? '✓' : '●'}}</text>
+        <text class="step-label">上传图片</text>
+      </view>
+      <view class="loading-step-line {{stage === 'scanning' ? 'is-active' : ''}}"></view>
+      <view class="loading-step {{stage === 'scanning' ? 'is-active' : ''}}">
+        <text class="step-dot">{{stage === 'scanning' ? '●' : '○'}}</text>
+        <text class="step-label">AI 识别</text>
+      </view>
+      <view class="loading-step-line"></view>
+      <view class="loading-step">
+        <text class="step-dot">○</text>
+        <text class="step-label">组餐推荐</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- ═══ 错误状态 ═══ -->
+  <view class="error-area" wx:if="{{stage === 'error'}}">
+    <text class="error-icon">😵</text>
+    <text class="error-text">{{statusText}}</text>
+    <button class="retry-btn" bindtap="onRetry">重新开始</button>
+  </view>
+
+  <!-- ═══ 食材确认/编辑区（Part 2a）═══ -->
+  <view class="result-area" wx:if="{{stage === 'ingredients_review'}}">
+
+    <!-- 食材编辑区 -->
+    <view class="result-section">
+      <view class="section-header">
+        <text class="section-title">确认食材</text>
+        <text class="section-badge" wx:if="{{ingredients.length > 0}}">{{ingredients.length}} 种</text>
+      </view>
+      <text class="section-hint">删除误识别的食材，或手动添加遗漏的食材</text>
+
+      <!-- 可编辑的食材标签（带删除按钮）-->
+      <view class="ingredient-tags" wx:if="{{ingredients.length > 0}}">
+        <view class="ingredient-tag ingredient-tag--editable" wx:for="{{ingredients}}" wx:key="name">
+          <text class="ingredient-icon">{{item.icon}}</text>
+          <text class="ingredient-name">{{item.name}}</text>
+          <text class="ingredient-qty" wx:if="{{item.quantity}}">{{item.quantity}}</text>
+          <view class="ingredient-remove" catchtap="onRemoveIngredient" data-index="{{index}}">
+            <text class="ingredient-remove-icon">×</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 无食材空状态 -->
+      <view class="ingredients-empty" wx:if="{{ingredients.length === 0}}">
+        <text class="ingredients-empty-icon">🔍</text>
+        <text class="ingredients-empty-text">{{statusText || '暂无食材，请手动添加'}}</text>
+      </view>
+
+      <!-- 置信度 -->
+      <view class="confidence-bar" wx:if="{{confidence > 0 && ingredients.length > 0}}">
+        <text class="confidence-label">识别置信度</text>
+        <view class="confidence-track">
+          <view class="confidence-fill" style="width: {{confidence * 100}}%;"></view>
+        </view>
+        <text class="confidence-value">{{confidence > 0 ? (confidence * 100) + '%' : ''}}</text>
+      </view>
+
+      <!-- 备注 -->
+      <view class="notes-tip" wx:if="{{notes}}">
+        <text class="notes-icon">💡</text>
+        <text class="notes-text">{{notes}}</text>
+      </view>
+
+      <!-- 手动添加食材 -->
+      <view class="add-ingredient-area">
+        <!-- 添加按钮 -->
+        <view class="add-ingredient-btn" bindtap="onToggleAddInput" wx:if="{{!showAddInput}}">
+          <text class="add-ingredient-btn-icon">+</text>
+          <text class="add-ingredient-btn-text">手动添加食材</text>
+        </view>
+        <!-- 输入表单 -->
+        <view class="add-ingredient-form" wx:if="{{showAddInput}}">
+          <input
+            class="add-ingredient-input"
+            placeholder="输入食材名称，如：西红柿"
+            value="{{newIngredientName}}"
+            bindinput="onNewIngredientInput"
+            bindconfirm="onAddIngredient"
+            focus="{{showAddInput}}"
+            maxlength="20"
+          />
+          <view class="add-ingredient-actions">
+            <view class="add-ingredient-cancel" bindtap="onToggleAddInput">取消</view>
+            <view class="add-ingredient-confirm" bindtap="onAddIngredient">添加</view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 底部确认操作 -->
+    <view class="confirm-bar">
+      <view class="timing-info" wx:if="{{totalMs > 0}}">
+        <text class="timing-text">识别耗时 {{totalMs > 1000 ? (totalMs / 1000) + 's' : totalMs + 'ms'}}</text>
+      </view>
+      <button class="confirm-btn" bindtap="onConfirmIngredients" disabled="{{ingredients.length === 0}}">
+        <text class="confirm-btn-text">开始推荐（{{ingredients.length}} 种食材）</text>
+      </button>
+      <button class="retry-btn-outline" bindtap="onRetry">重新扫描</button>
+    </view>
+  </view>
+
+  <!-- ═══ 识别结果 + 交互选菜（Part 2b）═══ -->
+  <view class="result-area" wx:if="{{stage === 'done'}}">
+
+    <!-- 已选菜谱计数（置顶提示） -->
+    <view class="selected-count-bar">
+      <text class="selected-count-icon">🍽️</text>
+      <text class="selected-count-text">已选 <text class="selected-count-num">{{selectedCount}}</text> 道菜</text>
+    </view>
+
+    <!-- 识别到的食材（只读摘要） -->
+    <view class="result-section" wx:if="{{ingredients.length > 0}}">
+      <view class="section-header">
+        <text class="section-title">识别到的食材</text>
+        <text class="section-badge">{{ingredients.length}} 种</text>
+      </view>
+      <view class="ingredient-tags">
+        <view class="ingredient-tag" wx:for="{{ingredients}}" wx:key="name">
+          <text class="ingredient-icon">{{item.icon}}</text>
+          <text class="ingredient-name">{{item.name}}</text>
+          <text class="ingredient-qty" wx:if="{{item.quantity}}">{{item.quantity}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- AI 组餐推荐（可勾选） -->
+    <view class="result-section" wx:if="{{recommendations.length > 0}}">
+      <view class="section-header">
+        <text class="section-title">今晚推荐</text>
+        <text class="section-hint-inline">点击卡片可取消勾选</text>
+      </view>
+
+      <!-- 组餐摘要 -->
+      <view class="meal-summary" wx:if="{{mealSummary}}">
+        <text class="meal-summary-icon">👨‍🍳</text>
+        <text class="meal-summary-text">{{mealSummary}}</text>
+      </view>
+
+      <!-- 推荐菜谱卡片（可勾选） -->
+      <view class="recipe-cards">
+        <view class="recipe-card {{item.selected ? 'is-selected' : 'is-unselected'}}"
+              wx:for="{{recommendations}}" wx:key="id"
+              bindtap="onToggleRecipe" data-index="{{index}}">
+          <!-- 选中状态指示器 -->
+          <view class="recipe-check {{item.selected ? 'is-checked' : ''}}">
+            <text class="recipe-check-icon">{{item.selected ? '✓' : ''}}</text>
+          </view>
+          <image class="recipe-cover" src="{{item.coverUrl}}" mode="aspectFill" lazy-load />
+          <view class="recipe-info">
+            <view class="recipe-top-row">
+              <text class="recipe-name">{{item.name}}</text>
+              <text class="recipe-role role-{{item.roleClass}}">{{item.roleLabel}}</text>
+            </view>
+            <text class="recipe-reason">{{item.reason}}</text>
+            <view class="recipe-meta">
+              <text class="recipe-time" wx:if="{{item.cook_minutes > 0}}">⏱ {{item.cook_minutes}}分钟</text>
+              <block wx:if="{{item.missing_ingredients.length > 0}}">
+                <view class="recipe-missing">
+                  <text class="missing-label">还需：</text>
+                  <text class="missing-item" wx:for="{{item.missing_ingredients}}" wx:for-item="mi" wx:key="*this">{{mi}}</text>
+                </view>
+              </block>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 更多匹配菜谱（可勾选加入）—— wx:if 避免折叠时渲染长列表 -->
+    <view class="result-section" wx:if="{{allMatched.length > 0}}">
+      <view class="section-header" bindtap="onToggleMoreMatched">
+        <text class="section-title">更多匹配菜谱</text>
+        <text class="section-badge">{{allMatched.length}} 道</text>
+        <text class="section-arrow {{showMoreMatched ? 'is-up' : ''}}">▾</text>
+      </view>
+      <text class="section-hint" wx:if="{{!showMoreMatched}}">点击展开，勾选想加入的菜谱</text>
+      <!-- 仅展开时才渲染列表，分批显示（visibleMatchedCount 控制） -->
+      <view class="more-matched-list is-open" wx:if="{{showMoreMatched}}">
+        <view class="matched-item {{item.selected ? 'is-selected' : ''}}"
+              wx:for="{{allMatched}}" wx:key="id" wx:if="{{index < visibleMatchedCount}}"
+              bindtap="onToggleMatchedRecipe" data-index="{{index}}">
+          <!-- 勾选框 -->
+          <view class="matched-check {{item.selected ? 'is-checked' : ''}}">
+            <text class="matched-check-icon">{{item.selected ? '✓' : '+'}}</text>
+          </view>
+          <!-- 封面缩略图 -->
+          <image class="matched-cover" src="{{item.coverUrl}}" mode="aspectFill" lazy-load wx:if="{{item.coverUrl}}" />
+          <view class="matched-info">
+            <view class="matched-top-row">
+              <text class="matched-name">{{item.name}}</text>
+              <text class="matched-cook-type" wx:if="{{item.cook_type}}">{{item.cook_type}}</text>
+            </view>
+            <view class="matched-detail">
+              <view class="matched-score-bar">
+                <view class="matched-score-fill" style="width: {{item.scorePercent}}%;"></view>
+              </view>
+              <text class="matched-score-inline">{{item.scorePercent}}%匹配</text>
+            </view>
+            <!-- 匹配到的食材 -->
+            <view class="matched-ingredients-row" wx:if="{{item.matchedIngredients.length > 0}}">
+              <text class="matched-ing-label">已有：</text>
+              <text class="matched-ing-tag matched-ing-tag--have" wx:for="{{item.matchedIngredients}}" wx:for-item="mi" wx:key="*this">{{mi}}</text>
+            </view>
+            <!-- 缺少的食材 -->
+            <view class="matched-ingredients-row" wx:if="{{item.missingIngredients.length > 0}}">
+              <text class="matched-ing-label matched-ing-label--miss">还需：</text>
+              <text class="matched-ing-tag matched-ing-tag--miss" wx:for="{{item.missingIngredients}}" wx:for-item="mi" wx:key="*this">{{mi}}</text>
+            </view>
+          </view>
+        </view>
+        <!-- 「加载更多」按钮 -->
+        <view class="matched-load-more" wx:if="{{visibleMatchedCount < allMatched.length}}" bindtap="onLoadMoreMatched">
+          <text class="matched-load-more-text">加载更多（剩余 {{allMatched.length - visibleMatchedCount}} 道）</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 底部操作 -->
+    <view class="result-bottom">
+      <view class="timing-info" wx:if="{{totalMs > 0}}">
+        <text class="timing-text">识别耗时 {{totalMs > 1000 ? (totalMs / 1000) + 's' : totalMs + 'ms'}}</text>
+      </view>
+      <button class="confirm-btn" bindtap="onConfirmRecipes" disabled="{{selectedCount === 0}}">
+        <text class="confirm-btn-text">确认 {{selectedCount}} 道菜，查看购物清单</text>
+      </button>
+      <button class="retry-btn-outline" bindtap="onRetry">重新扫描</button>
+    </view>
+  </view>
+
+  <!-- ═══ 智能购物清单（Part 2c）═══ -->
+  <view class="result-area" wx:if="{{stage === 'shopping'}}">
+
+    <!-- 顶部概览 -->
+    <view class="shopping-overview">
+      <text class="shopping-overview-icon">🛒</text>
+      <view class="shopping-overview-info">
+        <text class="shopping-overview-title">智能购物清单</text>
+        <text class="shopping-overview-desc">已为 {{selectedRecipes.length}} 道菜汇总所需食材，冰箱已有的已自动去除</text>
+      </view>
+    </view>
+
+    <!-- 已选菜谱摘要 -->
+    <view class="shopping-recipes-summary">
+      <text class="shopping-recipes-label">已选菜谱：</text>
+      <view class="shopping-recipes-tags">
+        <text class="shopping-recipe-tag" wx:for="{{selectedRecipes}}" wx:key="id">{{item.name}}</text>
+      </view>
+    </view>
+
+    <!-- 需购买的食材 -->
+    <view class="result-section">
+      <view class="section-header">
+        <text class="section-title">需要购买</text>
+        <text class="section-badge" wx:if="{{smartShoppingList.length > 0}}">{{smartShoppingList.length}} 项</text>
+      </view>
+
+      <view class="smart-shopping-list" wx:if="{{smartShoppingList.length > 0}}">
+        <view class="smart-shopping-item" wx:for="{{smartShoppingList}}" wx:key="name">
+          <view class="smart-shopping-item-main">
+            <text class="smart-shopping-item-icon">🔴</text>
+            <text class="smart-shopping-item-name">{{item.name}}</text>
+            <view class="smart-shopping-item-remove" catchtap="onRemoveShoppingItem" data-index="{{index}}">
+              <text class="smart-shopping-item-remove-icon">×</text>
+            </view>
+          </view>
+          <view class="smart-shopping-item-from" wx:if="{{item.fromRecipes.length > 0}}">
+            <text class="smart-shopping-from-label">用于：</text>
+            <text class="smart-shopping-from-recipe" wx:for="{{item.fromRecipes}}" wx:for-item="rname" wx:key="*this">{{rname}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="shopping-empty" wx:if="{{smartShoppingList.length === 0}}">
+        <text class="shopping-empty-icon">🎉</text>
+        <text class="shopping-empty-text">冰箱食材已全部覆盖，无需额外购买！</text>
+      </view>
+    </view>
+
+    <!-- 冰箱已有的食材（默认排除，可手动加回） -->
+    <view class="result-section" wx:if="{{excludedIngredients.length > 0}}">
+      <view class="section-header">
+        <text class="section-title">冰箱已有（已排除）</text>
+        <text class="section-badge">{{excludedIngredients.length}} 项</text>
+      </view>
+      <text class="section-hint">这些食材冰箱里已有，如需另购可点击「+」加回清单</text>
+
+      <view class="excluded-list">
+        <view class="excluded-item" wx:for="{{excludedIngredients}}" wx:key="name">
+          <view class="excluded-item-main">
+            <text class="excluded-item-icon">✅</text>
+            <text class="excluded-item-name">{{item.name}}</text>
+            <view class="excluded-item-add" catchtap="onAddBackExcluded" data-index="{{index}}">
+              <text class="excluded-item-add-icon">+</text>
+            </view>
+          </view>
+          <view class="excluded-item-from" wx:if="{{item.fromRecipes.length > 0}}">
+            <text class="excluded-from-label">用于：</text>
+            <text class="excluded-from-recipe" wx:for="{{item.fromRecipes}}" wx:for-item="rname" wx:key="*this">{{rname}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 底部操作 -->
+    <view class="result-bottom">
+      <button class="confirm-btn" bindtap="onStartCooking">
+        <text class="confirm-btn-text">开始做饭</text>
+      </button>
+      <button class="retry-btn-outline" bindtap="onBackToRecipes">返回修改菜谱</button>
+      <button class="retry-btn-outline" bindtap="onRetry" style="margin-top: -4rpx;">重新扫描</button>
+    </view>
+  </view>
+
+</view>

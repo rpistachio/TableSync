@@ -286,12 +286,20 @@ var adultRecipes = [
     ingredients: [
       { name: '牛柳', baseAmount: 280, unit: 'g', category: '肉类', sub_type: 'beef_tenderloin' },
       { name: '杭椒', baseAmount: 80, unit: 'g', category: '蔬菜' },
-      { name: '黑椒汁', baseAmount: 0, unit: '适量', category: '调料' },
-      { name: '料酒淀粉等', baseAmount: 0, unit: '适量', category: '调料' }
+      { name: '姜', baseAmount: 10, unit: 'g', category: '蔬菜' },
+      { name: '蒜', baseAmount: 15, unit: 'g', category: '蔬菜' },
+      { name: '蛋清', baseAmount: 1, unit: '个', category: '蛋类' },
+      { name: '生抽', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '蚝油', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '料酒', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '胡椒粉', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '干淀粉', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '白糖', baseAmount: 0, unit: '适量', category: '调料' },
+      { name: '食用油', baseAmount: 0, unit: '适量', category: '调料' }
     ],
     steps: [
-      { action: 'prep', text: '牛柳逆纹切丝。关键：先加少许水抓至粘手，再加生抽、胡椒粉、干淀粉腌制15分钟。最后封一层油。' },
-      { action: 'cook', text: '热锅凉油，下牛柳大火滑炒至8成熟迅速盛出。利用余油炒香姜蒜和杭椒，待杭椒皮起皱，倒入牛柳，沿锅边淋入生抽大火翻匀，30秒内出锅。' }
+      { action: 'prep', text: '牛柳逆纹切成约 0.5cm 粗的丝。加少许料酒、水抓至粘手，再加蛋清抓匀，最后加生抽、蚝油、胡椒粉、干淀粉拌匀腌制 15 分钟，封一层食用油。姜、蒜切末，杭椒去蒂洗净。' },
+      { action: 'cook', text: '热锅凉油，下牛柳大火滑炒至八成熟迅速盛出。利用余油炒香姜蒜末和杭椒，待杭椒皮起皱，倒入牛柳，沿锅边淋入生抽、少许白糖大火翻匀，30 秒内出锅。' }
     ] },
   { id: 'a-pork-1', name: '玉米排骨汤', type: 'adult', dish_type: 'soup', taste: 'slow_stew', meat: 'pork',
     prep_time: 15,

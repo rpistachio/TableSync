@@ -1,9 +1,8 @@
-<wxs src="./home.wxs" module="utils" />
 <view class="home-container">
   <view class="brand-header">
     <view class="header-content">
       <image
-        class="brand-logo {{logoZooming ? 'zoom-out' : ''}}"
+        class="brand-logo"
         src="cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/logo/logo-remove-removebg-preview.png"
         mode="widthFix"
       />
@@ -11,118 +10,75 @@
     </view>
   </view>
 
-  <view class="selection-area">
-    <view class="selection-group">
-      <text class="group-label">家庭成员</text>
-      <view class="people-picker">
-        <view
-          wx:for="{{adultCountOptions}}"
-          wx:key="*this"
-          class="people-item {{adultCount >= item ? 'is-lit' : ''}}"
-          data-count="{{item}}"
-          bindtap="onAdultCountTap"
-        >
-          <text class="people-icon">👤</text>
-        </view>
-      </view>
-      <text class="people-count-label">{{adultCount}} 人</text>
-    </view>
-    <view class="selection-group">
-      <text class="group-label">荤素搭配</text>
-      <view class="combo-stack">
-        <view wx:for="{{comboOptions}}" wx:key="label" class="combo-btn {{item.meatCount === meatCount && item.vegCount === vegCount && (item.soupCount || 0) === (soupCount || 0) ? 'is-active' : ''}}" data-meat="{{item.meatCount}}" data-veg="{{item.vegCount}}" data-soup="{{item.soupCount || 0}}" bindtap="onComboTap">
-          <text class="combo-text">{{item.label}}</text>
-          <text wx:if="{{item.tag && (item.tag !== '宝宝适配' || hasBaby)}}" class="combo-tag">{{item.tag}}</text>
-        </view>
-      </view>
-    </view>
-    <view class="baby-toggle-row">
-      <view
-        class="baby-toggle-btn {{hasBaby ? 'is-active' : ''}}"
-        bindtap="onBabyToggle"
-      >
-        <text class="baby-toggle-icon">🍼</text>
-      </view>
-      <text class="baby-toggle-label">{{hasBaby ? '宝宝同行' : '无宝宝'}}</text>
-    </view>
-    <view wx:if="{{hasBaby}}" class="selection-group baby-age-section">
-      <text class="group-label">宝宝月龄</text>
-      <view class="baby-age-stack">
-        <view wx:for="{{babyAgeOptions}}" wx:key="value" class="baby-age-card {{item.value === babyMonth ? 'is-active' : ''}}" data-value="{{item.value}}" bindtap="onBabyAgeTap">
-          <text class="baby-age-card-label">{{item.label}}</text>
-          <text class="baby-age-card-sub">{{item.sub}}</text>
-        </view>
-      </view>
-      <view class="baby-diff-tag">
-        <text class="baby-diff-icon">💡</text>
-        <text class="baby-diff-text">大人孩子可共用基底，一锅出更省心</text>
-      </view>
-    </view>
+  <!-- 今日氛围卡片（Phase 2 填充天气/问候） -->
+  <view class="vibe-card">
+    <text class="vibe-date">{{currentDate}}</text>
+    <text class="vibe-weather" wx:if="{{vibeWeather}}">{{vibeWeather}}</text>
+    <text class="vibe-greeting">{{vibeGreeting}}</text>
   </view>
 
-  <!-- 个性化偏好折叠面板 -->
-  <view class="pref-panel">
-    <view class="pref-header" bindtap="togglePrefPanel">
-      <text class="pref-header-text">口味 / 偏好</text>
-      <text class="pref-header-arrow {{prefExpanded ? 'is-expanded' : ''}}">▼</text>
+  <!-- 今天吃什么入口 -->
+  <view class="fridge-scan-entry today-entry" bindtap="onGoSpinner">
+    <view class="fridge-scan-icon-wrap today-icon-wrap">
+      <text class="fridge-scan-icon">🎲</text>
     </view>
-    <view class="pref-body {{prefExpanded ? 'is-expanded' : ''}}">
-      <!-- 忌口选择（多选） -->
-      <view class="pref-section">
-        <text class="pref-label">忌口（可多选）</text>
-        <view class="pref-tag-group">
-          <view 
-            wx:for="{{avoidOptions}}" 
-            wx:key="value" 
-            class="pref-tag {{utils.includes(userPreference.avoidList, item.value) ? 'is-selected' : ''}}"
-            data-value="{{item.value}}"
-            bindtap="onAvoidTap"
-          >
-            <text>{{item.label}}</text>
-          </view>
-        </view>
-      </view>
-      <!-- 饮食偏好（单选） -->
-      <view class="pref-section">
-        <text class="pref-label">饮食偏好</text>
-        <view class="pref-tag-group">
-          <view 
-            wx:for="{{dietOptions}}" 
-            wx:key="value" 
-            class="pref-tag {{userPreference.dietStyle === item.value ? 'is-selected' : ''}}"
-            data-value="{{item.value}}"
-            bindtap="onDietTap"
-          >
-            <text>{{item.label}}</text>
-          </view>
-        </view>
-      </view>
-      <!-- 省时开关 -->
-      <view class="pref-section pref-switch-row">
-        <text class="pref-label">省时模式</text>
-        <switch checked="{{userPreference.isTimeSave}}" bindchange="onTimeSaveChange" color="#E8A87C"/>
-      </view>
-      <view class="pref-hint" wx:if="{{userPreference.isTimeSave}}">
-        <text class="pref-hint-icon">⏱️</text>
-        <text class="pref-hint-text">优先推荐快手菜，让做饭更轻松</text>
-      </view>
+    <view class="fridge-scan-text-wrap">
+      <text class="fridge-scan-title">今天吃什么</text>
+      <text class="fridge-scan-desc">输入心情，AI 帮你搭配今日晚餐</text>
     </view>
+    <text class="fridge-scan-arrow">›</text>
+  </view>
+
+  <!-- 拍照清冰箱入口 -->
+  <view class="fridge-scan-entry" bindtap="onGoScan">
+    <view class="fridge-scan-icon-wrap">
+      <text class="fridge-scan-icon">📷</text>
+    </view>
+    <view class="fridge-scan-text-wrap">
+      <text class="fridge-scan-title">拍照清冰箱</text>
+      <text class="fridge-scan-desc">拍冰箱照片，AI 帮你搭配晚餐</text>
+    </view>
+    <text class="fridge-scan-arrow">›</text>
+  </view>
+
+  <!-- 导入赛博菜谱入口 -->
+  <view class="fridge-scan-entry import-entry" bindtap="onGoImport">
+    <view class="fridge-scan-icon-wrap import-icon-wrap">
+      <text class="fridge-scan-icon">🔗</text>
+    </view>
+    <view class="fridge-scan-text-wrap">
+      <text class="fridge-scan-title">导入赛博菜谱</text>
+      <text class="fridge-scan-desc">截图小红书/抖音菜谱，AI 秒变可执行食谱</text>
+    </view>
+    <text class="fridge-scan-arrow">›</text>
+  </view>
+
+  <!-- 混合组餐入口 -->
+  <view class="fridge-scan-entry mix-entry" bindtap="onGoMix">
+    <view class="fridge-scan-icon-wrap mix-icon-wrap">
+      <text class="fridge-scan-icon">🍳</text>
+    </view>
+    <view class="fridge-scan-text-wrap">
+      <text class="fridge-scan-title">混合组餐</text>
+      <text class="fridge-scan-desc">自由搭配原生 + 导入菜谱，一键统筹做饭</text>
+    </view>
+    <text class="fridge-scan-arrow">›</text>
+  </view>
+
+  <!-- 我的菜谱库入口 -->
+  <view class="fridge-scan-entry myrecipes-entry" bindtap="onGoMyRecipes">
+    <view class="fridge-scan-icon-wrap myrecipes-icon-wrap">
+      <text class="fridge-scan-icon">📚</text>
+    </view>
+    <view class="fridge-scan-text-wrap">
+      <text class="fridge-scan-title">我的菜谱库</text>
+      <text class="fridge-scan-desc">过去做过的菜，今天继续做</text>
+    </view>
+    <text class="fridge-scan-arrow">›</text>
   </view>
 
   <view class="home-brand">
     <view class="brand-line"></view>
     <text class="brand-text">TableSync</text>
   </view>
-
-  <view class="bottom-bar">
-    <button class="premium-btn {{btnShrinking ? 'shrinking' : ''}}" bindtap="handleGenerate">
-      <text class="btn-text {{btnShrinking ? 'fade-out' : ''}}">看看今天吃什么</text>
-    </button>
-  </view>
-
-  <!-- 飞行圆点（转场动画） -->
-  <view
-    class="flying-dot {{dotFlying ? 'fly-to-center' : ''}}"
-    wx:if="{{showFlyingDot}}"
-  ></view>
 </view>

@@ -1,0 +1,253 @@
+<view class="mix-container">
+
+  <!-- ═══ 顶部标题区 ═══ -->
+  <view class="mix-header">
+    <text class="mix-title">今晚吃什么？</text>
+    <text class="mix-subtitle">自由搭配你的完美晚餐</text>
+  </view>
+
+  <!-- ═══ 用餐人数 ═══ -->
+  <view class="people-section">
+    <text class="people-label">用餐人数</text>
+    <view class="people-stepper">
+      <view class="stepper-btn {{adultCount <= 1 ? 'disabled' : ''}}" bindtap="onAdultCountMinus">
+        <text class="stepper-btn-text">−</text>
+      </view>
+      <text class="stepper-value">{{adultCount}} 人</text>
+      <view class="stepper-btn {{adultCount >= 6 ? 'disabled' : ''}}" bindtap="onAdultCountPlus">
+        <text class="stepper-btn-text">+</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- ═══ 已选菜谱列表 ═══ -->
+  <view class="selected-section">
+    <view class="section-header">
+      <text class="section-title">已选菜谱</text>
+      <text class="section-badge" wx:if="{{selectedRecipes.length > 0}}">{{selectedRecipes.length}} 道</text>
+      <view class="clear-all-btn" bindtap="onClearAll" wx:if="{{selectedRecipes.length > 1}}">
+        <text class="clear-all-text">清空</text>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view class="empty-state" wx:if="{{selectedRecipes.length === 0}}">
+      <text class="empty-icon">🍽</text>
+      <text class="empty-text">还没有选择菜谱</text>
+      <text class="empty-hint">点击下方按钮添加原生或导入菜谱</text>
+    </view>
+
+    <!-- 已选菜谱卡片 -->
+    <view class="selected-list" wx:if="{{selectedRecipes.length > 0}}">
+      <view class="recipe-card" wx:for="{{selectedRecipes}}" wx:key="id">
+        <view class="recipe-card-main">
+          <view class="recipe-card-left">
+            <text class="recipe-card-name">{{item.name}}</text>
+            <view class="recipe-card-tags">
+              <text class="recipe-card-source recipe-card-source-{{item._sourceType}}">
+                {{item._sourceType === 'external' ? '🔗 外部导入' : '📚 原生'}}
+              </text>
+              <text class="recipe-card-tag" wx:if="{{item._cookTypeLabel}}">{{item._cookTypeLabel}}</text>
+              <text class="recipe-card-tag" wx:if="{{item._meatLabel}}">{{item._meatLabel}}</text>
+            </view>
+          </view>
+          <view class="recipe-card-remove" catchtap="onRemoveRecipe" data-index="{{index}}">
+            <text class="recipe-card-remove-icon">×</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- ═══ 添加菜谱按钮 ═══ -->
+  <view class="add-section" wx:if="{{selectedRecipes.length < maxDishes}}">
+    <view class="add-btn" bindtap="onShowAddPanel">
+      <text class="add-btn-icon">+</text>
+      <text class="add-btn-text">添加菜谱</text>
+    </view>
+  </view>
+
+  <!-- ═══ 统筹预览 ═══ -->
+  <view class="schedule-section" wx:if="{{selectedRecipes.length > 0}}">
+    <view class="section-header">
+      <text class="section-title">统筹预览</text>
+      <view class="efficiency-badge" wx:if="{{schedulePreview.efficiency > 0}}">
+        <text class="efficiency-badge-text">效率 +{{schedulePreview.efficiency}}%</text>
+      </view>
+    </view>
+
+    <!-- 核心数据卡片 -->
+    <view class="schedule-grid">
+      <view class="schedule-item schedule-item-time">
+        <text class="schedule-value">{{schedulePreview.totalTime}}</text>
+        <text class="schedule-unit">分钟</text>
+        <text class="schedule-label">预计总时长</text>
+      </view>
+      <view class="schedule-item schedule-item-stove">
+        <text class="schedule-value">{{schedulePreview.stoveCount || 1}}</text>
+        <text class="schedule-unit">个</text>
+        <text class="schedule-label">峰值灶台</text>
+      </view>
+      <view class="schedule-item schedule-item-save" wx:if="{{schedulePreview.savedTime > 0}}">
+        <text class="schedule-value">-{{schedulePreview.savedTime}}</text>
+        <text class="schedule-unit">分钟</text>
+        <text class="schedule-label">统筹节省</text>
+      </view>
+    </view>
+
+    <!-- 设备需求标签 -->
+    <view class="schedule-devices" wx:if="{{schedulePreview.devices.length > 0}}">
+      <view class="schedule-device-tag" wx:for="{{schedulePreview.devices}}" wx:key="key">
+        <text class="schedule-device-name">{{item.name}}</text>
+        <text class="schedule-device-count">×{{item.count}}</text>
+      </view>
+    </view>
+
+    <!-- 烹饪顺序时间线 -->
+    <view class="cooking-timeline" wx:if="{{schedulePreview.cookingOrder.length > 0}}">
+      <view class="timeline-title">
+        <text class="timeline-title-text">最佳烹饪顺序</text>
+      </view>
+      <view class="timeline-list">
+        <view class="timeline-item" wx:for="{{schedulePreview.cookingOrder}}" wx:key="phase">
+          <view class="timeline-dot-wrap">
+            <view class="timeline-dot">
+              <text class="timeline-dot-icon">{{item.icon}}</text>
+            </view>
+            <view class="timeline-line" wx:if="{{index < schedulePreview.cookingOrder.length - 1}}"></view>
+          </view>
+          <view class="timeline-content">
+            <view class="timeline-phase-row">
+              <text class="timeline-phase">{{item.phase}}</text>
+              <text class="timeline-time">{{item.time}}</text>
+            </view>
+            <text class="timeline-dishes">{{item.dishesText}}</text>
+            <text class="timeline-note">{{item.note}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 智能建议 -->
+    <view class="schedule-tips" wx:if="{{schedulePreview.tips.length > 0}}">
+      <view class="schedule-tip" wx:for="{{schedulePreview.tips}}" wx:key="*this">
+        <text class="schedule-tip-icon">💡</text>
+        <text class="schedule-tip-text">{{item}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- ═══ 底部操作栏 ═══ -->
+  <view class="bottom-actions" wx:if="{{selectedRecipes.length > 0}}">
+    <button class="action-btn action-btn-primary" bindtap="onGenerate">
+      <text class="action-btn-text">直接开始做</text>
+    </button>
+    <button class="action-btn action-btn-secondary" bindtap="onGenerateShoppingOnly">
+      <text class="action-btn-secondary-text">生成购物清单</text>
+    </button>
+  </view>
+
+  <!-- ═══ 添加菜谱弹出面板 ═══ -->
+  <view class="panel-mask {{showAddPanel ? 'is-visible' : ''}}" bindtap="onHideAddPanel"></view>
+  <view class="add-panel {{showAddPanel ? 'is-visible' : ''}}">
+    <!-- 面板标题 -->
+    <view class="panel-header">
+      <text class="panel-title">添加菜谱</text>
+      <view class="panel-close" bindtap="onHideAddPanel">
+        <text class="panel-close-icon">×</text>
+      </view>
+    </view>
+
+    <!-- 标签页切换 -->
+    <view class="panel-tabs">
+      <view class="panel-tab {{addPanelTab === 'native' ? 'is-active' : ''}}" data-tab="native" bindtap="onSwitchAddTab">
+        <text class="panel-tab-icon">📚</text>
+        <text class="panel-tab-text">原生菜谱库</text>
+      </view>
+      <view class="panel-tab {{addPanelTab === 'imported' ? 'is-active' : ''}}" data-tab="imported" bindtap="onSwitchAddTab">
+        <text class="panel-tab-icon">🔗</text>
+        <text class="panel-tab-text">最近导入</text>
+      </view>
+    </view>
+
+    <!-- 原生菜谱列表 -->
+    <view class="panel-content" wx:if="{{addPanelTab === 'native'}}">
+      <!-- 分类过滤 -->
+      <scroll-view class="filter-bar" scroll-x enhanced show-scrollbar="{{false}}">
+        <view class="filter-bar-inner">
+          <view
+            wx:for="{{nativeFilterOptions}}"
+            wx:key="value"
+            class="filter-tag {{nativeFilter === item.value ? 'is-active' : ''}}"
+            data-filter="{{item.value}}"
+            bindtap="onNativeFilter"
+          >
+            <text class="filter-tag-text">{{item.label}}</text>
+          </view>
+        </view>
+      </scroll-view>
+      <!-- 菜谱列表 -->
+      <scroll-view class="recipe-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+        <view class="recipe-pick-list">
+          <view
+            class="recipe-pick-item"
+            wx:for="{{filteredNativeRecipes}}"
+            wx:key="id"
+            data-index="{{index}}"
+            bindtap="onSelectNativeRecipe"
+          >
+            <view class="recipe-pick-info">
+              <text class="recipe-pick-name">{{item.name}}</text>
+              <view class="recipe-pick-meta">
+                <text class="recipe-pick-meta-tag">{{item.meat}}</text>
+                <text class="recipe-pick-meta-tag" wx:if="{{item.cook_type}}">{{item.cook_type}}</text>
+              </view>
+            </view>
+            <text class="recipe-pick-add">+</text>
+          </view>
+        </view>
+        <view class="recipe-pick-empty" wx:if="{{filteredNativeRecipes.length === 0}}">
+          <text class="recipe-pick-empty-text">暂无菜谱</text>
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- 已导入菜谱列表 -->
+    <view class="panel-content" wx:if="{{addPanelTab === 'imported'}}">
+      <scroll-view class="recipe-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+        <view class="recipe-pick-list">
+          <view
+            class="recipe-pick-item"
+            wx:for="{{importedRecipes}}"
+            wx:key="id"
+            data-index="{{index}}"
+            bindtap="onSelectImportedRecipe"
+          >
+            <view class="recipe-pick-info">
+              <text class="recipe-pick-name">{{item.name}}</text>
+              <view class="recipe-pick-meta">
+                <text class="recipe-pick-meta-tag recipe-pick-meta-external">外部导入</text>
+                <text class="recipe-pick-meta-tag" wx:if="{{item.sourcePlatform}}">{{item.sourcePlatform}}</text>
+              </view>
+            </view>
+            <text class="recipe-pick-add">+</text>
+          </view>
+        </view>
+        <view class="recipe-pick-empty" wx:if="{{importedRecipes.length === 0}}">
+          <text class="recipe-pick-empty-text">还没有导入过菜谱</text>
+        </view>
+      </scroll-view>
+      <!-- 从我的菜谱库选择 -->
+      <view class="import-new-btn import-library-btn" bindtap="onGoMyRecipes">
+        <text class="import-new-icon">📚</text>
+        <text class="import-new-text">从我的菜谱库选择</text>
+      </view>
+      <!-- 导入新菜谱入口 -->
+      <view class="import-new-btn" bindtap="onGoImportNew">
+        <text class="import-new-icon">🔗</text>
+        <text class="import-new-text">导入新菜谱</text>
+      </view>
+    </view>
+  </view>
+
+</view>

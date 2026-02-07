@@ -103,3 +103,44 @@ function safeParseJson(raw) {
     throw new Error(`解析 LLM JSON 失败，请检查 system prompt 约束是否足够严格。\n原始内容片段：\n${text.slice(0, 300)}...`);
   }
 }
+
+/**
+ * 加载食谱优化专用 system prompt（无占位符）
+ */
+function loadOptimizeSystemPrompt() {
+  const p = path.join(__dirname, '..', 'templates', 'recipe-optimize-prompt.md');
+  if (!fs.existsSync(p)) {
+    throw new Error(`Optimize prompt template not found: ${p}`);
+  }
+  return fs.readFileSync(p, 'utf8');
+}
+
+/**
+ * 调用 LLM 优化一批菜谱的 ingredients、steps、baby_variant
+ * @param {Object[]} recipes - 完整菜谱对象数组（含 id, name, ingredients, steps 等）
+ * @returns {Promise<{ items: Array<{ id, ingredients, steps, baby_variant }> }>}
+ */
+export async function optimizeRecipesWithLlm(recipes) {
+  if (!CONFIG.anthropicApiKey) {
+    throw new Error('ANTHROPIC_API_KEY 未配置，请在 tools/.env 中设置');
+  }
+
+  const opts = { apiKey: CONFIG.anthropicApiKey };
+  if (process.env.ANTHROPIC_BASE_URL) {
+    opts.baseURL = process.env.ANTHROPIC_BASE_URL;
+  }
+  const client = new Anthropic(opts);
+  const systemPrompt = loadOptimizeSystemPrompt();
+  const userMessage = `请对以下 ${recipes.length} 道菜谱分别进行优化，严格按模板只返回每道菜的 id、ingredients、steps、baby_variant（若原无则补充）。\n\n输入菜谱 JSON：\n${JSON.stringify(recipes, null, 2)}`;
+
+  const msg = await client.messages.create({
+    model: CONFIG.llmModel,
+    max_tokens: 8192,
+    temperature: 0.3,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userMessage }]
+  });
+
+  const text = (msg.content && msg.content[0] && msg.content[0].text) || '';
+  return safeParseJson(text);
+}

@@ -1,0 +1,52 @@
+<!--pages/myRecipes/myRecipes.wxml-->
+<view class="myrecipes-container">
+  <view class="myrecipes-header">
+    <text class="myrecipes-title">我的菜谱库</text>
+    <text class="myrecipes-subtitle">过去导入的菜谱，今天继续做</text>
+  </view>
+
+  <view class="myrecipes-loading" wx:if="{{loading}}">
+    <text class="myrecipes-loading-text">加载中...</text>
+  </view>
+
+  <view class="myrecipes-empty" wx:elif="{{empty}}">
+    <text class="myrecipes-empty-icon">📚</text>
+    <text class="myrecipes-empty-text">还没有导入过菜谱</text>
+    <text class="myrecipes-empty-hint">在「导入赛博菜谱」中保存的菜谱会出现在这里</text>
+    <button class="myrecipes-empty-btn" bindtap="onGoImport">去导入</button>
+  </view>
+
+  <scroll-view
+    wx:else
+    class="myrecipes-list-wrap"
+    scroll-y
+    enhanced
+    show-scrollbar="{{false}}"
+  >
+    <view class="myrecipes-list">
+      <view
+        class="myrecipes-card"
+        wx:for="{{recipeList}}"
+        wx:key="id"
+      >
+        <view class="myrecipes-card-cover" wx:if="{{item.coverUrl}}">
+          <image class="myrecipes-cover-img" src="{{item.coverUrl}}" mode="aspectFill" />
+        </view>
+        <view class="myrecipes-card-cover myrecipes-card-cover-placeholder" wx:else>
+          <text class="myrecipes-cover-emoji">🍳</text>
+        </view>
+        <view class="myrecipes-card-body">
+          <text class="myrecipes-card-name">{{item.name}}</text>
+          <view class="myrecipes-card-meta">
+            <text class="myrecipes-card-source" wx:if="{{item.sourcePlatform}}">{{item.sourcePlatform}}</text>
+            <text class="myrecipes-card-source" wx:elif="{{item.source === 'external'}}">外部导入</text>
+          </view>
+          <view class="myrecipes-card-actions">
+            <button class="myrecipes-btn myrecipes-btn-primary" data-index="{{index}}" bindtap="onCookToday">今天做</button>
+            <button class="myrecipes-btn myrecipes-btn-secondary" data-index="{{index}}" bindtap="onAddToMix">加入组餐</button>
+          </view>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+</view>

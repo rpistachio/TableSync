@@ -1,0 +1,1025 @@
+/* pages/import/import.wxss */
+/* 外部菜谱导入页 —— 截图上传 + AI 提取 + 预览确认 */
+
+.import-container {
+  min-height: 100vh;
+  background: #FDFCFA;
+  padding: 0 32rpx env(safe-area-inset-bottom);
+  box-sizing: border-box;
+}
+
+/* ═══════════════════════════════════════ 顶部标题 */
+
+.import-header {
+  padding: 48rpx 0 24rpx;
+  text-align: center;
+}
+
+.import-title {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #2d2d2d;
+  letter-spacing: 2rpx;
+  margin-bottom: 12rpx;
+}
+
+.import-subtitle {
+  display: block;
+  font-size: 26rpx;
+  color: #a09a94;
+  letter-spacing: 1rpx;
+}
+
+/* ═══════════════════════════════════════ 输入模式切换 */
+
+.mode-tabs {
+  display: flex;
+  gap: 16rpx;
+  padding: 0 0 24rpx;
+  justify-content: center;
+}
+
+.mode-tab {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 16rpx 32rpx;
+  border-radius: 100rpx;
+  background: #FAF7F4;
+  border: 2rpx solid #E8E4E0;
+  transition: all 0.2s ease;
+}
+
+.mode-tab.active {
+  background: linear-gradient(135deg, rgba(232, 168, 124, 0.15) 0%, rgba(212, 149, 106, 0.1) 100%);
+  border-color: #E8A87C;
+}
+
+.mode-tab-icon {
+  font-size: 28rpx;
+}
+
+.mode-tab-text {
+  font-size: 26rpx;
+  color: #8e857e;
+  font-weight: 500;
+}
+
+.mode-tab.active .mode-tab-text {
+  color: #D4956A;
+  font-weight: 600;
+}
+
+/* ═══════════════════════════════════════ 链接输入区 */
+
+.link-area {
+  padding: 24rpx 0;
+}
+
+.link-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 16rpx 24rpx;
+  background: #FAF7F4;
+  border-radius: 24rpx;
+  border: 2rpx solid #E8E4E0;
+}
+
+.link-input {
+  flex: 1;
+  font-size: 26rpx;
+  color: #2d2d2d;
+  min-height: 48rpx;
+}
+
+.link-input-placeholder {
+  color: #c4bfb9;
+  font-size: 26rpx;
+}
+
+.link-actions {
+  display: flex;
+  gap: 8rpx;
+  flex-shrink: 0;
+}
+
+.link-action-btn {
+  padding: 10rpx 24rpx;
+  border-radius: 100rpx;
+  font-size: 24rpx;
+  font-weight: 500;
+}
+
+.link-paste-btn {
+  background: #E8A87C;
+}
+
+.link-paste-btn .link-action-text {
+  color: #fff;
+}
+
+.link-clear-btn {
+  background: #F0EDE8;
+}
+
+.link-clear-btn .link-action-text {
+  color: #8e857e;
+}
+
+.link-platform-hint {
+  margin-top: 12rpx;
+  padding-left: 24rpx;
+}
+
+.link-platform-text {
+  font-size: 22rpx;
+  color: #5a9e6f;
+  font-weight: 500;
+}
+
+/* ═══════════════════════════════════════ 截图选择区 */
+
+.photo-area {
+  padding: 24rpx 0;
+}
+
+/* 空状态大占位框 */
+.photo-box {
+  position: relative;
+  width: 100%;
+  height: 480rpx;
+  border-radius: 32rpx;
+  overflow: hidden;
+  background: #FAF7F4;
+  border: 2rpx dashed #E8E4E0;
+}
+
+.photo-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16rpx;
+}
+
+.photo-placeholder-icon {
+  font-size: 80rpx;
+  opacity: 0.6;
+}
+
+.photo-placeholder-text {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: #5a544f;
+}
+
+.photo-placeholder-hint {
+  font-size: 24rpx;
+  color: #a09a94;
+}
+
+/* 多图横向滑动列表 */
+.photo-list {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.photo-list-inner {
+  display: inline-flex;
+  gap: 20rpx;
+  padding: 8rpx 4rpx;
+}
+
+.photo-thumb-wrap {
+  position: relative;
+  width: 240rpx;
+  height: 240rpx;
+  border-radius: 24rpx;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+}
+
+.photo-thumb {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+}
+
+.photo-thumb-remove {
+  position: absolute;
+  top: 8rpx;
+  right: 8rpx;
+  width: 48rpx;
+  height: 48rpx;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.photo-thumb-remove-icon {
+  color: #fff;
+  font-size: 32rpx;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.photo-thumb-add {
+  width: 240rpx;
+  height: 240rpx;
+  border-radius: 24rpx;
+  border: 2rpx dashed #D4CFC9;
+  background: #FAF7F4;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  flex-shrink: 0;
+}
+
+.photo-thumb-add-icon {
+  font-size: 64rpx;
+  color: #c4bfb9;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.photo-thumb-add-text {
+  font-size: 24rpx;
+  color: #a09a94;
+}
+
+.photo-count {
+  text-align: center;
+  margin-top: 16rpx;
+}
+
+.photo-count-text {
+  font-size: 24rpx;
+  color: #a09a94;
+  letter-spacing: 1rpx;
+}
+
+/* ═══════════════════════════════════════ 操作按钮 */
+
+.action-bar {
+  padding: 16rpx 0 24rpx;
+}
+
+.extract-btn {
+  width: 100%;
+  height: 96rpx;
+  line-height: 96rpx;
+  background: linear-gradient(135deg, #E8A87C 0%, #D4956A 100%);
+  color: #fff;
+  border-radius: 100rpx;
+  font-weight: 500;
+  font-size: 30rpx;
+  letter-spacing: 4rpx;
+  border: none;
+  box-shadow: 0 12rpx 32rpx rgba(232, 168, 124, 0.35);
+  transition: transform 0.2s ease;
+}
+
+.extract-btn:active {
+  transform: scale(0.96);
+}
+
+.extract-btn-text {
+  color: #fff;
+}
+
+/* ═══════════════════════════════════════ 使用提示 */
+
+.tips-area {
+  padding: 16rpx 0 32rpx;
+}
+
+.tip-card {
+  display: flex;
+  gap: 16rpx;
+  padding: 24rpx;
+  background: linear-gradient(135deg, rgba(232, 168, 124, 0.08) 0%, rgba(212, 149, 106, 0.04) 100%);
+  border-radius: 24rpx;
+  border: 1rpx solid rgba(232, 168, 124, 0.15);
+}
+
+.tip-icon {
+  font-size: 32rpx;
+  flex-shrink: 0;
+  line-height: 1.5;
+}
+
+.tip-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.tip-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #5a544f;
+}
+
+.tip-text {
+  font-size: 24rpx;
+  color: #8e857e;
+  line-height: 1.6;
+}
+
+/* ═══════════════════════════════════════ 加载状态 */
+
+.loading-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 64rpx 0;
+  gap: 24rpx;
+}
+
+.loading-ring {
+  width: 80rpx;
+  height: 80rpx;
+  border: 6rpx solid #F0EDE8;
+  border-top-color: #E8A87C;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 28rpx;
+  color: #5a544f;
+  font-weight: 500;
+  letter-spacing: 1rpx;
+}
+
+/* 步骤指示器 */
+.loading-steps {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.loading-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.step-dot {
+  font-size: 20rpx;
+  color: #c4bfb9;
+}
+
+.loading-step.is-done .step-dot {
+  color: #E8A87C;
+}
+
+.loading-step.is-active .step-dot {
+  color: #E8A87C;
+  animation: pulse-dot 1s ease infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.step-label {
+  font-size: 22rpx;
+  color: #a09a94;
+}
+
+.loading-step.is-done .step-label,
+.loading-step.is-active .step-label {
+  color: #5a544f;
+}
+
+.loading-step-line {
+  width: 40rpx;
+  height: 2rpx;
+  background: #E8E4E0;
+  margin-bottom: 30rpx;
+}
+
+.loading-step-line.is-active {
+  background: #E8A87C;
+}
+
+/* ═══════════════════════════════════════ 错误状态 */
+
+.error-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 64rpx 0;
+  gap: 20rpx;
+}
+
+.error-icon {
+  font-size: 80rpx;
+}
+
+.error-text {
+  font-size: 28rpx;
+  color: #8e857e;
+  text-align: center;
+  line-height: 1.6;
+  padding: 0 40rpx;
+}
+
+.retry-btn {
+  margin-top: 16rpx;
+  padding: 20rpx 60rpx;
+  background: #E8A87C;
+  color: #fff;
+  border-radius: 100rpx;
+  font-size: 28rpx;
+  font-weight: 500;
+  border: none;
+  letter-spacing: 2rpx;
+}
+
+.retry-btn:active {
+  opacity: 0.85;
+}
+
+/* ═══════════════════════════════════════ 菜谱预览 */
+
+.preview-area {
+  padding-bottom: 48rpx;
+}
+
+/* 菜名 + 来源 */
+.preview-name-section {
+  text-align: center;
+  padding: 32rpx 0 24rpx;
+}
+
+.preview-recipe-icon {
+  font-size: 48rpx;
+  display: block;
+  margin-bottom: 12rpx;
+}
+
+.preview-recipe-name {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #2d2d2d;
+  letter-spacing: 2rpx;
+  margin-bottom: 12rpx;
+}
+
+.preview-source {
+  margin-top: 8rpx;
+}
+
+.preview-source-text {
+  font-size: 24rpx;
+  color: #a09a94;
+}
+
+/* AI 推断标签 */
+.preview-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  justify-content: center;
+  padding: 16rpx 0 32rpx;
+}
+
+.preview-tag {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6rpx;
+  padding: 16rpx 24rpx;
+  background: #FAF7F4;
+  border-radius: 20rpx;
+  border: 1rpx solid #E8E4E0;
+  min-width: 120rpx;
+}
+
+.preview-tag-label {
+  font-size: 20rpx;
+  color: #a09a94;
+  letter-spacing: 1rpx;
+}
+
+.preview-tag-value {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #5a544f;
+}
+
+/* 结果区块（食材、步骤复用） */
+.result-section {
+  padding: 32rpx 0;
+  border-bottom: 1rpx solid #F0EDE8;
+}
+
+.result-section:last-of-type {
+  border-bottom: none;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 24rpx;
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #2d2d2d;
+  letter-spacing: 1rpx;
+}
+
+.section-badge {
+  font-size: 22rpx;
+  color: #E8A87C;
+  background: rgba(232, 168, 124, 0.12);
+  padding: 4rpx 16rpx;
+  border-radius: 100rpx;
+  font-weight: 500;
+}
+
+/* 食材标签 */
+.ingredient-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.ingredient-tag {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 12rpx 20rpx;
+  background: #FAF7F4;
+  border-radius: 100rpx;
+  border: 1rpx solid #E8E4E0;
+}
+
+.ingredient-icon {
+  font-size: 28rpx;
+}
+
+.ingredient-name {
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #5a544f;
+}
+
+.ingredient-amount {
+  font-size: 22rpx;
+  color: #a09a94;
+}
+
+/* 步骤列表 */
+.step-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.step-item {
+  display: flex;
+  gap: 16rpx;
+}
+
+.step-number-wrap {
+  width: 48rpx;
+  height: 48rpx;
+  background: linear-gradient(135deg, #E8A87C 0%, #D4956A 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 4rpx;
+}
+
+.step-number {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #fff;
+}
+
+.step-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.step-top-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.step-action-label {
+  font-size: 20rpx;
+  font-weight: 600;
+  padding: 4rpx 14rpx;
+  border-radius: 100rpx;
+}
+
+.step-action-prep {
+  color: #5a9e6f;
+  background: rgba(90, 158, 111, 0.1);
+}
+
+.step-action-cook {
+  color: #c1663e;
+  background: rgba(193, 102, 62, 0.1);
+}
+
+.step-duration {
+  font-size: 22rpx;
+  color: #a09a94;
+}
+
+.step-text {
+  font-size: 26rpx;
+  color: #5a544f;
+  line-height: 1.6;
+}
+
+/* 空状态提示 */
+.empty-hint {
+  padding: 32rpx 0;
+  text-align: center;
+}
+
+.empty-hint-text {
+  font-size: 26rpx;
+  color: #a09a94;
+}
+
+/* 置信度 */
+.confidence-info {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 24rpx;
+  padding: 16rpx 0;
+}
+
+.confidence-label {
+  font-size: 22rpx;
+  color: #a09a94;
+  flex-shrink: 0;
+}
+
+.confidence-track {
+  flex: 1;
+  height: 8rpx;
+  background: #F0EDE8;
+  border-radius: 100rpx;
+  overflow: hidden;
+}
+
+.confidence-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #E8A87C, #D4956A);
+  border-radius: 100rpx;
+  transition: width 0.6s ease;
+}
+
+.confidence-value {
+  font-size: 22rpx;
+  color: #E8A87C;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* 耗时 */
+.timing-info {
+  text-align: center;
+  padding: 12rpx 0;
+}
+
+.timing-text {
+  font-size: 22rpx;
+  color: #a09a94;
+  background: #FAF7F4;
+  padding: 8rpx 24rpx;
+  border-radius: 100rpx;
+}
+
+/* ═══════════════════════════════════════ 底部操作按钮 */
+
+.preview-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20rpx;
+  padding: 40rpx 0 32rpx;
+}
+
+.action-btn {
+  width: 100%;
+  height: 96rpx;
+  line-height: 96rpx;
+  border-radius: 100rpx;
+  font-size: 30rpx;
+  font-weight: 500;
+  letter-spacing: 2rpx;
+  border: none;
+  transition: transform 0.2s ease;
+}
+
+.action-btn:active {
+  transform: scale(0.96);
+}
+
+.action-btn-primary {
+  background: linear-gradient(135deg, #E8A87C 0%, #D4956A 100%);
+  color: #fff;
+  box-shadow: 0 12rpx 32rpx rgba(232, 168, 124, 0.35);
+}
+
+.action-btn-text {
+  color: #fff;
+}
+
+.action-btn-secondary {
+  background: #FAF7F4;
+  border: 2rpx solid #E8A87C;
+}
+
+.action-btn-secondary-text {
+  color: #E8A87C;
+}
+
+.action-btn-outline {
+  width: 60%;
+  height: 88rpx;
+  line-height: 88rpx;
+  background: transparent;
+  border: 2rpx solid #D4CFC9;
+}
+
+.action-btn-outline:active {
+  background: rgba(232, 168, 124, 0.06);
+}
+
+.action-btn-outline-text {
+  color: #a09a94;
+}
+
+/* ═══════════════════════════════════════ 编辑模式 */
+
+.edit-toggle-bar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8rpx 0 16rpx;
+}
+
+.edit-toggle-btn {
+  padding: 10rpx 28rpx;
+  border-radius: 100rpx;
+  background: rgba(232, 168, 124, 0.1);
+  border: 1rpx solid rgba(232, 168, 124, 0.3);
+}
+
+.edit-toggle-text {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #D4956A;
+}
+
+/* 食材编辑 */
+
+.edit-ingredient-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.edit-ingredient-row {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  padding: 12rpx 16rpx;
+  background: #FAF7F4;
+  border-radius: 16rpx;
+  border: 1rpx solid #E8E4E0;
+}
+
+.edit-ingredient-icon {
+  font-size: 28rpx;
+  flex-shrink: 0;
+}
+
+.edit-ingredient-name {
+  flex: 2;
+  font-size: 26rpx;
+  color: #2d2d2d;
+  padding: 8rpx 12rpx;
+  background: #fff;
+  border-radius: 12rpx;
+  border: 1rpx solid #E8E4E0;
+  min-width: 0;
+}
+
+.edit-ingredient-amount {
+  flex: 1;
+  font-size: 26rpx;
+  color: #2d2d2d;
+  padding: 8rpx 12rpx;
+  background: #fff;
+  border-radius: 12rpx;
+  border: 1rpx solid #E8E4E0;
+  text-align: center;
+  min-width: 0;
+}
+
+.edit-ingredient-unit {
+  width: 100rpx;
+  font-size: 26rpx;
+  color: #2d2d2d;
+  padding: 8rpx 12rpx;
+  background: #fff;
+  border-radius: 12rpx;
+  border: 1rpx solid #E8E4E0;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.edit-remove-btn {
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(200, 60, 60, 0.1);
+  border-radius: 50%;
+}
+
+.edit-remove-icon {
+  color: #c83c3c;
+  font-size: 32rpx;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.edit-add-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  padding: 20rpx 0;
+  border-radius: 16rpx;
+  border: 2rpx dashed #D4CFC9;
+  background: #FDFCFA;
+  margin-top: 8rpx;
+}
+
+.edit-add-icon {
+  font-size: 36rpx;
+  color: #c4bfb9;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.edit-add-text {
+  font-size: 24rpx;
+  color: #a09a94;
+}
+
+/* 步骤编辑 */
+
+.edit-step-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.edit-step-row {
+  padding: 16rpx 20rpx;
+  background: #FAF7F4;
+  border-radius: 16rpx;
+  border: 1rpx solid #E8E4E0;
+}
+
+.edit-step-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.edit-step-number {
+  width: 40rpx;
+  height: 40rpx;
+  background: linear-gradient(135deg, #E8A87C 0%, #D4956A 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.edit-step-action-toggle {
+  flex-shrink: 0;
+}
+
+.edit-step-action {
+  font-size: 20rpx;
+  font-weight: 600;
+  padding: 4rpx 14rpx;
+  border-radius: 100rpx;
+}
+
+.edit-step-duration-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  flex-shrink: 0;
+}
+
+.edit-step-duration {
+  width: 64rpx;
+  font-size: 24rpx;
+  color: #2d2d2d;
+  padding: 6rpx 8rpx;
+  background: #fff;
+  border-radius: 10rpx;
+  border: 1rpx solid #E8E4E0;
+  text-align: center;
+}
+
+.edit-step-duration-unit {
+  font-size: 22rpx;
+  color: #a09a94;
+}
+
+.edit-step-ops {
+  display: flex;
+  gap: 8rpx;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.edit-step-op {
+  width: 40rpx;
+  height: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border-radius: 8rpx;
+  border: 1rpx solid #E8E4E0;
+}
+
+.edit-step-op-icon {
+  font-size: 24rpx;
+  color: #8e857e;
+  line-height: 1;
+}
+
+.edit-step-remove {
+  background: rgba(200, 60, 60, 0.08);
+  border-color: rgba(200, 60, 60, 0.2);
+}
+
+.edit-step-remove .edit-remove-icon {
+  font-size: 28rpx;
+}
+
+.edit-step-text {
+  width: 100%;
+  font-size: 26rpx;
+  color: #5a544f;
+  line-height: 1.6;
+  padding: 12rpx 16rpx;
+  background: #fff;
+  border-radius: 12rpx;
+  border: 1rpx solid #E8E4E0;
+  box-sizing: border-box;
+  min-height: 80rpx;
+}

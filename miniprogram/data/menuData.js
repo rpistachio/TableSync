@@ -249,9 +249,73 @@ exports.buildPreviewPayload = function (menus, pref, opts) {
   };
 };
 
-/** 导出 ID 查找函数供其他模块使用 */
+/** 根据名称获取大人菜谱 */
+function getAdultRecipeByName(name) {
+  if (!name) return null;
+  try {
+    var recipesModule = require('./recipes.js');
+    ensureAdultCache(recipesModule, recipesModule.adultRecipes);
+    return adultByNameCache[name] || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/** 导出 ID / 名称查找函数供其他模块使用 */
 exports.getAdultRecipeById = getAdultRecipeById;
 exports.getBabyRecipeById = getBabyRecipeById;
+exports.getAdultRecipeByName = getAdultRecipeByName;
+
+/**
+ * 根据菜谱 ID 或名称列表生成做饭步骤（供 scan -> steps 桥接使用）
+ *
+ * @param {string[]} idOrNames - 菜谱 ID 或名称的数组
+ * @param {Object} preference  - 用户偏好
+ * @returns {{ steps: Array, menus: Array }} steps 步骤数组，menus 构建的菜单数组（供上层做图片展示）
+ */
+exports.generateStepsFromRecipeIds = function (idOrNames, preference) {
+  if (!Array.isArray(idOrNames) || idOrNames.length === 0) return { steps: [], menus: [] };
+  var pref = preference || {};
+  var babyMonth = Number(pref.babyMonth) || 12;
+  var adultCount = Number(pref.adultCount) || 2;
+  var hasBaby = pref.hasBaby === true || pref.hasBaby === '1';
+  var babyTaste = pref.babyTaste || 'soft_porridge';
+
+  var menus = [];
+  for (var i = 0; i < idOrNames.length; i++) {
+    var key = (idOrNames[i] || '').trim();
+    if (!key) continue;
+    // 先按 ID 查，再按名称查
+    var recipe = getAdultRecipeById(key) || getAdultRecipeByName(key);
+    if (!recipe) {
+      console.warn('[menuData] generateStepsFromRecipeIds: 未找到菜谱 "' + key + '"，跳过');
+      continue;
+    }
+    var menu = generator.generateMenuFromRecipe(recipe, babyMonth, hasBaby, adultCount, babyTaste);
+    if (menu && menu.adultRecipe) {
+      menu.meat = recipe.meat || 'vegetable';
+      menu.taste = recipe.flavor_profile || 'quick_stir_fry';
+      menus.push(menu);
+    }
+  }
+
+  if (menus.length === 0) return { steps: [], menus: [] };
+
+  // 生成购物清单
+  var shoppingList = exports.generateShoppingListFromMenus(pref, menus);
+
+  // 多菜 -> 统筹步骤；单菜 -> 单菜步骤
+  var steps;
+  if (menus.length > 1 && generator.generateUnifiedSteps) {
+    steps = generator.generateUnifiedSteps(menus, shoppingList);
+  } else if (menus.length === 1) {
+    steps = generator.generateSteps(menus[0].adultRecipe, menus[0].babyRecipe, shoppingList);
+  } else {
+    steps = [];
+  }
+
+  return { steps: Array.isArray(steps) ? steps : [], menus: menus };
+};
 
 function normalizePreference(preference) {
   if (preference == null || typeof preference !== 'object') {
@@ -372,6 +436,7 @@ exports.getTodayMenusByCombo = function (preference) {
   var meatCount = Math.min(3, Math.max(0, Number(preference && preference.meatCount) || 1));
   var vegCount = Math.min(3, Math.max(0, Number(preference && preference.vegCount) || 1));
   var soupCount = Math.min(1, Math.max(0, Number(preference && preference.soupCount) || 0));
+  var soupType = (preference && preference.soupType) === 'meat' ? 'meat' : (preference && preference.soupType) === 'veg' ? 'veg' : null;
   if (meatCount === 0 && vegCount === 0 && soupCount === 0) vegCount = 1;
 
   var userPreference = {
@@ -461,7 +526,10 @@ exports.getTodayMenusByCombo = function (preference) {
       if (slot.isSoup) {
         if (!recipesModule) {
           recipesModule = require('./recipes.js');
-          soupRecipes = getSoupRecipes(recipesModule.adultRecipes || []);
+          var adultRecipes = recipesModule.adultRecipes || [];
+          soupRecipes = generator.getSoupRecipesByType
+            ? generator.getSoupRecipesByType(adultRecipes, soupType)
+            : getSoupRecipes(adultRecipes);
         }
         // 汤品也需要去重：排除已选菜谱
         var availableSoups = soupRecipes.filter(function (soup) {
@@ -1042,6 +1110,19 @@ function groupsMapToList(groupsMap, adultCount) {
       if (g.unit === '适量' || totalRaw === 0) amountDisplay = generator.formatSeasoningAmountForDisplay('适量');
       else amountDisplay = formatAmount(totalRaw) + g.unit;
     }
+
+    // 收集来源菜品名称（用于混合组餐场景下显示食材归属）
+    var fromRecipes = [];
+    var hasExternal = false;
+    var hasNative = false;
+    g.rows.forEach(function (row) {
+      if (row.recipeName && fromRecipes.indexOf(row.recipeName) === -1) {
+        fromRecipes.push(row.recipeName);
+      }
+      if (row.sourceType === 'external') hasExternal = true;
+      else hasNative = true;
+    });
+
     list.push({
       id: ++idx,
       name: g.name != null ? g.name : '未知',
@@ -1052,11 +1133,15 @@ function groupsMapToList(groupsMap, adultCount) {
       checked: false,
       category: g.category,
       order: categoryOrder[g.category] != null ? categoryOrder[g.category] : 5,
-      isShared: g.rows.some(function (r) { return r.isFromBaby; }) && g.rows.some(function (r) { return !r.isFromBaby; })
+      isShared: g.rows.some(function (r) { return r.isFromBaby; }) && g.rows.some(function (r) { return !r.isFromBaby; }),
+      // 混合来源支持字段
+      fromRecipes: fromRecipes,
+      isMixedSource: hasExternal && hasNative,
+      hasExternalSource: hasExternal
     });
   });
   if (list.length === 0) {
-    list = [{ id: 1, name: '请先生成菜单后查看清单', sub_type: undefined, amount: '—', rawAmount: 0, unit: '—', checked: false, category: '其他', order: 99, isShared: false }];
+    list = [{ id: 1, name: '请先生成菜单后查看清单', sub_type: undefined, amount: '—', rawAmount: 0, unit: '—', checked: false, category: '其他', order: 99, isShared: false, fromRecipes: [], isMixedSource: false, hasExternalSource: false }];
   }
   return list;
 }

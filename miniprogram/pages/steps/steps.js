@@ -376,11 +376,49 @@ function getStepType(step) {
   return 'cook';
 }
 
+/** 兜底合并：连续同菜品、宝宝角色且文本极短的步骤合并到上一步，避免「切成小丁」等单独成卡。 */
+var BABY_SHORT_STEP_MAX_LEN = 12;
+
+function mergeConsecutiveBabyShortSteps(steps) {
+  if (!Array.isArray(steps) || steps.length === 0) return steps;
+  var out = [];
+  var i = 0;
+  while (i < steps.length) {
+    var cur = steps[i];
+    var curRole = cur.role;
+    var curRecipe = cur.recipeName || '';
+    var curDetails = cur.details || [];
+    var outStep = { details: curDetails.slice() };
+    for (var k in cur) {
+      if (k !== 'details' && Object.prototype.hasOwnProperty.call(cur, k)) outStep[k] = cur[k];
+    }
+    outStep.details = curDetails.slice();
+    out.push(outStep);
+    i++;
+    if (curRole !== 'baby') continue;
+    while (i < steps.length) {
+      var next = steps[i];
+      if (next.role !== 'baby' || (next.recipeName || '') !== curRecipe) break;
+      var nextDetails = next.details || [];
+      var nextTextLen = nextDetails.join('').replace(/\s/g, '').length;
+      if (nextTextLen > BABY_SHORT_STEP_MAX_LEN) break;
+      var lastLine = outStep.details.length > 0 ? outStep.details[outStep.details.length - 1] : '';
+      var append = (nextDetails.join('').trim() || '').replace(/^[，、]+/, '');
+      if (append) {
+        outStep.details = outStep.details.slice(0, outStep.details.length - 1).concat([lastLine + (lastLine ? '，' : '') + append]);
+      }
+      i++;
+    }
+  }
+  return out;
+}
+
 function processStepsForView(steps) {
   // 入参容错：避免传入 null/undefined 时报错
   if (!Array.isArray(steps) || steps.length === 0) {
     return [];
   }
+  steps = mergeConsecutiveBabyShortSteps(steps);
 
   // 预计算阶段信息：首个烹饪步骤索引、是否存在备菜/烹饪阶段
   var firstCookIndex = -1;
@@ -415,8 +453,10 @@ function processStepsForView(steps) {
         return;
       }
       phrases.forEach(function (phrase, idx) {
+        var p = (phrase || '').toString().replace(/^[，、\s]+/, '').trim();
+        if (!p) return;
         var prefix = phrases.length > 1 ? getOrdinalPrefix(idx + 1) + ' ' : '';
-        var fullText = prefix + phrase;
+        var fullText = prefix + p;
         detailsWithSegments.push({
           richText: segmentsToRichText(highlightSegments(fullText)),
           isBabyPortion: isBaby && idx === 0
@@ -483,6 +523,74 @@ function processStepsForView(steps) {
   });
 }
 
+/**
+ * 将外部导入菜谱的 steps 转换为 steps 页面内部格式。
+ * 外部菜谱 step: { action: 'prep'|'cook', text: string, duration_num: number }
+ * 内部 step: { id, title, details, duration, completed, role, step_type, recipeName, isPhaseStart, phaseType, phaseTitle, phaseSubtitle }
+ */
+function convertImportedRecipeToSteps(recipe) {
+  if (!recipe || !Array.isArray(recipe.steps) || recipe.steps.length === 0) return [];
+
+  var recipeName = recipe.name || '外部菜谱';
+  var result = [];
+  var prepSteps = [];
+  var cookSteps = [];
+
+  // 分类 prep / cook 步骤
+  for (var i = 0; i < recipe.steps.length; i++) {
+    var s = recipe.steps[i];
+    if (s.action === 'prep') {
+      prepSteps.push(s);
+    } else {
+      cookSteps.push(s);
+    }
+  }
+
+  var stepIndex = 0;
+
+  // 备菜步骤
+  for (var p = 0; p < prepSteps.length; p++) {
+    var ps = prepSteps[p];
+    result.push({
+      id: 'import-prep-' + stepIndex,
+      title: recipeName + ' · 备菜',
+      details: [ps.text || ''],
+      duration: ps.duration_num || null,
+      completed: false,
+      role: 'adult',
+      step_type: 'prep',
+      recipeName: recipeName,
+      isPhaseStart: p === 0,
+      phaseType: p === 0 ? 'prep' : undefined,
+      phaseTitle: p === 0 ? '备菜阶段' : undefined,
+      phaseSubtitle: p === 0 ? '准备食材，为 ' + recipeName + ' 打好基础' : undefined
+    });
+    stepIndex++;
+  }
+
+  // 烹饪步骤
+  for (var c = 0; c < cookSteps.length; c++) {
+    var cs = cookSteps[c];
+    result.push({
+      id: 'import-cook-' + stepIndex,
+      title: recipeName + ' · 烹饪',
+      details: [cs.text || ''],
+      duration: cs.duration_num || null,
+      completed: false,
+      role: 'adult',
+      step_type: 'cook',
+      recipeName: recipeName,
+      isPhaseStart: c === 0,
+      phaseType: c === 0 ? 'cook' : undefined,
+      phaseTitle: c === 0 ? '烹饪阶段' : undefined,
+      phaseSubtitle: c === 0 ? '开始制作 ' + recipeName : undefined
+    });
+    stepIndex++;
+  }
+
+  return result;
+}
+
 Page({
   data: {
     steps: [],
@@ -505,19 +613,99 @@ Page({
     currentStepSubtitle: '跟随步骤，轻松完成美味'
   },
 
-  onLoad: function () {
+  onLoad: function (options) {
     var that = this;
     var preference = getStepsPreference();
     var steps;
-    
-    // 容错：menuData.generateSteps 可能返回 null/undefined
-    try {
-      steps = menuData.generateSteps(preference);
-    } catch (e) {
-      console.error('生成步骤失败:', e);
-      steps = null;
+
+    // Part 3: 支持从 scan 页跳转，传入选中的菜谱 IDs
+    if (options && options.source === 'scan' && options.recipeIds) {
+      that._source = 'scan';
+      that._scanRecipeIds = decodeURIComponent(options.recipeIds);
+
+      try {
+        var idOrNames = that._scanRecipeIds.split(',').filter(function (s) { return s.trim(); });
+        var result = menuData.generateStepsFromRecipeIds(idOrNames, preference);
+        steps = result.steps;
+        // 保存菜单信息，供头图与图片展示使用
+        that._scanMenus = result.menus;
+      } catch (e) {
+        console.error('[steps] 从 scan 来源生成步骤失败:', e);
+        steps = null;
+      }
+    } else if (options && options.source === 'import') {
+      // ── 外部菜谱导入模式 ──
+      that._source = 'import';
+      that._importRecipeName = options.recipeName ? decodeURIComponent(options.recipeName) : '';
+
+      try {
+        var importedRecipe = null;
+
+        // 优先从 globalData 取，其次从 Storage 还原
+        var app = getApp();
+        if (app && app.globalData && app.globalData.importedRecipe) {
+          importedRecipe = app.globalData.importedRecipe;
+        }
+        if (!importedRecipe) {
+          var cached = wx.getStorageSync('imported_recipe');
+          if (cached) importedRecipe = JSON.parse(cached);
+        }
+
+        if (importedRecipe && importedRecipe.steps && importedRecipe.steps.length > 0) {
+          steps = convertImportedRecipeToSteps(importedRecipe);
+          that._importedRecipe = importedRecipe;
+        } else {
+          console.warn('[steps] 导入菜谱无步骤数据');
+          steps = null;
+        }
+      } catch (e) {
+        console.error('[steps] 从 import 来源生成步骤失败:', e);
+        steps = null;
+      }
+    } else if (options && options.source === 'mix') {
+      // ── 混合组餐模式 ──
+      that._source = 'mix';
+      that._mixRecipeNames = options.recipeNames ? decodeURIComponent(options.recipeNames) : '';
+
+      try {
+        var appMix = getApp();
+        var mixMenus = appMix && appMix.globalData ? appMix.globalData.mixMenus : null;
+
+        if (Array.isArray(mixMenus) && mixMenus.length > 0) {
+          that._mixMenus = mixMenus;
+          var mixShoppingList = appMix.globalData.mergedShoppingList || [];
+
+          // 多菜并行统筹步骤
+          var menuGenerator = require('../../data/menuGenerator.js');
+          if (mixMenus.length > 1 && menuGenerator.generateUnifiedSteps) {
+            steps = menuGenerator.generateUnifiedSteps(mixMenus, mixShoppingList);
+          } else if (mixMenus.length === 1) {
+            steps = menuGenerator.generateSteps(
+              mixMenus[0].adultRecipe, mixMenus[0].babyRecipe, mixShoppingList
+            );
+          } else {
+            steps = [];
+          }
+        } else {
+          console.warn('[steps] 混合组餐菜单为空');
+          steps = null;
+        }
+      } catch (e) {
+        console.error('[steps] 从 mix 来源生成步骤失败:', e);
+        steps = null;
+      }
+    } else {
+      that._source = 'menu';
+
+      // 原有逻辑：从 todayMenus / preference 生成步骤
+      try {
+        steps = menuData.generateSteps(preference);
+      } catch (e) {
+        console.error('生成步骤失败:', e);
+        steps = null;
+      }
     }
-    
+
     // 确保 steps 是数组
     if (!Array.isArray(steps)) {
       steps = [];
@@ -525,8 +713,17 @@ Page({
     }
     
     // 恢复已完成状态
+    var storageKey = that._source === 'scan'
+      ? STORAGE_PREFIX + 'scan_' + (that._scanRecipeIds || '')
+      : that._source === 'import'
+        ? STORAGE_PREFIX + 'import_' + (that._importRecipeName || '')
+        : that._source === 'mix'
+          ? STORAGE_PREFIX + 'mix_' + (that._mixRecipeNames || '')
+          : stepsStorageKey();
+    that._storageKey = storageKey;
+
     try {
-      var raw = wx.getStorageSync(stepsStorageKey());
+      var raw = wx.getStorageSync(storageKey);
       if (raw && steps.length > 0) {
         var arr = JSON.parse(raw);
         if (Array.isArray(arr)) {
@@ -556,9 +753,40 @@ Page({
   _loadMenuData: function () {
     var that = this;
     that._menuRecipes = [];
-    
+
     try {
-      // 优先从全局数据获取
+      // Part 3: scan 来源 —— 直接使用 _scanMenus 构建菜品列表
+      if (that._source === 'scan' && Array.isArray(that._scanMenus) && that._scanMenus.length > 0) {
+        that._menuRecipes = that._scanMenus.map(function (m) {
+          return {
+            name: (m.adultRecipe && m.adultRecipe.name) || '',
+            type: 'adult'
+          };
+        }).filter(function (r) { return r.name; });
+        return;
+      }
+
+      // 混合组餐来源 —— 使用 _mixMenus 构建菜品列表
+      if (that._source === 'mix' && Array.isArray(that._mixMenus) && that._mixMenus.length > 0) {
+        that._menuRecipes = that._mixMenus.map(function (m) {
+          return {
+            name: (m.adultRecipe && m.adultRecipe.name) || '',
+            type: 'adult'
+          };
+        }).filter(function (r) { return r.name; });
+        return;
+      }
+
+      // 外部导入来源 —— 使用 _importedRecipe 构建菜品列表
+      if (that._source === 'import' && that._importedRecipe) {
+        that._menuRecipes = [{
+          name: that._importedRecipe.name || '',
+          type: 'adult'
+        }];
+        return;
+      }
+
+      // 原有逻辑：优先从全局数据获取
       var app = getApp();
       var todayMenus = app && app.globalData ? app.globalData.todayMenus : null;
       
@@ -955,7 +1183,7 @@ Page({
 
         // 清理原有完成状态，避免与新步骤错位
         try {
-          wx.removeStorageSync(stepsStorageKey());
+          wx.removeStorageSync(that._storageKey || stepsStorageKey());
         } catch (clearErr) {
           console.warn('清理步骤完成状态失败:', clearErr);
         }
@@ -969,6 +1197,7 @@ Page({
   },
 
   markCompleted: function (e) {
+    var that = this;
     var id = e.currentTarget.dataset.id;
     var steps = this._stepsRaw;
     
@@ -983,7 +1212,7 @@ Page({
     step.completed = true;
     try {
       var payload = steps.map(function (s) { return { id: s.id, completed: s.completed }; });
-      wx.setStorageSync(stepsStorageKey(), JSON.stringify(payload));
+      wx.setStorageSync(that._storageKey || stepsStorageKey(), JSON.stringify(payload));
     } catch (err) {
       console.warn('保存步骤状态失败:', err);
     }
@@ -1008,7 +1237,7 @@ Page({
         success: function (res) {
           if (res.confirm) {
             try {
-              wx.removeStorageSync(stepsStorageKey());
+              wx.removeStorageSync(that._storageKey || stepsStorageKey());
             } catch (e) {}
             wx.reLaunch({ url: '/pages/home/home' });
           }

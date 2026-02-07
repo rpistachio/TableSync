@@ -1,0 +1,1 @@
+{"name":"recipeCoverGen","version":"1.0.0","description":"为导入菜谱静默生成暗调高级感封面（DALL·E 2 + MJ 风格 prompt）","main":"index.js","dependencies":{"wx-server-sdk":"~2.6.3"},"author":"","license":"ISC"}

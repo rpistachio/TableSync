@@ -1,0 +1,321 @@
+<view class="import-container">
+
+  <!-- ═══ 顶部标题区 ═══ -->
+  <view class="import-header">
+    <text class="import-title">导入赛博菜谱</text>
+    <text class="import-subtitle">把刷到的美食变成可执行食谱</text>
+  </view>
+
+  <!-- ═══ 输入模式切换标签 ═══ -->
+  <view class="mode-tabs" wx:if="{{stage === 'idle'}}">
+    <view class="mode-tab {{inputMode === 'link' ? 'active' : ''}}" bindtap="onSwitchToLink">
+      <text class="mode-tab-icon">🔗</text>
+      <text class="mode-tab-text">粘贴链接</text>
+    </view>
+    <view class="mode-tab {{inputMode === 'image' ? 'active' : ''}}" bindtap="onSwitchToImage">
+      <text class="mode-tab-icon">📷</text>
+      <text class="mode-tab-text">上传截图</text>
+    </view>
+  </view>
+
+  <!-- ═══ 链接输入区 ═══ -->
+  <view class="link-area" wx:if="{{inputMode === 'link' && (stage === 'idle' || stage === 'extracting')}}">
+    <view class="link-input-wrap">
+      <input
+        class="link-input"
+        placeholder="粘贴小红书/抖音分享链接"
+        placeholder-class="link-input-placeholder"
+        value="{{linkUrl}}"
+        bindinput="onLinkInput"
+        disabled="{{stage !== 'idle'}}"
+      />
+      <view class="link-actions">
+        <view class="link-action-btn link-paste-btn" bindtap="onPasteLink" wx:if="{{!linkUrl && stage === 'idle'}}">
+          <text class="link-action-text">粘贴</text>
+        </view>
+        <view class="link-action-btn link-clear-btn" bindtap="onClearLink" wx:if="{{linkUrl && stage === 'idle'}}">
+          <text class="link-action-text">清除</text>
+        </view>
+      </view>
+    </view>
+    <view class="link-platform-hint" wx:if="{{linkPlatform}}">
+      <text class="link-platform-text">已识别为{{linkPlatform}}链接</text>
+    </view>
+  </view>
+
+  <!-- ═══ 链接操作按钮 ═══ -->
+  <view class="action-bar" wx:if="{{inputMode === 'link' && stage === 'idle' && linkUrl}}">
+    <button class="extract-btn" bindtap="onStartLinkExtract">
+      <text class="extract-btn-text">AI 解析菜谱</text>
+    </button>
+  </view>
+
+  <!-- ═══ 截图选择区（多图横向滑动）═══ -->
+  <view class="photo-area" wx:if="{{inputMode === 'image' && (stage === 'idle' || stage === 'uploading' || stage === 'extracting')}}">
+    <!-- 有截图时：横向滑动列表 + 末尾加号 -->
+    <scroll-view class="photo-list" scroll-x enhanced show-scrollbar="{{false}}" wx:if="{{imageList.length > 0}}">
+      <view class="photo-list-inner">
+        <view class="photo-thumb-wrap" wx:for="{{imageList}}" wx:key="path">
+          <image class="photo-thumb" src="{{item.path}}" mode="aspectFill" />
+          <view class="photo-thumb-remove" catchtap="onRemoveImage" data-index="{{index}}" wx:if="{{stage === 'idle'}}">
+            <text class="photo-thumb-remove-icon">×</text>
+          </view>
+        </view>
+        <!-- 末尾加号按钮 -->
+        <view class="photo-thumb-add" bindtap="onChooseImage" wx:if="{{imageList.length < 5 && stage === 'idle'}}">
+          <text class="photo-thumb-add-icon">+</text>
+          <text class="photo-thumb-add-text">添加</text>
+        </view>
+      </view>
+    </scroll-view>
+
+    <!-- 无截图时：空状态大占位 -->
+    <view class="photo-box" bindtap="onChooseImage" wx:else>
+      <view class="photo-placeholder">
+        <text class="photo-placeholder-icon">📋</text>
+        <text class="photo-placeholder-text">上传菜谱截图</text>
+        <text class="photo-placeholder-hint">小红书图文 / 抖音评论区 / 菜谱App截图</text>
+        <text class="photo-placeholder-hint">支持 1-5 张，多张截图会自动合并</text>
+      </view>
+    </view>
+
+    <!-- 图片计数 -->
+    <view class="photo-count" wx:if="{{imageList.length > 0}}">
+      <text class="photo-count-text">已选 {{imageList.length}} / 5 张</text>
+    </view>
+  </view>
+
+  <!-- ═══ 操作按钮区（idle 且有图时显示）═══ -->
+  <view class="action-bar" wx:if="{{inputMode === 'image' && stage === 'idle' && imageList.length > 0}}">
+    <button class="extract-btn" bindtap="onStartExtract">
+      <text class="extract-btn-text">AI 识别菜谱</text>
+    </button>
+  </view>
+
+  <!-- ═══ 使用提示 ═══ -->
+  <view class="tips-area" wx:if="{{stage === 'idle'}}">
+    <view class="tip-card" wx:if="{{inputMode === 'link'}}">
+      <text class="tip-icon">💡</text>
+      <view class="tip-content">
+        <text class="tip-title">如何获取链接？</text>
+        <text class="tip-text">1. 在小红书/抖音找到喜欢的菜谱</text>
+        <text class="tip-text">2. 点击分享按钮，选择「复制链接」</text>
+        <text class="tip-text">3. 回到这里粘贴，AI 自动解析菜谱</text>
+      </view>
+    </view>
+    <view class="tip-card" wx:if="{{inputMode === 'image'}}">
+      <text class="tip-icon">💡</text>
+      <view class="tip-content">
+        <text class="tip-title">如何获取截图？</text>
+        <text class="tip-text">1. 在小红书/抖音看到喜欢的菜谱</text>
+        <text class="tip-text">2. 截图保存食材清单和做法步骤</text>
+        <text class="tip-text">3. 在这里上传，AI 自动转为可执行食谱</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- ═══ 加载状态 ═══ -->
+  <view class="loading-area" wx:if="{{stage === 'uploading' || stage === 'extracting'}}">
+    <view class="loading-ring"></view>
+    <text class="loading-text">{{statusText}}</text>
+    <view class="loading-steps">
+      <view class="loading-step {{stage === 'uploading' || stage === 'extracting' ? 'is-done' : ''}}">
+        <text class="step-dot">{{stage === 'extracting' ? '✓' : '●'}}</text>
+        <text class="step-label">上传截图</text>
+      </view>
+      <view class="loading-step-line {{stage === 'extracting' ? 'is-active' : ''}}"></view>
+      <view class="loading-step {{stage === 'extracting' ? 'is-active' : ''}}">
+        <text class="step-dot">{{stage === 'extracting' ? '●' : '○'}}</text>
+        <text class="step-label">AI 识别</text>
+      </view>
+      <view class="loading-step-line"></view>
+      <view class="loading-step">
+        <text class="step-dot">○</text>
+        <text class="step-label">生成菜谱</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- ═══ 错误状态 ═══ -->
+  <view class="error-area" wx:if="{{stage === 'error'}}">
+    <text class="error-icon">😵</text>
+    <text class="error-text">{{statusText}}</text>
+    <button class="retry-btn" bindtap="onRetry">重新开始</button>
+  </view>
+
+  <!-- ═══ 菜谱预览（preview）═══ -->
+  <view class="preview-area" wx:if="{{stage === 'preview'}}">
+
+    <!-- 菜名 + 来源 -->
+    <view class="preview-name-section">
+      <text class="preview-recipe-icon">🍳</text>
+      <text class="preview-recipe-name">{{recipeName}}</text>
+      <view class="preview-source" wx:if="{{sourceAuthor}}">
+        <text class="preview-source-text">来源：{{sourceAuthor}}</text>
+      </view>
+    </view>
+
+    <!-- AI 推断标签 -->
+    <view class="preview-tags">
+      <view class="preview-tag">
+        <text class="preview-tag-label">烹饪方式</text>
+        <text class="preview-tag-value">{{cookTypeLabel}}</text>
+      </view>
+      <view class="preview-tag">
+        <text class="preview-tag-label">主料</text>
+        <text class="preview-tag-value">{{meatLabel}}</text>
+      </view>
+      <view class="preview-tag">
+        <text class="preview-tag-label">口味</text>
+        <text class="preview-tag-value">{{flavorLabel}}</text>
+      </view>
+      <view class="preview-tag" wx:if="{{prepTimeText}}">
+        <text class="preview-tag-label">备菜</text>
+        <text class="preview-tag-value">{{prepTimeText}}</text>
+      </view>
+      <view class="preview-tag" wx:if="{{cookTimeText}}">
+        <text class="preview-tag-label">烹饪</text>
+        <text class="preview-tag-value">{{cookTimeText}}</text>
+      </view>
+    </view>
+
+    <!-- 编辑切换按钮 -->
+    <view class="edit-toggle-bar">
+      <view class="edit-toggle-btn" bindtap="onToggleEdit">
+        <text class="edit-toggle-text">{{isEditing ? '完成编辑' : '编辑菜谱'}}</text>
+      </view>
+    </view>
+
+    <!-- ═══ 查看模式：食材列表 ═══ -->
+    <view class="result-section" wx:if="{{!isEditing}}">
+      <view class="section-header">
+        <text class="section-title">食材清单</text>
+        <text class="section-badge" wx:if="{{ingredientList.length > 0}}">{{ingredientList.length}} 种</text>
+      </view>
+      <view class="ingredient-tags" wx:if="{{ingredientList.length > 0}}">
+        <view class="ingredient-tag" wx:for="{{ingredientList}}" wx:key="name">
+          <text class="ingredient-icon">{{item.icon}}</text>
+          <text class="ingredient-name">{{item.name}}</text>
+          <text class="ingredient-amount" wx:if="{{item.amount}}">{{item.amount}}</text>
+        </view>
+      </view>
+      <view class="empty-hint" wx:if="{{ingredientList.length === 0}}">
+        <text class="empty-hint-text">未识别到食材信息</text>
+      </view>
+    </view>
+
+    <!-- ═══ 编辑模式：食材列表 ═══ -->
+    <view class="result-section" wx:if="{{isEditing}}">
+      <view class="section-header">
+        <text class="section-title">编辑食材</text>
+        <text class="section-badge">{{editingIngredients.length}} 种</text>
+      </view>
+      <view class="edit-ingredient-list">
+        <view class="edit-ingredient-row" wx:for="{{editingIngredients}}" wx:key="index">
+          <text class="edit-ingredient-icon">{{item.icon}}</text>
+          <input class="edit-ingredient-name" value="{{item.name}}" placeholder="食材名" bindinput="onIngredientNameInput" data-index="{{index}}" />
+          <input class="edit-ingredient-amount" value="{{item.baseAmount}}" placeholder="用量" type="digit" bindinput="onIngredientAmountInput" data-index="{{index}}" />
+          <input class="edit-ingredient-unit" value="{{item.unit}}" placeholder="单位" bindinput="onIngredientUnitInput" data-index="{{index}}" />
+          <view class="edit-remove-btn" catchtap="onRemoveIngredient" data-index="{{index}}">
+            <text class="edit-remove-icon">×</text>
+          </view>
+        </view>
+        <view class="edit-add-row" bindtap="onAddIngredient">
+          <text class="edit-add-icon">+</text>
+          <text class="edit-add-text">添加食材</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- ═══ 查看模式：步骤列表 ═══ -->
+    <view class="result-section" wx:if="{{!isEditing}}">
+      <view class="section-header">
+        <text class="section-title">步骤预览</text>
+        <text class="section-badge" wx:if="{{stepList.length > 0}}">{{stepList.length}} 步</text>
+      </view>
+      <view class="step-list" wx:if="{{stepList.length > 0}}">
+        <view class="step-item" wx:for="{{stepList}}" wx:key="index">
+          <view class="step-number-wrap">
+            <text class="step-number">{{item.index}}</text>
+          </view>
+          <view class="step-content">
+            <view class="step-top-row">
+              <text class="step-action-label step-action-{{item.action}}">{{item.actionLabel}}</text>
+              <text class="step-duration" wx:if="{{item.duration}}">⏱ {{item.duration}}</text>
+            </view>
+            <text class="step-text">{{item.text}}</text>
+          </view>
+        </view>
+      </view>
+      <view class="empty-hint" wx:if="{{stepList.length === 0}}">
+        <text class="empty-hint-text">未识别到步骤信息</text>
+      </view>
+    </view>
+
+    <!-- ═══ 编辑模式：步骤列表 ═══ -->
+    <view class="result-section" wx:if="{{isEditing}}">
+      <view class="section-header">
+        <text class="section-title">编辑步骤</text>
+        <text class="section-badge">{{editingSteps.length}} 步</text>
+      </view>
+      <view class="edit-step-list">
+        <view class="edit-step-row" wx:for="{{editingSteps}}" wx:key="index">
+          <view class="edit-step-header">
+            <view class="edit-step-number">{{index + 1}}</view>
+            <view class="edit-step-action-toggle" catchtap="onToggleStepAction" data-index="{{index}}">
+              <text class="edit-step-action step-action-{{item.action}}">{{item.actionLabel}}</text>
+            </view>
+            <view class="edit-step-duration-wrap">
+              <input class="edit-step-duration" value="{{item.duration_num}}" placeholder="0" type="number" bindinput="onStepDurationInput" data-index="{{index}}" />
+              <text class="edit-step-duration-unit">分钟</text>
+            </view>
+            <view class="edit-step-ops">
+              <view class="edit-step-op" catchtap="onMoveStepUp" data-index="{{index}}" wx:if="{{index > 0}}">
+                <text class="edit-step-op-icon">↑</text>
+              </view>
+              <view class="edit-step-op" catchtap="onMoveStepDown" data-index="{{index}}" wx:if="{{index < editingSteps.length - 1}}">
+                <text class="edit-step-op-icon">↓</text>
+              </view>
+              <view class="edit-step-op edit-step-remove" catchtap="onRemoveStep" data-index="{{index}}">
+                <text class="edit-remove-icon">×</text>
+              </view>
+            </view>
+          </view>
+          <textarea class="edit-step-text" value="{{item.text}}" placeholder="步骤描述" bindinput="onStepTextInput" data-index="{{index}}" auto-height maxlength="500" />
+        </view>
+        <view class="edit-add-row" bindtap="onAddStep">
+          <text class="edit-add-icon">+</text>
+          <text class="edit-add-text">添加步骤</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- AI 置信度 -->
+    <view class="confidence-info" wx:if="{{confidence > 0 && !isEditing}}">
+      <text class="confidence-label">AI 识别置信度</text>
+      <view class="confidence-track">
+        <view class="confidence-fill" style="width: {{confidence * 100}}%;"></view>
+      </view>
+      <text class="confidence-value">{{confidence > 0 ? (confidence * 100) + '%' : ''}}</text>
+    </view>
+
+    <!-- 耗时 -->
+    <view class="timing-info" wx:if="{{totalMs > 0 && !isEditing}}">
+      <text class="timing-text">识别耗时 {{totalMs > 1000 ? (totalMs / 1000) + 's' : totalMs + 'ms'}}</text>
+    </view>
+
+    <!-- 底部操作按钮 -->
+    <view class="preview-actions" wx:if="{{!isEditing}}">
+      <button class="action-btn action-btn-primary" bindtap="onStartCooking">
+        <text class="action-btn-text">直接开始做</text>
+      </button>
+      <button class="action-btn action-btn-secondary" bindtap="onSaveRecipe">
+        <text class="action-btn-secondary-text">保存到我的菜谱</text>
+      </button>
+      <button class="action-btn action-btn-outline" bindtap="onRetry">
+        <text class="action-btn-outline-text">重新导入</text>
+      </button>
+    </view>
+  </view>
+
+</view>

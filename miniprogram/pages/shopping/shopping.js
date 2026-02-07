@@ -105,6 +105,15 @@ Page({
       : menuData.generateShoppingList(pref);
     restoreChecked(todayItems, STORAGE_KEY_TODAY);
 
+    // 为混合来源食材计算来源菜品文本描述
+    todayItems.forEach(function (item) {
+      if (Array.isArray(item.fromRecipes) && item.fromRecipes.length > 1) {
+        item.fromRecipesText = item.fromRecipes.join('、');
+      } else {
+        item.fromRecipesText = '';
+      }
+    });
+
     var sortMode = this.data.sortMode;
     if (sortMode === 'category') {
       todayItems.sort(function (a, b) {

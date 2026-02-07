@@ -1,0 +1,1439 @@
+/* pages/scan/scan.wxss */
+/* 冰箱扫描页 —— 多图上传 + 识别结果 + 推荐菜谱 */
+
+.scan-container {
+  min-height: 100vh;
+  background: #FDFCFA;
+  padding: 0 32rpx env(safe-area-inset-bottom);
+  box-sizing: border-box;
+}
+
+/* ═══════════════════════════════════════ 顶部标题 */
+
+.scan-header {
+  padding: 48rpx 0 24rpx;
+  text-align: center;
+}
+
+.scan-title {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #2d2d2d;
+  letter-spacing: 2rpx;
+  margin-bottom: 12rpx;
+}
+
+.scan-subtitle {
+  display: block;
+  font-size: 26rpx;
+  color: #a09a94;
+  letter-spacing: 1rpx;
+}
+
+/* ═══════════════════════════════════════ 图片选择区 */
+
+.photo-area {
+  padding: 24rpx 0;
+}
+
+/* ── 空状态大占位框 ── */
+
+.photo-box {
+  position: relative;
+  width: 100%;
+  height: 480rpx;
+  border-radius: 32rpx;
+  overflow: hidden;
+  background: #FAF7F4;
+  border: 2rpx dashed #E8E4E0;
+}
+
+.photo-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16rpx;
+}
+
+.photo-placeholder-icon {
+  font-size: 80rpx;
+  opacity: 0.6;
+}
+
+.photo-placeholder-text {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: #5a544f;
+}
+
+.photo-placeholder-hint {
+  font-size: 24rpx;
+  color: #a09a94;
+}
+
+/* ── 多图横向滑动列表 ── */
+
+.photo-list {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.photo-list-inner {
+  display: inline-flex;
+  gap: 20rpx;
+  padding: 8rpx 4rpx;
+}
+
+.photo-thumb-wrap {
+  position: relative;
+  width: 240rpx;
+  height: 240rpx;
+  border-radius: 24rpx;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+}
+
+.photo-thumb {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+}
+
+.photo-thumb-remove {
+  position: absolute;
+  top: 8rpx;
+  right: 8rpx;
+  width: 48rpx;
+  height: 48rpx;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.photo-thumb-remove-icon {
+  color: #fff;
+  font-size: 32rpx;
+  font-weight: 300;
+  line-height: 1;
+}
+
+/* ── 加号按钮 ── */
+
+.photo-thumb-add {
+  width: 240rpx;
+  height: 240rpx;
+  border-radius: 24rpx;
+  border: 2rpx dashed #D4CFC9;
+  background: #FAF7F4;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  flex-shrink: 0;
+}
+
+.photo-thumb-add-icon {
+  font-size: 64rpx;
+  color: #c4bfb9;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.photo-thumb-add-text {
+  font-size: 24rpx;
+  color: #a09a94;
+}
+
+/* ── 图片计数 ── */
+
+.photo-count {
+  text-align: center;
+  margin-top: 16rpx;
+}
+
+.photo-count-text {
+  font-size: 24rpx;
+  color: #a09a94;
+  letter-spacing: 1rpx;
+}
+
+/* ═══════════════════════════════════════ 操作按钮 */
+
+.action-bar {
+  padding: 16rpx 0 24rpx;
+}
+
+.scan-btn {
+  width: 100%;
+  height: 96rpx;
+  line-height: 96rpx;
+  background: linear-gradient(135deg, #E8A87C 0%, #D4956A 100%);
+  color: #fff;
+  border-radius: 100rpx;
+  font-weight: 500;
+  font-size: 30rpx;
+  letter-spacing: 4rpx;
+  border: none;
+  box-shadow: 0 12rpx 32rpx rgba(232, 168, 124, 0.35);
+  transition: transform 0.2s ease;
+}
+
+.scan-btn:active {
+  transform: scale(0.96);
+}
+
+.scan-btn-text {
+  color: #fff;
+}
+
+/* ═══════════════════════════════════════ 加载状态 */
+
+.loading-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 64rpx 0;
+  gap: 24rpx;
+}
+
+.loading-ring {
+  width: 80rpx;
+  height: 80rpx;
+  border: 6rpx solid #F0EDE8;
+  border-top-color: #E8A87C;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 28rpx;
+  color: #5a544f;
+  font-weight: 500;
+  letter-spacing: 1rpx;
+}
+
+/* 步骤指示器 */
+.loading-steps {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.loading-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.step-dot {
+  font-size: 20rpx;
+  color: #c4bfb9;
+}
+
+.loading-step.is-done .step-dot {
+  color: #E8A87C;
+}
+
+.loading-step.is-active .step-dot {
+  color: #E8A87C;
+  animation: pulse-dot 1s ease infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.step-label {
+  font-size: 22rpx;
+  color: #a09a94;
+}
+
+.loading-step.is-done .step-label,
+.loading-step.is-active .step-label {
+  color: #5a544f;
+}
+
+.loading-step-line {
+  width: 40rpx;
+  height: 2rpx;
+  background: #E8E4E0;
+  margin-bottom: 30rpx;
+}
+
+.loading-step-line.is-active {
+  background: #E8A87C;
+}
+
+/* ═══════════════════════════════════════ 错误状态 */
+
+.error-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 64rpx 0;
+  gap: 20rpx;
+}
+
+.error-icon {
+  font-size: 80rpx;
+}
+
+.error-text {
+  font-size: 28rpx;
+  color: #8e857e;
+  text-align: center;
+  line-height: 1.6;
+  padding: 0 40rpx;
+}
+
+.retry-btn {
+  margin-top: 16rpx;
+  padding: 20rpx 60rpx;
+  background: #E8A87C;
+  color: #fff;
+  border-radius: 100rpx;
+  font-size: 28rpx;
+  font-weight: 500;
+  border: none;
+  letter-spacing: 2rpx;
+}
+
+.retry-btn:active {
+  opacity: 0.85;
+}
+
+/* ═══════════════════════════════════════ 识别结果 */
+
+.result-area {
+  padding-bottom: 48rpx;
+}
+
+.result-section {
+  padding: 32rpx 0;
+  border-bottom: 1rpx solid #F0EDE8;
+}
+
+.result-section:last-of-type {
+  border-bottom: none;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 24rpx;
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #2d2d2d;
+  letter-spacing: 1rpx;
+}
+
+.section-badge {
+  font-size: 22rpx;
+  color: #E8A87C;
+  background: rgba(232, 168, 124, 0.12);
+  padding: 4rpx 16rpx;
+  border-radius: 100rpx;
+  font-weight: 500;
+}
+
+.section-arrow {
+  font-size: 24rpx;
+  color: #a09a94;
+  margin-left: auto;
+  transition: transform 0.25s ease;
+}
+
+.section-arrow.is-up {
+  transform: rotate(180deg);
+}
+
+/* 食材标签 */
+.ingredient-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.ingredient-tag {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 12rpx 20rpx;
+  background: #FAF7F4;
+  border-radius: 100rpx;
+  border: 1rpx solid #E8E4E0;
+}
+
+/* 可编辑模式：右侧留出删除按钮空间 */
+.ingredient-tag--editable {
+  padding-right: 12rpx;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.ingredient-tag--editable:active {
+  background: #F5F0EB;
+}
+
+/* 食材删除按钮（×） */
+.ingredient-remove {
+  width: 40rpx;
+  height: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 50%;
+  margin-left: 4rpx;
+  flex-shrink: 0;
+}
+
+.ingredient-remove:active {
+  background: rgba(193, 102, 62, 0.2);
+}
+
+.ingredient-remove-icon {
+  font-size: 24rpx;
+  color: #8e857e;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.ingredient-icon {
+  font-size: 28rpx;
+}
+
+.ingredient-name {
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #5a544f;
+}
+
+.ingredient-qty {
+  font-size: 22rpx;
+  color: #a09a94;
+}
+
+/* 置信度 */
+.confidence-bar {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+
+.confidence-label {
+  font-size: 22rpx;
+  color: #a09a94;
+  flex-shrink: 0;
+}
+
+.confidence-track {
+  flex: 1;
+  height: 8rpx;
+  background: #F0EDE8;
+  border-radius: 100rpx;
+  overflow: hidden;
+}
+
+.confidence-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #E8A87C, #D4956A);
+  border-radius: 100rpx;
+  transition: width 0.6s ease;
+}
+
+.confidence-value {
+  font-size: 22rpx;
+  color: #E8A87C;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* 备注 */
+.notes-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+  margin-top: 20rpx;
+  padding: 16rpx 20rpx;
+  background: rgba(232, 168, 124, 0.08);
+  border-radius: 16rpx;
+}
+
+.notes-icon {
+  font-size: 28rpx;
+  flex-shrink: 0;
+  line-height: 1.5;
+}
+
+.notes-text {
+  font-size: 24rpx;
+  color: #8e857e;
+  line-height: 1.5;
+}
+
+/* 空状态 */
+.empty-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 64rpx 0;
+  gap: 20rpx;
+}
+
+.empty-icon {
+  font-size: 80rpx;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #8e857e;
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* ═══════════════════════════════════════ 组餐推荐 */
+
+.meal-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+  padding: 20rpx 24rpx;
+  background: linear-gradient(135deg, rgba(232, 168, 124, 0.08) 0%, rgba(212, 149, 106, 0.04) 100%);
+  border-radius: 20rpx;
+  margin-bottom: 28rpx;
+  border: 1rpx solid rgba(232, 168, 124, 0.15);
+}
+
+.meal-summary-icon {
+  font-size: 32rpx;
+  flex-shrink: 0;
+  line-height: 1.5;
+}
+
+.meal-summary-text {
+  font-size: 26rpx;
+  color: #5a544f;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+/* 菜谱卡片 */
+.recipe-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.recipe-card {
+  display: flex;
+  gap: 20rpx;
+  padding: 24rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  border: 2rpx solid #F0EDE8;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+  position: relative;
+  transition: all 0.25s ease;
+}
+
+/* 菜谱卡片选中态 */
+.recipe-card.is-selected {
+  border-color: #E8A87C;
+  background: #FFFCF9;
+  box-shadow: 0 4rpx 20rpx rgba(232, 168, 124, 0.15);
+}
+
+/* 菜谱卡片未选中态 */
+.recipe-card.is-unselected {
+  opacity: 0.55;
+  border-color: #E8E4E0;
+}
+
+.recipe-card:active {
+  transform: scale(0.98);
+}
+
+/* 菜谱勾选指示器 */
+.recipe-check {
+  position: absolute;
+  top: 16rpx;
+  right: 16rpx;
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 50%;
+  border: 2rpx solid #D4CFC9;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  z-index: 2;
+  flex-shrink: 0;
+}
+
+.recipe-check.is-checked {
+  background: #E8A87C;
+  border-color: #E8A87C;
+}
+
+.recipe-check-icon {
+  font-size: 24rpx;
+  color: #fff;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.recipe-cover {
+  width: 180rpx;
+  height: 180rpx;
+  max-height: none;
+  border-radius: 16rpx;
+  flex-shrink: 0;
+  background: #FAF7F4;
+}
+
+.recipe-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+  min-width: 0;
+}
+
+.recipe-top-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.recipe-name {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #2d2d2d;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recipe-role {
+  font-size: 20rpx;
+  font-weight: 500;
+  padding: 4rpx 14rpx;
+  border-radius: 100rpx;
+  flex-shrink: 0;
+}
+
+.role-meat {
+  color: #c1663e;
+  background: rgba(193, 102, 62, 0.1);
+}
+
+.role-veg {
+  color: #5a9e6f;
+  background: rgba(90, 158, 111, 0.1);
+}
+
+.role-soup {
+  color: #6b8fb5;
+  background: rgba(107, 143, 181, 0.1);
+}
+
+.recipe-reason {
+  font-size: 24rpx;
+  color: #8e857e;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.recipe-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 4rpx;
+}
+
+.recipe-time {
+  font-size: 22rpx;
+  color: #a09a94;
+}
+
+.recipe-missing {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6rpx;
+}
+
+.missing-label {
+  font-size: 22rpx;
+  color: #c1663e;
+}
+
+.missing-item {
+  font-size: 22rpx;
+  color: #c1663e;
+  background: rgba(193, 102, 62, 0.08);
+  padding: 2rpx 12rpx;
+  border-radius: 100rpx;
+}
+
+/* ═══════════════════════════════════════ 购物清单 */
+
+.shopping-section {
+  margin-top: 28rpx;
+  padding: 20rpx 24rpx;
+  background: #FAF7F4;
+  border-radius: 20rpx;
+  border: 1rpx solid #E8E4E0;
+}
+
+.shopping-header {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-bottom: 16rpx;
+}
+
+.shopping-icon {
+  font-size: 28rpx;
+}
+
+.shopping-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #5a544f;
+}
+
+.shopping-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.shopping-tag {
+  font-size: 24rpx;
+  color: #c1663e;
+  padding: 8rpx 20rpx;
+  background: rgba(193, 102, 62, 0.08);
+  border-radius: 100rpx;
+  border: 1rpx solid rgba(193, 102, 62, 0.15);
+}
+
+/* ═══════════════════════════════════════ 已选菜谱计数（Part 2b）*/
+
+.selected-count-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
+  padding: 20rpx 32rpx;
+  margin: 16rpx 0 8rpx;
+  background: linear-gradient(135deg, rgba(232, 168, 124, 0.1) 0%, rgba(212, 149, 106, 0.06) 100%);
+  border-radius: 100rpx;
+  border: 1rpx solid rgba(232, 168, 124, 0.18);
+}
+
+.selected-count-icon {
+  font-size: 28rpx;
+}
+
+.selected-count-text {
+  font-size: 26rpx;
+  color: #5a544f;
+  font-weight: 500;
+}
+
+.selected-count-num {
+  font-size: 32rpx;
+  color: #D4956A;
+  font-weight: 700;
+}
+
+/* section-header 内的小提示 */
+.section-hint-inline {
+  font-size: 22rpx;
+  color: #c4bfb9;
+  margin-left: auto;
+}
+
+/* ═══════════════════════════════════════ 更多匹配菜谱 */
+
+/* 更多匹配列表（由 wx:if 控制显隐，无需 max-height 动画） */
+.more-matched-list {
+  /* 直接展示，不做高度动画以减少重绘开销 */
+}
+
+.matched-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+  padding: 24rpx 16rpx;
+  border-bottom: 1rpx solid #F0EDE8;
+  border-radius: 16rpx;
+  margin-bottom: 4rpx;
+  transition: all 0.25s ease;
+}
+
+.matched-item:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.matched-item:active {
+  background: #FAF7F4;
+}
+
+.matched-item.is-selected {
+  background: rgba(232, 168, 124, 0.06);
+  border-color: rgba(232, 168, 124, 0.2);
+}
+
+/* 选中后勾选框对齐封面顶部 */
+.matched-item .matched-check {
+  margin-top: 6rpx;
+}
+
+/* 更多匹配的勾选框 */
+.matched-check {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 50%;
+  border: 2rpx solid #D4CFC9;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.matched-check.is-checked {
+  background: #E8A87C;
+  border-color: #E8A87C;
+}
+
+.matched-check-icon {
+  font-size: 24rpx;
+  color: #c4bfb9;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.matched-check.is-checked .matched-check-icon {
+  color: #fff;
+}
+
+.matched-cover {
+  width: 100rpx;
+  height: 100rpx;
+  max-height: none;
+  border-radius: 14rpx;
+  flex-shrink: 0;
+  background: #FAF7F4;
+}
+
+.matched-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  min-width: 0;
+}
+
+.matched-top-row {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.matched-name {
+  font-size: 26rpx;
+  color: #5a544f;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.matched-cook-type {
+  font-size: 20rpx;
+  color: #a09a94;
+  background: #F0EDE8;
+  padding: 2rpx 12rpx;
+  border-radius: 100rpx;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.matched-detail {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+/* 匹配/缺少食材标签行 */
+.matched-ingredients-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6rpx;
+  margin-top: 2rpx;
+}
+
+.matched-ing-label {
+  font-size: 20rpx;
+  color: #5a9e6f;
+  flex-shrink: 0;
+}
+
+.matched-ing-label--miss {
+  color: #c1663e;
+}
+
+.matched-ing-tag {
+  font-size: 20rpx;
+  padding: 1rpx 10rpx;
+  border-radius: 100rpx;
+  white-space: nowrap;
+}
+
+.matched-ing-tag--have {
+  color: #5a9e6f;
+  background: rgba(90, 158, 111, 0.08);
+}
+
+.matched-ing-tag--miss {
+  color: #c1663e;
+  background: rgba(193, 102, 62, 0.08);
+}
+
+.matched-score-bar {
+  flex: 1;
+  height: 6rpx;
+  background: #F0EDE8;
+  border-radius: 100rpx;
+  overflow: hidden;
+}
+
+.matched-score-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #E8A87C, #D4956A);
+  border-radius: 100rpx;
+  transition: width 0.6s ease;
+}
+
+.matched-score-inline {
+  font-size: 22rpx;
+  color: #E8A87C;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* 加载更多按钮 */
+.matched-load-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24rpx 0;
+  border-top: 1rpx solid #F0EDE8;
+}
+
+.matched-load-more:active {
+  background: #FAF7F4;
+}
+
+.matched-load-more-text {
+  font-size: 24rpx;
+  color: #E8A87C;
+  font-weight: 500;
+}
+
+/* ═══════════════════════════════════════ 底部操作 */
+
+.result-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20rpx;
+  padding: 40rpx 0 32rpx;
+}
+
+.timing-info {
+  padding: 8rpx 24rpx;
+  background: #FAF7F4;
+  border-radius: 100rpx;
+}
+
+.timing-text {
+  font-size: 22rpx;
+  color: #a09a94;
+}
+
+.retry-btn-outline {
+  width: 60%;
+  height: 88rpx;
+  line-height: 88rpx;
+  background: transparent;
+  color: #E8A87C;
+  border: 2rpx solid #E8A87C;
+  border-radius: 100rpx;
+  font-size: 28rpx;
+  font-weight: 500;
+  letter-spacing: 2rpx;
+}
+
+.retry-btn-outline:active {
+  background: rgba(232, 168, 124, 0.06);
+}
+
+/* ═══════════════════════════════════════ 食材确认/编辑区（Part 2a）*/
+
+.section-hint {
+  font-size: 24rpx;
+  color: #a09a94;
+  margin-bottom: 24rpx;
+  margin-top: -12rpx;
+  line-height: 1.5;
+}
+
+/* 食材空状态（编辑区内） */
+.ingredients-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48rpx 0;
+  gap: 16rpx;
+}
+
+.ingredients-empty-icon {
+  font-size: 64rpx;
+  opacity: 0.5;
+}
+
+.ingredients-empty-text {
+  font-size: 26rpx;
+  color: #a09a94;
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* 手动添加食材 */
+.add-ingredient-area {
+  margin-top: 28rpx;
+}
+
+.add-ingredient-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
+  padding: 20rpx 0;
+  border: 2rpx dashed #D4CFC9;
+  border-radius: 100rpx;
+  background: #FDFCFA;
+  transition: all 0.2s ease;
+}
+
+.add-ingredient-btn:active {
+  background: #FAF7F4;
+  border-color: #E8A87C;
+}
+
+.add-ingredient-btn-icon {
+  font-size: 36rpx;
+  color: #E8A87C;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.add-ingredient-btn-text {
+  font-size: 26rpx;
+  color: #8e857e;
+  font-weight: 500;
+}
+
+/* 添加食材表单 */
+.add-ingredient-form {
+  background: #FAF7F4;
+  border-radius: 24rpx;
+  padding: 24rpx;
+  border: 1rpx solid #E8E4E0;
+}
+
+.add-ingredient-input {
+  width: 100%;
+  height: 80rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 0 24rpx;
+  font-size: 28rpx;
+  color: #2d2d2d;
+  border: 1rpx solid #E8E4E0;
+  box-sizing: border-box;
+}
+
+.add-ingredient-input-placeholder {
+  color: #c4bfb9;
+}
+
+.add-ingredient-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.add-ingredient-cancel {
+  padding: 14rpx 36rpx;
+  font-size: 26rpx;
+  color: #a09a94;
+  background: transparent;
+  border-radius: 100rpx;
+  border: 1rpx solid #E8E4E0;
+}
+
+.add-ingredient-cancel:active {
+  background: #F0EDE8;
+}
+
+.add-ingredient-confirm {
+  padding: 14rpx 36rpx;
+  font-size: 26rpx;
+  color: #fff;
+  background: #E8A87C;
+  border-radius: 100rpx;
+  border: none;
+  font-weight: 500;
+}
+
+.add-ingredient-confirm:active {
+  opacity: 0.85;
+}
+
+/* 底部确认栏 */
+.confirm-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20rpx;
+  padding: 40rpx 0 32rpx;
+}
+
+.confirm-btn {
+  width: 100%;
+  height: 96rpx;
+  line-height: 96rpx;
+  background: linear-gradient(135deg, #E8A87C 0%, #D4956A 100%);
+  color: #fff;
+  border-radius: 100rpx;
+  font-weight: 500;
+  font-size: 30rpx;
+  letter-spacing: 2rpx;
+  border: none;
+  box-shadow: 0 12rpx 32rpx rgba(232, 168, 124, 0.35);
+  transition: transform 0.2s ease;
+}
+
+.confirm-btn:active {
+  transform: scale(0.96);
+}
+
+.confirm-btn[disabled] {
+  background: #E8E4E0;
+  color: #c4bfb9;
+  box-shadow: none;
+}
+
+.confirm-btn-text {
+  color: #fff;
+}
+
+.confirm-btn[disabled] .confirm-btn-text {
+  color: #c4bfb9;
+}
+
+/* ═══════════════════════════════════════ Part 2c: 智能购物清单 */
+
+/* 顶部概览 */
+.shopping-overview {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+  padding: 28rpx 24rpx;
+  margin: 16rpx 0 8rpx;
+  background: linear-gradient(135deg, rgba(232, 168, 124, 0.12) 0%, rgba(212, 149, 106, 0.06) 100%);
+  border-radius: 24rpx;
+  border: 1rpx solid rgba(232, 168, 124, 0.2);
+}
+
+.shopping-overview-icon {
+  font-size: 40rpx;
+  flex-shrink: 0;
+  line-height: 1.3;
+}
+
+.shopping-overview-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.shopping-overview-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #2d2d2d;
+  letter-spacing: 1rpx;
+}
+
+.shopping-overview-desc {
+  font-size: 24rpx;
+  color: #8e857e;
+  line-height: 1.5;
+}
+
+/* 已选菜谱摘要条 */
+.shopping-recipes-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+  padding: 20rpx 0;
+  flex-wrap: wrap;
+}
+
+.shopping-recipes-label {
+  font-size: 24rpx;
+  color: #a09a94;
+  flex-shrink: 0;
+  line-height: 2;
+}
+
+.shopping-recipes-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  flex: 1;
+}
+
+.shopping-recipe-tag {
+  font-size: 22rpx;
+  color: #D4956A;
+  background: rgba(232, 168, 124, 0.1);
+  padding: 6rpx 18rpx;
+  border-radius: 100rpx;
+  border: 1rpx solid rgba(232, 168, 124, 0.2);
+  white-space: nowrap;
+}
+
+/* 需购买列表 */
+.smart-shopping-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.smart-shopping-item {
+  padding: 20rpx 16rpx;
+  border-bottom: 1rpx solid #F0EDE8;
+  transition: background 0.15s ease;
+}
+
+.smart-shopping-item:last-child {
+  border-bottom: none;
+}
+
+.smart-shopping-item:active {
+  background: #FAF7F4;
+}
+
+.smart-shopping-item-main {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.smart-shopping-item-icon {
+  font-size: 20rpx;
+  flex-shrink: 0;
+}
+
+.smart-shopping-item-name {
+  flex: 1;
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #2d2d2d;
+}
+
+.smart-shopping-item-remove {
+  width: 44rpx;
+  height: 44rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+
+.smart-shopping-item-remove:active {
+  background: rgba(193, 102, 62, 0.15);
+}
+
+.smart-shopping-item-remove-icon {
+  font-size: 26rpx;
+  color: #a09a94;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.smart-shopping-item-from {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6rpx;
+  margin-top: 8rpx;
+  padding-left: 32rpx;
+}
+
+.smart-shopping-from-label {
+  font-size: 20rpx;
+  color: #c4bfb9;
+}
+
+.smart-shopping-from-recipe {
+  font-size: 20rpx;
+  color: #a09a94;
+  background: #F0EDE8;
+  padding: 2rpx 12rpx;
+  border-radius: 100rpx;
+}
+
+/* 购物清单空状态 */
+.shopping-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48rpx 0;
+  gap: 16rpx;
+}
+
+.shopping-empty-icon {
+  font-size: 64rpx;
+}
+
+.shopping-empty-text {
+  font-size: 26rpx;
+  color: #5a9e6f;
+  text-align: center;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+/* 冰箱已有（已排除） */
+.excluded-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.excluded-item {
+  padding: 16rpx 16rpx;
+  border-bottom: 1rpx solid #F0EDE8;
+}
+
+.excluded-item:last-child {
+  border-bottom: none;
+}
+
+.excluded-item-main {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.excluded-item-icon {
+  font-size: 20rpx;
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.excluded-item-name {
+  flex: 1;
+  font-size: 26rpx;
+  color: #a09a94;
+  text-decoration: line-through;
+  text-decoration-color: #D4CFC9;
+}
+
+.excluded-item-add {
+  width: 44rpx;
+  height: 44rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1rpx solid #E8E4E0;
+  transition: all 0.15s ease;
+}
+
+.excluded-item-add:active {
+  background: rgba(232, 168, 124, 0.15);
+  border-color: #E8A87C;
+}
+
+.excluded-item-add-icon {
+  font-size: 28rpx;
+  color: #c4bfb9;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.excluded-item-from {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6rpx;
+  margin-top: 6rpx;
+  padding-left: 32rpx;
+}
+
+.excluded-from-label {
+  font-size: 20rpx;
+  color: #D4CFC9;
+}
+
+.excluded-from-recipe {
+  font-size: 20rpx;
+  color: #c4bfb9;
+  background: #F5F2EF;
+  padding: 2rpx 12rpx;
+  border-radius: 100rpx;
+}

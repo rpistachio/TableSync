@@ -867,6 +867,7 @@ function generateMenu(taste, meat, babyMonth, hasBaby, adultCount, babyTaste, us
         t = t.replace(/\{\{process_action\}\}/g, config.action).replace(/\{\{seasoning_hint\}\}/g, config.salt);
         return Object.assign({}, step, { text: t });
       });
+      baby.steps = mergeBabyShortSteps(baby.steps);
     }
   }
 
@@ -893,6 +894,9 @@ function generateMenu(taste, meat, babyMonth, hasBaby, adultCount, babyTaste, us
   }
   if (adult) adult.time = adult.time != null ? adult.time : estimateRecipeTime(adult);
   if (baby) baby.time = baby.time != null ? baby.time : estimateRecipeTime(baby);
+  if (adult && adult.ingredients && adult.ingredients.length > 0 && Array.isArray(adult.steps) && adult.steps.length > 0) {
+    validateIngredientStepConsistency(adult);
+  }
 
   var result = { adultRecipe: adult, babyRecipe: baby };
   if (fallbackReason) result.fallbackReason = fallbackReason;
@@ -934,6 +938,9 @@ function generateMenuFromRecipe(recipe, babyMonth, hasBaby, adultCount, babyTast
     return Math.min(120, sum);
   }
   adult.time = adult.time != null ? adult.time : estimateRecipeTime(adult);
+  if (adult && adult.ingredients && adult.ingredients.length > 0 && Array.isArray(adult.steps) && adult.steps.length > 0) {
+    validateIngredientStepConsistency(adult);
+  }
 
   var baby = null;
   if (meatKey !== 'vegetable' && hasBaby) {
@@ -958,6 +965,7 @@ function generateMenuFromRecipe(recipe, babyMonth, hasBaby, adultCount, babyTast
         t = t.replace(/\{\{process_action\}\}/g, config.action).replace(/\{\{seasoning_hint\}\}/g, config.salt);
         return Object.assign({}, step, { text: t });
       });
+      baby.steps = mergeBabyShortSteps(baby.steps);
       baby.time = baby.time != null ? baby.time : estimateRecipeTime(baby);
     }
   }
@@ -1310,6 +1318,7 @@ function generateMenuWithFilters(meat, babyMonth, hasBaby, adultCount, babyTaste
         t = t.replace(/\{\{process_action\}\}/g, config.action).replace(/\{\{seasoning_hint\}\}/g, config.salt);
         return Object.assign({}, step, { text: t });
       });
+      baby.steps = mergeBabyShortSteps(baby.steps);
     }
   }
   if (adult && Array.isArray(adult.steps)) {
@@ -1334,6 +1343,9 @@ function generateMenuWithFilters(meat, babyMonth, hasBaby, adultCount, babyTaste
   }
   if (adult) adult.time = adult.time != null ? adult.time : estimateRecipeTime(adult);
   if (baby) baby.time = baby.time != null ? baby.time : estimateRecipeTime(baby);
+  if (adult && adult.ingredients && adult.ingredients.length > 0 && Array.isArray(adult.steps) && adult.steps.length > 0) {
+    validateIngredientStepConsistency(adult);
+  }
   
   var result = { adultRecipe: adult, babyRecipe: baby };
   if (fallbackReason) result.fallbackReason = fallbackReason;
@@ -1371,6 +1383,124 @@ function buildIngredientsInfo(recipe, shoppingList) {
   return '主食材 ' + mainParts.join('、');
 }
 
+/**
+ * 配料-步骤一致性校验：检查 recipe.ingredients 与 steps.text 中提到的调料/食材是否一致。
+ * 在开发环境下通过 console.warn 输出警告，便于发现数据问题。
+ * @param {Object} recipe - 含 ingredients、steps 的菜谱对象
+ * @returns {{ ok: boolean, missingInSteps: string[], mentionedNotInList: string[], warnings: string[] }}
+ */
+function validateIngredientStepConsistency(recipe) {
+  var missingInSteps = [];
+  var mentionedNotInList = [];
+  var warnings = [];
+  if (!recipe) return { ok: true, missingInSteps: [], mentionedNotInList: [], warnings: [] };
+  var ingredients = recipe.ingredients;
+  var steps = recipe.steps;
+  if (!Array.isArray(ingredients)) ingredients = [];
+  if (!Array.isArray(steps)) steps = [];
+  var stepTexts = steps.map(function (s) { return (typeof s === 'object' && s && s.text != null ? s.text : s) || ''; });
+  var fullText = stepTexts.join(' ');
+
+  // 1) 配料表中每一项都应在步骤文案中出现
+  ingredients.forEach(function (it) {
+    var name = typeof it === 'string' ? it : (it && it.name);
+    if (!name) return;
+    if (fullText.indexOf(name) === -1) missingInSteps.push(name);
+  });
+
+  // 2) 步骤中常见调料/食材关键词应在配料表中有对应项（按名称包含或一致）
+  var ingredientNames = ingredients.map(function (it) { return (typeof it === 'object' && it && it.name) ? it.name : ''; }).filter(Boolean);
+  var commonTerms = ['生抽', '老抽', '料酒', '蚝油', '盐', '糖', '白糖', '淀粉', '干淀粉', '姜', '蒜', '葱', '胡椒粉', '酱油', '醋', '食用油', '油', '蛋清', '姜片', '蒜末', '葱花'];
+  commonTerms.forEach(function (term) {
+    if (fullText.indexOf(term) === -1) return;
+    var found = ingredientNames.some(function (n) { return n === term || n.indexOf(term) !== -1 || term.indexOf(n) !== -1; });
+    if (!found) mentionedNotInList.push(term);
+  });
+
+  // 3) 合并调料名称检测
+  var mergedPatterns = ['葱姜', '姜蒜', '姜葱', '蒜姜', '葱蒜'];
+  ingredientNames.forEach(function (name) {
+    for (var i = 0; i < mergedPatterns.length; i++) {
+      if (name === mergedPatterns[i] || name.indexOf(mergedPatterns[i]) !== -1) {
+        warnings.push('配料使用合并名称「' + name + '」，应拆为独立条目（如葱、姜）');
+        break;
+      }
+    }
+  });
+
+  // 4) 步骤数量不少于 2（至少 1 prep + 1 cook）
+  var prepCount = 0;
+  var cookCount = 0;
+  steps.forEach(function (s) {
+    var action = (s && s.action) || (s && s.step_type);
+    if (action === 'prep') prepCount++;
+    else if (action === 'cook' || (action !== 'prep' && s && s.text)) cookCount++;
+  });
+  if (steps.length < 2) warnings.push('步骤数量少于 2，建议至少 1 条 prep + 1 条 cook');
+  if (steps.length > 0 && prepCount < 1) warnings.push('缺少 prep（备菜）步骤');
+  if (steps.length > 0 && cookCount < 1) warnings.push('缺少 cook（烹饪）步骤');
+
+  // 5) 炒菜类调料品种数（排除盐和油）建议不少于 3 种
+  var seasoningNames = ingredients.filter(function (it) {
+    var cat = it && it.category;
+    var unit = it && it.unit;
+    return cat === '调料' || cat === '佐料' || (!cat && (unit === '适量' || unit === '少许'));
+  }).map(function (it) { return (it && it.name) || ''; }).filter(Boolean);
+  var excludeFromCount = ['盐', '食用油', '油'];
+  var seasoningCount = seasoningNames.filter(function (n) {
+    return !excludeFromCount.some(function (e) { return n === e || n.indexOf(e) !== -1; });
+  }).length;
+  var cookType = recipe.cook_type || (recipe.taste === 'slow_stew' ? 'stew' : 'stir_fry');
+  if (cookType === 'stir_fry' && seasoningCount < 3) {
+    warnings.push('炒菜类调料种类较少，建议至少 3 种（如生抽、料酒、蚝油等）');
+  }
+
+  if (missingInSteps.length > 0 || mentionedNotInList.length > 0 || warnings.length > 0) {
+    if (typeof console !== 'undefined' && console.warn) {
+      console.warn('[validateIngredientStepConsistency] ' + (recipe.name || recipe.id || '') + ':',
+        missingInSteps.length ? '配料未在步骤中出现: ' + missingInSteps.join('、') : '',
+        mentionedNotInList.length ? '步骤中提到但配料表无: ' + mentionedNotInList.join('、') : '',
+        warnings.length ? warnings.join('；') : ''
+      );
+    }
+  }
+  return {
+    ok: missingInSteps.length === 0 && mentionedNotInList.length === 0,
+    missingInSteps: missingInSteps,
+    mentionedNotInList: mentionedNotInList,
+    warnings: warnings
+  };
+}
+
+/** 宝宝餐短步骤合并：将过短的 process/seasoning 步骤合并到前一个 cook 步骤，避免「切成小丁」等单独成步。 */
+var PROCESS_MERGE_MAX_LEN = 10;
+var SEASONING_MERGE_MAX_LEN = 15;
+
+function mergeBabyShortSteps(steps) {
+  if (!Array.isArray(steps) || steps.length === 0) return steps;
+  var out = [];
+  var lastCookIndex = -1;
+  for (var i = 0; i < steps.length; i++) {
+    var s = steps[i];
+    var step = typeof s === 'object' && s ? Object.assign({}, s) : { action: 'cook', text: String(s) };
+    var text = String(step.text != null ? step.text : '').trim();
+    var action = step.action;
+    if ((action === 'process' && text.length <= PROCESS_MERGE_MAX_LEN) ||
+        (action === 'seasoning' && text.length <= SEASONING_MERGE_MAX_LEN)) {
+      if (lastCookIndex >= 0 && out[lastCookIndex] && out[lastCookIndex].text) {
+        var trimmed = (text || '').trim().replace(/^[，、]+/, '');
+        out[lastCookIndex].text = (out[lastCookIndex].text || '').trim() + (trimmed ? '，' + trimmed : '');
+      } else {
+        out.push(step);
+      }
+      continue;
+    }
+    out.push(step);
+    if (action === 'cook') lastCookIndex = out.length - 1;
+  }
+  return out;
+}
+
 function replaceStepPlaceholders(text, recipe, shoppingList, scaleText) {
   if (!text || typeof text !== 'string') return text;
   var out = text;
@@ -1393,6 +1523,35 @@ function getStepsByAction(recipe) {
     process: process.length > 0 ? process : [''],
     seasoning: seasoning.length > 0 ? seasoning : ['']
   };
+}
+
+/**
+ * 食材名称规范化：合并常见别名/简写，提升跨来源（原生 vs 外部导入）去重准确率。
+ * 仅做轻量级映射，不改变用户可读名称的本义。
+ * @param {string} name
+ * @returns {string}
+ */
+var INGREDIENT_ALIAS_MAP = {
+  '蒜': '大蒜', '蒜头': '大蒜', '蒜瓣': '大蒜',
+  '姜': '生姜', '老姜': '生姜', '姜片': '生姜',
+  '葱': '小葱', '香葱': '小葱', '青葱': '小葱',
+  '大葱段': '大葱', '葱段': '大葱',
+  '芫荽': '香菜',
+  '辣椒': '小米辣', '小米椒': '小米辣',
+  '酱油': '生抽', '薄盐酱油': '生抽',
+  '食盐': '盐', '细盐': '盐',
+  '白糖': '糖', '砂糖': '糖', '绵白糖': '糖',
+  '菜籽油': '食用油', '花生油': '食用油', '植物油': '食用油', '色拉油': '食用油',
+  '胡椒': '胡椒粉', '白胡椒': '胡椒粉',
+  '味精': '鸡精',
+  '番茄': '西红柿',
+  '土豆': '马铃薯', '洋芋': '马铃薯'
+};
+
+function normalizeIngredientName(name) {
+  if (!name || typeof name !== 'string') return name || '';
+  var trimmed = name.trim();
+  return INGREDIENT_ALIAS_MAP[trimmed] || trimmed;
 }
 
 function estimateMinutes(text) {
@@ -2337,11 +2496,15 @@ function getIngredientNames(list) {
 /** 摊平并合并成人/宝宝食材，不按 category 或 meat 过滤，鱼虾等一律进入清单 */
 function generateShoppingListRaw(adultRecipe, babyRecipe) {
   var items = [];
-  function add(list, isFromBaby) {
+  function add(list, isFromBaby, recipe) {
     if (!Array.isArray(list)) return;
+    var rName = (recipe && recipe.name) || '';
+    var rSource = (recipe && recipe.source) || 'native';
     list.forEach(function (it) {
       var name = typeof it === 'string' ? it : (it && (it.name != null ? it.name : it.ingredient != null ? it.ingredient : ''));
       if (!name) return;
+      // 规范化食材名（合并常见别名，如「蒜」→「大蒜」）
+      name = normalizeIngredientName(name);
       var category = (typeof it === 'object' && it != null && it.category != null) ? String(it.category).trim() : '其他';
       if (category === '海鲜' || category === '鱼类' || category === 'seafood') category = '肉类';
       var subType = (category === '肉类' && typeof it === 'object' && it != null && it.sub_type != null) ? it.sub_type : undefined;
@@ -2351,19 +2514,23 @@ function generateShoppingListRaw(adultRecipe, babyRecipe) {
         baseAmount = it.baseAmount;
       }
       var unit = (typeof it === 'object' && it != null && it.unit != null) ? String(it.unit) : '份';
-      items.push({ name: name, sub_type: subType, category: category, baseAmount: baseAmount, unit: unit, isFromBaby: !!isFromBaby });
+      items.push({
+        name: name, sub_type: subType, category: category,
+        baseAmount: baseAmount, unit: unit, isFromBaby: !!isFromBaby,
+        recipeName: rName, sourceType: rSource
+      });
     });
   }
-  add(adultRecipe && adultRecipe.ingredients, false);
-  add(babyRecipe && babyRecipe.ingredients, true);
+  add(adultRecipe && adultRecipe.ingredients, false, adultRecipe);
+  add(babyRecipe && babyRecipe.ingredients, true, babyRecipe);
   if (items.length === 0) {
     // 精简版 fallback 数据无 ingredients，基于 meat 类型生成兜底清单条目
     var main = adultRecipe || babyRecipe;
     if (main && main.meat) {
       var mainName = MEAT_LABEL[main.meat] || main.meat;
-      items.push({ name: mainName, sub_type: undefined, category: '肉类', baseAmount: 200, unit: 'g', isFromBaby: false, _isOfflineFallback: true });
+      items.push({ name: mainName, sub_type: undefined, category: '肉类', baseAmount: 200, unit: 'g', isFromBaby: false, _isOfflineFallback: true, recipeName: (main && main.name) || '', sourceType: (main && main.source) || 'native' });
     }
-    if (items.length === 0) items.push({ name: '主料', sub_type: undefined, category: '其他', baseAmount: 1, unit: '份', isFromBaby: false, _isOfflineFallback: true });
+    if (items.length === 0) items.push({ name: '主料', sub_type: undefined, category: '其他', baseAmount: 1, unit: '份', isFromBaby: false, _isOfflineFallback: true, recipeName: '', sourceType: 'native' });
   }
   return items;
 }
@@ -2419,6 +2586,24 @@ function getSoupRecipes(adultRecipes) {
   return out;
 }
 
+/**
+ * 按汤品类型筛出汤品：荤汤（meat）或素汤（veg）。
+ * @param {Array} adultRecipes - 成人菜谱列表
+ * @param {string} soupType - 'meat' 荤汤（meat !== 'vegetable'）| 'veg' 素汤（meat === 'vegetable'）
+ * @returns {Array}
+ */
+function getSoupRecipesByType(adultRecipes, soupType) {
+  var allSoups = getSoupRecipes(adultRecipes);
+  if (!soupType) return allSoups;
+  if (soupType === 'veg') {
+    return allSoups.filter(function (r) { return r.meat === 'vegetable'; });
+  }
+  if (soupType === 'meat') {
+    return allSoups.filter(function (r) { return r.meat && r.meat !== 'vegetable'; });
+  }
+  return allSoups;
+}
+
 /** 统计套餐内口味和做法数量 */
 function getFlavorAndCookCounts(menus) {
   var spicy = 0, savory = 0, stirFry = 0, stew = 0;
@@ -2451,6 +2636,111 @@ function getFlavorProfileCounts(menus) {
   return { spicy: spicy, light: light, sweet_sour: sweet_sour, sour_fresh: sour_fresh, salty_umami: salty_umami };
 }
 
+/**
+ * 将外部导入菜谱包装为与原生菜谱兼容的 menu 对象。
+ *
+ * 外部菜谱的 steps 格式可能与原生稍有不同（如缺少 step_type / action 等字段），
+ * 此函数会做轻量级规范化，确保后续 reorderStepsForPipeline / generateUnifiedSteps
+ * 能正常处理。
+ *
+ * @param {Object} recipe - 外部导入菜谱（source: 'external'）
+ * @param {number} [adultCount=2] - 大人人数
+ * @returns {{ adultRecipe: Object, babyRecipe: null, meat: string, taste: string }}
+ */
+function generateMenuFromExternalRecipe(recipe, adultCount) {
+  if (!recipe) return { adultRecipe: null, babyRecipe: null, meat: 'vegetable', taste: 'quick_stir_fry' };
+  adultCount = adultCount == null ? 2 : adultCount;
+
+  // 浅拷贝菜谱，避免污染原数据
+  var adult = copyAdultRecipe(recipe);
+
+  // 规范化步骤：确保每一步都有 action / step_type
+  if (adult && Array.isArray(adult.steps)) {
+    adult.steps = adult.steps.map(function (s) {
+      var step = typeof s === 'string' ? { text: s } : Object.assign({}, s);
+      // 确保 action 字段存在
+      if (!step.action) {
+        step.action = step.step_type === 'prep' ? 'prep' : 'cook';
+      }
+      // 确保 step_type 字段存在
+      if (!step.step_type) {
+        step.step_type = step.action === 'prep' ? 'prep' : 'cook';
+      }
+      // 确保 text 字段存在
+      if (!step.text && step.description) {
+        step.text = step.description;
+      }
+      // 确保 duration_num
+      if (typeof step.duration_num !== 'number' && step.text) {
+        step.duration_num = estimateMinutes(step.text);
+      }
+      return step;
+    });
+  }
+
+  // 规范化食材：确保 ingredients 中每项都有 category
+  if (adult && Array.isArray(adult.ingredients)) {
+    adult.ingredients = adult.ingredients.map(function (ing) {
+      if (!ing || typeof ing === 'string') {
+        return { name: ing || '', category: '其他', baseAmount: 0, unit: '适量' };
+      }
+      var out = {};
+      for (var k in ing) {
+        if (ing.hasOwnProperty(k)) out[k] = ing[k];
+      }
+      if (!out.category) out.category = '其他';
+      if (typeof out.baseAmount !== 'number') out.baseAmount = 0;
+      if (!out.unit) out.unit = '适量';
+      return out;
+    });
+  }
+
+  // 标记来源
+  if (adult) {
+    adult.source = 'external';
+    if (!adult.type) adult.type = 'adult';
+  }
+
+  // 动态缩放
+  if (adult) {
+    dynamicScaling(adult, adultCount);
+  }
+
+  // 处理 {{scale_hint}} 占位符
+  if (adult && Array.isArray(adult.steps)) {
+    var baseServing = adult.base_serving || 2;
+    var scale = Math.max(1, Number(adultCount) || 2) / baseServing;
+    var scaleText = scale % 1 === 0 ? String(scale) : scale.toFixed(1);
+    adult.steps = adult.steps.map(function (s) {
+      var step = typeof s === 'string' ? { action: 'cook', text: s } : Object.assign({}, s);
+      var text = String(step.text != null ? step.text : '').replace(/\{\{scale_hint\}\}/g, scaleText);
+      return Object.assign({}, step, { text: text });
+    });
+  }
+
+  // 估算时间
+  if (adult) {
+    if (adult.time == null) {
+      var sum = 0;
+      if (Array.isArray(adult.steps)) {
+        for (var i = 0; i < adult.steps.length; i++) {
+          var st = adult.steps[i];
+          var txt = typeof st === 'string' ? st : (st && st.text != null ? st.text : '');
+          sum += estimateMinutes(txt);
+        }
+      }
+      adult.time = Math.min(120, sum) || (adult.prep_time || 0) + (adult.cook_minutes || 0) || 30;
+    }
+  }
+
+  return {
+    adultRecipe: adult,
+    babyRecipe: null,
+    meat: (adult && adult.meat) || recipe.meat || 'vegetable',
+    taste: (adult && adult.taste) || recipe.taste || recipe.flavor_profile || 'quick_stir_fry'
+  };
+}
+
 module.exports = {
   // ---------- 接口人（页面必须通过 require 引入并使用） ----------
   filterByPreference: filterByPreference,
@@ -2461,6 +2751,7 @@ module.exports = {
   // ---------- 原有导出（兼容与内部使用） ----------
   generateMenu: generateMenu,
   generateMenuFromRecipe: generateMenuFromRecipe,
+  generateMenuFromExternalRecipe: generateMenuFromExternalRecipe,
   linearFallback: linearFallback,
   generateMenuWithFilters: generateMenuWithFilters,
   getBabyVariantByAge: getBabyVariantByAge,
@@ -2471,6 +2762,7 @@ module.exports = {
   generateShoppingList: generateShoppingListRaw,
   formatSeasoningAmountForDisplay: formatSeasoningAmountForDisplay,
   replaceVagueSeasoningInText: replaceVagueSeasoningInText,
+  validateIngredientStepConsistency: validateIngredientStepConsistency,
   preFilter: preFilter,
   pickOneWithStewBalance: pickOneWithStewBalance,
   dynamicScaling: dynamicScaling,
@@ -2486,9 +2778,14 @@ module.exports = {
   computeBalanceTip: logicDashboard.computeBalanceTip,
   menusToPreviewRows: logicDashboard.menusToPreviewRows,
   getComboOptionsForCount: logicCombo.getComboOptionsForCount,
+  getNutritionTip: logicCombo.getNutritionTip,
+  getRecommendedComboIndex: logicCombo.getRecommendedComboIndex,
   findComboInList: logicCombo.findComboInList,
   // ---------- 从 menuData 提取的统计函数 ----------
   getSoupRecipes: getSoupRecipes,
+  getSoupRecipesByType: getSoupRecipesByType,
   getFlavorAndCookCounts: getFlavorAndCookCounts,
-  getFlavorProfileCounts: getFlavorProfileCounts
+  getFlavorProfileCounts: getFlavorProfileCounts,
+  // ---------- 混合来源食材辅助 ----------
+  normalizeIngredientName: normalizeIngredientName
 };

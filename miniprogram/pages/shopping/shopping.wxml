@@ -45,6 +45,8 @@
                 <text class="list-row__amount">{{row.amount}}</text>
               </view>
               <text wx:if="{{row.isShared}}" class="shared-tag">多菜共用</text>
+              <text wx:if="{{row.hasExternalSource && !row.isShared}}" class="shared-tag external-tag">外部菜谱</text>
+              <text wx:if="{{row.fromRecipesText}}" class="from-recipes-hint">{{row.fromRecipesText}}</text>
             </view>
           </view>
         </view>

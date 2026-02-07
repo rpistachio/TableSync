@@ -1,0 +1,11 @@
+{
+  "name": "recipeImport",
+  "version": "1.0.0",
+  "description": "外部菜谱截图识别 + AI 结构化提取云函数",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  },
+  "author": "",
+  "license": "ISC"
+}

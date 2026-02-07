@@ -6,7 +6,9 @@
   "description": "Automation tools for TableSync recipes & assets pipeline",
   "scripts": {
     "generate": "node generate.js",
-    "sync": "node sync.js"
+    "sync": "node sync.js",
+    "test:fridge": "node test-fridge-scan.js",
+    "test:fridge:cloud": "node test-fridge-scan.js --cloud"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "latest",

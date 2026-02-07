@@ -2,6 +2,7 @@
 // 图片“过滤器”：找不到图时返回默认图，避免页面白屏或报错
 
 const { IMAGE_CONFIG } = require('../data/recipeResources.js');
+const recipeCoverSlugs = require('../data/recipeCoverSlugs.js');
 
 // cloud://fileID -> https 临时链接缓存（避免重复请求）
 const _tempUrlCache = Object.create(null);
@@ -12,6 +13,7 @@ function _isCloudFileId(url) {
 
 /**
  * 根据菜名和类型返回菜谱封面图 URL，无匹配时返回默认图
+ * 成人菜与 recipeCoverSlugs 保持一致（下划线+扩展名），避免 404
  * @param {string} name - 菜名（中文）
  * @param {string} type - 'adult' | 'baby'
  * @returns {string} 云存储图片 URL
@@ -20,9 +22,17 @@ function getRecipeImage(name, type) {
   type = type || 'adult';
   if (!name) return IMAGE_CONFIG.defaultCover;
 
-  const folder = type === 'baby' ? IMAGE_CONFIG.folders.babies : IMAGE_CONFIG.folders.adults;
-  const slug = type === 'baby' ? name : IMAGE_CONFIG.adultSlugs[name]; // 宝宝餐目前简单匹配
+  if (type === 'adult') {
+    // 与 recipeCoverSlugs 统一：文件名含扩展名，与云存储一致
+    const fileName = recipeCoverSlugs.getCoverSlug(name);
+    if (fileName && fileName !== recipeCoverSlugs.DEFAULT_COVER_SLUG) {
+      return IMAGE_CONFIG.folders.adults + fileName;
+    }
+    return IMAGE_CONFIG.defaultCover;
+  }
 
+  const folder = IMAGE_CONFIG.folders.babies;
+  const slug = name; // 宝宝餐目前简单匹配
   if (slug) {
     return `${folder}${slug}.jpg`;
   }

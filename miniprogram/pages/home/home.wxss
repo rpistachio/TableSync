@@ -51,6 +51,10 @@
   border-bottom: none;
 }
 
+.custom-taste-header {
+  border-bottom: none;
+}
+
 .group-label {
   font-size: 22rpx;
   font-weight: 500;
@@ -239,6 +243,26 @@
   line-height: 1.45;
 }
 
+.baby-none-btn {
+  display: block;
+  text-align: center;
+  padding: 16rpx 32rpx;
+  margin-top: 16rpx;
+  border-radius: 100rpx;
+  font-size: 26rpx;
+  color: #8e857e;
+  background: #FAF7F4;
+  border: 1rpx solid #E8E4E0;
+  transition: all 0.2s ease;
+}
+
+.baby-none-btn.is-active {
+  background: #E8A87C;
+  color: #fff;
+  border-color: #E8A87C;
+  box-shadow: 0 4rpx 16rpx rgba(232, 168, 124, 0.3);
+}
+
 .adult-count-section {
   padding: 24rpx 40rpx 20rpx;
 }
@@ -257,44 +281,151 @@
   font-size: 24rpx;
 }
 
-.baby-toggle-row {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 32rpx 0;
-}
-
-.baby-toggle-btn {
-  width: 96rpx;
-  height: 96rpx;
-  border-radius: 50%;
-  background: #FAF7F4;
+.nutrition-tip {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: inset 4rpx 4rpx 8rpx rgba(0, 0, 0, 0.05),
-              inset -4rpx -4rpx 8rpx rgba(255, 255, 255, 0.8);
+  gap: 12rpx;
+  margin-top: 20rpx;
+  padding: 16rpx 20rpx;
+  background: rgba(232, 168, 124, 0.08);
+  border-radius: 12rpx;
+  border: 1rpx solid rgba(232, 168, 124, 0.2);
+}
+
+.nutrition-tip-icon {
+  font-size: 28rpx;
+}
+
+.nutrition-tip-text {
+  font-size: 24rpx;
+  color: #8e857e;
+  line-height: 1.4;
+}
+
+/* ============ 横向胶囊快捷栏 ============ */
+.capsule-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  justify-content: center;
+  padding: 28rpx 0;
+}
+
+.capsule-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 16rpx 24rpx;
+  border-radius: 100rpx;
+  border: 1rpx solid #E8E4E0;
+  background: #FAF7F4;
+  box-shadow: inset 2rpx 2rpx 6rpx rgba(0, 0, 0, 0.04);
   transition: all 0.25s ease;
 }
 
-.baby-toggle-btn.is-active {
-  background: #E8A87C;
-  box-shadow: 0 8rpx 24rpx rgba(232, 168, 124, 0.35);
+.capsule-item.is-expanded {
+  background: #fff;
+  border-color: #E8A87C;
+  box-shadow: 0 4rpx 16rpx rgba(232, 168, 124, 0.2);
 }
 
-.baby-toggle-icon {
-  font-size: 44rpx;
-  transition: filter 0.2s ease;
+.capsule-item.has-value {
+  border-color: rgba(232, 168, 124, 0.5);
+  background: rgba(232, 168, 124, 0.06);
 }
 
-.baby-toggle-btn.is-active .baby-toggle-icon {
-  filter: brightness(1.2);
+.capsule-icon {
+  font-size: 28rpx;
+  flex-shrink: 0;
 }
 
-.baby-toggle-label {
-  margin-top: 16rpx;
-  font-size: 24rpx;
+.capsule-text {
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #5a544f;
+}
+
+.capsule-item.is-expanded .capsule-text,
+.capsule-item.has-value .capsule-text {
+  color: #2d2d2d;
+}
+
+.capsule-arrow {
+  font-size: 20rpx;
   color: #8e857e;
+  transition: transform 0.25s ease;
+}
+
+.capsule-arrow.is-up {
+  transform: rotate(180deg);
+}
+
+/* 下拉面板：手风琴展开 */
+.dropdown-panel {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.dropdown-panel.is-open {
+  max-height: 600rpx;
+}
+
+.dropdown-inner,
+.dropdown-panel-inner {
+  padding: 24rpx 0 28rpx;
+  border-bottom: 1rpx solid #F0EDE8;
+}
+
+/* 下拉内复用：汤品三选一按钮 */
+.soup-type-row {
+  display: flex;
+  justify-content: center;
+  gap: 24rpx;
+  flex-wrap: wrap;
+}
+
+.soup-type-btn {
+  padding: 16rpx 40rpx;
+  border-radius: 100rpx;
+  font-size: 26rpx;
+  color: #8e857e;
+  background: #FAF7F4;
+  box-shadow: inset 2rpx 2rpx 6rpx rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.soup-type-btn.is-active {
+  background: #E8A87C;
+  color: #fff;
+  box-shadow: 0 4rpx 16rpx rgba(232, 168, 124, 0.3);
+}
+
+/* 汤品下拉内三选一按钮（与 soup-type-btn 一致） */
+.soup-option-row {
+  display: flex;
+  justify-content: center;
+  gap: 24rpx;
+  flex-wrap: wrap;
+}
+
+.soup-option-btn {
+  padding: 16rpx 40rpx;
+  border-radius: 100rpx;
+  font-size: 26rpx;
+  color: #8e857e;
+  background: #FAF7F4;
+  border: 1rpx solid #E8E4E0;
+  box-shadow: inset 2rpx 2rpx 6rpx rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.soup-option-btn.is-active {
+  background: #E8A87C;
+  color: #fff;
+  border-color: #E8A87C;
+  box-shadow: 0 4rpx 16rpx rgba(232, 168, 124, 0.3);
 }
 
 .combo-stack {
@@ -395,6 +526,108 @@
   font-size: 26rpx;
   color: #c1663e;
   font-weight: 500;
+}
+
+/* ============ 拍照清冰箱入口 ============ */
+.fridge-scan-entry {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin: 32rpx 0 0;
+  padding: 28rpx 32rpx;
+  background: linear-gradient(135deg, rgba(232, 168, 124, 0.08) 0%, rgba(212, 149, 106, 0.04) 100%);
+  border-radius: 24rpx;
+  border: 1rpx solid rgba(232, 168, 124, 0.2);
+  transition: all 0.2s ease;
+}
+
+.fridge-scan-entry:active {
+  transform: scale(0.98);
+  background: rgba(232, 168, 124, 0.12);
+}
+
+.fridge-scan-icon-wrap {
+  width: 72rpx;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(232, 168, 124, 0.15);
+  border-radius: 20rpx;
+  flex-shrink: 0;
+}
+
+.fridge-scan-icon {
+  font-size: 36rpx;
+}
+
+.fridge-scan-text-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.fridge-scan-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #2d2d2d;
+  letter-spacing: 1rpx;
+}
+
+.fridge-scan-desc {
+  font-size: 22rpx;
+  color: #a09a94;
+}
+
+.fridge-scan-arrow {
+  font-size: 36rpx;
+  color: #c4bfb9;
+  flex-shrink: 0;
+  font-weight: 300;
+}
+
+/* ============ 导入赛博菜谱入口 ============ */
+.import-entry {
+  margin-top: 20rpx;
+  background: linear-gradient(135deg, rgba(107, 143, 181, 0.08) 0%, rgba(107, 143, 181, 0.03) 100%);
+  border: 1rpx solid rgba(107, 143, 181, 0.2);
+}
+
+.import-entry:active {
+  background: rgba(107, 143, 181, 0.12);
+}
+
+.import-icon-wrap {
+  background: rgba(107, 143, 181, 0.15);
+}
+
+.mix-entry {
+  margin-top: 20rpx;
+  background: linear-gradient(135deg, rgba(168, 132, 107, 0.08) 0%, rgba(168, 132, 107, 0.03) 100%);
+  border: 1rpx solid rgba(168, 132, 107, 0.2);
+}
+
+.mix-entry:active {
+  background: rgba(168, 132, 107, 0.12);
+}
+
+.mix-icon-wrap {
+  background: rgba(168, 132, 107, 0.15);
+}
+
+.myrecipes-entry {
+  margin-top: 20rpx;
+  background: linear-gradient(135deg, rgba(139, 119, 101, 0.08) 0%, rgba(139, 119, 101, 0.03) 100%);
+  border: 1rpx solid rgba(139, 119, 101, 0.2);
+}
+
+.myrecipes-entry:active {
+  background: rgba(139, 119, 101, 0.12);
+}
+
+.myrecipes-icon-wrap {
+  background: rgba(139, 119, 101, 0.15);
 }
 
 /* TableSync 品牌露出 */
