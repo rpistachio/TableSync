@@ -41,6 +41,17 @@ var IMPORT_CACHE_KEY = 'imported_recipes_cache';
 /** 混合组餐草稿缓存 key */
 var MIX_DRAFT_KEY = 'mix_menu_draft';
 
+/** 为菜谱数组添加中文标签字段（供列表渲染用） */
+function annotateRecipeLabels(recipes) {
+  if (!Array.isArray(recipes)) return recipes;
+  for (var i = 0; i < recipes.length; i++) {
+    var r = recipes[i];
+    r._meatLabel = MEAT_LABELS[r.meat] || r.meat || '其他';
+    r._cookTypeLabel = COOK_TYPE_LABELS[r.cook_type] || '';
+  }
+  return recipes;
+}
+
 /** 最大选择菜品数 */
 var MAX_DISHES = 6;
 
@@ -330,6 +341,8 @@ Page({
     // 加载已导入菜谱
     var importedRecipes = getImportedRecipes();
 
+    annotateRecipeLabels(nativeRecipes);
+
     that.setData({
       nativeRecipes: nativeRecipes,
       filteredNativeRecipes: nativeRecipes,
@@ -428,6 +441,7 @@ Page({
         return r.meat === filter;
       });
     }
+    annotateRecipeLabels(filtered);
     this.setData({
       nativeFilter: filter,
       filteredNativeRecipes: filtered

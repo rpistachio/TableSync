@@ -145,11 +145,44 @@
   justify-content: space-between;
 }
 
+.myrecipes-card-top-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 8rpx;
+}
+
 .myrecipes-card-name {
   font-size: 30rpx;
   font-weight: 600;
   color: #2d2d2d;
-  margin-bottom: 8rpx;
+  flex: 1;
+  margin-right: 8rpx;
+}
+
+.myrecipes-delete-btn {
+  flex-shrink: 0;
+  width: 44rpx;
+  height: 44rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #f5f2ef;
+}
+
+.myrecipes-delete-icon {
+  font-size: 32rpx;
+  color: #c0b8b0;
+  line-height: 1;
+}
+
+.myrecipes-delete-btn:active {
+  background: #ece6e0;
+}
+
+.myrecipes-delete-btn:active .myrecipes-delete-icon {
+  color: #e85d5d;
 }
 
 .myrecipes-card-meta {
@@ -187,3 +220,32 @@
   color: #5a544f;
   border: 2rpx solid #E8E4E0;
 }
+
+/* 心形按钮：加入灵感篮子 */
+.myrecipes-heart-btn {
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #FAF7F4;
+  border: 2rpx solid #E8E4E0;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.myrecipes-heart-btn.is-active {
+  background: rgba(232, 168, 124, 0.15);
+  border-color: #E8A87C;
+}
+
+.myrecipes-heart-btn:active {
+  transform: scale(0.9);
+}
+
+.myrecipes-heart-icon {
+  font-size: 32rpx;
+  line-height: 1;
+}
+

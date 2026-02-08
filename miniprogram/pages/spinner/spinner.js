@@ -1,6 +1,9 @@
 var menuGen = require('../../data/menuGenerator.js');
 var menuData = require('../../data/menuData.js');
 var locationWeather = require('../home/locationWeather');
+var basket = require('../../data/inspirationBasket.js');
+var menuHistory = require('../../utils/menuHistory.js');
+var recipeCoverSlugs = require('../../data/recipeCoverSlugs');
 
 function getTodayDateKey() {
   var d = new Date();
@@ -71,6 +74,15 @@ Page({
       dietStyle: 'home',
       isTimeSave: false
     },
+    // 灵感篮子
+    basketCount: 0,
+    importedBasketCount: 0,
+    fridgeBasketCount: 0,
+    priorityImported: true,
+    priorityFridge: true,
+    // Phase C：历史推荐快捷加入（最近常做且未在篮子中的菜）
+    historyQuickList: [],
+
     outerDishes: [],
     middleDishes: [],
     innerDishes: [],
@@ -90,6 +102,7 @@ Page({
     var pref = getApp().globalData.preference || {};
 
     if (menus && menus.length > 0) {
+      that._refreshBasketData();
       that._buildWheelFromMenus(menus, pref);
       that.setData({ hasMenusForWheel: true });
       that._updateContextSummary(pref.adultCount != null ? pref.adultCount : 2);
@@ -134,11 +147,16 @@ Page({
     if (pref.dietStyle) updates['userPreference.dietStyle'] = pref.dietStyle;
     that.setData(updates);
     that._updateCapsuleTexts();
+    that._refreshBasketData();
     that._updateContextSummary(updates.adultCount != null ? updates.adultCount : that.data.adultCount);
     locationWeather.getWeather().then(function (w) {
       that.setData({ weatherForApi: w });
       that._updateContextSummary(that.data.adultCount, w);
     });
+  },
+
+  onShow: function () {
+    this._refreshBasketData();
   },
 
   _updateContextSummary: function (adultCount, weather) {
@@ -325,6 +343,29 @@ Page({
       };
     });
 
+    // 灵感篮子注入：读取篮子数据，根据优先策略开关构建 basketItems
+    var basketItems = [];
+    var raw = '';
+    try { raw = wx.getStorageSync(basket.STORAGE_KEY) || ''; } catch (e) { /* ignore */ }
+    var bList = basket.parseBasket(raw);
+    if (bList.length > 0) {
+      var priorityImported = that.data.priorityImported;
+      var priorityFridge = that.data.priorityFridge;
+      for (var bi = 0; bi < bList.length; bi++) {
+        var bItem = bList[bi];
+        if (bItem.source === 'imported' && !priorityImported) continue;
+        if (bItem.source === 'fridge_match' && !priorityFridge) continue;
+        basketItems.push({
+          id: bItem.id,
+          name: bItem.name,
+          source: bItem.source,
+          sourceDetail: bItem.sourceDetail || '',
+          priority: bItem.priority || 'normal',
+          meat: bItem.meat
+        });
+      }
+    }
+
     var recentDishNames = '';
     try {
       var stored = wx.getStorageSync('today_menus');
@@ -346,30 +387,63 @@ Page({
         mood: moodText,
         weather: that.data.weatherForApi || {},
         recentDishNames: recentDishNames,
-        candidates: candidates
+        candidates: candidates,
+        basketItems: basketItems.length > 0 ? basketItems : undefined
       }
     }).then(function (res) {
       var out = res.result;
       if (out && out.code === 0 && out.data && Array.isArray(out.data.recipeIds) && out.data.recipeIds.length > 0) {
+        // 保存 AI reasoning（主厨报告）到 globalData
+        var reasoning = (out.data && out.data.reasoning) || '';
+        var dishHighlights = (out.data && out.data.dishHighlights) || {};
+        getApp().globalData.chefReportText = reasoning;
+        getApp().globalData.dishHighlights = dishHighlights;
+        // 保存本次使用的篮子项信息，供 preview 页展示来源标签
+        getApp().globalData.lastBasketItems = basketItems.length > 0 ? basketItems : [];
         that._applyAiMenus(out.data.recipeIds, pref);
         return;
       }
+      // 本地降级：清空 AI 相关数据
+      getApp().globalData.chefReportText = '';
+      getApp().globalData.dishHighlights = {};
+      getApp().globalData.lastBasketItems = [];
       that._applyLocalMenus(pref);
     }).catch(function () {
+      // 云函数失败：清空 AI 相关数据
+      getApp().globalData.chefReportText = '';
+      getApp().globalData.dishHighlights = {};
+      getApp().globalData.lastBasketItems = [];
       that._applyLocalMenus(pref);
     });
   },
 
   _applyAiMenus: function (recipeIds, pref) {
     var that = this;
-    var recipeCoverSlugs = require('../../data/recipeCoverSlugs');
     var hasBaby = pref.hasBaby === true;
     var babyMonth = pref.babyMonth || 12;
     var adultCount = pref.adultCount || 2;
     var firstMeatIndex = -1;
     var menus = [];
+    var lastBasket = getApp().globalData.lastBasketItems || [];
+    var basketById = {};
+    for (var bi = 0; bi < lastBasket.length; bi++) {
+      var b = lastBasket[bi];
+      if (b && b.id) basketById[b.id] = b;
+    }
     for (var i = 0; i < recipeIds.length; i++) {
-      var recipe = menuData.getAdultRecipeById && menuData.getAdultRecipeById(recipeIds[i]);
+      var rid = recipeIds[i];
+      var recipe = menuData.getAdultRecipeById && menuData.getAdultRecipeById(rid);
+      if (!recipe && basketById[rid]) {
+        var bItem = basketById[rid];
+        recipe = {
+          id: bItem.id,
+          name: bItem.name || '未命名',
+          meat: bItem.meat || 'vegetable',
+          steps: [],
+          ingredients: [],
+          base_serving: 2
+        };
+      }
       if (!recipe) continue;
       if (firstMeatIndex < 0 && recipe.meat !== 'vegetable') firstMeatIndex = menus.length;
       var hasBabyThis = hasBaby && recipe.meat !== 'vegetable' && menus.length === firstMeatIndex;
@@ -414,7 +488,6 @@ Page({
           }
         }
       } catch (e) {}
-      var recipeCoverSlugs = require('../../data/recipeCoverSlugs');
       var result = menuData.getTodayMenusByCombo(pref);
       var menus = result.menus || result;
       if (!menus || menus.length === 0) {
@@ -553,6 +626,68 @@ Page({
       that.setData({ stopped: true });
       that._prepareAndNavigate();
     }, 5000);
+  },
+
+  /** 读取灵感篮子数据，更新页面状态；并加载历史推荐快捷列表（未在篮子中的最近常做菜） */
+  _refreshBasketData: function () {
+    var raw = '';
+    try { raw = wx.getStorageSync(basket.STORAGE_KEY) || ''; } catch (e) { /* ignore */ }
+    var list = basket.parseBasket(raw);
+    var importedCount = basket.getBySource(list, 'imported').length;
+    var fridgeCount = basket.getBySource(list, 'fridge_match').length;
+    var basketNameSet = {};
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].name) basketNameSet[list[i].name] = true;
+    }
+    var recs = menuHistory.getSmartRecommendations(7, 5);
+    var historyQuickList = [];
+    if (recs && recs.length > 0) {
+      for (var j = 0; j < recs.length && historyQuickList.length < 3; j++) {
+        if (recs[j].name && !basketNameSet[recs[j].name]) {
+          historyQuickList.push({ name: recs[j].name });
+        }
+      }
+    }
+    this.setData({
+      basketCount: basket.getCount(list),
+      importedBasketCount: importedCount,
+      fridgeBasketCount: fridgeCount,
+      historyQuickList: historyQuickList
+    });
+  },
+
+  /** Phase C：一键将「最近常做」推荐加入灵感篮 */
+  onAddHistoryQuick: function () {
+    var list = this.data.historyQuickList;
+    if (!list || list.length === 0) return;
+    var raw = '';
+    try { raw = wx.getStorageSync(basket.STORAGE_KEY) || ''; } catch (e) { /* ignore */ }
+    var bList = basket.parseBasket(raw);
+    for (var i = 0; i < list.length; i++) {
+      var item = basket.createItem(
+        { id: 'history-' + list[i].name, name: list[i].name },
+        'native',
+        { sourceDetail: '历史推荐' }
+      );
+      bList = basket.addItem(bList, item);
+    }
+    try {
+      wx.setStorageSync(basket.STORAGE_KEY, basket.serializeBasket(bList));
+      wx.setStorageSync(basket.BASKET_DATE_KEY, basket.getTodayDateKey());
+    } catch (e) { /* ignore */ }
+    var app = getApp();
+    if (app && app.globalData) app.globalData.inspirationBasket = bList;
+    if (app.onBasketChange) app.onBasketChange(bList.length);
+    this._refreshBasketData();
+    wx.showToast({ title: '已加入灵感篮', icon: 'success' });
+  },
+
+  onTogglePriorityImported: function () {
+    this.setData({ priorityImported: !this.data.priorityImported });
+  },
+
+  onTogglePriorityFridge: function () {
+    this.setData({ priorityFridge: !this.data.priorityFridge });
   },
 
   _prepareAndNavigate: function () {

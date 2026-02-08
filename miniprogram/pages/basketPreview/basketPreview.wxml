@@ -1,0 +1,140 @@
+<!--pages/basketPreview/basketPreview.wxml-->
+<view class="basket-container">
+  <!-- 顶部标题 -->
+  <view class="basket-header">
+    <text class="basket-title">今日灵感篮</text>
+    <text class="basket-subtitle">你收藏和匹配的备选菜谱，生成菜单时会优先考虑</text>
+  </view>
+
+  <!-- 统计条 -->
+  <view class="basket-stats" wx:if="{{!empty}}">
+    <view class="stat-item">
+      <text class="stat-num">{{totalCount}}</text>
+      <text class="stat-label">总计</text>
+    </view>
+    <view class="stat-item" wx:if="{{importedCount > 0}}">
+      <text class="stat-num">{{importedCount}}</text>
+      <text class="stat-label">导入菜谱</text>
+    </view>
+    <view class="stat-item" wx:if="{{fridgeCount > 0}}">
+      <text class="stat-num">{{fridgeCount}}</text>
+      <text class="stat-label">冰箱匹配</text>
+    </view>
+    <view class="stat-item" wx:if="{{nativeCount > 0}}">
+      <text class="stat-num">{{nativeCount}}</text>
+      <text class="stat-label">菜谱库</text>
+    </view>
+  </view>
+
+  <!-- 排序控件 -->
+  <view class="sort-bar" wx:if="{{!empty && totalCount > 1}}">
+    <view
+      class="sort-chip {{currentSort === item.key ? 'is-active' : ''}}"
+      wx:for="{{sortModes}}"
+      wx:key="key"
+      data-mode="{{item.key}}"
+      bindtap="onSortTap"
+    >
+      <text class="sort-chip-text">{{item.label}}</text>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="basket-empty" wx:if="{{empty}}">
+    <text class="basket-empty-icon">🧺</text>
+    <text class="basket-empty-text">灵感篮还是空的</text>
+    <text class="basket-empty-hint">通过以下方式往篮子里添加菜谱：</text>
+    <view class="basket-empty-ways">
+      <view class="basket-way-item" bindtap="onGoImport">
+        <text class="basket-way-icon">🔗</text>
+        <view class="basket-way-content">
+          <text class="basket-way-text">导入赛博菜谱</text>
+          <text class="basket-way-sub">保存后选择「加入灵感篮」</text>
+        </view>
+        <text class="basket-way-arrow">›</text>
+      </view>
+      <view class="basket-way-item" bindtap="onGoScan">
+        <text class="basket-way-icon">📷</text>
+        <view class="basket-way-content">
+          <text class="basket-way-text">拍照清冰箱</text>
+          <text class="basket-way-sub">推荐菜自动加入篮子</text>
+        </view>
+        <text class="basket-way-arrow">›</text>
+      </view>
+      <view class="basket-way-item" bindtap="onGoMyRecipes">
+        <text class="basket-way-icon">❤️</text>
+        <view class="basket-way-content">
+          <text class="basket-way-text">我的菜谱库</text>
+          <text class="basket-way-sub">点击心形按钮收藏到篮子</text>
+        </view>
+        <text class="basket-way-arrow">›</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 篮子列表 -->
+  <view class="basket-list" wx:if="{{!empty}}">
+    <view
+      class="basket-item {{item.isHigh ? 'is-high' : ''}}"
+      wx:for="{{basketList}}"
+      wx:key="id"
+    >
+      <view class="basket-item-main">
+        <view class="basket-item-left">
+          <text class="basket-item-name">{{item.name}}</text>
+          <view class="basket-item-tags">
+            <text class="basket-item-source">{{item.sourceLabel}}</text>
+            <text class="basket-item-priority" wx:if="{{item.isHigh}}">优先</text>
+            <text class="basket-item-time" wx:if="{{item.addedTimeText}}">{{item.addedTimeText}}</text>
+          </view>
+        </view>
+        <view class="basket-item-actions">
+          <view class="basket-item-priority-btn {{item.isHigh ? 'is-high' : ''}}" catchtap="onTogglePriority" data-id="{{item.id}}">
+            <text class="priority-btn-icon">{{item.isHigh ? '⚡' : '☆'}}</text>
+          </view>
+          <view class="basket-item-remove" catchtap="onRemoveItem" data-id="{{item.id}}">
+            <text class="basket-item-remove-icon">×</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 历史推荐：智能排序，最近做过的菜 -->
+  <view class="history-section" wx:if="{{hasAnyHistory}}">
+    <view class="history-header" bindtap="onToggleHistory">
+      <text class="history-title">再来一次？</text>
+      <text class="history-subtitle">基于你的烹饪偏好智能推荐</text>
+      <text class="history-arrow {{showHistory ? 'is-up' : ''}}">▾</text>
+    </view>
+    <view class="history-list" wx:if="{{showHistory}}">
+      <view
+        class="history-item {{item.inBasket ? 'is-in-basket' : ''}}"
+        wx:for="{{historyDishes}}"
+        wx:key="name"
+        data-name="{{item.name}}"
+        bindtap="{{item.inBasket ? '' : 'onAddHistoryToBasket'}}"
+      >
+        <view class="history-item-info">
+          <text class="history-item-name">{{item.name}}</text>
+          <view class="history-item-meta">
+            <text class="history-item-day">{{item.relativeDay}}</text>
+            <text class="history-item-freq" wx:if="{{item.frequencyText}}">{{item.frequencyText}}</text>
+          </view>
+        </view>
+        <text class="history-item-action">{{item.inBasket ? '✓' : '+'}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 底部操作 -->
+  <view class="basket-actions" wx:if="{{!empty}}">
+    <button class="basket-btn basket-btn-primary" bindtap="onGoSpinner">去生成菜单</button>
+    <button class="basket-btn basket-btn-danger" bindtap="onClearAll">清空篮子</button>
+  </view>
+
+  <!-- 空状态：仍可一键全随机生成 -->
+  <view class="basket-actions basket-actions-empty" wx:if="{{empty}}">
+    <button class="basket-btn basket-btn-secondary" bindtap="onGoSpinner">直接生成菜单（全随机）</button>
+  </view>
+</view>

@@ -142,7 +142,7 @@
         <view wx:for="{{activeParallelTasks}}" wx:key="stepId" class="gantt-task-row">
           <text class="gantt-task-name">{{item.activeTaskName}}</text>
           <view class="gantt-bar-track">
-            <view class="gantt-bar-fill" style="width: {{item.progressPercent || 50}}%"></view>
+            <view class="gantt-bar-fill" style="{{item.barWidthStyle}}"></view>
           </view>
           <text class="gantt-task-time">{{item.remainingMinutes}}'</text>
         </view>

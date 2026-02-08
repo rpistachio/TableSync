@@ -235,6 +235,32 @@
   line-height: 1.45;
 }
 
+/* 主厨报告：AI 推荐理由 */
+.chef-report {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+  margin: 0 32rpx 20rpx;
+  padding: 24rpx 28rpx;
+  background: linear-gradient(135deg, rgba(193, 102, 62, 0.1) 0%, rgba(232, 168, 124, 0.06) 100%);
+  border-radius: 20rpx;
+  border: 1rpx solid rgba(193, 102, 62, 0.2);
+}
+
+.chef-report-icon {
+  font-size: 32rpx;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+.chef-report-text {
+  flex: 1;
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #5a544f;
+  line-height: 1.5;
+}
+
 .preview-menu-label {
   font-size: 30rpx;
   font-weight: 600;
@@ -382,6 +408,32 @@
   color: #5a544f;
 }
 
+/* 篮子来源徽标 */
+.basket-origin-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4rpx 14rpx;
+  background: rgba(232, 168, 124, 0.85);
+  border-radius: 100rpx;
+  flex-shrink: 0;
+}
+
+.basket-origin-text {
+  font-size: 20rpx;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.dish-card-modern.no-cover .basket-origin-badge {
+  background: rgba(193, 102, 62, 0.15);
+}
+
+.dish-card-modern.no-cover .basket-origin-text {
+  color: #c1663e;
+}
+
 /* 未勾选：弱化显示 */
 .dish-card-modern.is-unchecked {
   opacity: 0.65;
@@ -437,6 +489,7 @@
 .preview-page.large-text-mode .preview-baby-diff,
 .preview-page.large-text-mode .preview-menu-label,
 .preview-page.large-text-mode .preview-fallback-notice,
+.preview-page.large-text-mode .chef-report,
 .preview-page.large-text-mode .dish-reason {
   display: none !important;
 }

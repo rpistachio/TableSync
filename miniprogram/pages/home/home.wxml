@@ -26,6 +26,10 @@
       <text class="fridge-scan-title">今天吃什么</text>
       <text class="fridge-scan-desc">输入心情，AI 帮你搭配今日晚餐</text>
     </view>
+    <!-- 灵感篮子角标 -->
+    <view class="basket-badge" wx:if="{{basketCount > 0}}">
+      <text class="basket-badge-num">{{basketCount}}</text>
+    </view>
     <text class="fridge-scan-arrow">›</text>
   </view>
 
@@ -75,6 +79,21 @@
       <text class="fridge-scan-desc">过去做过的菜，今天继续做</text>
     </view>
     <text class="fridge-scan-arrow">›</text>
+  </view>
+
+  <!-- 灵感篮子预览条（篮子非空时显示） -->
+  <view class="basket-bar" wx:if="{{basketCount > 0}}" bindtap="onGoBasketPreview">
+    <text class="basket-bar-icon">🧺</text>
+    <text class="basket-bar-text">今日灵感篮 · {{basketCount}} 道备选</text>
+    <text class="basket-bar-arrow">›</text>
+  </view>
+
+  <!-- Phase C：历史推荐「再来一次？」（篮子为空且有 7 天内记录时显示） -->
+  <view class="history-hint-card" wx:if="{{basketCount === 0 && showHistoryHint && historyDishNames.length > 0}}" bindtap="onGoBasketPreview">
+    <text class="history-hint-title">再来一次？</text>
+    <text class="history-hint-dishes">{{historyDishNames[0]}}{{historyDishNames[1] ? '、' + historyDishNames[1] : ''}}{{historyDishNames[2] ? '、' + historyDishNames[2] : ''}}</text>
+    <text class="history-hint-cta">去看看 · 加入今日灵感篮</text>
+    <text class="history-hint-arrow">›</text>
   </view>
 
   <view class="home-brand">

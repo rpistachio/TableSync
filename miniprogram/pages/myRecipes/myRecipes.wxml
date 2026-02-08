@@ -32,7 +32,12 @@
           <text class="myrecipes-cover-emoji">🍳</text>
         </view>
         <view class="myrecipes-card-body">
-          <text class="myrecipes-card-name">{{item.name}}</text>
+          <view class="myrecipes-card-top-row">
+            <text class="myrecipes-card-name">{{item.name}}</text>
+            <view class="myrecipes-delete-btn" data-index="{{index}}" bindtap="onDeleteRecipe">
+              <text class="myrecipes-delete-icon">×</text>
+            </view>
+          </view>
           <view class="myrecipes-card-meta">
             <text class="myrecipes-card-source" wx:if="{{item.sourcePlatform === 'screenshot'}}">截图导入</text>
             <text class="myrecipes-card-source" wx:elif="{{item.sourcePlatform === 'xiaohongshu' || item.sourcePlatform === '小红书'}}">小红书</text>
@@ -41,6 +46,9 @@
             <text class="myrecipes-card-source" wx:elif="{{item.source === 'external'}}">外部导入</text>
           </view>
           <view class="myrecipes-card-actions">
+            <view class="myrecipes-heart-btn {{basketIds[item.id] ? 'is-active' : ''}}" data-index="{{index}}" catchtap="onToggleBasket">
+              <text class="myrecipes-heart-icon">{{basketIds[item.id] ? '❤️' : '🤍'}}</text>
+            </view>
             <button class="myrecipes-btn myrecipes-btn-primary" data-index="{{index}}" bindtap="onCookToday">今天做</button>
             <button class="myrecipes-btn myrecipes-btn-secondary" data-index="{{index}}" bindtap="onAddToMix">加入组餐</button>
           </view>

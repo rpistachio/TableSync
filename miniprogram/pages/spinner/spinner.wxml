@@ -30,6 +30,31 @@
     </view>
   </view>
 
+  <!-- 灵感篮子优先策略（篮子非空时显示） -->
+  <view class="priority-section" wx:if="{{basketCount > 0}}">
+    <text class="priority-label">优先考虑</text>
+    <view class="priority-switches">
+      <view class="priority-item {{priorityImported ? 'is-active' : ''}}" bindtap="onTogglePriorityImported">
+        <text class="priority-item-icon">📕</text>
+        <text class="priority-item-text">我保存的菜谱</text>
+        <text class="priority-count">{{importedBasketCount}}</text>
+      </view>
+      <view class="priority-item {{priorityFridge ? 'is-active' : ''}}" bindtap="onTogglePriorityFridge">
+        <text class="priority-item-icon">🧊</text>
+        <text class="priority-item-text">消耗冰箱食材</text>
+        <text class="priority-count">{{fridgeBasketCount}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- Phase C：最近常做，一键加入灵感篮 -->
+  <view class="history-quick-bar" wx:if="{{historyQuickList.length > 0}}" bindtap="onAddHistoryQuick">
+    <text class="history-quick-label">最近常做</text>
+    <text class="history-quick-names">{{historyQuickList[0].name}}{{historyQuickList[1] ? '、' + historyQuickList[1].name : ''}}{{historyQuickList[2] ? '、' + historyQuickList[2].name : ''}}</text>
+    <text class="history-quick-cta">加入灵感篮</text>
+    <text class="history-quick-arrow">›</text>
+  </view>
+
   <!-- 折叠式偏好配置 -->
   <view class="pref-section-wrap">
     <view class="pref-header-row" bindtap="onTogglePrefPanel">

@@ -1,5 +1,7 @@
 var coverService = require('../../data/recipeCoverSlugs.js');
 var recipeResources = require('../../data/recipeResources.js');
+var menuHistory = require('../../utils/menuHistory.js');
+var basket = require('../../data/inspirationBasket.js');
 
 var ENV_ID = 'cloud1-7g5mdmib90e9f670';
 var CLOUD_ROOT = recipeResources && recipeResources.CLOUD_ROOT ? recipeResources.CLOUD_ROOT : ('cloud://' + ENV_ID);
@@ -43,7 +45,8 @@ Page({
     headerBgUrl: '',
     isImageReady: false,
     largeTextMode: false,
-    isEntering: false
+    isEntering: false,
+    chefReportText: ''
   },
 
   onLargeTextModeTap: function () {
@@ -85,15 +88,37 @@ Page({
       }
 
       var pref = getApp().globalData.preference || {};
+      var hasBaby = !!(pref && pref.hasBaby);
+
+      // 主厨报告：读取 AI reasoning
+      var chefReportText = getApp().globalData.chefReportText || '';
+      var dishHighlights = getApp().globalData.dishHighlights || {};
+
+      // 篮子来源标记：标记哪些菜来自灵感篮子
+      var lastBasketItems = getApp().globalData.lastBasketItems || [];
+      var basketNameSet = {};
+      for (var bi = 0; bi < lastBasketItems.length; bi++) {
+        if (lastBasketItems[bi] && lastBasketItems[bi].name) {
+          basketNameSet[lastBasketItems[bi].name] = lastBasketItems[bi];
+        }
+      }
 
       // 2. 映射 UI 渲染所需的 rows 结构
-      var rows = menus.map(function (m) {
+      var rows = menus.map(function (m, idx) {
         var recipeName = m.adultRecipe ? m.adultRecipe.name : '';
+        var babyName = m.babyRecipe ? m.babyRecipe.name : '';
+        var recipeId = m.adultRecipe ? (m.adultRecipe.id || m.adultRecipe._id || '') : '';
+        var basketItem = basketNameSet[recipeName] || null;
+        var highlight = dishHighlights[recipeId] || '';
+        var sourceLabels = { 'imported': '导入菜谱', 'fridge_match': '冰箱匹配', 'native': '收藏' };
         return {
           adultName: recipeName || '未知菜谱',
-          babyName: m.babyRecipe ? m.babyRecipe.name : '',
-          recommendReason: m.adultRecipe ? (m.adultRecipe.recommend_reason || '营养均衡，口味适宜') : '',
+          babyName: babyName,
+          showSharedHint: hasBaby && !!babyName && idx === 0,
+          recommendReason: highlight || (m.adultRecipe ? (m.adultRecipe.recommend_reason || '营养均衡，口味适宜') : ''),
           checked: true,
+          fromBasket: !!basketItem,
+          basketSourceLabel: basketItem ? (sourceLabels[basketItem.source] || '灵感篮') : '',
           // coverUrl：云端 fileID（cloud://...）；coverTempUrl：可渲染的临时 https URL
           coverUrl: coverService.getRecipeCoverImageUrl(recipeName),
           coverTempUrl: '',
@@ -111,7 +136,10 @@ Page({
       that.setData({
         previewMenuRows: rows,
         previewDashboard: dashboard,
-        previewComboName: (pref.meatCount || 2) + '荤' + (pref.vegCount || 1) + '素' + (pref.soupCount ? '1汤' : '')
+        previewHasBaby: hasBaby,
+        previewHasSharedBase: rows.some(function (r) { return r.showSharedHint; }),
+        previewComboName: (pref.meatCount || 2) + '荤' + (pref.vegCount || 1) + '素' + (pref.soupCount ? '1汤' : ''),
+        chefReportText: chefReportText
       }, function () {
         // rows 真正进入视图层后，再按 onReady 规则触发图片解析
         if (that._pageReady) that._resolvePreviewImages();
@@ -363,11 +391,10 @@ Page({
         getApp().globalData.menuPreview.balanceTip = balanceTip;
       }
       that.setData(
-        { previewMenuRows: newRows, previewComboName: result.comboName || '', previewBalanceTip: balanceTip, previewDashboard: dashboard, previewHasSharedBase: hasSharedBase, isImageReady: false },
+        { previewMenuRows: newRows, previewComboName: result.comboName || '', previewBalanceTip: balanceTip, previewDashboard: dashboard, previewHasSharedBase: hasSharedBase, previewHasBaby: hasBaby, isImageReady: false, chefReportText: '' },
         function () { if (that._pageReady) that._resolvePreviewImages(); }
       );
 
-      
     } catch (e) {
       console.error('换一换失败:', e);
       wx.showToast({ title: '换一换失败', icon: 'none' });
@@ -473,10 +500,13 @@ Page({
         previewBalanceTip: balanceTip,
         previewDashboard: that._computePreviewDashboard(newMenus, pref),
         previewHasSharedBase: newRows.some(function (r) { return r.showSharedHint; }),
+        previewHasBaby: !!(pref && pref.hasBaby),
         isImageReady: false
       }, function () { if (that._pageReady) that._resolvePreviewImages(); });
 
       
+      // 局部换菜后，主厨报告已不准确，清除
+      that.setData({ chefReportText: '' });
       wx.showToast({ title: '已为您选出更均衡的搭配', icon: 'none' });
     } catch (e) {
       console.error('换掉未勾选失败:', e);
@@ -525,6 +555,28 @@ Page({
       getApp().globalData.preference = pref;
       getApp().globalData.todayMenus = menus;
       getApp().globalData.mergedShoppingList = shoppingList;
+
+      // 保存到历史记录（供"再来一次"推荐使用）
+      try {
+        menuHistory.saveToHistory(menus, pref);
+      } catch (e) {
+        console.warn('保存历史记录失败:', e);
+      }
+
+      // 闭环清理：从篮子中移除已选入菜单的项
+      try {
+        var raw = wx.getStorageSync(basket.STORAGE_KEY) || '';
+        var list = basket.parseBasket(raw);
+        var newList = basket.removeItemsByMenu(list, menus);
+        if (newList.length < list.length) {
+          wx.setStorageSync(basket.STORAGE_KEY, basket.serializeBasket(newList));
+          wx.setStorageSync(basket.BASKET_DATE_KEY, basket.getTodayDateKey());
+          var app = getApp();
+          if (app && app.globalData) app.globalData.inspirationBasket = newList;
+          if (app.onBasketChange) app.onBasketChange(newList.length);
+        }
+      } catch (e) { /* ignore */ }
+
       try {
         var getStepsKey = require('../steps/steps.js').stepsStorageKey;
         if (typeof getStepsKey === 'function') wx.removeStorageSync(getStepsKey());

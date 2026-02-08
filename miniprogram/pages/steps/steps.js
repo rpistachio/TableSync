@@ -968,17 +968,19 @@ Page({
       currentPhaseLabel = currentStep.phaseTitle;
     }
 
-    // 提取活跃并行任务（浮动条用）
+    // 提取活跃并行任务（浮动条用），预计算 barWidthStyle 避免 WXML 内联表达式触发 CSS 校验并减少渲染时计算
     var activeParallelTasks = [];
     for (var pt = 0; pt < viewSteps.length; pt++) {
       var vs = viewSteps[pt];
       if (vs && vs.parallelContext && !vs.completed) {
+        var pct = vs.parallelContext.remainingMinutes != null ? Math.max(10, 100 - (vs.parallelContext.remainingMinutes / 60 * 100)) : 50;
         activeParallelTasks.push({
           stepId: vs.id,
           activeTaskName: vs.parallelContext.activeTaskName || vs.parallelContext.hint || '',
           remainingMinutes: vs.parallelContext.remainingMinutes,
           hint: vs.parallelContext.hint,
-          progressPercent: vs.parallelContext.remainingMinutes != null ? Math.max(10, 100 - (vs.parallelContext.remainingMinutes / 60 * 100)) : 50
+          progressPercent: pct,
+          barWidthStyle: 'width:' + pct + '%'
         });
       }
     }

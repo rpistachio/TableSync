@@ -63,6 +63,12 @@
         <text class="preview-baby-diff-text">大人孩子可共用基底，一锅出省时省力</text>
       </view>
 
+      <!-- 主厨报告：AI 推荐理由 -->
+      <view class="chef-report" wx:if="{{chefReportText}}">
+        <text class="chef-report-icon">👨‍🍳</text>
+        <text class="chef-report-text">{{chefReportText}}</text>
+      </view>
+
       <view class="preview-menu-label">🍱 今日菜单</view>
       <view class="preview-baby-hint" wx:if="{{previewHasBaby}}">👶 下方标「宝宝」的为宝宝辅食</view>
 
@@ -74,6 +80,9 @@
             <view class="card-info">
               <view class="card-header">
                 <text class="dish-name">{{item.adultName}}</text>
+                <view class="basket-origin-badge" wx:if="{{item.fromBasket}}">
+                  <text class="basket-origin-text">🧺 {{item.basketSourceLabel}}</text>
+                </view>
                 <view class="check-badge" wx:if="{{item.checked}}">✓</view>
               </view>
               <view class="card-footer">

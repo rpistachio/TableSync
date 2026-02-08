@@ -1,5 +1,5 @@
 function includes(arr, val) {
-  if (!arr || !Array.isArray(arr)) return false;
+  if (!arr || typeof arr !== 'object' || typeof arr.length !== 'number') return false;
   for (var i = 0; i < arr.length; i++) {
     if (arr[i] === val) return true;
   }

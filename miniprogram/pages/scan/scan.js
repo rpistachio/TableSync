@@ -2,6 +2,7 @@
 // 冰箱扫描页 —— 多图上传、并行识别食材、前端合并去重、展示推荐菜谱
 
 var recipeCoverSlugs = require('../../data/recipeCoverSlugs.js');
+var basket = require('../../data/inspirationBasket.js');
 
 /** 食材分类对应的 emoji */
 var CATEGORY_ICONS = {
@@ -394,6 +395,11 @@ Page({
       if (ingredients.length === 0) {
         that.setData({ statusText: '未识别到食材，可手动添加或拍摄更清晰的照片' });
       }
+
+      // 灵感篮子：将推荐菜谱自动放入篮子
+      if (recommendations.length > 0) {
+        that._autoAddToBasket(recommendations, ingredients);
+      }
     }).catch(function (err) {
       console.error('[scan] 扫描流程出错:', err);
       that.setData({
@@ -661,6 +667,50 @@ Page({
     this.setData({
       visibleMatchedCount: Math.min(next, this.data.allMatched.length)
     });
+  },
+
+  // ── 灵感篮子：推荐菜谱自动入篮 ─────────────────────────────
+
+  /**
+   * 将冰箱扫描推荐的菜谱自动放入灵感篮子
+   * @param {Array} recommendations - 推荐菜谱列表
+   * @param {Array} ingredients - 识别到的食材列表
+   */
+  _autoAddToBasket: function (recommendations, ingredients) {
+    var raw = '';
+    try { raw = wx.getStorageSync(basket.STORAGE_KEY) || ''; } catch (e) { /* ignore */ }
+    var list = basket.parseBasket(raw);
+
+    var ingredientNames = (ingredients || []).map(function (i) { return i.name; });
+    var addedCount = 0;
+
+    for (var i = 0; i < recommendations.length; i++) {
+      var rec = recommendations[i];
+      if (!rec || !rec.id) continue;
+      var item = basket.createItem(rec, 'fridge_match', {
+        sourceDetail: '冰箱匹配',
+        priority: 'normal',
+        meta: {
+          fridgeIngredients: ingredientNames
+        }
+      });
+      var before = list.length;
+      list = basket.addItem(list, item);
+      if (list.length > before) addedCount++;
+    }
+
+    if (addedCount > 0) {
+      try {
+        wx.setStorageSync(basket.STORAGE_KEY, basket.serializeBasket(list));
+        wx.setStorageSync(basket.BASKET_DATE_KEY, basket.getTodayDateKey());
+      } catch (e) { /* ignore */ }
+
+      var app = getApp();
+      if (app && app.globalData) app.globalData.inspirationBasket = list;
+      if (app.onBasketChange) app.onBasketChange(list.length);
+
+      wx.showToast({ title: '已将 ' + addedCount + ' 道菜放入灵感篮', icon: 'none', duration: 2000 });
+    }
   },
 
   // ── 返回首页 ──────────────────────────────────────────────

@@ -199,8 +199,8 @@
             <view class="recipe-pick-info">
               <text class="recipe-pick-name">{{item.name}}</text>
               <view class="recipe-pick-meta">
-                <text class="recipe-pick-meta-tag">{{item.meat}}</text>
-                <text class="recipe-pick-meta-tag" wx:if="{{item.cook_type}}">{{item.cook_type}}</text>
+                <text class="recipe-pick-meta-tag">{{item._meatLabel || item.meat}}</text>
+                <text class="recipe-pick-meta-tag" wx:if="{{item._cookTypeLabel || item.cook_type}}">{{item._cookTypeLabel || item.cook_type}}</text>
               </view>
             </view>
             <text class="recipe-pick-add">+</text>
