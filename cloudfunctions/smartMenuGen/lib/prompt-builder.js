@@ -1,0 +1,357 @@
+// smartMenuGen/lib/prompt-builder.js
+// 聚合天气、心情、家庭画像、历史与候选菜谱，生成 system + user prompt
+// v2: 深度心情套餐推荐 + Kimi 联网搜索指引
+
+/* ═══════════════════════════════════════════
+   常量与映射表
+   ═══════════════════════════════════════════ */
+
+/**
+ * 中文 → 英文枚举 fallback (旧版客户端兼容)
+ * spec v1.1: "开心" → "celebratory", "疲惫" → "exhausted" 等
+ */
+const MOOD_CN_MAP = {
+  '开心': 'celebratory',
+  '疲惫': 'exhausted',
+  '想吃轻食': 'health_conscious',
+  '馋了': 'craving_heavy',
+  '随便': 'random',
+};
+
+/**
+ * 每种心情对应的 AI 推荐策略
+ * label   — 中文显示名
+ * goal    — 核心目标描述
+ * rules   — 具体选菜规则（注入 user message）
+ * dietStyleOverride — 心情可覆盖的 dietStyle（仅当用户原始值为 home 时生效）
+ */
+const MOOD_STRATEGY = {
+  exhausted: {
+    label: '疲惫',
+    goal: '快手省力、高蛋白恢复体力',
+    rules: [
+      '优先选择 cook_minutes ≤ 20 的菜品（标签中含 quick 者加分）',
+      '优先 cook_type 为 stir_fry 或 steam（快炒/蒸 = 少步骤、少油烟）',
+      '套餐总烹饪时间应控制在 30 分钟以内',
+      '适当偏向高蛋白食材（鸡肉、鱼、蛋、豆腐）帮助恢复精力',
+      '避免需要长时间炖煮（stew）或复杂工序的菜式',
+    ],
+    dietStyleOverride: 'quick',
+  },
+  celebratory: {
+    label: '开心 / 庆祝',
+    goal: '丰盛大餐、色香味俱全',
+    rules: [
+      '可大胆选择 cook_minutes 较高的硬菜（红烧、炖煲均可）',
+      '荤菜应选不同主料类型（如一鸡一鱼），增加菜品丰富度',
+      '搭配至少一道「色彩鲜艳」或「有仪式感」的菜（如糖醋类、干锅类）',
+      '如有汤品需求，优先推荐炖品 / 煲汤，增加宴席感',
+      '整体风味可大胆对比搭配（如酸甜 + 咸鲜），避免全部同一口味',
+    ],
+    dietStyleOverride: 'rich',
+  },
+  health_conscious: {
+    label: '想吃轻食',
+    goal: '低油低盐、清淡养生',
+    rules: [
+      '优先 cook_type 为 steam 或 cold_dress（蒸 / 凉拌）',
+      '优先 flavor_profile 为 light 或 sour_fresh 的清淡菜品',
+      '蔬菜类菜品（meat=vegetable）占比应尽量高',
+      '避免 flavor_profile 为 spicy 或 salty_umami 的重口味菜品',
+      '可推荐白灼、清蒸、沙拉类菜式',
+    ],
+    dietStyleOverride: 'light',
+  },
+  craving_heavy: {
+    label: '馋了 / 想解馋',
+    goal: '下饭硬菜、满足味蕾',
+    rules: [
+      '优先 flavor_profile 为 salty_umami 或 spicy 的菜品',
+      '肉类菜品应选味道浓郁的做法（红烧、酱焖、干煸）',
+      '优先 cook_type 为 stir_fry 或 braise（煎炒 / 红烧）',
+      '至少一道经典下饭菜（如宫保鸡丁、红烧肉、鱼香肉丝等）',
+      '素菜也应选风味突出的（如干煸、蒜蓉、酸辣口味）',
+    ],
+    dietStyleOverride: 'rich',
+  },
+  random: {
+    label: '随便',
+    goal: '均衡搭配、口味多样',
+    rules: [
+      '不附加特殊偏向，完全按用户 preference 和菜品多样性选择',
+      '注重荤素搭配的口味差异化（避免全部咸鲜或全部清淡）',
+      '优先选择 flavor_profile 不重复的菜品组合',
+    ],
+    dietStyleOverride: null,
+  },
+};
+
+/** 烹饪方式中文标签 */
+const COOK_LABELS = {
+  stir_fry: '炒',
+  stew: '炖/煲',
+  steam: '蒸',
+  cold_dress: '凉拌',
+  fry: '煎/炸',
+  braise: '红烧/焖',
+  boil: '煮',
+};
+
+/** 风味画像中文标签 */
+const FLAVOR_LABELS = {
+  salty_umami: '咸鲜',
+  light: '清淡',
+  spicy: '辣',
+  sweet_sour: '酸甜',
+  sour_fresh: '酸爽',
+};
+
+/* ═══════════════════════════════════════════
+   辅助函数
+   ═══════════════════════════════════════════ */
+
+/**
+ * 归一化心情值：支持中文 → 英文枚举映射
+ * @param {string} mood
+ * @returns {string} 标准枚举值
+ */
+function normalizeMood(mood) {
+  if (!mood) return 'random';
+  const val = String(mood).trim();
+  if (MOOD_STRATEGY[val]) return val;          // 已是标准枚举
+  return MOOD_CN_MAP[val] || 'random';         // 中文映射或兜底
+}
+
+/**
+ * 根据天气信息生成 AI 可理解的饮食建议
+ * @param {Object} weather - { text, temp }
+ * @returns {string} 天气饮食建议文案
+ */
+function getWeatherHint(weather) {
+  if (!weather || (!weather.text && weather.temp == null)) return '';
+  const hints = [];
+  const temp = weather.temp;
+  const text = weather.text || '';
+
+  // 温度区间 → 菜式建议
+  if (temp != null) {
+    if (temp <= 5) {
+      hints.push('气温很低（≤5°C），适合炖汤、红烧、砂锅等暖身菜，热汤加分');
+    } else if (temp <= 15) {
+      hints.push('天气偏凉（5-15°C），煲汤和炒菜都合适，可搭配一道温热汤品');
+    } else if (temp <= 25) {
+      hints.push('气温适中（15-25°C），菜式选择空间大，荤素均衡即可');
+    } else if (temp <= 33) {
+      hints.push('天气偏热（25-33°C），优先凉拌、清蒸、快炒等清爽菜式');
+    } else {
+      hints.push('高温酷暑（>33°C），建议凉拌/冷食为主，避免油腻，注意补充水分');
+    }
+  }
+
+  // 天气状况 → 额外建议
+  if (text.includes('雨') || text.includes('雪')) {
+    hints.push('雨雪天，暖身汤品和炖菜更能带来慰藉感');
+  }
+  if (text.includes('阴') || text.includes('多云')) {
+    hints.push('阴天适合色彩丰富的菜品，提升用餐愉悦感');
+  }
+  if (text.includes('风') || text.includes('大风')) {
+    hints.push('大风天适合热食为主，炖煮类菜品');
+  }
+
+  return hints.join('；');
+}
+
+/**
+ * 获取当前季节的食材建议关键词（供联网搜索参考）
+ * @returns {string}
+ */
+function getSeasonalHint() {
+  const month = new Date().getMonth() + 1; // 1-12
+  if (month >= 3 && month <= 5) return '春季（时令：春笋、荠菜、香椿、豌豆等）';
+  if (month >= 6 && month <= 8) return '夏季（时令：丝瓜、苦瓜、茄子、毛豆等）';
+  if (month >= 9 && month <= 11) return '秋季（时令：莲藕、山药、栗子、南瓜等）';
+  return '冬季（时令：白萝卜、大白菜、冬笋、羊肉等）';
+}
+
+/* ═══════════════════════════════════════════
+   核心 Prompt 构建
+   ═══════════════════════════════════════════ */
+
+/**
+ * 构建 system prompt — 定义 AI 角色与决策框架
+ * @returns {string}
+ */
+function buildSystemPrompt() {
+  return `你是「桌同步」App 的家庭晚餐 AI 搭配顾问。你兼具专业营养师视角和中式家常菜搭配经验。
+
+你的核心任务：根据用户当下的天气、心情、家庭画像和忌口，从候选菜谱中精准挑选出一组最完美的「心情套餐」。
+
+## 决策框架（按优先级排列）
+
+### P0 — 红线约束（不可违反）
+- **忌口/过敏**：用户标注的忌口食材必须严格排除，零容忍
+- **套餐结构**：必须精确满足用户要求的「N荤 + N素 + N汤」结构
+- **ID 合法性**：返回的每个 recipeId 必须来自用户提供的候选列表
+
+### P1 — 心情适配
+- 根据用户当前心情（exhausted/celebratory/health_conscious/craving_heavy/random），执行对应的选菜策略
+- 用户消息中会给出详细的心情策略规则，请严格遵循
+
+### P2 — 天气适配
+- 寒冷/雨雪天 → 炖汤、红烧、暖身菜品优先
+- 炎热/晴天 → 凉拌、清蒸、快炒等清爽菜品优先
+- 可结合联网搜索查看当季时令食材推荐，优先应季菜品
+
+### P3 — 营养与口味平衡
+- 同套餐中 flavor_profile 尽量不重复（如不要两道都是咸鲜）
+- 同套餐中 cook_type 尽量不重复（如不要两道都是炒）
+- 同套餐中 meat（主料类型）尽量不重复（如不要两道都用鸡肉）
+- 荤菜提供蛋白质，素菜提供膳食纤维+维生素，汤品补充水分
+
+### P4 — 去重
+- 如果用户提供了最近做过的菜名，避开同名菜和相似主料的菜
+
+### P5 — 联网增强（可选）
+当你需要额外的饮食搭配灵感时，可使用联网搜索获取：
+- 当季时令食材推荐
+- 特定心情/天气下的营养搭配建议
+- 经典菜品组合参考
+注意：联网搜索是辅助手段，最终推荐必须从候选列表中选择。
+
+## 输出格式
+
+**严格返回纯 JSON，不要包含任何 markdown 标记、代码块围栏或额外文字：**
+{
+  "reasoning": "一句话说明搭配思路（≤40字）",
+  "recipeIds": ["id1", "id2", ...]
+}
+
+recipeIds 顺序必须严格遵循：先所有荤菜 → 再所有素菜 → 最后汤（若有）。`;
+}
+
+/**
+ * 构建 user message — 注入所有上下文信息
+ * @param {Object} opts
+ * @param {Object} opts.preference  - 用户偏好
+ * @param {string} opts.mood        - 心情（标准枚举或中文）
+ * @param {Object} opts.weather     - { text, temp }
+ * @param {string} [opts.recentDishNames] - 最近做过的菜名（逗号分隔）
+ * @param {Array}  opts.candidates  - 候选菜谱精简对象数组
+ * @returns {string}
+ */
+function buildUserMessage(opts) {
+  const { preference, mood, weather, recentDishNames, candidates } = opts;
+  const meatCount = preference.meatCount || 1;
+  const vegCount = preference.vegCount || 1;
+  const soupCount = preference.soupCount || 0;
+  const total = meatCount + vegCount + soupCount;
+
+  const normalizedMood = normalizeMood(mood);
+  const strategy = MOOD_STRATEGY[normalizedMood] || MOOD_STRATEGY.random;
+  const weatherHint = getWeatherHint(weather);
+  const seasonalHint = getSeasonalHint();
+
+  const parts = [];
+
+  // ── Section 1: 家庭画像 ──
+  parts.push('## 家庭画像');
+  parts.push(`- 用餐人数：${preference.adultCount || 2} 位成人`);
+  if (preference.hasBaby) {
+    parts.push(`- 宝宝：${preference.babyMonth || 12} 月龄（需辅食兼容，避免辣椒、花椒、整颗坚果、过硬食材）`);
+  }
+  parts.push(`- 套餐结构：${meatCount} 荤 + ${vegCount} 素${soupCount ? ' + 1 汤' : ''}（共 ${total} 道菜）`);
+
+  if (preference.avoidList && preference.avoidList.length > 0) {
+    parts.push(`- ⚠️ 严格忌口：${preference.avoidList.join('、')}（红线！必须排除含这些成分的所有菜）`);
+  }
+
+  // 饮食风格：心情可覆盖默认 home
+  const effectiveStyle = (preference.dietStyle === 'home' && strategy.dietStyleOverride)
+    ? strategy.dietStyleOverride
+    : preference.dietStyle;
+  if (effectiveStyle && effectiveStyle !== 'home') {
+    const styleLabels = { light: '清淡养生', rich: '丰盛大餐', quick: '快手省时' };
+    parts.push(`- 饮食风格：${styleLabels[effectiveStyle] || effectiveStyle}`);
+  }
+
+  if (preference.isTimeSave) {
+    parts.push('- ⏱ 省时模式已开启：优先选择 cook_minutes 低的菜品');
+  }
+
+  // ── Section 2: 天气上下文 ──
+  parts.push('');
+  parts.push('## 今日天气');
+  if (weather && (weather.text || weather.temp != null)) {
+    const tempStr = weather.temp != null ? ` ${weather.temp}°C` : '';
+    parts.push(`- 实况：${weather.text || '未知'}${tempStr}`);
+    if (weatherHint) parts.push(`- 饮食建议：${weatherHint}`);
+  } else {
+    parts.push('- 天气信息不可用，请忽略天气因素');
+  }
+  parts.push(`- 当前季节：${seasonalHint}`);
+
+  // ── Section 3: 心情 + 选菜策略 ──
+  parts.push('');
+  parts.push(`## 今日心情：${strategy.label}`);
+  parts.push(`🎯 搭配目标：${strategy.goal}`);
+  parts.push('');
+  parts.push('请严格执行以下选菜策略：');
+  strategy.rules.forEach((rule, i) => {
+    parts.push(`${i + 1}. ${rule}`);
+  });
+
+  // ── Section 4: 去重 ──
+  if (recentDishNames) {
+    parts.push('');
+    parts.push('## 最近做过的菜（请避免重复或相似主料）');
+    parts.push(recentDishNames);
+  }
+
+  // ── Section 5: 候选菜谱 ──
+  parts.push('');
+  const candidateCount = (candidates || []).length;
+  parts.push(`## 候选菜谱（共 ${candidateCount} 道，请严格只从中选择）`);
+
+  // 精简候选列表，最多 80 条，节省 token
+  const simplified = (candidates || []).slice(0, 80).map((r) => {
+    const isSoup = r.dish_type === 'soup' || (r.name && r.name.includes('汤'));
+    const isVeg = r.meat === 'vegetable';
+    const obj = {
+      id: r.id || r._id,
+      name: r.name,
+      类型: isVeg ? '素' : (isSoup ? '汤' : '荤'),
+      烹饪: COOK_LABELS[r.cook_type] || r.cook_type || '-',
+      风味: FLAVOR_LABELS[r.flavor_profile] || r.flavor_profile || '-',
+    };
+    if (r.cook_minutes) obj.耗时 = r.cook_minutes + 'min';
+    if (r.tags && r.tags.length > 0) obj.标签 = r.tags.join(',');
+    return obj;
+  });
+  parts.push(JSON.stringify(simplified, null, 0));
+
+  // ── Section 6: 输出指令 ──
+  parts.push('');
+  parts.push('## 请输出');
+  parts.push(`综合以上天气、心情、家庭画像，从候选列表中选出恰好 ${total} 道菜，组成一份完美的「${strategy.label}心情套餐」。`);
+  parts.push(`顺序：${meatCount} 个荤菜 id → ${vegCount} 个素菜 id${soupCount ? ' → 1 个汤 id' : ''}。`);
+  parts.push('返回纯 JSON：{ "reasoning": "搭配思路", "recipeIds": ["id1", ...] }');
+
+  return parts.join('\n');
+}
+
+/* ═══════════════════════════════════════════
+   导出
+   ═══════════════════════════════════════════ */
+
+module.exports = {
+  buildSystemPrompt,
+  buildUserMessage,
+  normalizeMood,
+  getWeatherHint,
+  getSeasonalHint,
+  MOOD_STRATEGY,
+  MOOD_CN_MAP,
+  COOK_LABELS,
+  FLAVOR_LABELS,
+};

@@ -21,7 +21,8 @@ function chat(opts) {
   if (!apiKey || !model || !messages || !messages.length) {
     return Promise.reject(new Error('[Kimi] apiKey、model、messages 必填'));
   }
-  const cleanKey = String(apiKey).trim().replace(/\s+/g, '');
+  // 去掉换行/空格，避免 HTTP 头 "Invalid character in header content"
+  const safeKey = String(apiKey).trim().replace(/\s+/g, '');
 
   const body = JSON.stringify({
     model,
@@ -38,7 +39,7 @@ function chat(opts) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${cleanKey}`,
+          Authorization: `Bearer ${safeKey}`,
           'Content-Length': Buffer.byteLength(body, 'utf8'),
         },
         timeout: 60000,

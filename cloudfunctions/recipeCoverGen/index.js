@@ -1,6 +1,6 @@
 // cloudfunctions/recipeCoverGen/index.js
 // 为导入菜谱静默生成「暗调高级感」封面图（复用 generate.js 的 Midjourney 风格 prompt）
-// 支持 MiniMax image-01 或 OpenAI DALL·E 2，优先使用已配置的 MiniMax
+// 优先 MiniMax image-01，未配置时使用 OpenAI DALL·E 2
 
 const cloud = require('wx-server-sdk');
 const fs = require('fs');
@@ -31,20 +31,11 @@ function getConfig(key) {
  * @returns {Promise<string>} fileID
  */
 async function uploadBufferToCloud(buffer, cloudPath) {
-  const ext = cloudPath.endsWith('.jpg') ? 'jpg' : 'png';
-  const tmpPath = path.join('/tmp', `cover_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`);
-  fs.writeFileSync(tmpPath, buffer);
-  try {
-    const res = await cloud.uploadFile({
-      cloudPath,
-      filePath: tmpPath,
-    });
-    return res.fileID;
-  } finally {
-    try {
-      fs.unlinkSync(tmpPath);
-    } catch (_) {}
-  }
+  const res = await cloud.uploadFile({
+    cloudPath,
+    fileContent: buffer,
+  });
+  return res.fileID;
 }
 
 /**
@@ -66,9 +57,6 @@ exports.main = async (event, context) => {
     console.log('[recipeCoverGen] MINIMAX_API_KEY 与 OPENAI_API_KEY 均未配置，跳过封面生成');
     return { code: 200, message: '未配置 MINIMAX_API_KEY 或 OPENAI_API_KEY，封面生成已跳过', skipped: true };
   }
-  if (useMiniMax && apiKey.length < 20) {
-    console.warn('[recipeCoverGen] MINIMAX_API_KEY 长度异常，请确认复制的是完整的 API Key');
-  }
 
   try {
     const docSnap = await db.collection('imported_recipes').doc(docId).get();
@@ -87,16 +75,23 @@ exports.main = async (event, context) => {
       return { code: 400, message: '无法生成封面文案（菜名缺失）' };
     }
 
-    console.log('[recipeCoverGen] 生成封面:', recipe.name, 'provider:', useMiniMax ? 'MiniMax' : 'OpenAI');
-    const generate = useMiniMax ? minimaxImage.generateImage : openaiImage.generateImage;
-    const buffer = await generate(apiKey, prompt);
+    const rawHost = (getConfig('MINIMAX_HOST') || '').trim();
+    const minimaxHost = (rawHost === 'api.minimax.io' || rawHost === 'api.minimaxi.com') ? rawHost : undefined;
+    console.log('[recipeCoverGen] 生成封面:', recipe.name, 'provider:', useMiniMax ? 'MiniMax' : 'OpenAI', useMiniMax && minimaxHost ? ', host: ' + minimaxHost : '');
+    console.log('[recipeCoverGen] 正在请求图生接口，约需 20–60 秒…');
+    const buffer = useMiniMax
+      ? await minimaxImage.generateImage(apiKey, prompt, minimaxHost ? { host: minimaxHost } : {})
+      : await openaiImage.generateImage(apiKey, prompt);
+    console.log('[recipeCoverGen] 图片已获取, size:', buffer ? buffer.length : 0);
     if (!buffer || buffer.length === 0) {
       return { code: 500, message: '图片生成失败' };
     }
 
     const ext = useMiniMax ? 'jpg' : 'png';
     const cloudPath = `recipe_covers/${docId}_${Date.now()}.${ext}`;
+    console.log('[recipeCoverGen] 开始上传云存储:', cloudPath);
     const fileID = await uploadBufferToCloud(buffer, cloudPath);
+    console.log('[recipeCoverGen] 上传完成 fileID:', fileID ? fileID.slice(0, 50) + '...' : '');
     if (!fileID) {
       return { code: 500, message: '封面上传失败' };
     }

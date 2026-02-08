@@ -128,6 +128,11 @@ var RECIPE_NAME_TO_SLUG = {
   '凉拌茄子豆芽': 'cold_eggplant_bean_sprouts.png',
   '韭菜炒鸡丝': 'chicken_chives_stir_fry.png',
   '葱油鲜鱼片': 'scallion_oil_steamed_fish.png',
+  '香煎杏鲍菇': 'pan_fried_king_oyster_mushroom.png',
+  '蒜蓉粉丝娃娃菜': 'steamed_baby_cabbage_vermicelli.png',
+  '香菇炒青菜': 'mushroom_stir_fried_greens.png',
+  '蒜蓉粉丝娃娃菜': 'steamed_baby_cabbage_vermicelli.png',
+  '金针菇炒韭黄': 'enoki_mushroom_yellow_chives.png',
   /* 宝宝菜 */
   '板栗鲜鸡泥': 'chestnut_chicken_puree.png',
   '柠檬清蒸鳕鱼': 'lemon_steamed_cod.png',

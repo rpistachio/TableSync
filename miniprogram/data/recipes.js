@@ -103,7 +103,443 @@ var adultRecipes = [
   { id: 'a-soup-15', name: '酸汤金针菇牛肉', type: 'adult', meat: 'beef', taste: 'slow_stew', flavor_profile: 'sour_fresh', cook_type: 'stew', dish_type: 'soup', prep_time: 20, cook_minutes: 40, is_baby_friendly: false, can_share_base: true, common_allergens: [], base_serving: 2 },
   { id: 'a-veg-29', name: '凉拌茄子豆芽', type: 'adult', meat: 'vegetable', taste: 'steamed_salad', flavor_profile: 'light', cook_type: 'steam', prep_time: 15, cook_minutes: 10, is_baby_friendly: true, can_share_base: true, common_allergens: [], base_serving: 2 },
   { id: 'a-chi-7', name: '韭菜炒鸡丝', type: 'adult', meat: 'chicken', taste: 'quick_stir_fry', flavor_profile: 'salty_umami', cook_type: 'stir_fry', prep_time: 15, cook_minutes: 8, is_baby_friendly: true, can_share_base: true, common_allergens: [], base_serving: 2 },
-  { id: 'a-fish-6', name: '葱油鲜鱼片', type: 'adult', meat: 'fish', taste: 'steamed_salad', flavor_profile: 'light', cook_type: 'steam', prep_time: 15, cook_minutes: 12, is_baby_friendly: true, can_share_base: true, common_allergens: ['鱼'], base_serving: 2 }
+  { id: 'a-fish-6', name: '葱油鲜鱼片', type: 'adult', meat: 'fish', taste: 'steamed_salad', flavor_profile: 'light', cook_type: 'steam', prep_time: 15, cook_minutes: 12, is_baby_friendly: true, can_share_base: true, common_allergens: ['鱼'], base_serving: 2 },
+  {
+    "id": "a-veg-30",
+    "name": "香煎杏鲍菇",
+    "type": "adult",
+    "taste": "quick_stir_fry",
+    "meat": "vegetable",
+    "prep_time": 5,
+    "is_baby_friendly": true,
+    "common_allergens": [],
+    "can_share_base": true,
+    "flavor_profile": "salty_umami",
+    "cook_type": "stir_fry",
+    "cook_minutes": 8,
+    "ingredients": [
+      {
+        "name": "杏鲍菇",
+        "baseAmount": 300,
+        "unit": "g",
+        "category": "蔬菜"
+      },
+      {
+        "name": "蒜",
+        "baseAmount": 3,
+        "unit": "瓣",
+        "category": "调料"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "蚝油",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "黑胡椒粉",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "杏鲍菇洗净，纵向切成0.8cm厚片。蒜瓣切末。"
+      },
+      {
+        "action": "cook",
+        "text": "平底锅中倒油大火烧热，放入杏鲍菇片，中火煎至两面金黄酥脆，约每面3分钟。"
+      },
+      {
+        "action": "cook",
+        "text": "撒入蒜末，加入生抽、蚝油、盐调味，撒上黑胡椒粉，翻炒30秒即可出锅。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "杏鲍菇泥",
+          "action": "杏鲍菇清蒸后打成泥糊"
+        },
+        {
+          "max_month": 12,
+          "name": "杏鲍菇碎",
+          "action": "杏鲍菇清蒸后切碎，可拌入粥中"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝版香煎杏鲍菇",
+          "action": "少油少盐煎制，切成小块"
+        }
+      ]
+    },
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/pan_fried_king_oyster_mushroom.png"
+  },
+  {
+    "id": "a-veg-34",
+    "name": "蒜蓉粉丝娃娃菜",
+    "type": "adult",
+    "taste": "steamed_salad",
+    "meat": "vegetable",
+    "prep_time": 8,
+    "is_baby_friendly": true,
+    "common_allergens": [],
+    "can_share_base": true,
+    "flavor_profile": "light",
+    "cook_type": "steam",
+    "cook_minutes": 6,
+    "ingredients": [
+      {
+        "name": "娃娃菜",
+        "baseAmount": 300,
+        "unit": "g",
+        "category": "蔬菜"
+      },
+      {
+        "name": "粉丝",
+        "baseAmount": 50,
+        "unit": "g",
+        "category": "其他"
+      },
+      {
+        "name": "蒜",
+        "baseAmount": 5,
+        "unit": "瓣",
+        "category": "调料"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "蚝油",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "娃娃菜洗净切开，粉丝泡发，蒜瓣切末。"
+      },
+      {
+        "action": "cook",
+        "text": "蒸锅水开，将娃娃菜和粉丝码放在盘中，蒸6分钟。"
+      },
+      {
+        "action": "cook",
+        "text": "锅中倒油烧热，爆香蒜末，加入生抽、蚝油、盐调味，淋在蒸好的菜上即可。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "娃娃菜泥",
+          "action": "娃娃菜清蒸后打成泥糊"
+        },
+        {
+          "max_month": 12,
+          "name": "娃娃菜粉丝碎",
+          "action": "娃娃菜和粉丝清蒸后切碎"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝版蒜蓉粉丝娃娃菜",
+          "action": "少油少盐，蒜末可不加或少加"
+        }
+      ]
+    },
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/steamed_baby_cabbage_vermicelli.png"
+  },
+  {
+    "id": "a-veg-32",
+    "name": "香菇炒青菜",
+    "type": "adult",
+    "taste": "quick_stir_fry",
+    "meat": "vegetable",
+    "prep_time": 8,
+    "is_baby_friendly": true,
+    "common_allergens": [],
+    "can_share_base": true,
+    "flavor_profile": "light",
+    "cook_type": "stir_fry",
+    "cook_minutes": 5,
+    "ingredients": [
+      {
+        "name": "青菜",
+        "baseAmount": 300,
+        "unit": "g",
+        "category": "蔬菜"
+      },
+      {
+        "name": "香菇",
+        "baseAmount": 100,
+        "unit": "g",
+        "category": "蔬菜"
+      },
+      {
+        "name": "姜",
+        "baseAmount": 1,
+        "unit": "片",
+        "category": "调料"
+      },
+      {
+        "name": "蒜",
+        "baseAmount": 2,
+        "unit": "瓣",
+        "category": "调料"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "料酒",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "青菜洗净切段，香菇洗净切片，姜蒜切末。"
+      },
+      {
+        "action": "cook",
+        "text": "锅中倒油烧热，爆香姜蒜末，加入香菇片翻炒1分钟。"
+      },
+      {
+        "action": "cook",
+        "text": "加入青菜，淋入料酒，大火快炒至青菜变软，加入生抽、盐调味，翻炒均匀即可。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "香菇青菜泥",
+          "action": "香菇青菜清蒸后分别打成泥混合"
+        },
+        {
+          "max_month": 12,
+          "name": "香菇青菜碎",
+          "action": "香菇青菜清蒸后切碎，可拌入粥中"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝版香菇炒青菜",
+          "action": "少油少盐清炒，切成小块"
+        }
+      ]
+    },
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/mushroom_stir_fried_greens.png"
+  },
+  {
+    "id": "a-veg-34",
+    "name": "蒜蓉粉丝娃娃菜",
+    "type": "adult",
+    "taste": "steamed_salad",
+    "meat": "vegetable",
+    "prep_time": 8,
+    "is_baby_friendly": true,
+    "common_allergens": [],
+    "can_share_base": true,
+    "flavor_profile": "light",
+    "cook_type": "steam",
+    "cook_minutes": 6,
+    "ingredients": [
+      {
+        "name": "娃娃菜",
+        "baseAmount": 300,
+        "unit": "g",
+        "category": "蔬菜"
+      },
+      {
+        "name": "粉丝",
+        "baseAmount": 50,
+        "unit": "g",
+        "category": "其他"
+      },
+      {
+        "name": "蒜",
+        "baseAmount": 5,
+        "unit": "瓣",
+        "category": "调料"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "蚝油",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "娃娃菜洗净切开，粉丝泡发，蒜瓣切末。"
+      },
+      {
+        "action": "cook",
+        "text": "蒸锅水开，将娃娃菜和粉丝码放在盘中，蒸6分钟。"
+      },
+      {
+        "action": "cook",
+        "text": "锅中倒油烧热，爆香蒜末，加入生抽、蚝油、盐调味，淋在蒸好的菜上即可。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "娃娃菜泥",
+          "action": "娃娃菜清蒸后打成泥糊"
+        },
+        {
+          "max_month": 12,
+          "name": "娃娃菜粉丝碎",
+          "action": "娃娃菜和粉丝清蒸后切碎"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝版蒜蓉粉丝娃娃菜",
+          "action": "少油少盐，蒜末可不加或少加"
+        }
+      ]
+    },
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/steamed_baby_cabbage_vermicelli.png"
+  },
+  {
+    "id": "a-veg-33",
+    "name": "金针菇炒韭黄",
+    "type": "adult",
+    "taste": "quick_stir_fry",
+    "meat": "vegetable",
+    "prep_time": 5,
+    "is_baby_friendly": true,
+    "common_allergens": [],
+    "can_share_base": true,
+    "flavor_profile": "light",
+    "cook_type": "stir_fry",
+    "cook_minutes": 4,
+    "ingredients": [
+      {
+        "name": "金针菇",
+        "baseAmount": 200,
+        "unit": "g",
+        "category": "蔬菜"
+      },
+      {
+        "name": "韭黄",
+        "baseAmount": 150,
+        "unit": "g",
+        "category": "蔬菜"
+      },
+      {
+        "name": "蒜",
+        "baseAmount": 3,
+        "unit": "瓣",
+        "category": "调料"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "胡椒粉",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "金针菇洗净切除根部，韭黄切段，蒜瓣切末。"
+      },
+      {
+        "action": "cook",
+        "text": "锅中倒油大火烧热，爆香蒜末，加入金针菇翻炒1分钟。"
+      },
+      {
+        "action": "cook",
+        "text": "加入韭黄，淋入生抽，撒入盐和胡椒粉，大火快炒2分钟至韭黄变软即可。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "金针菇泥",
+          "action": "金针菇清蒸后打成泥糊"
+        },
+        {
+          "max_month": 12,
+          "name": "金针菇段",
+          "action": "金针菇清蒸后切碎，可拌入粥中"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝版金针菇炒韭黄",
+          "action": "少油少盐清炒，切成小段"
+        }
+      ]
+    },
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/enoki_mushroom_yellow_chives.png"
+  }
 ];
 
 var babyRecipes = [

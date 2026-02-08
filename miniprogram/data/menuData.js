@@ -582,7 +582,8 @@ exports.getTodayMenusByCombo = function (preference) {
   menus = applyFlavorBalance(menus, {
     adultCount: adultCount,
     hasBaby: hasBaby,
-    babyMonth: babyMonth
+    babyMonth: babyMonth,
+    userPreference: userPreference
   });
 
   menus = applyVisualDiversity(menus, {
@@ -778,7 +779,7 @@ function applyFlavorBalance(menus, preference) {
       var replaceIdx = spicyIndices[Math.floor(Math.random() * spicyIndices.length)];
       var meat = menus[replaceIdx].meat;
       var hasBabyThis = hasBaby && meat !== 'vegetable' && replaceIdx === firstMeatIndex;
-      var res = generator.generateMenuWithFilters(meat, babyMonth, hasBabyThis, adultCount, babyTaste, { preferredFlavor: 'light', existingMenus: menus });
+      var res = generator.generateMenuWithFilters(meat, babyMonth, hasBabyThis, adultCount, babyTaste, { preferredFlavor: 'light', existingMenus: menus, excludeRecipeNames: (preference && preference.userPreference && preference.userPreference.excludeRecipeNames) || [] });
       menus[replaceIdx] = {
         meat: (res.adultRecipe && res.adultRecipe.meat) || meat,
         taste: (res.adultRecipe && res.adultRecipe.taste) || menus[replaceIdx].taste,
@@ -802,7 +803,7 @@ function applyFlavorBalance(menus, preference) {
       var meat = menus[replaceIdx].meat;
       var hasBabyThis = hasBaby && meat !== 'vegetable' && replaceIdx === firstMeatIndex;
       var complementFlavor = Math.random() < 0.5 ? 'light' : 'sweet_sour';
-      var res = generator.generateMenuWithFilters(meat, babyMonth, hasBabyThis, adultCount, babyTaste, { preferredFlavor: complementFlavor, existingMenus: menus });
+      var res = generator.generateMenuWithFilters(meat, babyMonth, hasBabyThis, adultCount, babyTaste, { preferredFlavor: complementFlavor, existingMenus: menus, excludeRecipeNames: (preference && preference.userPreference && preference.userPreference.excludeRecipeNames) || [] });
       menus[replaceIdx] = {
         meat: (res.adultRecipe && res.adultRecipe.meat) || meat,
         taste: (res.adultRecipe && res.adultRecipe.taste) || menus[replaceIdx].taste,
@@ -1021,7 +1022,9 @@ exports.generateSteps = function (preference, options) {
     // 多菜场景：根据是否强制线性选择策略
     if (todayMenus.length > 1) {
       if (!forceLinear && generator.generateUnifiedSteps) {
-        return generator.generateUnifiedSteps(todayMenus, list);
+        return generator.generateUnifiedSteps(todayMenus, list, {
+          kitchenConfig: effectivePref.kitchenConfig
+        });
       }
       if (generator.linearFallback) {
         return generator.linearFallback(todayMenus, list);

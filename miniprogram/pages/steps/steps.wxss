@@ -1,725 +1,615 @@
 .steps-container {
   background-color: #fdf8f2;
+  min-height: 100vh;
 }
 
-/* --- 1. 沉浸式头图区域 --- */
-.steps-header {
-  position: relative;
-  height: 440rpx;
-  display: flex;
-  align-items: flex-end;
-  padding: 40rpx;
+.steps-container.cook-mode {
+  padding-bottom: 180rpx;
+}
+
+/* ========== Layer 1: 极简头部 ========== */
+.cook-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #fff;
+  padding: 24rpx 32rpx 20rpx;
+  border-bottom: 1rpx solid rgba(0, 0, 0, 0.06);
+}
+
+.progress-bar-track {
+  height: 8rpx;
+  border-radius: 999rpx;
+  background: rgba(0, 0, 0, 0.06);
   overflow: hidden;
+  margin-bottom: 16rpx;
 }
 
-.header-ambient-bg {
-  position: absolute;
-  top: -20rpx; left: -20rpx;
-  width: 110%; height: 110%;
-  filter: blur(25px) brightness(0.7); /* 强模糊+暗处理 */
-  z-index: 1;
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 999rpx;
+  background: linear-gradient(90deg, #E8A87C, #D4956A);
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.header-mask {
-  position: absolute;
-  top: 0; left: 0; width: 100%; height: 100%;
-  background: linear-gradient(to top, #fdf8f2 0%, rgba(0,0,0,0.2) 100%);
-  z-index: 2;
-}
-
-.header-content {
-  position: relative;
-  z-index: 3;
-  width: 100%;
-}
-
-.hero-section {
+.header-info {
   display: flex;
   align-items: center;
-  gap: 32rpx;
+  gap: 16rpx;
 }
 
-/* 进度环核心逻辑 */
-.progress-visual {
-  position: relative;
-  width: 150rpx;
-  height: 150rpx;
-  background: rgba(255, 255, 255, 0.1);
+.step-counter {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #E8A87C;
+  letter-spacing: 2rpx;
+}
+
+.current-dish-name {
+  font-size: 26rpx;
+  color: #5a544f;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ========== Layer 2: 浮动并行状态条 ========== */
+.parallel-float-bar {
+  position: sticky;
+  top: 100rpx;
+  z-index: 9;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16rpx);
+  -webkit-backdrop-filter: blur(16rpx);
+  padding: 12rpx 24rpx;
+  border-bottom: 1rpx solid rgba(0, 0, 0, 0.04);
+}
+
+.parallel-scroll {
+  white-space: nowrap;
+}
+
+.parallel-chip-row {
+  display: inline-flex;
+  gap: 16rpx;
+}
+
+.parallel-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10rpx;
+  padding: 12rpx 20rpx;
+  border-radius: 999rpx;
+  background: rgba(232, 168, 124, 0.12);
+  border: 1rpx solid rgba(232, 168, 124, 0.25);
+  flex-shrink: 0;
+}
+
+.chip-dot {
+  width: 12rpx;
+  height: 12rpx;
   border-radius: 50%;
-  padding: 8rpx;
+  background: #E8A87C;
+  animation: chipPulse 2s ease-in-out infinite;
 }
 
-.progress-ring {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  /* 镂空技术：只保留外圈 */
-  -webkit-mask: radial-gradient(transparent 60%, black 64%);
-  mask: radial-gradient(transparent 60%, black 64%);
-  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+@keyframes chipPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
-.dish-mini-img {
-  position: absolute;
-  top: 15%; left: 15%;
-  width: 70%; height: 70%;
-  border-radius: 50%;
-  border: 4rpx solid #fff;
+.chip-name {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #4b3b33;
+  white-space: nowrap;
 }
 
-.step-info {
+.chip-time {
+  font-size: 22rpx;
+  font-weight: 700;
+  padding: 4rpx 12rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.8);
+  color: #b46535;
+  white-space: nowrap;
+}
+
+/* ========== Layer 3: 聚焦步骤区 ========== */
+.focus-area {
+  padding: 24rpx 32rpx 0;
+  min-height: 60vh;
   display: flex;
   flex-direction: column;
 }
 
-.progress-text {
-  font-size: 22rpx;
-  color: #E8A87C;
-  font-weight: bold;
-  letter-spacing: 2rpx;
-}
-
-.step-main-title {
-  font-size: 38rpx;
-  font-weight: 800;
-  color: #2d2d2d;
-  margin: 4rpx 0;
-}
-
-.step-sub-title {
-  font-size: 24rpx;
-  color: #8e857e;
-}
-
-/* --- 2. 步骤列表区域 --- */
-.page-content {
-  padding: 20rpx 32rpx 240rpx;
-}
-
-.timeline-container {
-  margin-top: 12rpx;
-}
-
-.timeline-item {
-  position: relative;
-}
-
-.timeline-content {
-  transition: all 0.3s ease;
-}
-
-/* 非当前步骤：整体轻微缩小、半透明并折叠内容 */
-.timeline-item:not(.active) .timeline-content {
-  opacity: 0.55;
-  transform: scale(0.95);
-  max-height: 260rpx;
-  overflow: hidden;
-}
-
-/* 当前步骤：完全展开，视觉权重更高 */
-.timeline-item.active .timeline-content {
-  opacity: 1;
-  transform: scale(1);
-}
-
-/* 阶段分隔横幅：备菜 / 烹饪 */
-.phase-divider {
-  display: inline-flex;
-  align-items: center;
-  padding: 12rpx 28rpx;
-  margin: 24rpx 0 12rpx;
-  border-radius: 999rpx;
-  font-size: 24rpx;
-  font-weight: 600;
-}
-
-.phase-icon {
-  margin-right: 12rpx;
-}
-
-.phase-title {
-  letter-spacing: 2rpx;
-}
-
-.prep-phase {
-  background: linear-gradient(90deg, rgba(203, 231, 213, 0.95), rgba(232, 245, 237, 0.95));
-  color: #295c3a;
-}
-
-.cook-phase {
-  background: linear-gradient(90deg, rgba(255, 207, 166, 0.95), rgba(255, 234, 210, 0.95));
-  color: #7b4120;
-}
-
-.steps-list {
-  margin-top: 0;
-}
-
-.step-card {
-  background: #fff;
-  border-radius: 36rpx;
-  padding: 40rpx;
-  margin-bottom: 32rpx;
-  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.04);
-  transition: all 0.3s ease;
-}
-
-/* 当前步骤卡片：更亮的渐变背景与更强阴影 */
-.timeline-item.active .step-card {
-  background: linear-gradient(135deg, #ffffff 0%, #fef9f5 100%);
-  box-shadow: 0 16rpx 48rpx rgba(193, 102, 62, 0.12);
-}
-
-/* 非当前步骤卡片：略微收敛阴影，弱化存在感 */
-.timeline-item:not(.active) .step-card {
-  box-shadow: 0 6rpx 18rpx rgba(0, 0, 0, 0.03);
-}
-
-.step-card.completed {
-  opacity: 0.5;
-  transform: scale(0.96);
-  filter: grayscale(0.8);
-}
-
-.step-card__header {
-  margin-bottom: 24rpx;
-}
-
-.step-card__title-row {
+/* --- 前后步骤 peek --- */
+.step-peek {
   display: flex;
   align-items: center;
-  gap: 16rpx;
-  flex-wrap: wrap;
-}
-
-.step-card__title {
-  font-size: 32rpx;
-  font-weight: 700;
-  color: #1a1a1a;
-}
-
-.role-badge {
-  font-size: 20rpx;
-  padding: 4rpx 16rpx;
-  border-radius: 8rpx;
-  margin-left: 16rpx;
-}
-
-.role-badge.adult { background: #e8f0e9; color: #4a5d4e; }
-.role-badge.baby { background: #feeff0; color: #d67a7d; }
-
-.type-badge {
-  float: right;
-  background: #2d2d2d;
-  color: #fff;
-  font-size: 22rpx;
-  padding: 6rpx 20rpx;
-  border-radius: 10rpx;
-}
-
-.step-card__meta {
-  font-size: 24rpx;
-  color: #8e857e;
-  margin-top: 12rpx;
-}
-
-.step-card__done {
-  color: #4a5d4e;
-}
-
-.step-details {
-  margin: 0 0 32rpx;
-  padding: 24rpx 32rpx 28rpx;
-  color: #5a544f;
-  font-size: 28rpx;
-  line-height: 1.9;
-  text-align: left;
-}
-
-.detail-line {
-  margin-bottom: 20rpx;
-}
-.detail-line:last-child {
-  margin-bottom: 0;
-}
-
-.detail-line text {
-  /* 关键：segments 会渲染成多个 <text>，必须保持行内，
-     否则会出现“切 / 丁”被拆成多行的怪异效果。 */
-  display: inline;
-  white-space: pre-wrap;
-}
-
-.detail-line-text {
-  /* rich-text 组件：确保文本在同一行内流式排版 */
-  display: inline;
-  white-space: pre-wrap;
-  font-size: 28rpx;
-  line-height: 1.6;
-  color: #666;
-}
-
-.detail-strong {
-  font-weight: 600;
-  color: #2d2d2d;
-  padding: 0 4rpx;
-  border-radius: 6rpx;
-  /* 荧光笔：强调词更“浮”但不变成整块背景 */
-  background: linear-gradient(to top, #fff3e0 40%, transparent 40%);
-}
-
-/* 非重点文本：降噪 */
-.detail-light {
-  color: #666;
-  font-size: 28rpx;
-}
-
-/* 正文块收敛：更像清单而不是“卡片里的卡片” */
-.step-details.condensed {
-  margin: 0 0 24rpx;
-  padding: 8rpx 0 0;
-  background: transparent;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-/* --- 视觉降噪新增：Header 小徽标 / Meta mini --- */
-.tag-group {
-  display: inline-flex;
-  align-items: center;
   gap: 12rpx;
-  flex-wrap: wrap;
+  padding: 20rpx 24rpx;
+  border-radius: 20rpx;
+  background: rgba(0, 0, 0, 0.02);
+  margin-bottom: 16rpx;
 }
 
-.mini-badge {
-  display: inline-flex;
-  align-items: center;
-  height: 40rpx;
-  padding: 0 14rpx;
+.step-peek.next {
+  margin-bottom: 0;
+  margin-top: 16rpx;
+  opacity: 0.6;
+}
+
+.peek-check {
+  font-size: 22rpx;
+  color: #6cb58b;
+  font-weight: 700;
+}
+
+.peek-label {
+  font-size: 20rpx;
+  color: #a09a94;
+  font-weight: 500;
+  letter-spacing: 2rpx;
+}
+
+.peek-text {
+  font-size: 26rpx;
+  color: #8e857e;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- 聚焦卡片 --- */
+.focus-card {
+  background: #fff;
+  border-radius: 32rpx;
+  padding: 40rpx 36rpx;
+  box-shadow: 0 16rpx 48rpx rgba(0, 0, 0, 0.06);
+  flex: 1;
+}
+
+.focus-card.is-done {
+  opacity: 0.5;
+  filter: grayscale(0.6);
+}
+
+/* 阶段纤细标签 */
+.phase-chip {
+  display: inline-block;
+  padding: 8rpx 20rpx;
   border-radius: 999rpx;
   font-size: 22rpx;
-  line-height: 40rpx;
   font-weight: 600;
-  background: rgba(0, 0, 0, 0.05);
-  color: #4a4a4a;
+  letter-spacing: 2rpx;
+  margin-bottom: 20rpx;
+  border-left: 6rpx solid transparent;
 }
 
-.mini-badge.adult {
-  background: rgba(108, 181, 139, 0.16);
-  color: #295c3a;
-}
-.mini-badge.baby {
-  background: rgba(214, 122, 125, 0.16);
-  color: #9d4a4d;
-}
-.mini-badge.knife {
-  background: rgba(232, 168, 124, 0.18);
-  color: #7b4120;
+.phase-chip.prep {
+  background: rgba(200, 230, 201, 0.5);
+  color: #1b5e20;
+  border-left-color: #4caf50;
 }
 
-.step-card__meta-mini {
-  display: inline-flex;
-  align-items: center;
-  gap: 10rpx;
-  font-size: 24rpx;
-  color: #8e857e;
-  margin-top: 10rpx;
+.phase-chip.long_term {
+  background: rgba(255, 224, 178, 0.5);
+  color: #e65100;
+  border-left-color: #ff9800;
 }
 
-.step-card__meta-mini .iconfont,
-.step-card__meta-mini .iconfont-time {
-  font-size: 26rpx;
-  line-height: 1;
-  transform: translateY(1rpx);
+.phase-chip.gap {
+  background: rgba(187, 222, 251, 0.5);
+  color: #0d47a1;
+  border-left-color: #2196f3;
 }
 
-/* --- 视觉降噪新增：并行提示 pill（替代 context-hint 的更轻形态） --- */
-.context-pill {
+.phase-chip.cook {
+  background: rgba(255, 204, 188, 0.5);
+  color: #bf360c;
+  border-left-color: #ff5722;
+}
+
+.phase-chip.finish {
+  background: rgba(209, 196, 233, 0.5);
+  color: #311b92;
+  border-left-color: #673ab7;
+}
+
+.focus-title {
+  display: block;
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 24rpx;
+  line-height: 1.4;
+}
+
+/* 并行提示（内联） */
+.focus-parallel-hint {
   display: inline-flex;
   align-items: center;
   gap: 14rpx;
-  padding: 10rpx 16rpx;
+  padding: 10rpx 20rpx;
   border-radius: 999rpx;
-  background: rgba(232, 168, 124, 0.16);
-  border: 1rpx solid rgba(232, 168, 124, 0.22);
-  color: #4b3b33;
-  margin: 0 0 18rpx;
-  max-width: 100%;
-  box-sizing: border-box;
+  background: rgba(232, 168, 124, 0.14);
+  border: 1rpx solid rgba(232, 168, 124, 0.2);
+  margin-bottom: 24rpx;
 }
 
-.pill-text {
+.parallel-hint-text {
   font-size: 24rpx;
-  line-height: 1.4;
   color: #4b3b33;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.pill-timer {
-  flex: 0 0 auto;
+.parallel-hint-timer {
   font-size: 22rpx;
   font-weight: 700;
-  padding: 6rpx 12rpx;
+  padding: 4rpx 12rpx;
   border-radius: 999rpx;
   background: rgba(255, 255, 255, 0.75);
   color: #b46535;
 }
 
-/* --- 视觉降噪新增：调料标签化（横向滚动） --- */
-.seasoning-inline {
-  margin: 16rpx 0 18rpx;
+/* 指令正文 - 大字号 */
+.focus-body {
+  margin-bottom: 24rpx;
+}
+
+.focus-line {
+  margin-bottom: 20rpx;
+}
+
+.focus-line:last-child {
+  margin-bottom: 0;
+}
+
+.focus-line-text {
+  display: inline;
+  white-space: pre-wrap;
+  font-size: 32rpx;
+  line-height: 1.85;
+  color: #555;
+}
+
+/* 宝宝分拨动作高亮 */
+.focus-line.baby-portion-action {
+  background: linear-gradient(90deg, rgba(255, 193, 153, 0.3) 0%, rgba(255, 228, 225, 0.15) 100%);
+  border-left: 6rpx solid #e8a87c;
+  padding: 16rpx 20rpx 16rpx 28rpx;
+  margin: 0 -36rpx 20rpx;
+  padding-left: 42rpx;
+  border-radius: 0 16rpx 16rpx 0;
+}
+
+/* 调料横滚 */
+.focus-seasonings {
+  margin: 16rpx 0 20rpx;
 }
 
 .seasoning-scroll {
-  display: flex;
+  white-space: nowrap;
+}
+
+.seasoning-row {
+  display: inline-flex;
   gap: 12rpx;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  padding-bottom: 6rpx;
-  scroll-snap-type: x proximity;
 }
 
 .ing-tag {
-  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   gap: 10rpx;
-  padding: 10rpx 16rpx;
+  padding: 12rpx 20rpx;
   border-radius: 999rpx;
   background: rgba(0, 0, 0, 0.03);
   border: 1rpx solid rgba(0, 0, 0, 0.06);
-  scroll-snap-align: start;
+  flex-shrink: 0;
 }
 
 .ing-tag .n {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: #5a544f;
   white-space: nowrap;
 }
 
 .ing-tag .a {
-  font-size: 22rpx;
+  font-size: 24rpx;
   font-weight: 700;
   color: #E8A87C;
   white-space: nowrap;
 }
 
-/* 调料网格优化 */
-.ingredients-check {
-  background: #f8f5f2;
-  border-radius: 20rpx;
-  padding: 24rpx;
-  margin: 20rpx 0;
-}
-
-.ingredients-check__item {
-  display: block;
-  font-size: 34rpx;
-  color: #5a544f;
-  line-height: 1.7;
-}
-
-.ing-grid {
+/* 时长提示 */
+.focus-duration {
   display: flex;
-  flex-wrap: wrap;
-  gap: 16rpx;
+  align-items: center;
+  gap: 8rpx;
+  margin-top: 8rpx;
 }
 
-/* 调料滑块容器：默认支持多行排布，当前步骤时变为横向滑动条 */
-.seasonings-slider {
-  -webkit-overflow-scrolling: touch;
-}
-
-/* 当前步骤的调料改为横向滑动卡片，更像工具栏 */
-.timeline-item.active .seasonings-slider {
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  padding-bottom: 8rpx;
-}
-
-.ing-item {
-  background: #fff;
-  padding: 8rpx 20rpx;
-  border-radius: 12rpx;
+.duration-icon {
   font-size: 24rpx;
-  border: 1rpx solid #eee;
 }
 
-/* 当前步骤调料：更像一排可滑动的小卡片 */
-.timeline-item.active .ing-item {
-  flex: 0 0 auto;
-  min-width: 160rpx;
-  box-shadow: 0 8rpx 20rpx rgba(0, 0, 0, 0.06);
-  scroll-snap-align: start;
-}
-
-.ing-n { color: #5a544f; margin-right: 8rpx; }
-.ing-a { color: #E8A87C; font-weight: bold; }
-
-/* 宝宝分拨动作：高亮整行，便于一眼识别 */
-.baby-portion-action {
-  background: linear-gradient(90deg, rgba(255, 193, 153, 0.35) 0%, rgba(255, 228, 225, 0.2) 100%);
-  border-left: 6rpx solid #e8a87c;
-  padding: 16rpx 20rpx 16rpx 24rpx;
-  margin: 0 -32rpx 20rpx -32rpx;
-  padding-left: 38rpx;
-  border-radius: 0 16rpx 16rpx 0;
-  box-shadow: 0 2rpx 8rpx rgba(232, 168, 124, 0.15);
-}
-.baby-portion-action .detail-strong {
-  color: #b85c38;
-}
-
-/* 按钮优化 */
-.step-action-btn {
-  margin-top: 30rpx;
-  background: #2d2d2d;
-  color: #fff;
-  border-radius: 20rpx;
-  font-size: 28rpx;
-  height: 90rpx;
-  line-height: 90rpx;
-  border: none;
-  font-weight: 600;
-}
-
-.step-action-btn.is-done {
-  background: #efe9e2;
+.duration-text {
+  font-size: 24rpx;
   color: #8e857e;
 }
 
-.step-action-btn.is-last-step {
-  background: #2d2d2d;
-  color: #fff;
-}
-
-.share-footer {
+/* ========== 底部操作栏 ========== */
+.bottom-action-bar {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 32rpx 40rpx 48rpx;
-  background: linear-gradient(to top, #fdf8f2 75%, rgba(253, 248, 242, 0));
   display: flex;
-  flex-direction: row;
-  box-sizing: border-box;
+  align-items: center;
+  gap: 16rpx;
+  padding: 20rpx 32rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  background: rgba(253, 248, 242, 0.95);
+  backdrop-filter: blur(16rpx);
+  -webkit-backdrop-filter: blur(16rpx);
+  border-top: 1rpx solid rgba(0, 0, 0, 0.06);
+  z-index: 20;
 }
 
-.share-btn {
+.action-prev {
+  padding: 0 24rpx;
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+}
+
+.action-prev.disabled {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.action-prev-text {
+  font-size: 28rpx;
+  color: #5a544f;
+  font-weight: 500;
+}
+
+.action-main {
   flex: 1;
-  width: 100%;
-  height: 96rpx;
+  height: 88rpx;
   border-radius: 24rpx;
-  font-weight: 600;
-  border: none;
   background: #2d2d2d;
-  color: #fff;
-  font-size: 32rpx;
-  line-height: 96rpx;
-}
-
-/* --- 阶段横幅 & 多阶段引导 --- */
-.phase-banner {
-  margin: 32rpx 0 20rpx;
-  padding: 22rpx 28rpx;
-  border-radius: 24rpx;
-  display: flex;
-  align-items: center;
-  box-shadow: 0 8rpx 28rpx rgba(0, 0, 0, 0.06);
-}
-
-.phase-banner-main {
-  display: flex;
-  align-items: center;
-}
-
-.phase-icon {
-  width: 64rpx;
-  height: 64rpx;
-  border-radius: 999rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 40rpx;
-  margin-right: 20rpx;
-  background: rgba(255, 255, 255, 0.25);
+  border: none;
+  padding: 0;
+  line-height: 88rpx;
 }
 
-.phase-texts {
-  display: flex;
-  flex-direction: column;
-}
-
-.phase-title {
-  font-size: 28rpx;
-  font-weight: 700;
-  letter-spacing: 3rpx;
-}
-
-.phase-subtitle {
-  margin-top: 6rpx;
-  font-size: 22rpx;
-  color: #7c746d;
-}
-
-/* 不同阶段的主题色调 - 加深背景增强层次感 */
-.phase-banner.prep {
-  background: linear-gradient(135deg, #c8e6c9 0%, #e8f5e9 100%);
-  border-left: 6rpx solid #4caf50;
-  color: #1b5e20;
-}
-
-.phase-banner.long_term {
-  background: linear-gradient(135deg, #ffe0b2 0%, #fff3e0 100%);
-  border-left: 6rpx solid #ff9800;
-  color: #e65100;
-}
-
-.phase-banner.gap {
-  background: linear-gradient(135deg, #bbdefb 0%, #e3f2fd 100%);
-  border-left: 6rpx solid #2196f3;
-  color: #0d47a1;
-}
-
-.phase-banner.cook {
-  background: linear-gradient(135deg, #ffccbc 0%, #fbe9e7 100%);
-  border-left: 6rpx solid #ff5722;
-  color: #bf360c;
-}
-
-.phase-banner.finish {
-  background: linear-gradient(135deg, #d1c4e9 0%, #ede7f6 100%);
-  border-left: 6rpx solid #673ab7;
-  color: #311b92;
-}
-
-/* --- 左侧时间轴导轨（配合阶段与并行） --- */
-.timeline-rail {
-  position: absolute;
-  left: -36rpx;
-  top: 12rpx;
-  bottom: 12rpx;
-  width: 40rpx;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.timeline-dot {
-  width: 20rpx;
-  height: 20rpx;
-  border-radius: 50%;
-  margin-bottom: 8rpx;
-  box-shadow: 0 0 0 6rpx rgba(255, 255, 255, 0.8);
-}
-
-.dot-knife {
+.action-main.is-done {
   background: #6cb58b;
 }
 
-.dot-fire {
-  background: #f29b64;
+.action-main-text {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 2rpx;
 }
 
-.timeline-line {
-  flex: 1;
-  width: 4rpx;
-}
-
-.line-dashed {
-  border-right: 4rpx dashed rgba(108, 181, 139, 0.5);
-}
-
-.line-solid {
-  border-right: 4rpx solid rgba(242, 155, 100, 0.5);
-}
-
-.baby-branch {
-  margin-top: 10rpx;
-}
-
-.baby-dot {
-  width: 28rpx;
-  height: 28rpx;
-  border-radius: 50%;
-  background: #ffe5e7;
+.action-list {
+  padding: 0 20rpx;
+  height: 88rpx;
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 20rpx;
-  box-shadow: 0 4rpx 10rpx rgba(214, 122, 125, 0.35);
 }
 
-/* --- 并行上下文提示区域 --- */
-.context-hint {
-  margin: 0 -12rpx 20rpx;
-  padding: 18rpx 22rpx;
-  border-radius: 20rpx;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  background: linear-gradient(120deg, rgba(250, 227, 204, 0.7), rgba(253, 244, 232, 0.9));
-  border-left: 8rpx solid #e8a87c;
+.action-list-icon {
+  font-size: 40rpx;
+  color: #5a544f;
 }
 
-.timeline-item.active .context-hint {
-  box-shadow: 0 8rpx 24rpx rgba(193, 102, 62, 0.18);
+/* ========== Bottom Sheet 通用 ========== */
+.sheet-mask {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 90;
 }
 
-.context-hint-icon {
-  width: 42rpx;
-  height: 42rpx;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.85);
-  font-size: 26rpx;
-  margin-right: 18rpx;
-}
-
-.context-hint-texts {
-  flex: 1;
+.bottom-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 70vh;
+  background: #fff;
+  border-radius: 32rpx 32rpx 0 0;
+  z-index: 100;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
 }
 
-.context-hint-main {
-  font-size: 26rpx;
-  color: #4b3b33;
-  line-height: 1.6;
+.bottom-sheet.is-open {
+  transform: translateY(0);
 }
 
-.remaining-time {
-  margin-top: 4rpx;
-  font-size: 22rpx;
-  color: #b46535;
-}
-
-/* 预留：并行任务状态指示器与时间轴进度条（后续扩展可直接使用） */
-.parallel-indicator {
-  display: inline-flex;
+.sheet-header {
+  display: flex;
   align-items: center;
-  padding: 4rpx 12rpx;
-  border-radius: 999rpx;
-  font-size: 20rpx;
-  background: rgba(232, 168, 124, 0.12);
-  color: #b46535;
+  justify-content: space-between;
+  padding: 28rpx 32rpx 20rpx;
+  border-bottom: 1rpx solid rgba(0, 0, 0, 0.06);
+  flex-shrink: 0;
 }
 
-.timeline-gantt {
-  margin-top: 12rpx;
-  height: 12rpx;
+.sheet-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.sheet-close {
+  font-size: 26rpx;
+  color: #8e857e;
+  padding: 8rpx 16rpx;
+}
+
+.sheet-scroll {
+  flex: 1;
+  padding: 16rpx 32rpx;
+  max-height: 50vh;
+}
+
+.sheet-footer {
+  padding: 16rpx 32rpx;
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+  border-top: 1rpx solid rgba(0, 0, 0, 0.06);
+  flex-shrink: 0;
+}
+
+.sheet-share-btn {
+  width: 100%;
+  height: 80rpx;
+  line-height: 80rpx;
+  border-radius: 20rpx;
+  background: #2d2d2d;
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: 600;
+  border: none;
+}
+
+/* --- 步骤列表 Sheet 内容 --- */
+.sheet-step-item {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid rgba(0, 0, 0, 0.04);
+}
+
+.sheet-step-item:last-child {
+  border-bottom: none;
+}
+
+.sheet-step-check {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sheet-step-item.is-completed .sheet-step-check {
+  background: #6cb58b;
+}
+
+.sheet-step-item.is-current .sheet-step-check {
+  background: #E8A87C;
+}
+
+.sheet-check-icon {
+  font-size: 22rpx;
+  color: #8e857e;
+  font-weight: 600;
+}
+
+.sheet-step-item.is-completed .sheet-check-icon {
+  color: #fff;
+}
+
+.sheet-step-item.is-current .sheet-check-icon {
+  color: #fff;
+}
+
+.sheet-step-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.sheet-step-title {
+  font-size: 26rpx;
+  color: #2d2d2d;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheet-step-item.is-completed .sheet-step-title {
+  color: #a09a94;
+  text-decoration: line-through;
+}
+
+.sheet-step-meta {
+  font-size: 22rpx;
+  color: #8e857e;
+  flex-shrink: 0;
+}
+
+/* --- 甘特图 Sheet --- */
+.gantt-section {
+  padding: 8rpx 0;
+}
+
+.gantt-task-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 16rpx 0;
+}
+
+.gantt-task-name {
+  font-size: 26rpx;
+  color: #5a544f;
+  width: 160rpx;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gantt-bar-track {
+  flex: 1;
+  height: 16rpx;
   border-radius: 999rpx;
-  background: rgba(0, 0, 0, 0.03);
+  background: rgba(0, 0, 0, 0.05);
   overflow: hidden;
 }
 
-.timeline-gantt__fill {
+.gantt-bar-fill {
   height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #e8a87c, #f7c28a);
+  border-radius: 999rpx;
+  background: linear-gradient(90deg, #E8A87C, #f7c28a);
+  transition: width 0.4s ease;
+}
+
+.gantt-task-time {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #b46535;
+  width: 60rpx;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.gantt-empty {
+  padding: 48rpx 0;
+  text-align: center;
+}
+
+.gantt-empty-text {
+  font-size: 26rpx;
+  color: #a09a94;
 }

@@ -44,8 +44,17 @@ function getDb() {
 
 // ─── 加载本地数据 ────────────────────────────────────────
 function loadLocalRecipes() {
-  const recipesPath = path.join(CONFIG.projectRoot, 'miniprogram', 'data', 'recipes.js');
-  const mod = require(recipesPath);
+  // 优先使用完整版（含 ingredients / steps / baby_variant），精简版仅含算法核心字段
+  const fullPath = path.join(CONFIG.projectRoot, 'miniprogram', 'data', 'recipes.full.bak.js');
+  const slimPath = path.join(CONFIG.projectRoot, 'miniprogram', 'data', 'recipes.js');
+  let mod;
+  try {
+    mod = require(fullPath);
+    console.log(chalk.gray('[batch-sync] 使用完整版菜谱：recipes.full.bak.js'));
+  } catch (e) {
+    mod = require(slimPath);
+    console.log(chalk.yellow('[batch-sync] ⚠ 完整版不存在，降级到精简版 recipes.js（将缺少 ingredients/steps）'));
+  }
   return {
     adultRecipes: mod.adultRecipes || [],
     babyRecipes: mod.babyRecipes || []

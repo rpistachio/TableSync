@@ -130,17 +130,32 @@ var DIETARY_PREFERENCE_TAGS = {
  */
 function normalizeUserPreference(pref) {
   if (!pref || typeof pref !== 'object') {
-    return { avoidList: [], dietStyle: '', isTimeSave: false, allergens: [], dietary_preference: '' };
+    return {
+      avoidList: [],
+      dietStyle: '',
+      isTimeSave: false,
+      allergens: [],
+      dietary_preference: '',
+      kitchenConfig: { burners: 2, hasSteamer: false, hasAirFryer: false, hasOven: false }
+    };
   }
   var avoidList = Array.isArray(pref.avoidList) ? pref.avoidList : (Array.isArray(pref.allergens) ? pref.allergens : []);
   var dietStyle = pref.dietStyle != null ? String(pref.dietStyle) : (pref.dietary_preference != null ? String(pref.dietary_preference) : '');
   var isTimeSave = pref.isTimeSave === true || pref.is_time_save === true;
+  var kc = pref.kitchenConfig || {};
+  var kitchenConfig = {
+    burners: Math.max(1, Math.min(4, kc.burners != null ? kc.burners : 2)),
+    hasSteamer: kc.hasSteamer === true,
+    hasAirFryer: kc.hasAirFryer === true,
+    hasOven: kc.hasOven === true
+  };
   return {
     avoidList: avoidList,
     dietStyle: dietStyle,
     isTimeSave: isTimeSave,
     allergens: avoidList,
-    dietary_preference: dietStyle
+    dietary_preference: dietStyle,
+    kitchenConfig: kitchenConfig
   };
 }
 
@@ -245,11 +260,12 @@ var COOK_TYPE_TO_DEVICE = {
   stew: 'stove_long',        // 炖菜 → 长时间占灶（炖锅/砂锅）
   steam: 'steamer',          // 蒸菜 → 蒸锅
   cold: 'none',              // 凉菜 → 无需设备
+  cold_dress: 'none',        // 凉拌 → 无需设备 (与 mix.js 一致)
   salad: 'none',             // 拌菜 → 无需设备
   boil: 'pot'                // 煮汤 → 汤锅
 };
 
-/** 设备数量限制（普通家庭厨房配置） */
+/** 设备数量限制（普通家庭厨房配置，fallback 用） */
 var DEVICE_LIMITS = {
   wok: 2,                    // 最多 2 道炒菜（1-2 个炒锅）
   stove_long: 1,             // 最多 1 道长时间占灶（炖菜）
@@ -257,6 +273,34 @@ var DEVICE_LIMITS = {
   pot: 1,                    // 最多 1 道汤
   none: 99                   // 凉菜无限制
 };
+
+/**
+ * 根据用户厨房配置计算动态设备上限
+ * 核心约束: wok + stove_long + pot 共享 burners 个火眼
+ * @param {Object} kitchenConfig - { burners, hasSteamer, hasAirFryer, hasOven }
+ * @returns {Object} 设备上限对象，含 _burners、_needsBurner 元信息
+ */
+function computeDeviceLimits(kitchenConfig) {
+  var cfg = kitchenConfig || {};
+  var burners = Math.max(1, Math.min(4, cfg.burners != null ? cfg.burners : 2));
+  var hasSteamer = cfg.hasSteamer === true;
+
+  return {
+    wok: Math.min(burners, 2),         // 炒锅上限 = min(火眼数, 2)
+    stove_long: burners >= 2 ? 1 : 0,  // 炖锅: 双灶及以上才允许独占 1 眼炖煮
+    steamer: 1,                         // 蒸锅始终允许 1 道
+    pot: burners >= 2 ? 1 : 0,         // 汤锅: 双灶及以上才允许独占 1 眼煲汤
+    none: 99,
+    _burners: burners,
+    _needsBurner: {
+      wok: true,
+      stove_long: true,
+      steamer: !hasSteamer,             // 电蒸锅不占灶
+      pot: true,
+      none: false
+    }
+  };
+}
 
 /**
  * 获取菜谱的设备类型
@@ -275,6 +319,85 @@ function getRecipeDevice(recipe) {
  */
 function initDeviceCounts() {
   return { wok: 0, stove_long: 0, steamer: 0, pot: 0, none: 0 };
+}
+
+/**
+ * 设备槽位追踪器：调度时模拟设备占用，避免灶台/蒸锅等超限。
+ * 若传入 kitchenConfig，则 wok/stove_long/pot 共享 burners 个火眼（总量约束）；否则沿用原有 per-device 上限（向后兼容）。
+ * @param {Object} [kitchenConfig] - 厨房配置，缺省时使用原有硬编码上限
+ * @returns {Object} { canAllocate(device), allocate(device, duration), getNextFreeTime(device), reservations }
+ */
+function createDeviceTracker(kitchenConfig) {
+  var useBurnerPool = kitchenConfig != null && typeof kitchenConfig === 'object';
+  var limits = useBurnerPool ? computeDeviceLimits(kitchenConfig) : { wok: 2, stove_long: 1, steamer: 1, pot: 1, none: 99 };
+  var reservations = { wok: [], stove_long: [], steamer: [], pot: [], none: [] };
+  var totalBurners = useBurnerPool && limits._burners != null ? limits._burners : null;
+  var needsBurner = useBurnerPool && limits._needsBurner ? limits._needsBurner : null;
+  var burnerPool = totalBurners != null ? [] : null;
+
+  function getLimit(device) {
+    return limits[device] != null ? limits[device] : 1;
+  }
+
+  function getNextFreeTime(device) {
+    if (burnerPool != null && needsBurner && needsBurner[device]) {
+      if (burnerPool.length < totalBurners) return 0;
+      burnerPool.sort(function (a, b) { return a - b; });
+      return burnerPool[0] || 0;
+    }
+    var list = reservations[device];
+    if (!Array.isArray(list)) return 0;
+    var cap = getLimit(device);
+    if (list.length < cap) return 0;
+    list.sort(function (a, b) { return a - b; });
+    return list[0] || 0;
+  }
+
+  function canAllocate(device) {
+    if (device === 'none') return true;
+    if (burnerPool != null && needsBurner && needsBurner[device]) {
+      return burnerPool.length < totalBurners;
+    }
+    var list = reservations[device];
+    return Array.isArray(list) && list.length < getLimit(device);
+  }
+
+  /** 分配设备，返回建议的 startAt（分钟），并记录占用至 startAt + duration */
+  function allocate(device, duration) {
+    if (device === 'none') return 0;
+    if (burnerPool != null && needsBurner && needsBurner[device]) {
+      var cap = totalBurners;
+      burnerPool.sort(function (a, b) { return a - b; });
+      var startAt = burnerPool.length < cap ? 0 : (burnerPool[0] || 0);
+      var endAt = startAt + duration;
+      if (burnerPool.length < cap) {
+        burnerPool.push(endAt);
+      } else {
+        burnerPool[0] = endAt;
+      }
+      if (reservations[device]) reservations[device].push(endAt);
+      return startAt;
+    }
+    var list = reservations[device] || [];
+    var cap = getLimit(device);
+    list.sort(function (a, b) { return a - b; });
+    var startAt = list.length < cap ? 0 : (list[0] || 0);
+    var endAt = startAt + duration;
+    if (list.length < cap) {
+      list.push(endAt);
+    } else {
+      list[0] = endAt;
+    }
+    reservations[device] = list;
+    return startAt;
+  }
+
+  return {
+    canAllocate: canAllocate,
+    allocate: allocate,
+    getNextFreeTime: getNextFreeTime,
+    reservations: reservations
+  };
 }
 
 /**
@@ -301,12 +424,14 @@ function countDevicesFromMenus(existingMenus) {
  * 检查添加某道菜后是否会超出设备限制
  * @param {Object} recipe - 待添加的菜谱
  * @param {Object} deviceCounts - 当前设备计数
+ * @param {Object} [limits] - 设备上限，缺省用 DEVICE_LIMITS
  * @returns {Boolean} true = 会超限，应该跳过
  */
-function wouldExceedDeviceLimit(recipe, deviceCounts) {
+function wouldExceedDeviceLimit(recipe, deviceCounts, limits) {
   if (!recipe) return false;
   var device = getRecipeDevice(recipe);
-  var limit = DEVICE_LIMITS[device];
+  var lim = limits || DEVICE_LIMITS;
+  var limit = lim[device];
   if (limit == null) return false;
   var current = deviceCounts[device] || 0;
   return current >= limit;
@@ -316,13 +441,14 @@ function wouldExceedDeviceLimit(recipe, deviceCounts) {
  * 过滤掉会导致设备超限的菜谱
  * @param {Array} pool - 候选菜谱池
  * @param {Object} deviceCounts - 当前设备计数
+ * @param {Object} [limits] - 设备上限，缺省用 DEVICE_LIMITS
  * @returns {Array} 过滤后的池
  */
-function filterByDeviceLimits(pool, deviceCounts) {
+function filterByDeviceLimits(pool, deviceCounts, limits) {
   if (!Array.isArray(pool) || pool.length === 0) return pool;
   
   var filtered = pool.filter(function (r) {
-    return !wouldExceedDeviceLimit(r, deviceCounts);
+    return !wouldExceedDeviceLimit(r, deviceCounts, limits);
   });
   
   // 如果全部超限，返回原池（避免无菜可选）
@@ -339,9 +465,10 @@ function filterByDeviceLimits(pool, deviceCounts) {
  * 
  * @param {Array} pool - 已做 preFilter 的池
  * @param {Object} deviceCountsRef - { wok, stove_long, steamer, pot, none }，会原地更新
+ * @param {Object} [limits] - 设备上限，缺省用 DEVICE_LIMITS
  * @returns {{ recipe: Object, deviceCounts: Object }} 选中的菜谱与更新后的设备计数
  */
-function pickOneWithDeviceBalance(pool, deviceCountsRef) {
+function pickOneWithDeviceBalance(pool, deviceCountsRef, limits) {
   if (!Array.isArray(pool) || pool.length === 0) {
     return { recipe: null, deviceCounts: deviceCountsRef || initDeviceCounts() };
   }
@@ -349,7 +476,7 @@ function pickOneWithDeviceBalance(pool, deviceCountsRef) {
   var counts = deviceCountsRef || initDeviceCounts();
   
   // 过滤掉会导致设备超限的菜谱
-  var availablePool = filterByDeviceLimits(pool, counts);
+  var availablePool = filterByDeviceLimits(pool, counts, limits);
   
   // 随机抽选
   var pick = availablePool[Math.floor(Math.random() * availablePool.length)];
@@ -372,9 +499,10 @@ function pickOneWithDeviceBalance(pool, deviceCountsRef) {
  * 
  * @param {Array} pool - 已做 preFilter 的池
  * @param {number} stewCount - 当前已选中的 stew 数量
+ * @param {Object} [limits] - 设备上限，缺省用 DEVICE_LIMITS
  * @returns {{ recipe: Object, stewCount: number }} 选中的菜谱与更新后的 stewCount
  */
-function pickOneWithStewBalance(pool, stewCount) {
+function pickOneWithStewBalance(pool, stewCount, limits) {
   if (!Array.isArray(pool) || pool.length === 0) return { recipe: null, stewCount: stewCount };
 
   // 将 stewCount 转换为设备计数格式
@@ -382,7 +510,7 @@ function pickOneWithStewBalance(pool, stewCount) {
   deviceCounts.stove_long = stewCount || 0;
   
   // 使用新的设备平衡算法
-  var result = pickOneWithDeviceBalance(pool, deviceCounts);
+  var result = pickOneWithDeviceBalance(pool, deviceCounts, limits);
   
   // 返回兼容旧格式的结果
   return {
@@ -661,19 +789,24 @@ function getAdultPoolSimple(taste, meatKey, userPreference) {
 /**
  * 从已选菜单中提取已选菜谱 ID 集合，用于去重
  * @param {Array} existingMenus - 已选菜单数组
+ * @param {Array} [excludeRecipeNames] - 额外要排除的菜名列表（如上次生成的菜单，用于减少重复出现）
  * @returns {Object} id → true 的哈希表
  */
-function getPickedIds(existingMenus) {
+function getPickedIds(existingMenus, excludeRecipeNames) {
   var ids = {};
-  if (!Array.isArray(existingMenus)) return ids;
+  if (!Array.isArray(existingMenus)) existingMenus = [];
   for (var i = 0; i < existingMenus.length; i++) {
     var m = existingMenus[i];
     if (m && m.adultRecipe && m.adultRecipe.id) {
       ids[m.adultRecipe.id] = true;
     }
-    // 也记录 name，防止同名不同 id
     if (m && m.adultRecipe && m.adultRecipe.name) {
       ids['__name__' + m.adultRecipe.name] = true;
+    }
+  }
+  if (Array.isArray(excludeRecipeNames)) {
+    for (var j = 0; j < excludeRecipeNames.length; j++) {
+      if (excludeRecipeNames[j]) ids['__name__' + excludeRecipeNames[j]] = true;
     }
   }
   return ids;
@@ -820,8 +953,9 @@ function generateMenu(taste, meat, babyMonth, hasBaby, adultCount, babyTaste, us
     fallbackReason = 'all_filters_empty'; // 所有过滤条件下都无匹配
   }
 
-  // ★ 去重：排除已选菜谱，避免同一道菜在菜单中重复出现
-  var pickedIds = getPickedIds(existingMenus);
+  // ★ 去重：排除已选菜谱 + 上次生成菜单中的菜名（减少连续两次生成重复）
+  var excludeRecipeNames = (userPreference && userPreference.excludeRecipeNames) || [];
+  var pickedIds = getPickedIds(existingMenus, excludeRecipeNames);
   aPool = excludeAlreadyPicked(aPool, pickedIds);
 
   // ★ 多样性过滤：主料去重、做法限频、命名前缀去重（软约束）
@@ -1232,6 +1366,9 @@ function generateMenuWithFilters(meat, babyMonth, hasBaby, adultCount, babyTaste
   var stewCountRef = (filters && filters.stewCountRef) || null;
   var excludeRecipeName = (filters && filters.excludeRecipeName) || null;
   var excludeRecipeId = (filters && filters.excludeRecipeId) || null;
+  var excludeRecipeNames = (filters && Array.isArray(filters.excludeRecipeNames)) ? filters.excludeRecipeNames : (userPreference && userPreference.excludeRecipeNames) || [];
+  var kitchenConfig = (filters && filters.kitchenConfig) || (userPreference && userPreference.kitchenConfig) || null;
+  var deviceLimits = kitchenConfig ? computeDeviceLimits(kitchenConfig) : null;
   
   var fallbackReason = null;
   var originalPoolSize = 0;
@@ -1267,8 +1404,8 @@ function generateMenuWithFilters(meat, babyMonth, hasBaby, adultCount, babyTaste
   }
   if (aPool.length === 0 && meatKey === 'vegetable') aPool = currentAdultRecipes.filter(function (r) { return r.meat === 'vegetable'; });
 
-  // ★ 去重：排除已选菜谱，避免同一道菜在菜单中重复出现
-  var pickedIds = getPickedIds(existingMenus);
+  // ★ 去重：排除已选菜谱 + 上次生成菜单菜名
+  var pickedIds = getPickedIds(existingMenus, excludeRecipeNames);
   aPool = excludeAlreadyPicked(aPool, pickedIds);
 
   // ★ 显式排除指定菜谱（用于去重替换时强制不抽到同一道）
@@ -1284,7 +1421,7 @@ function generateMenuWithFilters(meat, babyMonth, hasBaby, adultCount, babyTaste
   aPool = diversityFilter(aPool, existingMenus);
 
   var currentStew = stewCountRef && typeof stewCountRef.stewCount === 'number' ? stewCountRef.stewCount : 0;
-  var pickResult = pickOneWithStewBalance(aPool, currentStew);
+  var pickResult = pickOneWithStewBalance(aPool, currentStew, deviceLimits);
   if (stewCountRef && typeof stewCountRef.stewCount === 'number') stewCountRef.stewCount = pickResult.stewCount;
 
   var adultRaw = pickResult.recipe;
@@ -1554,13 +1691,52 @@ function normalizeIngredientName(name) {
   return INGREDIENT_ALIAS_MAP[trimmed] || trimmed;
 }
 
+/**
+ * 从菜谱元数据提取总烹饪时间（分钟）
+ * @param {Object} recipe - 菜谱对象
+ * @returns {number|null} 分钟数，无则 null
+ */
+function getRecipeCookTime(recipe) {
+  if (!recipe || typeof recipe !== 'object') return null;
+  var ct = recipe.cook_time;
+  if (typeof ct === 'number' && ct > 0) return ct;
+  if (typeof ct === 'string') {
+    var parsed = parseInt(ct, 10);
+    if (!isNaN(parsed) && parsed > 0) return parsed;
+  }
+  return null;
+}
+
 function estimateMinutes(text) {
   if (!text || typeof text !== 'string') return 5;
   var t = text;
-  if (/\d+\s*小时|炖\s*[12]|煲\s*1\.5/.test(t)) return 60;
-  if (/\d+\s*小时|炖\s*\d+|煲\s*\d+/.test(t)) return 90;
-  var mat = t.match(/蒸\s*(\d+)|蒸约\s*(\d+)/);
-  if (mat) return Math.max(10, parseInt(mat[1] || mat[2], 10) + 5);
+
+  // 小时级：1小时、1.5小时、2小时等
+  var hourMatch = t.match(/(\d+(?:\.\d+)?)\s*小时/);
+  if (hourMatch) return Math.round(parseFloat(hourMatch[1], 10) * 60);
+
+  // 炖/煲/焖 + 数字（分钟或小时）
+  var stewMin = t.match(/[炖煲焖]\s*[\d.]+\s*分钟/);
+  if (stewMin) return Math.min(90, Math.max(20, parseInt(t.match(/\d+/)[0], 10)));
+  var stewHour = t.match(/[炖煲焖]\s*[\d.]+\s*小时/);
+  if (stewHour) return Math.round(parseFloat(t.match(/[\d.]+/)[0], 10) * 60);
+
+  // 煲 1.5、炖 1、煲 2 等简写
+  if (/煲\s*1\.5|炖\s*1\.5/.test(t)) return 90;
+  if (/炖\s*[12]\s*小时|煲\s*[12]\s*小时/.test(t)) return 60;
+  if (/炖\s*\d+|煲\s*\d+/.test(t)) return 90;
+
+  // 小火煲、小火20分钟、慢煮30分钟
+  var slowMatch = t.match(/小火\s*(\d+)\s*分钟|慢煮\s*(\d+)\s*分钟/);
+  if (slowMatch) return Math.max(15, parseInt(slowMatch[1] || slowMatch[2], 10));
+
+  // 蒸 N 分钟
+  var mat = t.match(/蒸\s*(\d+)|蒸约\s*(\d+)|蒸\s*至[^，]*(\d+)\s*分钟/);
+  if (mat) return Math.max(10, parseInt(mat[1] || mat[2] || mat[3], 10) + 5);
+
+  // 煮汤、煲汤 等无数字
+  if (/煲汤|煮汤|小火慢煮|慢煮(?!\s*\d)/.test(t)) return 45;
+
   if (/焯水|洗净|腌制|切/.test(t)) return 8;
   if (/炒|煎|淋/.test(t)) return 5;
   return 5;
@@ -1688,14 +1864,22 @@ function normalizeStepForPipeline(step, recipe) {
     s.actionType = inferActionType(s, recipe || s.recipe || null);
   }
 
-  // 规范化时长
+  // 规范化时长：优先 step.duration_num -> recipe.cook_time -> estimateMinutes(文本)
   if (typeof s.duration_num !== 'number') {
-    s.duration_num = estimateMinutes(getStepText(s));
+    var r = recipe || s.recipe || null;
+    var recipeTime = getRecipeCookTime(r);
+    s.duration_num = recipeTime != null ? recipeTime : estimateMinutes(getStepText(s));
   }
 
   // 等待时间：长耗时步骤默认 = duration_num，其余为 0
   if (typeof s.waitTime !== 'number') {
     s.waitTime = s.actionType === 'long_term' ? s.duration_num : 0;
+  }
+
+  // 设备类型：供设备感知调度使用
+  if (s.device == null) {
+    var r = recipe || s.recipe || null;
+    s.device = r ? getRecipeDevice(r) : 'wok';
   }
 
   return s;
@@ -1744,9 +1928,10 @@ function mergeEssentialPrep(prepSteps) {
  * 根据长耗时步骤构建一个简易时间线。
  * 当前实现主要负责为后续 gap 填充提供有序的 long_term 列表与窗口大小。
  * @param {Array} longTermSteps
+ * @param {Object} [kitchenConfig] - 厨房配置，供 createDeviceTracker 使用
  * @returns {Array} 带有 startAt / endAt 字段的长耗时步骤列表
  */
-function buildTimeline(longTermSteps) {
+function buildTimeline(longTermSteps, kitchenConfig) {
   if (!Array.isArray(longTermSteps) || longTermSteps.length === 0) return [];
   var sorted = longTermSteps.slice().sort(function (a, b) {
     var wa = typeof a.waitTime === 'number' ? a.waitTime : a.duration_num || 0;
@@ -1754,36 +1939,120 @@ function buildTimeline(longTermSteps) {
     return wb - wa; // 按等待时间降序：长耗时先启动
   });
 
+  var tracker = createDeviceTracker(kitchenConfig);
   var timeline = [];
-  var currentStart = 0;
   for (var i = 0; i < sorted.length; i++) {
     var s = sorted[i];
     var w = typeof s.waitTime === 'number' ? s.waitTime : s.duration_num || 0;
+    var device = s.device || getRecipeDevice(s.recipe) || 'wok';
+    var startAt = tracker.allocate(device, w);
     var node = cloneStep(s);
-    node.startAt = currentStart;
-    node.endAt = currentStart + w;
+    node.startAt = startAt;
+    node.endAt = startAt + w;
     node.pipelineStage = 'long_term';
     timeline.push(node);
-    // 长耗时任务可以部分重叠，这里只做轻量递增，避免时间线为 0
-    currentStart += Math.max(5, Math.round(w * 0.25));
   }
   return timeline;
 }
 
 /**
  * 在长耗时步骤的等待窗口中插入 active/idle_prep 步骤。
- * 简化逻辑：按原始顺序遍历 activeSteps，在每个 long_term 窗口内尽量填满但不过载。
+ * First-Fit-Decreasing：按 duration_num 降序尝试放入，大任务优先塞入窗口，同时尊重依赖与设备约束。
  * @param {Array} timeline 来自 buildTimeline
  * @param {Array} activeSteps 非 long_term 且非收尾步骤
+ * @param {Object} [kitchenConfig] - 厨房配置，用于动态设备上限
  * @returns {Array} 填充后的步骤列表（不包含全局备菜/收尾）
  */
-function fillGaps(timeline, activeSteps) {
+/** 已调度步骤的 stepKey 集合，用于依赖检查 */
+function getScheduledStepKeys(result) {
+  var set = {};
+  for (var i = 0; i < result.length; i++) {
+    var k = result[i] && result[i].stepKey;
+    if (k) set[k] = true;
+  }
+  return set;
+}
+
+/** 步骤是否可调度：若 dependsOn 存在，则前置步骤必须已入 result */
+function isStepSchedulable(step, scheduledStepKeys) {
+  if (!step || !step.dependsOn) return true;
+  return scheduledStepKeys[step.dependsOn] === true;
+}
+
+/**
+ * 扫描步骤列表，找出在任意时间窗口内 burner 需求超过用户设定值的步骤并标记。
+ * @param {Array} steps - fillGaps 返回的步骤数组（含 startAt/endAt 或 gapStartAt/gapEndAt）
+ * @param {Object} kitchenConfig - 厨房配置
+ * @returns {Array} 溢出步骤（原地已设置 _burnerOverflow、_overflowHint）
+ */
+function detectBurnerOverflow(steps, kitchenConfig) {
+  if (!kitchenConfig || !Array.isArray(steps) || steps.length === 0) return [];
+  var limits = computeDeviceLimits(kitchenConfig);
+  var totalBurners = limits._burners;
+  var needsBurner = limits._needsBurner;
+  if (totalBurners == null || !needsBurner) return [];
+
+  var events = [];
+  var stepByKey = {};
+  for (var i = 0; i < steps.length; i++) {
+    var s = steps[i];
+    var dev = s.device || getRecipeDevice(s.recipe) || 'wok';
+    if (!needsBurner[dev]) continue;
+    var start = s.startAt != null ? s.startAt : s.gapStartAt;
+    var end = s.endAt != null ? s.endAt : s.gapEndAt;
+    if (start == null || end == null) continue;
+    var key = 'i' + i;
+    stepByKey[key] = s;
+    events.push({ t: start, delta: 1, key: key });
+    events.push({ t: end, delta: -1, key: key });
+  }
+  events.sort(function (a, b) {
+    if (a.t !== b.t) return a.t - b.t;
+    return a.delta - b.delta;
+  });
+
+  var overflowKeys = {};
+  var count = 0;
+  var activeSet = {};
+  for (var e = 0; e < events.length; e++) {
+    if (events[e].delta === 1) activeSet[events[e].key] = true;
+    else delete activeSet[events[e].key];
+    count += events[e].delta;
+    if (count > totalBurners) {
+      for (var ak in activeSet) overflowKeys[ak] = true;
+    }
+  }
+
+  var overflowSteps = [];
+  for (var key in stepByKey) {
+    if (overflowKeys[key]) {
+      var step = stepByKey[key];
+      step._burnerOverflow = true;
+      step._overflowHint = '灶台受限，请先完成上一步再开始本步骤';
+      overflowSteps.push(step);
+    }
+  }
+  return overflowSteps;
+}
+
+function fillGaps(timeline, activeSteps, kitchenConfig) {
   if (!Array.isArray(timeline) || timeline.length === 0) {
     // 没有长耗时任务时，直接返回 activeSteps 原顺序
     return Array.isArray(activeSteps) ? activeSteps.slice() : [];
   }
+  var limits = kitchenConfig ? computeDeviceLimits(kitchenConfig) : DEVICE_LIMITS;
   var result = [];
   var usedIndex = {};
+  // FFD：按 duration_num 降序的索引，大任务优先填入窗口
+  var sortedIndices = [];
+  if (Array.isArray(activeSteps) && activeSteps.length > 0) {
+    for (var idx = 0; idx < activeSteps.length; idx++) sortedIndices.push(idx);
+    sortedIndices.sort(function (a, b) {
+      var da = typeof activeSteps[a].duration_num === 'number' ? activeSteps[a].duration_num : estimateMinutes(getStepText(activeSteps[a]));
+      var db = typeof activeSteps[b].duration_num === 'number' ? activeSteps[b].duration_num : estimateMinutes(getStepText(activeSteps[b]));
+      return db - da;
+    });
+  }
 
   function isUsed(idx) {
     return usedIndex[idx] === true;
@@ -1802,15 +2071,27 @@ function fillGaps(timeline, activeSteps) {
     // Stage 2：长耗时任务自身
     result.push(longTask);
 
-    // Stage 3：在等待窗口内穿插 active / idle_prep
+    // 本窗口内设备占用（长任务已占一档）
+    var windowDeviceCounts = initDeviceCounts();
+    var longDevice = longTask.device || getRecipeDevice(longTask.recipe) || 'wok';
+    if (windowDeviceCounts[longDevice] != null) windowDeviceCounts[longDevice]++;
+
+    // Stage 3：在等待窗口内穿插 active / idle_prep（尊重步骤依赖与设备上限）
     if (!Array.isArray(activeSteps) || activeSteps.length === 0 || windowSize <= 0) {
       continue;
     }
 
     var usedTime = 0;
-    for (var i = 0; i < activeSteps.length; i++) {
+    var scheduledStepKeys = getScheduledStepKeys(result);
+    for (var si = 0; si < sortedIndices.length; si++) {
+      var i = sortedIndices[si];
       if (isUsed(i)) continue;
       var step = activeSteps[i];
+      if (!isStepSchedulable(step, scheduledStepKeys)) continue;
+      var dev = step.device || getRecipeDevice(step.recipe) || 'wok';
+      var limit = limits[dev] != null ? limits[dev] : 1;
+      if ((windowDeviceCounts[dev] || 0) >= limit) continue;
+
       var dur = typeof step.duration_num === 'number'
         ? step.duration_num
         : estimateMinutes(getStepText(step));
@@ -1822,21 +2103,74 @@ function fillGaps(timeline, activeSteps) {
 
       var s = cloneStep(step);
       s.pipelineStage = (s.step_type === 'prep') ? 'idle_gap' : 'active_gap';
+      s.gapStartAt = longTask.startAt + usedTime;
+      s.gapEndAt = longTask.startAt + usedTime + dur;
       result.push(s);
       markUsed(i);
       usedTime += dur;
+      scheduledStepKeys[s.stepKey] = true;
+      if (windowDeviceCounts[dev] != null) windowDeviceCounts[dev]++;
     }
   }
 
-  // 将剩余未使用的 active/idle 步骤顺序追加（长耗时任务之后）
+  // 将剩余未使用的 active/idle 步骤追加（尊重依赖：前置步骤必须先入 result）
   if (Array.isArray(activeSteps)) {
-    for (var j = 0; j < activeSteps.length; j++) {
-      if (isUsed(j)) continue;
-      var leftover = cloneStep(activeSteps[j]);
-      leftover.pipelineStage = leftover.pipelineStage || 'active_tail';
-      result.push(leftover);
+    var scheduledStepKeys = getScheduledStepKeys(result);
+    var added;
+    do {
+      added = 0;
+      for (var j = 0; j < activeSteps.length; j++) {
+        if (isUsed(j)) continue;
+        var step = activeSteps[j];
+        if (!isStepSchedulable(step, scheduledStepKeys)) continue;
+        var leftover = cloneStep(step);
+        leftover.pipelineStage = leftover.pipelineStage || 'active_tail';
+        result.push(leftover);
+        markUsed(j);
+        if (leftover.stepKey) scheduledStepKeys[leftover.stepKey] = true;
+        added++;
+      }
+    } while (added > 0);
+    // 兜底：仍未调度的步骤按原顺序追加（避免 DAG 异常时死锁）
+    for (var k = 0; k < activeSteps.length; k++) {
+      if (isUsed(k)) continue;
+      var fallback = cloneStep(activeSteps[k]);
+      fallback.pipelineStage = fallback.pipelineStage || 'active_tail';
+      result.push(fallback);
     }
   }
+
+  // 单灶洗锅间隙：burners=1 时，连续两个 wok 步骤之间插入 3 分钟洗锅缓冲
+  if (kitchenConfig && limits._burners === 1 && result.length > 1) {
+    var washIdx = 0;
+    var out = [];
+    for (var wi = 0; wi < result.length; wi++) {
+      var curr = result[wi];
+      var currDev = curr.device || getRecipeDevice(curr.recipe) || 'wok';
+      var prev = wi > 0 ? result[wi - 1] : null;
+      var prevDev = prev ? (prev.device || getRecipeDevice(prev.recipe) || 'wok') : '';
+      if (prevDev === 'wok' && currDev === 'wok') {
+        out.push({
+          id: 'wash-wok-' + (washIdx++),
+          text: '快速冲洗炒锅，准备下一道菜',
+          duration_num: 3,
+          step_type: 'cook',
+          actionType: 'active',
+          device: 'none',
+          pipelineStage: 'wash_gap',
+          stepKey: 'wash_gap_' + washIdx
+        });
+      }
+      out.push(curr);
+    }
+    result = out;
+  }
+
+  // 设备溢出检测：标记峰值灶台超过用户设定值的步骤
+  if (kitchenConfig) {
+    detectBurnerOverflow(result, kitchenConfig);
+  }
+
   return result;
 }
 
@@ -2014,9 +2348,10 @@ function buildParallelContext(steps) {
  * 四阶段重排：prep → long_term → gap(active/idle_prep) → finish
  * @param {Array} allSteps 原始步骤数组（可混合多个菜）
  * @param {Array} menus    当前菜单列表（暂未强依赖，预留扩展）
+ * @param {Object} [kitchenConfig] - 厨房配置，供 buildTimeline / fillGaps 使用
  * @returns {Array} 重排后的步骤数组
  */
-function reorderStepsForPipeline(allSteps, menus) {
+function reorderStepsForPipeline(allSteps, menus, kitchenConfig) {
   if (!Array.isArray(allSteps) || allSteps.length === 0) return [];
   // menus 暂留作扩展（如按菜品权重排序），当前实现中未强依赖
   void menus;
@@ -2066,9 +2401,30 @@ function reorderStepsForPipeline(allSteps, menus) {
     return simple;
   }
 
+  // 4.5 单灶 + 所有长耗时任务均占灶 → 线性降级，不并行
+  var limits = kitchenConfig ? computeDeviceLimits(kitchenConfig) : null;
+  if (limits && limits._burners <= 1 && longTermSteps.length > 0) {
+    var needsBurnerFn = function (step) {
+      var dev = step.device || getRecipeDevice(step.recipe) || 'wok';
+      return limits._needsBurner && limits._needsBurner[dev] === true;
+    };
+    if (longTermSteps.every(needsBurnerFn)) {
+      var linearOutput = [];
+      Array.prototype.push.apply(linearOutput, mergedPrep);
+      Array.prototype.push.apply(linearOutput, longTermSteps);
+      Array.prototype.push.apply(linearOutput, activeAndIdle);
+      for (var fi = 0; fi < finishSteps.length; fi++) {
+        var fStep = cloneStep(finishSteps[fi]);
+        fStep.pipelineStage = fStep.pipelineStage || 'finish';
+        linearOutput.push(fStep);
+      }
+      return linearOutput;
+    }
+  }
+
   // 5. Stage 2+3：基于长耗时任务构建时间线并填充间隙
-  var timeline = buildTimeline(longTermSteps);
-  var gapFilled = fillGaps(timeline, activeAndIdle);
+  var timeline = buildTimeline(longTermSteps, kitchenConfig);
+  var gapFilled = fillGaps(timeline, activeAndIdle, kitchenConfig);
 
   // 6. Stage 4：收尾步骤整体放在最后
   var output = [];
@@ -2084,8 +2440,85 @@ function reorderStepsForPipeline(allSteps, menus) {
   return output;
 }
 
+/** 设备类型对应的甘特图条颜色 */
+var DEVICE_GANTT_COLORS = {
+  wok: '#ff9800',
+  stove_long: '#e65100',
+  steamer: '#2196f3',
+  pot: '#9c27b0',
+  none: '#9e9e9e'
+};
+
 /**
- * 为流水线步骤打上阶段标记与文案，方便前端渲染阶段横幅。
+ * 为某一阶段内的步骤生成甘特图数据（bars、总时长、节省时长）。
+ * @param {Array} steps - 全量步骤
+ * @param {number} startIdx - 阶段起始索引（含）
+ * @param {number} endIdx - 阶段结束索引（含）
+ * @returns {Object|null} { totalMinutes, sequentialMinutes, savedMinutes, bars } 或 null
+ */
+function buildPhaseTimelineData(steps, startIdx, endIdx) {
+  if (!Array.isArray(steps) || startIdx < 0 || endIdx >= steps.length || startIdx > endIdx) return null;
+  var phaseSteps = [];
+  for (var i = startIdx; i <= endIdx; i++) phaseSteps.push(steps[i]);
+
+  var bars = [];
+  var sequentialTotal = 0;
+  var minStart = Infinity;
+  var maxEnd = -Infinity;
+  var tailTime = 0;
+
+  for (var p = 0; p < phaseSteps.length; p++) {
+    var st = phaseSteps[p];
+    var dur = typeof st.duration_num === 'number' ? st.duration_num : estimateMinutes(getStepText(st));
+    if (dur < 1) dur = 1;
+    sequentialTotal += dur;
+
+    var start = 0;
+    var end = dur;
+    if (st.pipelineStage === 'long_term' && typeof st.startAt === 'number' && typeof st.endAt === 'number') {
+      start = st.startAt;
+      end = st.endAt;
+      if (end > tailTime) tailTime = end;
+    } else if (typeof st.gapStartAt === 'number' && typeof st.gapEndAt === 'number') {
+      start = st.gapStartAt;
+      end = st.gapEndAt;
+    } else {
+      start = tailTime;
+      end = tailTime + dur;
+      tailTime = end;
+    }
+    if (start < minStart) minStart = start;
+    if (end > maxEnd) maxEnd = end;
+
+    var name = st.recipeName || (st.title && st.title.replace(/^步骤\s*\d+[：:]\s*/, '')) || '步骤';
+    var device = st.device || getRecipeDevice(st.recipe) || 'wok';
+    bars.push({
+      name: name,
+      device: device,
+      start: start,
+      end: end,
+      duration: Math.round(end - start),
+      color: DEVICE_GANTT_COLORS[device] || '#757575'
+    });
+  }
+
+  var totalMinutes = Math.max(0, Math.round(maxEnd - minStart));
+  if (totalMinutes === 0 && sequentialTotal > 0) totalMinutes = Math.round(sequentialTotal);
+  var sequentialMinutes = Math.round(sequentialTotal);
+  var savedMinutes = Math.max(0, sequentialMinutes - totalMinutes);
+
+  return {
+    totalMinutes: totalMinutes,
+    sequentialMinutes: sequentialMinutes,
+    savedMinutes: savedMinutes,
+    bars: bars,
+    minStart: minStart
+  };
+}
+
+/**
+ * 为流水线步骤打上阶段标记与文案，方便前端渲染阶段横幅；
+ * 并为每阶段首步附加 phaseTimeline（甘特图数据）。
  *
  * 阶段约定：
  * - prep         → 阶段一：全局备菜
@@ -2098,7 +2531,7 @@ function reorderStepsForPipeline(allSteps, menus) {
  * 仅标记每一阶段的首个步骤 isPhaseStart = true，其余为 false。
  *
  * @param {Array} steps - 已经过 reorderStepsForPipeline & buildParallelContext 的步骤数组
- * @returns {Array} 带阶段标记的新数组
+ * @returns {Array} 带阶段标记与 phaseTimeline 的新数组
  */
 function annotatePhases(steps) {
   if (!Array.isArray(steps) || steps.length === 0) return [];
@@ -2124,6 +2557,9 @@ function annotatePhases(steps) {
     }
   }
 
+  var prepEnd = firstLong !== -1 ? firstLong - 1 : (firstGap !== -1 ? firstGap - 1 : steps.length - 1);
+  var cookEnd = firstFinish !== -1 ? firstFinish - 1 : steps.length - 1;
+
   var out = [];
   for (var j = 0; j < steps.length; j++) {
     var orig = steps[j];
@@ -2132,27 +2568,32 @@ function annotatePhases(steps) {
     step.phaseType = step.phaseType || null;
     step.phaseTitle = step.phaseTitle || '';
     step.phaseSubtitle = step.phaseSubtitle || '';
+    step.phaseTimeline = null;
 
     if (j === firstPrep && firstPrep !== -1) {
       step.isPhaseStart = true;
       step.phaseType = 'prep';
       step.phaseTitle = '切配阶段';
       step.phaseSubtitle = '按菜品完成洗、切、腌等准备';
+      step.phaseTimeline = buildPhaseTimelineData(steps, firstPrep, prepEnd);
     } else if (j === firstLong && firstLong !== -1) {
       step.isPhaseStart = true;
       step.phaseType = 'long_term';
       step.phaseTitle = '炖煮阶段';
       step.phaseSubtitle = '先启动耗时长的菜，释放后续空档';
+      step.phaseTimeline = buildPhaseTimelineData(steps, firstLong, cookEnd);
     } else if (j === firstGap && firstGap !== -1) {
       step.isPhaseStart = true;
       step.phaseType = 'gap';
       step.phaseTitle = '快炒阶段';
       step.phaseSubtitle = '利用等待空档完成快手菜';
+      step.phaseTimeline = buildPhaseTimelineData(steps, firstGap, cookEnd);
     } else if (j === firstFinish && firstFinish !== -1) {
       step.isPhaseStart = true;
       step.phaseType = 'finish';
       step.phaseTitle = '收尾装盘';
       step.phaseSubtitle = '收汁、调味、装盘，一起上桌';
+      step.phaseTimeline = buildPhaseTimelineData(steps, firstFinish, steps.length - 1);
     }
 
     out.push(step);
@@ -2276,12 +2717,16 @@ function getBabyReserveHint(menu) {
  * 新版逻辑：先将所有菜品的原子步骤摊平成流水线，使用 reorderStepsForPipeline 做多菜并行重排，
  *          再通过 buildParallelContext / annotatePhases 增强并行提示与阶段信息，
  *          最终仍返回兼容 steps 页面使用的结构（id/title/details/role/duration 等）。
+ * @param {Array} menus - 菜单列表
+ * @param {Array} shoppingList - 购物清单
+ * @param {Object} [options] - 可选项，如 { kitchenConfig }
  */
-function generateUnifiedSteps(menus, shoppingList) {
+function generateUnifiedSteps(menus, shoppingList, options) {
   var list = Array.isArray(shoppingList) ? shoppingList : [];
   if (!Array.isArray(menus) || menus.length === 0) {
     return [];
   }
+  var kitchenConfig = (options && options.kitchenConfig) || null;
   var steps = [];
   var id = 1;
 
@@ -2316,8 +2761,9 @@ function generateUnifiedSteps(menus, shoppingList) {
     var adult = menu.adultRecipe;
     var baby = menu.babyRecipe;
 
-    // 成人菜步骤
+    // 成人菜步骤（附加 recipeId / intraRecipeOrder / dependsOn 供依赖图与 fillGaps 使用）
     if (adult && Array.isArray(adult.steps)) {
+      var adultRecipeId = 'adult_' + m + '_' + (adult.name || adult.id || 'r');
       for (var ai = 0; ai < adult.steps.length; ai++) {
         var aStep = adult.steps[ai];
         var aTextRaw = getStepText(aStep);
@@ -2335,6 +2781,10 @@ function generateUnifiedSteps(menus, shoppingList) {
         aObj.taste = menu.taste || '';
         aObj.meat = adult.meat || menu.meat || '';
         aObj.recipe = adult;
+        aObj.recipeId = adultRecipeId;
+        aObj.intraRecipeOrder = ai;
+        aObj.stepKey = adultRecipeId + '_' + ai;
+        aObj.dependsOn = ai > 0 ? adultRecipeId + '_' + (ai - 1) : null;
 
         rawPipelineSteps.push(aObj);
       }
@@ -2342,6 +2792,7 @@ function generateUnifiedSteps(menus, shoppingList) {
 
     // 宝宝餐步骤（若存在）
     if (baby && Array.isArray(baby.steps)) {
+      var babyRecipeId = 'baby_' + m + '_' + (baby.name || baby.id || 'r');
       for (var bi = 0; bi < baby.steps.length; bi++) {
         var bStep = baby.steps[bi];
         var bTextRaw = getStepText(bStep);
@@ -2359,6 +2810,10 @@ function generateUnifiedSteps(menus, shoppingList) {
         bObj.taste = menu.taste || '';
         bObj.meat = baby.meat || menu.meat || '';
         bObj.recipe = baby;
+        bObj.recipeId = babyRecipeId;
+        bObj.intraRecipeOrder = bi;
+        bObj.stepKey = babyRecipeId + '_' + bi;
+        bObj.dependsOn = bi > 0 ? babyRecipeId + '_' + (bi - 1) : null;
 
         rawPipelineSteps.push(bObj);
       }
@@ -2380,7 +2835,7 @@ function generateUnifiedSteps(menus, shoppingList) {
   }
 
   // ---------- 阶段 2：多菜并行重排 + 并行上下文 + 阶段标记 ----------
-  var reordered = reorderStepsForPipeline(rawPipelineSteps, menus);
+  var reordered = reorderStepsForPipeline(rawPipelineSteps, menus, kitchenConfig);
   var withContext = buildParallelContext(reordered);
   var annotated = annotatePhases(withContext);
 
@@ -2427,7 +2882,8 @@ function generateUnifiedSteps(menus, shoppingList) {
       isPhaseStart: s.isPhaseStart || false,
       phaseType: s.phaseType || null,
       phaseTitle: s.phaseTitle || '',
-      phaseSubtitle: s.phaseSubtitle || ''
+      phaseSubtitle: s.phaseSubtitle || '',
+      phaseTimeline: s.phaseTimeline || null
     });
   }
 

@@ -1,123 +1,155 @@
-<view class="steps-container">
-  <view class="steps-header">
-    <image wx:if="{{currentStepImage}}" class="header-ambient-bg" src="{{currentStepImage}}" mode="aspectFill" />
-    <view class="header-mask"></view>
-    
-    <view class="header-content">
-      <view class="hero-section">
-        <view class="progress-visual">
-          <view class="progress-ring" style="background: conic-gradient(#E8A87C {{progressPercentage}}%, rgba(255,255,255,0.2) 0%)"></view>
-          <image wx:if="{{currentStepImage}}" class="dish-mini-img" src="{{currentStepImage}}" mode="aspectFill" />
-        </view>
-        
-        <view class="step-info">
-          <text class="progress-text">{{progressPercentage}}% · {{completedCount}}/{{totalSteps}} 步</text>
-          <text class="step-main-title">{{currentStepTitle}}</text>
-          <text class="step-sub-title">{{currentStepSubtitle}}</text>
-        </view>
-      </view>
+<view class="steps-container cook-mode">
+  <!-- Layer 1: 极简头部 -->
+  <view class="cook-header">
+    <view class="progress-bar-track">
+      <view class="progress-bar-fill" style="{{progressBarStyle}}"></view>
+    </view>
+    <view class="header-info">
+      <text class="step-counter">{{currentStepIndexDisplay}}/{{totalSteps}}</text>
+      <text class="current-dish-name">{{currentStepSubtitle}}</text>
     </view>
   </view>
 
-  <view class="page-content">
-    <view class="timeline-container">
+  <!-- Layer 2: 浮动并行状态条 -->
+  <view wx:if="{{activeParallelTasks.length > 0}}" class="parallel-float-bar" bindtap="toggleGanttSheet">
+    <scroll-view scroll-x class="parallel-scroll" enhanced show-scrollbar="{{false}}">
+      <view class="parallel-chip-row">
+        <view wx:for="{{activeParallelTasks}}" wx:key="stepId" class="parallel-chip">
+          <text class="chip-dot"></text>
+          <text class="chip-name">{{item.activeTaskName}}</text>
+          <text class="chip-time">{{item.remainingMinutes}}'</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- Layer 3: 聚焦步骤区 -->
+  <view class="focus-area">
+    <!-- 上一步摘要 -->
+    <view wx:if="{{prevStep}}" class="step-peek prev" bindtap="goPrevStep">
+      <text class="peek-check">✓</text>
+      <text class="peek-text">{{prevStep.title}}</text>
+    </view>
+
+    <!-- 当前步骤聚焦卡 -->
+    <view class="focus-card {{currentStep.completed ? 'is-done' : ''}}">
+      <!-- 阶段纤细标签 -->
+      <text wx:if="{{currentPhaseLabel}}" class="phase-chip {{currentPhaseType}}">{{currentPhaseLabel}}</text>
+
+      <!-- 步骤标题 -->
+      <text class="focus-title">{{currentStep.title}}</text>
+
+      <!-- 并行提示（内联） -->
+      <view wx:if="{{currentStep.parallelContext}}" class="focus-parallel-hint">
+        <text class="parallel-hint-text">{{currentStep.parallelContext.hint}}</text>
+        <text wx:if="{{currentStep.parallelContext.remainingMinutes != null}}" class="parallel-hint-timer">
+          {{currentStep.parallelContext.remainingMinutes}}'
+        </text>
+      </view>
+
+      <!-- 指令正文 -->
+      <view class="focus-body">
+        <view
+          wx:for="{{currentStep.details}}"
+          wx:for-item="line"
+          wx:key="index"
+          class="focus-line {{line.isBabyPortion ? 'baby-portion-action' : ''}}"
+        >
+          <rich-text class="focus-line-text" nodes="{{line.richText}}"></rich-text>
+        </view>
+      </view>
+
+      <!-- 调料横滚 -->
+      <view wx:if="{{currentStep.showSeasoningsList}}" class="focus-seasonings">
+        <scroll-view class="seasoning-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+          <view class="seasoning-row">
+            <view wx:for="{{currentStep.seasoningsList}}" wx:for-item="ing" wx:key="name" class="ing-tag">
+              <text class="n">{{ing.name}}</text>
+              <text class="a">{{ing.amount}}</text>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+
+      <!-- 时长提示 -->
+      <view wx:if="{{currentStep.duration}}" class="focus-duration">
+        <text class="duration-icon">⏱</text>
+        <text class="duration-text">约 {{currentStep.duration}} 分钟</text>
+      </view>
+    </view>
+
+    <!-- 下一步预览 -->
+    <view wx:if="{{nextStep}}" class="step-peek next" bindtap="goNextStep">
+      <text class="peek-label">下一步</text>
+      <text class="peek-text">{{nextStep.title}}</text>
+    </view>
+  </view>
+
+  <!-- 底部操作栏 -->
+  <view class="bottom-action-bar">
+    <view class="action-prev {{!prevStep ? 'disabled' : ''}}" bindtap="goPrevStep">
+      <text class="action-prev-text">上一步</text>
+    </view>
+    <button
+      class="action-main {{currentStep.completed ? 'is-done' : ''}}"
+      catchtap="markCurrentCompleted"
+    >
+      <text class="action-main-text">{{currentStep.completed ? '✓ 已完成' : '完成此步'}}</text>
+    </button>
+    <view class="action-list" bindtap="toggleStepList">
+      <text class="action-list-icon">☰</text>
+    </view>
+  </view>
+
+  <!-- 步骤列表 Bottom Sheet -->
+  <view wx:if="{{showStepList}}" class="sheet-mask" bindtap="toggleStepList"></view>
+  <view class="bottom-sheet {{showStepList ? 'is-open' : ''}}">
+    <view class="sheet-header">
+      <text class="sheet-title">全部步骤</text>
+      <text class="sheet-close" bindtap="toggleStepList">收起</text>
+    </view>
+    <scroll-view scroll-y class="sheet-scroll">
       <view
-        wx:for="{{steps}}"
+        wx:for="{{allViewSteps}}"
         wx:key="id"
-        class="timeline-item {{item.stepType}} {{item.completed ? 'completed' : ''}} {{index === (steps.length - 1) ? 'is-last' : ''}} {{index === currentIndex ? 'active' : ''}}"
-        id="step-{{item.id}}"
-        bindtap="onStepTap"
+        class="sheet-step-item {{item.completed ? 'is-completed' : ''}} {{index === currentIndex ? 'is-current' : ''}}"
+        bindtap="onJumpToStep"
         data-index="{{index}}"
       >
-        <!-- 阶段横幅（支持文案配置） -->
-        <view wx:if="{{item.isPhaseStart}}" class="phase-banner {{item.phaseType}}">
-          <view class="phase-banner-main">
-            <view class="phase-icon"></view>
-            <view class="phase-texts">
-              <text class="phase-title">{{item.phaseTitle}}</text>
-              <text wx:if="{{item.phaseSubtitle}}" class="phase-subtitle">{{item.phaseSubtitle}}</text>
-            </view>
-          </view>
+        <view class="sheet-step-check">
+          <text class="sheet-check-icon">{{item.completed ? '✓' : (index + 1)}}</text>
         </view>
-
-        <!-- 左侧时间轴线 -->
-        <view class="timeline-rail">
-          <view class="timeline-dot {{item.stepType === 'prep' ? 'dot-knife' : 'dot-fire'}}"></view>
-          <view class="timeline-line {{item.stepType === 'prep' ? 'line-dashed' : 'line-solid'}}"></view>
-          <!-- 宝宝分支 -->
-          <view class="baby-branch" wx:if="{{item.roleTag === '宝宝餐'}}">
-            <view class="baby-dot"></view>
-          </view>
-        </view>
-
-        <!-- 右侧步骤卡片 -->
-        <view class="timeline-content">
-          <view class="step-card {{item.completed ? 'completed' : ''}} {{index === (steps.length - 1) ? 'is-last' : ''}}">
-            <view class="step-card__header">
-              <view class="step-card__title-row">
-                <text class="step-card__title">{{item.title}}</text>
-                <view class="tag-group">
-                  <text wx:if="{{item.roleTag === '成人餐'}}" class="mini-badge adult">大人</text>
-                  <text wx:if="{{item.roleTag === '宝宝餐'}}" class="mini-badge baby">宝宝</text>
-                  <block wx:if="{{item.roleTag === '成人+宝宝'}}">
-                    <text class="mini-badge adult">大人</text>
-                    <text class="mini-badge baby">宝宝</text>
-                  </block>
-                  <text wx:if="{{item.knifeWorkLabel}}" class="mini-badge knife">{{item.knifeWorkLabel}}</text>
-                </view>
-              </view>
-              <view wx:if="{{item.duration != null}}" class="step-card__meta-mini">
-                <text class="meta-time">{{item.duration}}'</text>
-              </view>
-            </view>
-
-            <view class="step-card__body">
-              <!-- 并行上下文提示 -->
-              <view wx:if="{{item.parallelContext}}" class="context-pill">
-                <text class="pill-text">{{item.parallelContext.hint}}</text>
-                <text wx:if="{{item.parallelContext.remainingMinutes != null}}" class="pill-timer">
-                  {{item.parallelContext.remainingMinutes}}'
-                </text>
-              </view>
-
-              <view class="step-details condensed">
-                <view
-                  wx:for="{{item.details}}"
-                  wx:for-item="line"
-                  wx:key="index"
-                  class="detail-line {{line.isBabyPortion ? 'baby-portion-action' : ''}}"
-                >
-                  <!-- 使用 rich-text 渲染 HTML，彻底避免嵌套 text 导致动词孤立成行 -->
-                  <rich-text class="detail-line-text" nodes="{{line.richText}}"></rich-text>
-                </view>
-              </view>
-
-              <view wx:if="{{item.showSeasoningsList}}" class="seasoning-inline">
-                <scroll-view class="seasoning-scroll" scroll-x="true" show-scrollbar="false">
-                  <view class="seasoning-row">
-                    <view wx:for="{{item.seasoningsList}}" wx:for-item="ing" wx:key="name" class="ing-tag">
-                      <text class="n">{{ing.name}}</text>
-                      <text class="a">{{ing.amount}}</text>
-                    </view>
-                  </view>
-                </scroll-view>
-              </view>
-
-              <button
-                class="step-action-btn {{item.completed ? 'is-done' : ''}}"
-                catchtap="markCompleted"
-                data-id="{{item.id}}"
-              >
-                {{item.completed ? '已达成' : '完成'}}
-              </button>
-            </view>
-          </view>
+        <view class="sheet-step-info">
+          <text class="sheet-step-title">{{item.title}}</text>
+          <text wx:if="{{item.duration}}" class="sheet-step-meta">{{item.duration}}'</text>
         </view>
       </view>
+    </scroll-view>
+    <view class="sheet-footer">
+      <button class="sheet-share-btn" open-type="share">分享今日菜单</button>
     </view>
   </view>
 
-  <view class="share-footer">
-    <button class="share-btn" open-type="share">分享今日菜单</button>
+  <!-- 甘特图 Bottom Sheet -->
+  <view wx:if="{{showGanttSheet}}" class="sheet-mask" bindtap="toggleGanttSheet"></view>
+  <view class="bottom-sheet gantt-sheet {{showGanttSheet ? 'is-open' : ''}}">
+    <view class="sheet-header">
+      <text class="sheet-title">厨房统筹总览</text>
+      <text class="sheet-close" bindtap="toggleGanttSheet">收起</text>
+    </view>
+    <scroll-view scroll-y class="sheet-scroll">
+      <view wx:if="{{activeParallelTasks.length > 0}}" class="gantt-section">
+        <view wx:for="{{activeParallelTasks}}" wx:key="stepId" class="gantt-task-row">
+          <text class="gantt-task-name">{{item.activeTaskName}}</text>
+          <view class="gantt-bar-track">
+            <view class="gantt-bar-fill" style="width: {{item.progressPercent || 50}}%"></view>
+          </view>
+          <text class="gantt-task-time">{{item.remainingMinutes}}'</text>
+        </view>
+      </view>
+      <view wx:if="{{activeParallelTasks.length === 0}}" class="gantt-empty">
+        <text class="gantt-empty-text">当前没有并行进行的任务</text>
+      </view>
+    </scroll-view>
   </view>
 </view>

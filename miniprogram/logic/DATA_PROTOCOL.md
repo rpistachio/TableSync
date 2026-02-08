@@ -8,13 +8,20 @@
 {
   avoidList: [],    // 忌口/过敏标签，如 ['spicy', 'seafood', 'peanut']
   dietStyle: '',    // 口味偏好：'home' | 'light' | 'rich' | 'quick'
-  isTimeSave: false // 是否省时优先
+  isTimeSave: false, // 是否省时优先
+  kitchenConfig: {  // 厨房设备配置（灶台适配）
+    burners: 2,
+    hasSteamer: false,
+    hasAirFryer: false,
+    hasOven: false
+  }
 }
 ```
 
 - **avoidList**：与 `avoidOptions` 的 `value` 一致，不要使用 `allergens` 等其它命名。
 - **dietStyle**：与 `dietOptions` 的 `value` 一致，不要使用 `dietary_preference` 等其它命名。
 - **isTimeSave**：布尔值，不要使用 `is_time_save` 等其它命名。
+- **kitchenConfig**：厨房设备配置，用于灶台适配（菜单生成与步骤调度的设备上限）。缺省时逻辑层使用默认双灶配置。
 
 逻辑层（如 `menuGenerator.normalizeUserPreference`）会兼容旧字段名 `allergens`、`dietary_preference`、`is_time_save`，但**新代码请统一使用上述字段**。
 

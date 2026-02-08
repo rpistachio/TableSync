@@ -595,18 +595,30 @@ Page({
   data: {
     steps: [],
     viewSteps: [],
+    allViewSteps: [],          // 全量步骤（步骤列表 sheet 用）
     progressPercentage: 0,
+    progressBarStyle: 'width: 0%',
     currentStepLabel: '第 0/0 步',
+    currentStepIndexDisplay: 0,
     completedCount: 0,
     totalSteps: 0,
     completionRate: 0,
     currentIndex: 0,
     showPrepPhase: false,
     showCookPhase: false,
+    // Cook Mode 聚焦模式
+    currentStep: {},           // 当前步骤视图数据
+    prevStep: null,            // 上一步摘要
+    nextStep: null,            // 下一步摘要
+    currentPhaseLabel: '',     // 当前阶段标签文本
+    currentPhaseType: '',      // 当前阶段类型（prep/cook/long_term 等）
+    activeParallelTasks: [],   // 浮动并行状态条数据
+    showStepList: false,       // 步骤列表 sheet
+    showGanttSheet: false,     // 甘特图 sheet
     // 并行统筹与阶段高亮相关
-    currentPhase: '',          // 当前阶段（prep/cook/long_term 等）
-    parallelTasks: [],         // 当前并行任务列表（用于提示长耗时菜正在进行中）
-    timelineProgress: {},      // 甘特图式进度概览（总步数、完成数、占比等）
+    currentPhase: '',
+    parallelTasks: [],
+    timelineProgress: {},
     // 动态头图相关
     currentStepImage: '',
     currentStepTitle: '开始烹饪',
@@ -941,18 +953,62 @@ Page({
       currentPhase = viewSteps[currentIndex].phaseType || viewSteps[currentIndex].stepType || '';
     }
 
+    // ---------- Cook Mode 聚焦数据 ----------
+    var currentStep = viewSteps[currentIndex] || {};
+    var prevStep = currentIndex > 0 ? viewSteps[currentIndex - 1] : null;
+    var nextStep = currentIndex < viewSteps.length - 1 ? viewSteps[currentIndex + 1] : null;
+
+    // 阶段标签
+    var currentPhaseLabel = '';
+    var currentPhaseType = currentPhase;
+    var phaseMap = { prep: '备菜', long_term: '炖煮', gap: '间隙利用', cook: '快炒', finish: '收尾' };
+    if (currentPhaseType && phaseMap[currentPhaseType]) {
+      currentPhaseLabel = phaseMap[currentPhaseType];
+    } else if (currentStep.phaseTitle) {
+      currentPhaseLabel = currentStep.phaseTitle;
+    }
+
+    // 提取活跃并行任务（浮动条用）
+    var activeParallelTasks = [];
+    for (var pt = 0; pt < viewSteps.length; pt++) {
+      var vs = viewSteps[pt];
+      if (vs && vs.parallelContext && !vs.completed) {
+        activeParallelTasks.push({
+          stepId: vs.id,
+          activeTaskName: vs.parallelContext.activeTaskName || vs.parallelContext.hint || '',
+          remainingMinutes: vs.parallelContext.remainingMinutes,
+          hint: vs.parallelContext.hint,
+          progressPercent: vs.parallelContext.remainingMinutes != null ? Math.max(10, 100 - (vs.parallelContext.remainingMinutes / 60 * 100)) : 50
+        });
+      }
+    }
+
+    // 副标题：当前菜名
+    var subtitle = currentStep.recipeName || '跟随步骤，轻松完成美味';
+
     this.setData({
       steps: viewSteps,
       viewSteps: viewSteps,
+      allViewSteps: viewSteps,
       progressPercentage: progress,
+      progressBarStyle: 'width: ' + progress + '%',
       currentStepLabel: currentLabel,
+      currentStepIndexDisplay: Math.min(currentIndex + 1, total),
       completedCount: completedCount,
       totalSteps: total,
       completionRate: progress,
       currentIndex: currentIndex,
       showPrepPhase: hasPrepPhase,
       showCookPhase: hasCookPhase,
-      currentPhase: currentPhase
+      currentPhase: currentPhase,
+      // Cook Mode 聚焦
+      currentStep: currentStep,
+      prevStep: prevStep,
+      nextStep: nextStep,
+      currentPhaseLabel: currentPhaseLabel,
+      currentPhaseType: currentPhaseType,
+      activeParallelTasks: activeParallelTasks,
+      currentStepSubtitle: subtitle
     });
 
     // 刷新时间轴统计与并行任务列表
@@ -1036,71 +1092,123 @@ Page({
   autoHighlightNextStep: function () {
     var steps = this._stepsRaw;
     if (!Array.isArray(steps) || steps.length === 0) return;
-
-    var nextIndex = -1;
-    for (var i = 0; i < steps.length; i++) {
-      if (!steps[i].completed) {
-        nextIndex = i;
-        break;
-      }
-    }
-    if (nextIndex === -1) {
-      nextIndex = steps.length - 1;
-    }
-
-    this._currentStepIndex = nextIndex;
-
-    // 计算当前阶段（直接基于视图数据以保证与 UI 一致）
-    var viewSteps = this.data.steps || this.data.viewSteps || [];
-    var currentPhase = '';
-    if (Array.isArray(viewSteps) && nextIndex >= 0 && nextIndex < viewSteps.length) {
-      currentPhase = viewSteps[nextIndex].phaseType || viewSteps[nextIndex].stepType || '';
-    }
-
-    this.setData({
-      currentIndex: nextIndex,
-      currentPhase: currentPhase
-    });
-
-    var targetStep = steps[nextIndex];
-    if (targetStep && !targetStep.completed) {
-      var selector = '#step-' + targetStep.id;
-      try {
-        wx.pageScrollTo({
-          selector: selector,
-          duration: 300,
-          offsetTop: -200 // 留出头图区域
-        });
-      } catch (scrollErr) {
-        console.warn('autoHighlightNextStep: 自动滚动到下一步骤失败:', scrollErr);
-      }
-    }
-
-    this._updateHeaderImage(steps, nextIndex);
-
-    // 同步刷新统计信息与并行任务列表
-    this.updateTimelineProgress(steps);
-    this.checkParallelCompletion(steps);
+    // 直接刷新整个视图（包含聚焦数据）
+    this._updateView(steps);
+    this._updateHeaderImage(steps, this._currentStepIndex);
   },
 
   /**
-   * 点击时间轴任意步骤：将其设为当前高亮，并刷新头图
+   * 点击时间轴/列表中任意步骤：跳转到该步骤
    */
   onStepTap: function (e) {
     var index = e.currentTarget.dataset.index;
-    if (typeof index !== 'number') {
-      index = Number(index);
-    }
+    if (typeof index !== 'number') index = Number(index);
     if (isNaN(index)) return;
-    if (!Array.isArray(this._stepsRaw) || this._stepsRaw.length === 0) return;
+    this._jumpToIndex(index);
+  },
 
+  /** 跳转到指定步骤下标 */
+  _jumpToIndex: function (index) {
+    if (!Array.isArray(this._stepsRaw) || this._stepsRaw.length === 0) return;
     index = Math.max(0, Math.min(index, this._stepsRaw.length - 1));
+    this._currentStepIndex = index;
+
+    var viewSteps = this.data.allViewSteps || this.data.viewSteps || [];
+    var currentStep = viewSteps[index] || {};
+    var prevStep = index > 0 ? viewSteps[index - 1] : null;
+    var nextStep = index < viewSteps.length - 1 ? viewSteps[index + 1] : null;
+    var currentPhase = currentStep.phaseType || currentStep.stepType || '';
+    var phaseMap = { prep: '备菜', long_term: '炖煮', gap: '间隙利用', cook: '快炒', finish: '收尾' };
+    var currentPhaseLabel = phaseMap[currentPhase] || currentStep.phaseTitle || '';
+    var subtitle = currentStep.recipeName || '跟随步骤，轻松完成美味';
 
     this.setData({
-      currentIndex: index
+      currentIndex: index,
+      currentStep: currentStep,
+      prevStep: prevStep,
+      nextStep: nextStep,
+      currentPhase: currentPhase,
+      currentPhaseLabel: currentPhaseLabel,
+      currentPhaseType: currentPhase,
+      currentStepIndexDisplay: Math.min(index + 1, this._stepsRaw.length),
+      currentStepSubtitle: subtitle
     });
-    this._currentStepIndex = index;
     this._updateHeaderImage(this._stepsRaw, index);
+  },
+
+  /** Cook Mode：上一步 */
+  goPrevStep: function () {
+    var idx = this._currentStepIndex;
+    if (idx > 0) this._jumpToIndex(idx - 1);
+  },
+
+  /** Cook Mode：下一步（点击下一步预览） */
+  goNextStep: function () {
+    var idx = this._currentStepIndex;
+    var steps = this._stepsRaw;
+    if (Array.isArray(steps) && idx < steps.length - 1) this._jumpToIndex(idx + 1);
+  },
+
+  /** 完成当前步骤（底部操作栏主按钮） */
+  markCurrentCompleted: function () {
+    var steps = this._stepsRaw;
+    if (!Array.isArray(steps) || steps.length === 0) return;
+    var idx = this._currentStepIndex;
+    var step = steps[idx];
+    if (!step) return;
+
+    // 模拟 markCompleted 的逻辑
+    step.completed = true;
+    var that = this;
+    try {
+      var payload = steps.map(function (s) { return { id: s.id, completed: s.completed }; });
+      wx.setStorageSync(that._storageKey || stepsStorageKey(), JSON.stringify(payload));
+    } catch (err) {
+      console.warn('保存步骤状态失败:', err);
+    }
+    this._updateView(steps);
+
+    // 检测缺料
+    var missingResult = this.checkMissingIngredients();
+    if (missingResult && missingResult.hasMissing) {
+      this.triggerFallback(missingResult);
+    }
+
+    // 最后一步完成
+    var lastId = steps[steps.length - 1].id;
+    if (step.id === lastId) {
+      wx.showModal({
+        title: '料理完成！',
+        content: '全家人的美味已准备就绪，开启幸福用餐时光吧。',
+        confirmText: '回首页',
+        cancelText: '再看看',
+        success: function (res) {
+          if (res.confirm) {
+            try { wx.removeStorageSync(that._storageKey || stepsStorageKey()); } catch (e) {}
+            wx.reLaunch({ url: '/pages/home/home' });
+          }
+        }
+      });
+    }
+  },
+
+  /** 步骤列表 Bottom Sheet 开关 */
+  toggleStepList: function () {
+    this.setData({ showStepList: !this.data.showStepList, showGanttSheet: false });
+  },
+
+  /** 甘特图 Bottom Sheet 开关 */
+  toggleGanttSheet: function () {
+    this.setData({ showGanttSheet: !this.data.showGanttSheet, showStepList: false });
+  },
+
+  /** 从步骤列表 sheet 跳转到指定步骤 */
+  onJumpToStep: function (e) {
+    var index = e.currentTarget.dataset.index;
+    if (typeof index !== 'number') index = Number(index);
+    if (isNaN(index)) return;
+    this.setData({ showStepList: false });
+    this._jumpToIndex(index);
   },
 
   /**

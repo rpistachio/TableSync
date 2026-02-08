@@ -3,6 +3,7 @@
   <view class="myrecipes-header">
     <text class="myrecipes-title">我的菜谱库</text>
     <text class="myrecipes-subtitle">过去导入的菜谱，今天继续做</text>
+    <button class="myrecipes-refresh-btn" bindtap="onRefresh">刷新</button>
   </view>
 
   <view class="myrecipes-loading" wx:if="{{loading}}">
@@ -16,21 +17,16 @@
     <button class="myrecipes-empty-btn" bindtap="onGoImport">去导入</button>
   </view>
 
-  <scroll-view
-    wx:else
-    class="myrecipes-list-wrap"
-    scroll-y
-    enhanced
-    show-scrollbar="{{false}}"
-  >
+  <view wx:else class="myrecipes-list-wrap">
+    <view class="myrecipes-refresh-tip" wx:if="{{!loading}}">下拉页面可刷新列表</view>
     <view class="myrecipes-list">
       <view
         class="myrecipes-card"
         wx:for="{{recipeList}}"
         wx:key="id"
       >
-        <view class="myrecipes-card-cover" wx:if="{{item.coverUrl}}">
-          <image class="myrecipes-cover-img" src="{{item.coverUrl}}" mode="aspectFill" />
+        <view class="myrecipes-card-cover" wx:if="{{item.displayCoverUrl}}">
+          <image class="myrecipes-cover-img" src="{{item.displayCoverUrl}}" mode="aspectFill" />
         </view>
         <view class="myrecipes-card-cover myrecipes-card-cover-placeholder" wx:else>
           <text class="myrecipes-cover-emoji">🍳</text>
@@ -38,7 +34,10 @@
         <view class="myrecipes-card-body">
           <text class="myrecipes-card-name">{{item.name}}</text>
           <view class="myrecipes-card-meta">
-            <text class="myrecipes-card-source" wx:if="{{item.sourcePlatform}}">{{item.sourcePlatform}}</text>
+            <text class="myrecipes-card-source" wx:if="{{item.sourcePlatform === 'screenshot'}}">截图导入</text>
+            <text class="myrecipes-card-source" wx:elif="{{item.sourcePlatform === 'xiaohongshu' || item.sourcePlatform === '小红书'}}">小红书</text>
+            <text class="myrecipes-card-source" wx:elif="{{item.sourcePlatform === 'douyin' || item.sourcePlatform === '抖音'}}">抖音</text>
+            <text class="myrecipes-card-source" wx:elif="{{item.sourcePlatform}}">{{item.sourcePlatform}}</text>
             <text class="myrecipes-card-source" wx:elif="{{item.source === 'external'}}">外部导入</text>
           </view>
           <view class="myrecipes-card-actions">
@@ -48,5 +47,6 @@
         </view>
       </view>
     </view>
-  </scroll-view>
+  </view>
 </view>
+

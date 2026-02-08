@@ -337,6 +337,13 @@ function syncFromCloud(options) {
   var lastSyncTime = forceRefresh ? null : getLastSyncTime();
   var syncTime = new Date();
 
+  // 本地 recipes.js 菜谱数量基线，用于安全网判断
+  var localFallbackCount = 0;
+  try {
+    var _localRecipes = require('../data/recipes.js');
+    localFallbackCount = (_localRecipes.adultRecipes || []).length;
+  } catch (e) {}
+
   return Promise.all([
     fetchRecipesFromCloud('adult', lastSyncTime),
     fetchRecipesFromCloud('baby', lastSyncTime)
@@ -351,6 +358,19 @@ function syncFromCloud(options) {
     // 合并数据
     var mergedAdult = mergeRecipes(localAdult, cloudAdult);
     var mergedBaby = mergeRecipes(localBaby, cloudBaby);
+
+    // ── 安全网：云端数据不足时，用本地 recipes.js 兜底 ──
+    // 如果合并后的数量明显少于本地 recipes.js 基线（不到 50%），
+    // 说明云端尚未上传完整，不应覆盖已有缓存，改用本地 fallback 补齐
+    var prevCachedAdult = loadFromStorage('adult');
+    if (localFallbackCount > 0 && mergedAdult.length < localFallbackCount * 0.5) {
+      console.warn('[cloudRecipeService] 安全网触发：云端菜谱数(' + mergedAdult.length + ')远少于本地基线(' + localFallbackCount + ')，合并本地 fallback');
+      try {
+        var fallbackRecipes = require('../data/recipes.js');
+        mergedAdult = mergeRecipes(fallbackRecipes.adultRecipes || [], mergedAdult);
+        mergedBaby = mergeRecipes(fallbackRecipes.babyRecipes || [], mergedBaby);
+      } catch (e) {}
+    }
     
     // 保存到本地
     if (mergedAdult.length > 0) {

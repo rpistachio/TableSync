@@ -315,6 +315,9 @@ Page({
       var menuService = require('../../data/menuData.js');
       var payload = getApp().globalData.menuPreview;
       var pref = payload && payload.preference ? payload.preference : that._defaultPreference();
+      // 换一桌时排除当前桌已有菜品，避免重复
+      var currentNames = (that.data.previewMenuRows || []).map(function (r) { return r.adultName || ''; }).filter(Boolean);
+      if (currentNames.length > 0) pref.excludeRecipeNames = currentNames;
       var result = menuService.getTodayMenusByCombo(pref);
       var rawMenus = result.menus || result;
       var hasBaby = pref.hasBaby === true;

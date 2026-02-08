@@ -355,7 +355,7 @@ async function testCloudFunction() {
         console.log('');
         console.log(chalk.yellow.bold('  ⚠ 云函数执行被 3 秒超时中断，请按下面步骤修改：'));
         console.log(chalk.yellow('  1. 打开 https://console.cloud.tencent.com/tcb'));
-        console.log(chalk.yellow('  2. 选择环境 cloud1-7g5mdmib90e9f670'));
+        console.log(chalk.yellow(`  2. 选择环境 ${CONFIG.tcbEnvId}`));
         console.log(chalk.yellow('  3. 左侧【云函数】→ 找到 fridgeScan → 点击进入'));
         console.log(chalk.yellow('  4. 【配置】→ 超时时间改为 60 秒 → 保存'));
         console.log(chalk.yellow('  5. 再次运行本测试'));
@@ -405,7 +405,7 @@ async function testCloudFunction() {
         console.log('');
         console.log(chalk.yellow.bold('  ⚠ 云函数执行被 3 秒超时中断，请按下面步骤修改：'));
         console.log(chalk.yellow('  1. 打开 https://console.cloud.tencent.com/tcb'));
-        console.log(chalk.yellow('  2. 选择环境 cloud1-7g5mdmib90e9f670'));
+        console.log(chalk.yellow(`  2. 选择环境 ${CONFIG.tcbEnvId}`));
         console.log(chalk.yellow('  3. 左侧【云函数】→ 找到 fridgeScan → 点击进入'));
         console.log(chalk.yellow('  4. 【配置】→ 超时时间改为 60 秒 → 保存'));
         console.log(chalk.yellow('  5. 再次运行本测试'));
