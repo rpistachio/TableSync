@@ -209,10 +209,16 @@ function buildSystemPrompt() {
 - 同套餐中 meat（主料类型）尽量不重复（如不要两道都用鸡肉）
 - 荤菜提供蛋白质，素菜提供膳食纤维+维生素，汤品补充水分
 
-### P4 — 去重
+### P4 — 灵感篮子优先
+- 如果用户提供了"灵感篮子"（用户主动收藏或冰箱匹配的菜谱），在满足套餐结构和红线约束的前提下，优先从篮子中选择
+- 篮子中 priority 为 "high" 的菜谱（冰箱即将过期食材），应最优先使用
+- 篮子中的菜谱可能不在候选列表中（外部导入），此时可直接使用篮子中的菜谱 ID 和名称
+- 篮子只是优先建议，不是强制约束。如果篮子中的菜不适合当前套餐结构/心情/忌口，可以跳过
+
+### P5 — 去重
 - 如果用户提供了最近做过的菜名，避开同名菜和相似主料的菜
 
-### P5 — 联网增强（可选）
+### P6 — 联网增强（可选）
 当你需要额外的饮食搭配灵感时，可使用联网搜索获取：
 - 当季时令食材推荐
 - 特定心情/天气下的营养搭配建议
@@ -223,10 +229,12 @@ function buildSystemPrompt() {
 
 **严格返回纯 JSON，不要包含任何 markdown 标记、代码块围栏或额外文字：**
 {
-  "reasoning": "一句话说明搭配思路（≤40字）",
-  "recipeIds": ["id1", "id2", ...]
+  "reasoning": "用2-3句话说明搭配思路（≤120字，用于向用户展示"主厨推荐理由"）。需涵盖心情/天气/营养的考量；如果使用了灵感篮子中的菜谱，请点名说明为什么优先选了它们（如：来自冰箱匹配、用户收藏等）",
+  "recipeIds": ["id1", "id2", ...],
+  "dishHighlights": { "id1": "这道菜的亮点或选择理由（≤20字）", "id2": "..." }
 }
 
+dishHighlights 为可选字段，为每道菜给出一句简短的选择理由（如"来自灵感篮，冰箱有现成食材"、"疲惫时快手蒸菜最省力"）。
 recipeIds 顺序必须严格遵循：先所有荤菜 → 再所有素菜 → 最后汤（若有）。`;
 }
 
@@ -241,7 +249,7 @@ recipeIds 顺序必须严格遵循：先所有荤菜 → 再所有素菜 → 最
  * @returns {string}
  */
 function buildUserMessage(opts) {
-  const { preference, mood, weather, recentDishNames, candidates } = opts;
+  const { preference, mood, weather, recentDishNames, candidates, basketItems } = opts;
   const meatCount = preference.meatCount || 1;
   const vegCount = preference.vegCount || 1;
   const soupCount = preference.soupCount || 0;
@@ -301,6 +309,25 @@ function buildUserMessage(opts) {
     parts.push(`${i + 1}. ${rule}`);
   });
 
+  // ── Section 3.5: 灵感篮子（用户收藏 / 冰箱匹配的备选菜谱，必带 sourceDetail）──
+  if (Array.isArray(basketItems) && basketItems.length > 0) {
+    parts.push('');
+    parts.push('## 灵感篮子（用户主动收藏的备选菜谱，请优先考虑）');
+    const highPriority = basketItems.filter(b => b.priority === 'high');
+    const normalPriority = basketItems.filter(b => b.priority !== 'high');
+    const fmt = (b) => `- ${b.name}（ID: ${b.id}，来源: ${b.source}，来源说明: ${b.sourceDetail || b.source || '-'}）`;
+    if (highPriority.length > 0) {
+      parts.push('⚡ 高优先（冰箱食材即将过期，请务必优先使用）：');
+      highPriority.forEach(b => { parts.push(fmt(b)); });
+    }
+    if (normalPriority.length > 0) {
+      parts.push('普通优先（用户收藏，尽量选用）：');
+      normalPriority.forEach(b => { parts.push(fmt(b)); });
+    }
+    parts.push('注意：篮子中的菜谱 ID 可能不在候选列表中（来自外部导入），但如果 ID 匹配候选列表中的菜谱，应优先选择。');
+    parts.push('【必达】reasoning 话术中必须体现「我看到了你的灵感」并点名具体来源（如：来自冰箱匹配、小红书导入、菜谱库收藏等），与上述来源说明一致。');
+  }
+
   // ── Section 4: 去重 ──
   if (recentDishNames) {
     parts.push('');
@@ -335,7 +362,7 @@ function buildUserMessage(opts) {
   parts.push('## 请输出');
   parts.push(`综合以上天气、心情、家庭画像，从候选列表中选出恰好 ${total} 道菜，组成一份完美的「${strategy.label}心情套餐」。`);
   parts.push(`顺序：${meatCount} 个荤菜 id → ${vegCount} 个素菜 id${soupCount ? ' → 1 个汤 id' : ''}。`);
-  parts.push('返回纯 JSON：{ "reasoning": "搭配思路", "recipeIds": ["id1", ...] }');
+  parts.push('返回纯 JSON：{ "reasoning": "搭配思路（2-3句，≤120字，说明选菜逻辑，含天气/心情/营养/篮子考量。如选了灵感篮子中的菜，必须体现「我看到了你的灵感」并点名来源）", "recipeIds": ["id1", ...], "dishHighlights": { "id1": "选择理由（≤20字）", ... } }');
 
   return parts.join('\n');
 }

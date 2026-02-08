@@ -1864,11 +1864,15 @@ function normalizeStepForPipeline(step, recipe) {
     s.actionType = inferActionType(s, recipe || s.recipe || null);
   }
 
-  // 规范化时长：优先 step.duration_num -> recipe.cook_time -> estimateMinutes(文本)
+  // 规范化时长：优先 step.duration_num -> estimateMinutes(文本)
+  // 注：不再回退到 recipe.cook_time，因为那是整道菜的总时长，不应赋给单个步骤
+  var textEstimate = estimateMinutes(getStepText(s));
   if (typeof s.duration_num !== 'number') {
-    var r = recipe || s.recipe || null;
-    var recipeTime = getRecipeCookTime(r);
-    s.duration_num = recipeTime != null ? recipeTime : estimateMinutes(getStepText(s));
+    s.duration_num = textEstimate;
+  } else if (textEstimate > s.duration_num * 2 && textEstimate >= 15) {
+    // 交叉校验：文本描述的时间显著超过 duration_num 时，以文本为准
+    // 例如文本说"炖1小时"(60) 但 duration_num 只有 10，应采用 60
+    s.duration_num = textEstimate;
   }
 
   // 等待时间：长耗时步骤默认 = duration_num，其余为 0
@@ -2864,7 +2868,15 @@ function generateUnifiedSteps(menus, shoppingList, options) {
       title = '步骤 ' + id + '：烹饪';
     }
 
-    var duration = typeof s.duration_num === 'number' ? s.duration_num : estimateMinutes(text);
+    // 步骤时长：优先使用已规范化的 duration_num，兜底用文本估算
+    // 交叉校验：若文本描述时间显著超出 duration_num，以文本为准（与 normalizeStepForPipeline 保持一致）
+    var textEst = estimateMinutes(text);
+    var duration;
+    if (typeof s.duration_num === 'number') {
+      duration = (textEst > s.duration_num * 2 && textEst >= 15) ? textEst : s.duration_num;
+    } else {
+      duration = textEst;
+    }
 
     steps.push({
       id: id++,

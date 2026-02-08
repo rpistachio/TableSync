@@ -104,10 +104,16 @@ function ensureBabyCache(recipesModule) {
   }
 }
 
-/** 根据 ID 获取大人菜谱 */
+/** 根据 ID 获取大人菜谱（遵循 R-03 三级降级：云端缓存 → 本地 recipes.js） */
 function getAdultRecipeById(id) {
   if (!id) return null;
   try {
+    // 优先从 cloudRecipeService 获取（含完整 steps / ingredients 等字段）
+    var cloudRecipe = cloudRecipeService.getAdultRecipeById
+      ? cloudRecipeService.getAdultRecipeById(id)
+      : null;
+    if (cloudRecipe) return cloudRecipe;
+    // 兜底到本地精简数据（可能不含 steps）
     var recipesModule = require('./recipes.js');
     ensureAdultCache(recipesModule, recipesModule.adultRecipes);
     return adultByIdCache[id] || null;
@@ -116,10 +122,14 @@ function getAdultRecipeById(id) {
   }
 }
 
-/** 根据 ID 获取宝宝菜谱 */
+/** 根据 ID 获取宝宝菜谱（遵循 R-03 三级降级：云端缓存 → 本地 recipes.js） */
 function getBabyRecipeById(id) {
   if (!id) return null;
   try {
+    var cloudRecipe = cloudRecipeService.getBabyRecipeById
+      ? cloudRecipeService.getBabyRecipeById(id)
+      : null;
+    if (cloudRecipe) return cloudRecipe;
     var recipesModule = require('./recipes.js');
     ensureBabyCache(recipesModule);
     return babyByIdCache[id] || null;

@@ -68,17 +68,22 @@ function validateRecipeIds(recipeIds, candidates, preference) {
   const ordered = list.slice(0, total);
   let idx = 0;
 
-  // 验证荤菜
+  // 验证荤菜（meat 为 undefined 时跳过类型检查，兼容篮子外部导入菜谱）
   for (let i = 0; i < meatCount && idx < ordered.length; i++) {
     const c = byId[ordered[idx]];
-    if (!c || c.meat === 'vegetable' || c.dish_type === 'soup' || (c.name && c.name.indexOf('汤') !== -1)) return null;
+    if (!c) return null;
+    // 如果有类型信息，严格校验
+    if (c.meat !== undefined) {
+      if (c.meat === 'vegetable' || c.dish_type === 'soup' || (c.name && c.name.indexOf('汤') !== -1)) return null;
+    }
     idx++;
   }
 
   // 验证素菜
   for (let i = 0; i < vegCount && idx < ordered.length; i++) {
     const c = byId[ordered[idx]];
-    if (!c || c.meat !== 'vegetable') return null;
+    if (!c) return null;
+    if (c.meat !== undefined && c.meat !== 'vegetable') return null;
     idx++;
   }
 
@@ -86,8 +91,10 @@ function validateRecipeIds(recipeIds, candidates, preference) {
   for (let i = 0; i < soupCount && idx < ordered.length; i++) {
     const c = byId[ordered[idx]];
     if (!c) return null;
-    const isSoup = c.dish_type === 'soup' || (c.name && c.name.indexOf('汤') !== -1);
-    if (!isSoup) return null;
+    if (c.meat !== undefined) {
+      const isSoup = c.dish_type === 'soup' || (c.name && c.name.indexOf('汤') !== -1);
+      if (!isSoup) return null;
+    }
     idx++;
   }
 
@@ -104,10 +111,13 @@ exports.main = async (event, context) => {
     return { code: 500, fallback: true, message: 'MOONSHOT_API_KEY 未配置' };
   }
 
-  const { preference, mood, weather, recentDishNames, candidates } = event || {};
+  const { preference, mood, weather, recentDishNames, candidates, basketItems } = event || {};
   if (!preference || !Array.isArray(candidates) || candidates.length === 0) {
     return { code: 400, fallback: true, message: '缺少 preference 或 candidates' };
   }
+
+  // 篮子逻辑：若有 basketItems，将其信息传递到 prompt
+  const hasBasket = Array.isArray(basketItems) && basketItems.length > 0;
 
   try {
     // 构建 Prompt
@@ -118,6 +128,7 @@ exports.main = async (event, context) => {
       weather: weather || {},
       recentDishNames: recentDishNames || '',
       candidates,
+      basketItems: hasBasket ? basketItems : undefined,
     });
 
     // 判断是否启用联网搜索
@@ -150,8 +161,23 @@ exports.main = async (event, context) => {
     // 解析 AI 响应
     const parsed = safeParseJson(rawText);
     const recipeIds = parsed.recipeIds;
-    const reasoning = parsed.reasoning || '';
-    const validated = validateRecipeIds(recipeIds, candidates, preference);
+    let reasoning = (parsed.reasoning && String(parsed.reasoning).trim()) || '';
+    const dishHighlights = parsed.dishHighlights || {};
+    // 主厨报告降级：若 AI 未返回有效文案则用预设模板（spec 10.5）
+    if (reasoning.length < 10) {
+      if (hasBasket && basketItems.length > 0) {
+        const names = basketItems.map(b => b.name).filter(Boolean).slice(0, 3).join('、');
+        reasoning = names ? `基于你收藏的「${names}」灵感，我为你补全了这顿营养均衡的晚餐。` : '基于你收藏的灵感，我为你补全了这顿营养均衡的晚餐。';
+      } else {
+        reasoning = '根据今日心情与家常口味，为你搭配了这份套餐。';
+      }
+      console.log('[smartMenuGen] reasoning 降级为模板');
+    }
+    // 若有篮子，将篮子 ID 也加入合法 ID 集合（外部导入的菜谱 ID 不在 candidates 里）
+    const extendedCandidates = hasBasket
+      ? candidates.concat(basketItems.map(b => ({ id: b.id, name: b.name, meat: b.meat || undefined, dish_type: undefined })))
+      : candidates;
+    const validated = validateRecipeIds(recipeIds, extendedCandidates, preference);
 
     if (!validated) {
       console.warn('[smartMenuGen] AI 返回不满足套餐结构:', JSON.stringify(parsed));
@@ -160,12 +186,13 @@ exports.main = async (event, context) => {
 
     console.log('[smartMenuGen] 推荐成功:', validated.join(', '), '| 思路:', reasoning);
 
-    // 返回结果 (reasoning 为可选扩展字段, 遵循 spec 6.3 加法兼容原则)
+    // 返回结果 (reasoning/dishHighlights 为可选扩展字段, 遵循 spec 6.3 加法兼容原则)
     return {
       code: 0,
       data: {
         recipeIds: validated,
         reasoning: reasoning,
+        dishHighlights: dishHighlights,
       },
     };
   } catch (err) {

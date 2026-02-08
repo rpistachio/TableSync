@@ -214,6 +214,80 @@ function getWeekDishNames(maxItems) {
 }
 
 /**
+ * 获取菜品制作频率（过去 N 天内每道菜做了几次）
+ * @param {Number} days - 统计天数，默认7天
+ * @returns {Object} - { dishName: count, ... }
+ */
+function getDishFrequency(days) {
+  days = days || MAX_HISTORY_DAYS;
+  var recent = getRecentHistory(days);
+  var freq = {};
+  for (var i = 0; i < recent.length; i++) {
+    var day = recent[i];
+    if (day.menus && Array.isArray(day.menus)) {
+      day.menus.forEach(function (m) {
+        if (m.adultName) freq[m.adultName] = (freq[m.adultName] || 0) + 1;
+      });
+    }
+  }
+  return freq;
+}
+
+/**
+ * 智能推荐：基于频率、新鲜度、多样性的综合排序
+ * - 频率高 → 说明喜欢 → 加分
+ * - 昨天刚做过 → 轻微降权（避免连续重复）
+ * - 太久没做 → 略微降权（可能不喜欢）
+ * @param {Number} days - 统计天数
+ * @param {Number} maxItems - 最多返回数量
+ * @returns {Array} - [{ name, score, frequency, lastDayIdx, relativeDay }]
+ */
+function getSmartRecommendations(days, maxItems) {
+  days = days || MAX_HISTORY_DAYS;
+  maxItems = maxItems || 10;
+  var recent = getRecentHistory(days);
+  if (!recent || recent.length === 0) return [];
+
+  // 收集每道菜的出现记录
+  var dishMap = {};
+  for (var i = 0; i < recent.length; i++) {
+    var day = recent[i];
+    if (!day.menus) continue;
+    for (var j = 0; j < day.menus.length; j++) {
+      var name = day.menus[j].adultName;
+      if (!name) continue;
+      if (!dishMap[name]) {
+        dishMap[name] = {
+          name: name,
+          frequency: 0,
+          lastDayIdx: i,
+          relativeDay: day.relativeDay,
+          dateKey: day.dateKey
+        };
+      }
+      dishMap[name].frequency++;
+    }
+  }
+
+  // 计算综合分数
+  var dishes = Object.keys(dishMap).map(function (name) {
+    var d = dishMap[name];
+    // 频率分：做过多次说明喜欢（上限3分）
+    var freqScore = Math.min(d.frequency, 3);
+    // 新鲜度惩罚：昨天刚做过的轻微降权（避免连续重复）
+    var recencyPenalty = d.lastDayIdx === 0 ? -1.5 : 0;
+    // 时间衰减：2天内做过的优先，太久远的降权
+    var timeFactor = d.lastDayIdx <= 2 ? 1 : (d.lastDayIdx <= 4 ? 0.5 : 0.2);
+    d.score = freqScore + recencyPenalty + timeFactor;
+    return d;
+  });
+
+  // 按分数降序排列
+  dishes.sort(function (a, b) { return b.score - a.score; });
+  return dishes.slice(0, maxItems);
+}
+
+/**
  * 获取指定日期的历史记录
  * @param {String} dateKey - 日期 Key
  * @returns {Object|null}
@@ -245,6 +319,8 @@ module.exports = {
   wasEatenYesterday: wasEatenYesterday,
   getYesterdayDishes: getYesterdayDishes,
   getWeekDishNames: getWeekDishNames,
+  getDishFrequency: getDishFrequency,
+  getSmartRecommendations: getSmartRecommendations,
   getHistoryByDate: getHistoryByDate,
   clearAllHistory: clearAllHistory
 };
