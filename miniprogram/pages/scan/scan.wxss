@@ -3,7 +3,7 @@
 
 .scan-container {
   min-height: 100vh;
-  background: #FDFCFA;
+  background: var(--bg);
   padding: 0 32rpx env(safe-area-inset-bottom);
   box-sizing: border-box;
 }
@@ -19,7 +19,7 @@
   display: block;
   font-size: 40rpx;
   font-weight: 700;
-  color: #2d2d2d;
+  color: var(--text);
   letter-spacing: 2rpx;
   margin-bottom: 12rpx;
 }
@@ -27,7 +27,7 @@
 .scan-subtitle {
   display: block;
   font-size: 26rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
   letter-spacing: 1rpx;
 }
 
@@ -45,8 +45,8 @@
   height: 480rpx;
   border-radius: 32rpx;
   overflow: hidden;
-  background: #FAF7F4;
-  border: 2rpx dashed #E8E4E0;
+  background: var(--card-bg);
+  border: 2rpx dashed var(--line-strong);
 }
 
 .photo-placeholder {
@@ -67,12 +67,12 @@
 .photo-placeholder-text {
   font-size: 30rpx;
   font-weight: 500;
-  color: #5a544f;
+  color: var(--text-soft);
 }
 
 .photo-placeholder-hint {
   font-size: 24rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
 }
 
 /* ── 多图横向滑动列表 ── */
@@ -95,7 +95,7 @@
   border-radius: 24rpx;
   overflow: hidden;
   flex-shrink: 0;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4rpx 16rpx var(--shadow);
 }
 
 .photo-thumb {
@@ -118,7 +118,7 @@
 }
 
 .photo-thumb-remove-icon {
-  color: #fff;
+  color: var(--text-inverse);
   font-size: 32rpx;
   font-weight: 300;
   line-height: 1;
@@ -130,8 +130,8 @@
   width: 240rpx;
   height: 240rpx;
   border-radius: 24rpx;
-  border: 2rpx dashed #D4CFC9;
-  background: #FAF7F4;
+  border: 2rpx dashed var(--line-strong);
+  background: var(--card-bg);
   display: inline-flex;
   flex-direction: column;
   align-items: center;
@@ -142,14 +142,14 @@
 
 .photo-thumb-add-icon {
   font-size: 64rpx;
-  color: #c4bfb9;
+  color: var(--text-subtle);
   font-weight: 300;
   line-height: 1;
 }
 
 .photo-thumb-add-text {
   font-size: 24rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
 }
 
 /* ── 图片计数 ── */
@@ -161,7 +161,7 @@
 
 .photo-count-text {
   font-size: 24rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
   letter-spacing: 1rpx;
 }
 
@@ -175,14 +175,14 @@
   width: 100%;
   height: 96rpx;
   line-height: 96rpx;
-  background: linear-gradient(135deg, #E8A87C 0%, #D4956A 100%);
-  color: #fff;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent) 100%);
+  color: var(--text-inverse);
   border-radius: 100rpx;
   font-weight: 500;
   font-size: 30rpx;
   letter-spacing: 4rpx;
   border: none;
-  box-shadow: 0 12rpx 32rpx rgba(232, 168, 124, 0.35);
+  box-shadow: 0 12rpx 32rpx rgba(212, 149, 106, 0.35);
   transition: transform 0.2s ease;
 }
 
@@ -191,7 +191,7 @@
 }
 
 .scan-btn-text {
-  color: #fff;
+  color: var(--text-inverse);
 }
 
 /* ═══════════════════════════════════════ 加载状态 */
@@ -207,8 +207,8 @@
 .loading-ring {
   width: 80rpx;
   height: 80rpx;
-  border: 6rpx solid #F0EDE8;
-  border-top-color: #E8A87C;
+  border: 6rpx solid var(--line);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -219,7 +219,7 @@
 
 .loading-text {
   font-size: 28rpx;
-  color: #5a544f;
+  color: var(--text-soft);
   font-weight: 500;
   letter-spacing: 1rpx;
 }
@@ -241,15 +241,15 @@
 
 .step-dot {
   font-size: 20rpx;
-  color: #c4bfb9;
+  color: var(--text-subtle);
 }
 
 .loading-step.is-done .step-dot {
-  color: #E8A87C;
+  color: var(--accent);
 }
 
 .loading-step.is-active .step-dot {
-  color: #E8A87C;
+  color: var(--accent);
   animation: pulse-dot 1s ease infinite;
 }
 
@@ -260,23 +260,23 @@
 
 .step-label {
   font-size: 22rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
 }
 
 .loading-step.is-done .step-label,
 .loading-step.is-active .step-label {
-  color: #5a544f;
+  color: var(--text-soft);
 }
 
 .loading-step-line {
   width: 40rpx;
   height: 2rpx;
-  background: #E8E4E0;
+  background: var(--line-strong);
   margin-bottom: 30rpx;
 }
 
 .loading-step-line.is-active {
-  background: #E8A87C;
+  background: var(--accent);
 }
 
 /* ═══════════════════════════════════════ 错误状态 */
@@ -295,7 +295,7 @@
 
 .error-text {
   font-size: 28rpx;
-  color: #8e857e;
+  color: var(--text-muted);
   text-align: center;
   line-height: 1.6;
   padding: 0 40rpx;
@@ -304,8 +304,8 @@
 .retry-btn {
   margin-top: 16rpx;
   padding: 20rpx 60rpx;
-  background: #E8A87C;
-  color: #fff;
+  background: var(--accent);
+  color: var(--text-inverse);
   border-radius: 100rpx;
   font-size: 28rpx;
   font-weight: 500;
@@ -325,7 +325,7 @@
 
 .result-section {
   padding: 32rpx 0;
-  border-bottom: 1rpx solid #F0EDE8;
+  border-bottom: 1rpx solid var(--line);
 }
 
 .result-section:last-of-type {
@@ -342,14 +342,14 @@
 .section-title {
   font-size: 30rpx;
   font-weight: 600;
-  color: #2d2d2d;
+  color: var(--text);
   letter-spacing: 1rpx;
 }
 
 .section-badge {
   font-size: 22rpx;
-  color: #E8A87C;
-  background: rgba(232, 168, 124, 0.12);
+  color: var(--accent);
+  background: var(--accent-soft);
   padding: 4rpx 16rpx;
   border-radius: 100rpx;
   font-weight: 500;
@@ -357,7 +357,7 @@
 
 .section-arrow {
   font-size: 24rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
   margin-left: auto;
   transition: transform 0.25s ease;
 }
@@ -378,9 +378,9 @@
   align-items: center;
   gap: 8rpx;
   padding: 12rpx 20rpx;
-  background: #FAF7F4;
+  background: var(--card-bg);
   border-radius: 100rpx;
-  border: 1rpx solid #E8E4E0;
+  border: 1rpx solid var(--line-strong);
 }
 
 /* 可编辑模式：右侧留出删除按钮空间 */
@@ -391,7 +391,7 @@
 }
 
 .ingredient-tag--editable:active {
-  background: #F5F0EB;
+  background: var(--bg-warm);
 }
 
 /* 食材删除按钮（×） */
@@ -401,19 +401,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.06);
   border-radius: 50%;
   margin-left: 4rpx;
   flex-shrink: 0;
 }
 
 .ingredient-remove:active {
-  background: rgba(193, 102, 62, 0.2);
+  background: var(--accent-soft);
 }
 
 .ingredient-remove-icon {
   font-size: 24rpx;
-  color: #8e857e;
+  color: var(--text-muted);
   font-weight: 500;
   line-height: 1;
 }
@@ -425,12 +425,12 @@
 .ingredient-name {
   font-size: 26rpx;
   font-weight: 500;
-  color: #5a544f;
+  color: var(--text-soft);
 }
 
 .ingredient-qty {
   font-size: 22rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
 }
 
 /* 置信度 */
@@ -443,28 +443,28 @@
 
 .confidence-label {
   font-size: 22rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
   flex-shrink: 0;
 }
 
 .confidence-track {
   flex: 1;
   height: 8rpx;
-  background: #F0EDE8;
+  background: var(--line);
   border-radius: 100rpx;
   overflow: hidden;
 }
 
 .confidence-fill {
   height: 100%;
-  background: linear-gradient(90deg, #E8A87C, #D4956A);
+  background: linear-gradient(90deg, var(--accent), var(--accent));
   border-radius: 100rpx;
   transition: width 0.6s ease;
 }
 
 .confidence-value {
   font-size: 22rpx;
-  color: #E8A87C;
+  color: var(--accent);
   font-weight: 600;
   flex-shrink: 0;
 }
@@ -476,7 +476,7 @@
   gap: 12rpx;
   margin-top: 20rpx;
   padding: 16rpx 20rpx;
-  background: rgba(232, 168, 124, 0.08);
+  background: var(--accent-soft-2);
   border-radius: 16rpx;
 }
 
@@ -488,7 +488,7 @@
 
 .notes-text {
   font-size: 24rpx;
-  color: #8e857e;
+  color: var(--text-muted);
   line-height: 1.5;
 }
 
@@ -507,7 +507,7 @@
 
 .empty-text {
   font-size: 28rpx;
-  color: #8e857e;
+  color: var(--text-muted);
   text-align: center;
   line-height: 1.6;
 }
@@ -519,10 +519,10 @@
   align-items: flex-start;
   gap: 12rpx;
   padding: 20rpx 24rpx;
-  background: linear-gradient(135deg, rgba(232, 168, 124, 0.08) 0%, rgba(212, 149, 106, 0.04) 100%);
+  background: linear-gradient(135deg, var(--accent-soft-2) 0%, rgba(212, 149, 106, 0.04) 100%);
   border-radius: 20rpx;
   margin-bottom: 28rpx;
-  border: 1rpx solid rgba(232, 168, 124, 0.15);
+  border: 1rpx solid var(--accent-border);
 }
 
 .meal-summary-icon {
@@ -533,7 +533,7 @@
 
 .meal-summary-text {
   font-size: 26rpx;
-  color: #5a544f;
+  color: var(--text-soft);
   line-height: 1.6;
   font-weight: 400;
 }
@@ -549,25 +549,25 @@
   display: flex;
   gap: 20rpx;
   padding: 24rpx;
-  background: #fff;
+  background: var(--card-bg-strong);
   border-radius: 24rpx;
-  border: 2rpx solid #F0EDE8;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+  border: 2rpx solid var(--line);
+  box-shadow: 0 4rpx 16rpx var(--shadow);
   position: relative;
   transition: all 0.25s ease;
 }
 
 /* 菜谱卡片选中态 */
 .recipe-card.is-selected {
-  border-color: #E8A87C;
-  background: #FFFCF9;
+  border-color: var(--accent);
+  background: var(--bg-soft);
   box-shadow: 0 4rpx 20rpx rgba(232, 168, 124, 0.15);
 }
 
 /* 菜谱卡片未选中态 */
 .recipe-card.is-unselected {
   opacity: 0.55;
-  border-color: #E8E4E0;
+  border-color: var(--line-strong);
 }
 
 .recipe-card:active {
@@ -582,8 +582,8 @@
   width: 44rpx;
   height: 44rpx;
   border-radius: 50%;
-  border: 2rpx solid #D4CFC9;
-  background: #fff;
+  border: 2rpx solid var(--line-strong);
+  background: var(--card-bg-strong);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -593,13 +593,13 @@
 }
 
 .recipe-check.is-checked {
-  background: #E8A87C;
-  border-color: #E8A87C;
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 .recipe-check-icon {
   font-size: 24rpx;
-  color: #fff;
+  color: var(--text-inverse);
   font-weight: 700;
   line-height: 1;
 }
@@ -610,7 +610,7 @@
   max-height: none;
   border-radius: 16rpx;
   flex-shrink: 0;
-  background: #FAF7F4;
+  background: var(--card-bg);
 }
 
 .recipe-info {
@@ -630,7 +630,7 @@
 .recipe-name {
   font-size: 30rpx;
   font-weight: 600;
-  color: #2d2d2d;
+  color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -645,8 +645,8 @@
 }
 
 .role-meat {
-  color: #c1663e;
-  background: rgba(193, 102, 62, 0.1);
+  color: var(--accent-strong);
+  background: var(--accent-soft);
 }
 
 .role-veg {
@@ -661,7 +661,7 @@
 
 .recipe-reason {
   font-size: 24rpx;
-  color: #8e857e;
+  color: var(--text-muted);
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -679,7 +679,7 @@
 
 .recipe-time {
   font-size: 22rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
 }
 
 .recipe-missing {
@@ -691,13 +691,13 @@
 
 .missing-label {
   font-size: 22rpx;
-  color: #c1663e;
+  color: var(--accent-strong);
 }
 
 .missing-item {
   font-size: 22rpx;
-  color: #c1663e;
-  background: rgba(193, 102, 62, 0.08);
+  color: var(--accent-strong);
+  background: var(--accent-soft-2);
   padding: 2rpx 12rpx;
   border-radius: 100rpx;
 }
@@ -707,9 +707,9 @@
 .shopping-section {
   margin-top: 28rpx;
   padding: 20rpx 24rpx;
-  background: #FAF7F4;
+  background: var(--card-bg);
   border-radius: 20rpx;
-  border: 1rpx solid #E8E4E0;
+  border: 1rpx solid var(--line-strong);
 }
 
 .shopping-header {
@@ -726,7 +726,7 @@
 .shopping-title {
   font-size: 26rpx;
   font-weight: 600;
-  color: #5a544f;
+  color: var(--text-soft);
 }
 
 .shopping-tags {
@@ -737,11 +737,11 @@
 
 .shopping-tag {
   font-size: 24rpx;
-  color: #c1663e;
+  color: var(--accent-strong);
   padding: 8rpx 20rpx;
-  background: rgba(193, 102, 62, 0.08);
+  background: var(--accent-soft-2);
   border-radius: 100rpx;
-  border: 1rpx solid rgba(193, 102, 62, 0.15);
+  border: 1rpx solid var(--accent-border);
 }
 
 /* ═══════════════════════════════════════ 已选菜谱计数（Part 2b）*/
@@ -753,9 +753,9 @@
   gap: 10rpx;
   padding: 20rpx 32rpx;
   margin: 16rpx 0 8rpx;
-  background: linear-gradient(135deg, rgba(232, 168, 124, 0.1) 0%, rgba(212, 149, 106, 0.06) 100%);
+  background: linear-gradient(135deg, var(--accent-soft) 0%, var(--accent-soft-2) 100%);
   border-radius: 100rpx;
-  border: 1rpx solid rgba(232, 168, 124, 0.18);
+  border: 1rpx solid var(--accent-border);
 }
 
 .selected-count-icon {
@@ -764,20 +764,20 @@
 
 .selected-count-text {
   font-size: 26rpx;
-  color: #5a544f;
+  color: var(--text-soft);
   font-weight: 500;
 }
 
 .selected-count-num {
   font-size: 32rpx;
-  color: #D4956A;
+  color: var(--accent);
   font-weight: 700;
 }
 
 /* section-header 内的小提示 */
 .section-hint-inline {
   font-size: 22rpx;
-  color: #c4bfb9;
+  color: var(--text-subtle);
   margin-left: auto;
 }
 
@@ -793,7 +793,7 @@
   align-items: flex-start;
   gap: 16rpx;
   padding: 24rpx 16rpx;
-  border-bottom: 1rpx solid #F0EDE8;
+  border-bottom: 1rpx solid var(--line);
   border-radius: 16rpx;
   margin-bottom: 4rpx;
   transition: all 0.25s ease;
@@ -805,7 +805,7 @@
 }
 
 .matched-item:active {
-  background: #FAF7F4;
+  background: var(--card-bg);
 }
 
 .matched-item.is-selected {
@@ -823,8 +823,8 @@
   width: 44rpx;
   height: 44rpx;
   border-radius: 50%;
-  border: 2rpx solid #D4CFC9;
-  background: #fff;
+  border: 2rpx solid var(--line-strong);
+  background: var(--card-bg-strong);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -833,19 +833,19 @@
 }
 
 .matched-check.is-checked {
-  background: #E8A87C;
-  border-color: #E8A87C;
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 .matched-check-icon {
   font-size: 24rpx;
-  color: #c4bfb9;
+  color: var(--text-subtle);
   font-weight: 600;
   line-height: 1;
 }
 
 .matched-check.is-checked .matched-check-icon {
-  color: #fff;
+  color: var(--text-inverse);
 }
 
 .matched-cover {
@@ -854,7 +854,7 @@
   max-height: none;
   border-radius: 14rpx;
   flex-shrink: 0;
-  background: #FAF7F4;
+  background: var(--card-bg);
 }
 
 .matched-info {
@@ -873,7 +873,7 @@
 
 .matched-name {
   font-size: 26rpx;
-  color: #5a544f;
+  color: var(--text-soft);
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -882,8 +882,8 @@
 
 .matched-cook-type {
   font-size: 20rpx;
-  color: #a09a94;
-  background: #F0EDE8;
+  color: var(--text-subtle);
+  background: var(--line);
   padding: 2rpx 12rpx;
   border-radius: 100rpx;
   flex-shrink: 0;
@@ -912,7 +912,7 @@
 }
 
 .matched-ing-label--miss {
-  color: #c1663e;
+  color: var(--accent-strong);
 }
 
 .matched-ing-tag {
@@ -928,28 +928,28 @@
 }
 
 .matched-ing-tag--miss {
-  color: #c1663e;
-  background: rgba(193, 102, 62, 0.08);
+  color: var(--accent-strong);
+  background: var(--accent-soft-2);
 }
 
 .matched-score-bar {
   flex: 1;
   height: 6rpx;
-  background: #F0EDE8;
+  background: var(--line);
   border-radius: 100rpx;
   overflow: hidden;
 }
 
 .matched-score-fill {
   height: 100%;
-  background: linear-gradient(90deg, #E8A87C, #D4956A);
+  background: linear-gradient(90deg, var(--accent), var(--accent));
   border-radius: 100rpx;
   transition: width 0.6s ease;
 }
 
 .matched-score-inline {
   font-size: 22rpx;
-  color: #E8A87C;
+  color: var(--accent);
   font-weight: 600;
   flex-shrink: 0;
 }
@@ -960,16 +960,16 @@
   align-items: center;
   justify-content: center;
   padding: 24rpx 0;
-  border-top: 1rpx solid #F0EDE8;
+  border-top: 1rpx solid var(--line);
 }
 
 .matched-load-more:active {
-  background: #FAF7F4;
+  background: var(--card-bg);
 }
 
 .matched-load-more-text {
   font-size: 24rpx;
-  color: #E8A87C;
+  color: var(--accent);
   font-weight: 500;
 }
 
@@ -985,13 +985,13 @@
 
 .timing-info {
   padding: 8rpx 24rpx;
-  background: #FAF7F4;
+  background: var(--card-bg);
   border-radius: 100rpx;
 }
 
 .timing-text {
   font-size: 22rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
 }
 
 .retry-btn-outline {
@@ -999,8 +999,8 @@
   height: 88rpx;
   line-height: 88rpx;
   background: transparent;
-  color: #E8A87C;
-  border: 2rpx solid #E8A87C;
+  color: var(--accent);
+  border: 2rpx solid var(--accent);
   border-radius: 100rpx;
   font-size: 28rpx;
   font-weight: 500;
@@ -1008,14 +1008,14 @@
 }
 
 .retry-btn-outline:active {
-  background: rgba(232, 168, 124, 0.06);
+  background: var(--accent-soft-2);
 }
 
 /* ═══════════════════════════════════════ 食材确认/编辑区（Part 2a）*/
 
 .section-hint {
   font-size: 24rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
   margin-bottom: 24rpx;
   margin-top: -12rpx;
   line-height: 1.5;
@@ -1037,7 +1037,7 @@
 
 .ingredients-empty-text {
   font-size: 26rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
   text-align: center;
   line-height: 1.5;
 }
@@ -1053,52 +1053,52 @@
   justify-content: center;
   gap: 10rpx;
   padding: 20rpx 0;
-  border: 2rpx dashed #D4CFC9;
+  border: 2rpx dashed var(--line-strong);
   border-radius: 100rpx;
-  background: #FDFCFA;
+  background: var(--bg);
   transition: all 0.2s ease;
 }
 
 .add-ingredient-btn:active {
-  background: #FAF7F4;
-  border-color: #E8A87C;
+  background: var(--card-bg);
+  border-color: var(--accent);
 }
 
 .add-ingredient-btn-icon {
   font-size: 36rpx;
-  color: #E8A87C;
+  color: var(--accent);
   font-weight: 300;
   line-height: 1;
 }
 
 .add-ingredient-btn-text {
   font-size: 26rpx;
-  color: #8e857e;
+  color: var(--text-muted);
   font-weight: 500;
 }
 
 /* 添加食材表单 */
 .add-ingredient-form {
-  background: #FAF7F4;
+  background: var(--card-bg);
   border-radius: 24rpx;
   padding: 24rpx;
-  border: 1rpx solid #E8E4E0;
+  border: 1rpx solid var(--line-strong);
 }
 
 .add-ingredient-input {
   width: 100%;
   height: 80rpx;
-  background: #fff;
+  background: var(--card-bg-strong);
   border-radius: 16rpx;
   padding: 0 24rpx;
   font-size: 28rpx;
-  color: #2d2d2d;
-  border: 1rpx solid #E8E4E0;
+  color: var(--text);
+  border: 1rpx solid var(--line-strong);
   box-sizing: border-box;
 }
 
 .add-ingredient-input-placeholder {
-  color: #c4bfb9;
+  color: var(--text-subtle);
 }
 
 .add-ingredient-actions {
@@ -1111,21 +1111,21 @@
 .add-ingredient-cancel {
   padding: 14rpx 36rpx;
   font-size: 26rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
   background: transparent;
   border-radius: 100rpx;
-  border: 1rpx solid #E8E4E0;
+  border: 1rpx solid var(--line-strong);
 }
 
 .add-ingredient-cancel:active {
-  background: #F0EDE8;
+  background: var(--line);
 }
 
 .add-ingredient-confirm {
   padding: 14rpx 36rpx;
   font-size: 26rpx;
-  color: #fff;
-  background: #E8A87C;
+  color: var(--text-inverse);
+  background: var(--accent);
   border-radius: 100rpx;
   border: none;
   font-weight: 500;
@@ -1148,14 +1148,14 @@
   width: 100%;
   height: 96rpx;
   line-height: 96rpx;
-  background: linear-gradient(135deg, #E8A87C 0%, #D4956A 100%);
-  color: #fff;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent) 100%);
+  color: var(--text-inverse);
   border-radius: 100rpx;
   font-weight: 500;
   font-size: 30rpx;
   letter-spacing: 2rpx;
   border: none;
-  box-shadow: 0 12rpx 32rpx rgba(232, 168, 124, 0.35);
+  box-shadow: 0 12rpx 32rpx rgba(212, 149, 106, 0.35);
   transition: transform 0.2s ease;
 }
 
@@ -1164,17 +1164,17 @@
 }
 
 .confirm-btn[disabled] {
-  background: #E8E4E0;
-  color: #c4bfb9;
+  background: var(--line-strong);
+  color: var(--text-subtle);
   box-shadow: none;
 }
 
 .confirm-btn-text {
-  color: #fff;
+  color: var(--text-inverse);
 }
 
 .confirm-btn[disabled] .confirm-btn-text {
-  color: #c4bfb9;
+  color: var(--text-subtle);
 }
 
 /* ═══════════════════════════════════════ Part 2c: 智能购物清单 */
@@ -1186,9 +1186,9 @@
   gap: 16rpx;
   padding: 28rpx 24rpx;
   margin: 16rpx 0 8rpx;
-  background: linear-gradient(135deg, rgba(232, 168, 124, 0.12) 0%, rgba(212, 149, 106, 0.06) 100%);
+  background: linear-gradient(135deg, var(--accent-soft) 0%, var(--accent-soft-2) 100%);
   border-radius: 24rpx;
-  border: 1rpx solid rgba(232, 168, 124, 0.2);
+  border: 1rpx solid var(--accent-border);
 }
 
 .shopping-overview-icon {
@@ -1207,13 +1207,13 @@
 .shopping-overview-title {
   font-size: 32rpx;
   font-weight: 700;
-  color: #2d2d2d;
+  color: var(--text);
   letter-spacing: 1rpx;
 }
 
 .shopping-overview-desc {
   font-size: 24rpx;
-  color: #8e857e;
+  color: var(--text-muted);
   line-height: 1.5;
 }
 
@@ -1228,7 +1228,7 @@
 
 .shopping-recipes-label {
   font-size: 24rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
   flex-shrink: 0;
   line-height: 2;
 }
@@ -1242,11 +1242,11 @@
 
 .shopping-recipe-tag {
   font-size: 22rpx;
-  color: #D4956A;
-  background: rgba(232, 168, 124, 0.1);
+  color: var(--accent);
+  background: var(--accent-soft);
   padding: 6rpx 18rpx;
   border-radius: 100rpx;
-  border: 1rpx solid rgba(232, 168, 124, 0.2);
+  border: 1rpx solid var(--accent-border);
   white-space: nowrap;
 }
 
@@ -1259,7 +1259,7 @@
 
 .smart-shopping-item {
   padding: 20rpx 16rpx;
-  border-bottom: 1rpx solid #F0EDE8;
+  border-bottom: 1rpx solid var(--line);
   transition: background 0.15s ease;
 }
 
@@ -1268,7 +1268,7 @@
 }
 
 .smart-shopping-item:active {
-  background: #FAF7F4;
+  background: var(--card-bg);
 }
 
 .smart-shopping-item-main {
@@ -1286,7 +1286,7 @@
   flex: 1;
   font-size: 28rpx;
   font-weight: 500;
-  color: #2d2d2d;
+  color: var(--text);
 }
 
 .smart-shopping-item-remove {
@@ -1302,12 +1302,12 @@
 }
 
 .smart-shopping-item-remove:active {
-  background: rgba(193, 102, 62, 0.15);
+  background: var(--accent-soft);
 }
 
 .smart-shopping-item-remove-icon {
   font-size: 26rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
   font-weight: 500;
   line-height: 1;
 }
@@ -1323,13 +1323,13 @@
 
 .smart-shopping-from-label {
   font-size: 20rpx;
-  color: #c4bfb9;
+  color: var(--text-subtle);
 }
 
 .smart-shopping-from-recipe {
   font-size: 20rpx;
-  color: #a09a94;
-  background: #F0EDE8;
+  color: var(--text-subtle);
+  background: var(--line);
   padding: 2rpx 12rpx;
   border-radius: 100rpx;
 }
@@ -1364,7 +1364,7 @@
 
 .excluded-item {
   padding: 16rpx 16rpx;
-  border-bottom: 1rpx solid #F0EDE8;
+  border-bottom: 1rpx solid var(--line);
 }
 
 .excluded-item:last-child {
@@ -1386,9 +1386,9 @@
 .excluded-item-name {
   flex: 1;
   font-size: 26rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
   text-decoration: line-through;
-  text-decoration-color: #D4CFC9;
+  text-decoration-color: var(--line-strong);
 }
 
 .excluded-item-add {
@@ -1400,18 +1400,18 @@
   background: rgba(0, 0, 0, 0.04);
   border-radius: 50%;
   flex-shrink: 0;
-  border: 1rpx solid #E8E4E0;
+  border: 1rpx solid var(--line-strong);
   transition: all 0.15s ease;
 }
 
 .excluded-item-add:active {
-  background: rgba(232, 168, 124, 0.15);
-  border-color: #E8A87C;
+  background: var(--accent-soft);
+  border-color: var(--accent);
 }
 
 .excluded-item-add-icon {
   font-size: 28rpx;
-  color: #c4bfb9;
+  color: var(--text-subtle);
   font-weight: 400;
   line-height: 1;
 }
@@ -1427,13 +1427,13 @@
 
 .excluded-from-label {
   font-size: 20rpx;
-  color: #D4CFC9;
+  color: var(--line-strong);
 }
 
 .excluded-from-recipe {
   font-size: 20rpx;
-  color: #c4bfb9;
-  background: #F5F2EF;
+  color: var(--text-subtle);
+  background: var(--bg-warm);
   padding: 2rpx 12rpx;
   border-radius: 100rpx;
 }

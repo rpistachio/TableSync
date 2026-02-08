@@ -49,6 +49,9 @@ Page({
       vibeWeather: '',
       vibeGreeting: getDefaultVibeGreeting(),
       basketCount: getInitialBasketCount(),
+      showAdvanced: false,
+      cookWho: 'self',
+      cookStatus: 'ok',
       showHistoryHint: false,
       historyDishNames: []
     };
@@ -65,7 +68,14 @@ Page({
       wx.removeStorageSync('today_prep_time');
       wx.removeStorageSync('today_allergens');
     }
-    this.setData({ currentDate: getCurrentDate(), vibeGreeting: getDefaultVibeGreeting() });
+    var savedWho = wx.getStorageSync('zen_cook_who') || 'self';
+    var savedStatus = wx.getStorageSync('zen_cook_status') || 'ok';
+    this.setData({
+      currentDate: getCurrentDate(),
+      vibeGreeting: getDefaultVibeGreeting(),
+      cookWho: savedWho,
+      cookStatus: savedStatus
+    });
   },
 
   onShow: function () {
@@ -119,6 +129,34 @@ Page({
     if (app && app.globalData) {
       app.globalData.inspirationBasket = list;
     }
+  },
+
+  /** Zen Mode: 大按钮 -> 自动生成 */
+  onZenGo: function () {
+    var who = this.data.cookWho;
+    var status = this.data.cookStatus;
+    wx.navigateTo({
+      url: '/pages/spinner/spinner?zen=1&who=' + who + '&status=' + status
+    });
+  },
+
+  /** Zen Mode: 切换谁做饭 */
+  onToggleCookWho: function (e) {
+    var val = e.currentTarget.dataset.value;
+    this.setData({ cookWho: val });
+    wx.setStorageSync('zen_cook_who', val);
+  },
+
+  /** Zen Mode: 切换今日状态 */
+  onToggleCookStatus: function (e) {
+    var val = e.currentTarget.dataset.value;
+    this.setData({ cookStatus: val });
+    wx.setStorageSync('zen_cook_status', val);
+  },
+
+  /** 展开高级功能入口 */
+  onShowAdvanced: function () {
+    this.setData({ showAdvanced: true });
   },
 
   /** 跳转到「今天吃什么」Spinner 页 */

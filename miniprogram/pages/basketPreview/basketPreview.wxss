@@ -3,7 +3,7 @@
 
 .basket-container {
   min-height: 100vh;
-  background: #FDFCFA;
+  background: var(--bg);
   padding: 0 32rpx calc(env(safe-area-inset-bottom) + 32rpx);
   box-sizing: border-box;
 }
@@ -17,7 +17,7 @@
   display: block;
   font-size: 40rpx;
   font-weight: 700;
-  color: #2d2d2d;
+  color: var(--text);
   letter-spacing: 2rpx;
   margin-bottom: 12rpx;
 }
@@ -25,7 +25,7 @@
 .basket-subtitle {
   display: block;
   font-size: 26rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
   letter-spacing: 1rpx;
   line-height: 1.5;
 }
@@ -52,12 +52,12 @@
 .stat-num {
   font-size: 36rpx;
   font-weight: 700;
-  color: #c1663e;
+  color: var(--accent-strong);
 }
 
 .stat-label {
   font-size: 22rpx;
-  color: #8e857e;
+  color: var(--text-muted);
 }
 
 /* 排序控件 */
@@ -71,8 +71,8 @@
 .sort-chip {
   padding: 10rpx 24rpx;
   border-radius: 100rpx;
-  background: #FAF7F4;
-  border: 1rpx solid #E8E4E0;
+  background: var(--card-bg);
+  border: 1rpx solid var(--line-strong);
   transition: all 0.2s ease;
 }
 
@@ -81,18 +81,18 @@
 }
 
 .sort-chip.is-active {
-  background: #c1663e;
-  border-color: #c1663e;
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
 }
 
 .sort-chip-text {
   font-size: 24rpx;
   font-weight: 500;
-  color: #8e857e;
+  color: var(--text-muted);
 }
 
 .sort-chip.is-active .sort-chip-text {
-  color: #fff;
+  color: var(--text-inverse);
 }
 
 /* 空状态 */
@@ -112,14 +112,14 @@
   display: block;
   font-size: 30rpx;
   font-weight: 500;
-  color: #5a544f;
+  color: var(--text-soft);
   margin-bottom: 12rpx;
 }
 
 .basket-empty-hint {
   display: block;
   font-size: 26rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
   margin-bottom: 32rpx;
 }
 
@@ -135,9 +135,9 @@
   align-items: center;
   gap: 16rpx;
   padding: 24rpx 24rpx;
-  background: #FAF7F4;
+  background: var(--card-bg);
   border-radius: 20rpx;
-  border: 1rpx solid #E8E4E0;
+  border: 1rpx solid var(--line-strong);
   transition: all 0.2s ease;
 }
 
@@ -162,17 +162,17 @@
 .basket-way-text {
   font-size: 28rpx;
   font-weight: 600;
-  color: #2d2d2d;
+  color: var(--text);
 }
 
 .basket-way-sub {
   font-size: 22rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
 }
 
 .basket-way-arrow {
   font-size: 32rpx;
-  color: #c4bfb9;
+  color: var(--text-subtle);
   flex-shrink: 0;
   font-weight: 300;
 }
@@ -184,17 +184,17 @@
 
 .basket-item {
   margin-bottom: 16rpx;
-  background: #fff;
+  background: var(--card-bg-strong);
   border-radius: 20rpx;
-  border: 1rpx solid #F0EDE8;
+  border: 1rpx solid var(--line);
   overflow: hidden;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2rpx 12rpx var(--shadow);
   transition: all 0.25s ease;
 }
 
 .basket-item.is-high {
-  border-color: rgba(193, 102, 62, 0.3);
-  background: linear-gradient(135deg, rgba(193, 102, 62, 0.06) 0%, #fff 100%);
+  border-color: var(--accent-border-strong);
+  background: linear-gradient(135deg, var(--accent-soft-2) 0%, var(--card-bg-strong) 100%);
 }
 
 .basket-item-main {
@@ -214,7 +214,7 @@
 .basket-item-name {
   font-size: 30rpx;
   font-weight: 600;
-  color: #2d2d2d;
+  color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -229,25 +229,25 @@
 
 .basket-item-source {
   font-size: 22rpx;
-  color: #8e857e;
+  color: var(--text-muted);
   padding: 2rpx 14rpx;
-  background: #FAF7F4;
+  background: var(--card-bg);
   border-radius: 100rpx;
-  border: 1rpx solid #E8E4E0;
+  border: 1rpx solid var(--line-strong);
 }
 
 .basket-item-priority {
   font-size: 20rpx;
   font-weight: 600;
-  color: #c1663e;
+  color: var(--accent-strong);
   padding: 2rpx 14rpx;
-  background: rgba(193, 102, 62, 0.1);
+  background: var(--accent-soft);
   border-radius: 100rpx;
 }
 
 .basket-item-time {
   font-size: 22rpx;
-  color: #c4bfb9;
+  color: var(--text-subtle);
 }
 
 /* 操作按钮组 */
@@ -267,7 +267,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: #f5f2ef;
+  background: var(--bg-warm);
   transition: all 0.2s ease;
 }
 
@@ -276,7 +276,7 @@
 }
 
 .basket-item-priority-btn.is-high {
-  background: rgba(193, 102, 62, 0.15);
+  background: var(--accent-soft);
 }
 
 .priority-btn-icon {
@@ -296,17 +296,17 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: #f5f2ef;
+  background: var(--bg-warm);
   flex-shrink: 0;
 }
 
 .basket-item-remove:active {
-  background: #ece6e0;
+  background: var(--line);
 }
 
 .basket-item-remove-icon {
   font-size: 32rpx;
-  color: #c0b8b0;
+  color: var(--text-subtle);
   line-height: 1;
 }
 
@@ -317,9 +317,9 @@
 /* 历史推荐 */
 .history-section {
   margin: 24rpx 0;
-  background: #fff;
+  background: var(--card-bg-strong);
   border-radius: 24rpx;
-  border: 1rpx solid #F0EDE8;
+  border: 1rpx solid var(--line);
   overflow: hidden;
 }
 
@@ -333,18 +333,18 @@
 .history-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: #5a544f;
+  color: var(--text-soft);
 }
 
 .history-subtitle {
   flex: 1;
   font-size: 24rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
 }
 
 .history-arrow {
   font-size: 22rpx;
-  color: #c4bfb9;
+  color: var(--text-subtle);
   transition: transform 0.25s ease;
 }
 
@@ -364,9 +364,9 @@
   align-items: center;
   gap: 12rpx;
   padding: 16rpx 20rpx;
-  background: #FAF7F4;
+  background: var(--card-bg);
   border-radius: 16rpx;
-  border: 1rpx solid #E8E4E0;
+  border: 1rpx solid var(--line-strong);
   transition: all 0.2s ease;
 }
 
@@ -375,8 +375,8 @@
 }
 
 .history-item.is-in-basket {
-  background: rgba(232, 168, 124, 0.12);
-  border-color: #E8A87C;
+  background: var(--accent-soft);
+  border-color: var(--accent);
 }
 
 .history-item-info {
@@ -390,7 +390,7 @@
 .history-item-name {
   font-size: 26rpx;
   font-weight: 500;
-  color: #2d2d2d;
+  color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -404,22 +404,22 @@
 
 .history-item-day {
   font-size: 22rpx;
-  color: #c4bfb9;
+  color: var(--text-subtle);
 }
 
 .history-item-freq {
   font-size: 20rpx;
   font-weight: 500;
-  color: #E8A87C;
+  color: var(--accent);
   padding: 2rpx 10rpx;
-  background: rgba(232, 168, 124, 0.1);
+  background: var(--accent-soft);
   border-radius: 100rpx;
 }
 
 .history-item-action {
   font-size: 28rpx;
   font-weight: 600;
-  color: #E8A87C;
+  color: var(--accent);
   flex-shrink: 0;
   width: 40rpx;
   text-align: center;
@@ -457,8 +457,8 @@
 }
 
 .basket-btn-primary {
-  background: linear-gradient(135deg, #E8A87C 0%, #D4956A 100%);
-  color: #fff;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent) 100%);
+  color: var(--text-inverse);
   box-shadow: 0 12rpx 32rpx rgba(232, 168, 124, 0.35);
 }
 
@@ -467,9 +467,9 @@
 }
 
 .basket-btn-secondary {
-  background: #FAF7F4;
-  color: #5a544f;
-  border: 2rpx solid #E8E4E0;
+  background: var(--card-bg);
+  color: var(--text-soft);
+  border: 2rpx solid var(--line-strong);
 }
 
 .basket-btn-secondary:active {
@@ -479,8 +479,8 @@
 
 .basket-btn-danger {
   background: transparent;
-  color: #c0b8b0;
-  border: 2rpx solid #E8E4E0;
+  color: var(--text-subtle);
+  border: 2rpx solid var(--line-strong);
 }
 
 .basket-btn-danger:active {

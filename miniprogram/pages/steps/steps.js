@@ -622,7 +622,9 @@ Page({
     // 动态头图相关
     currentStepImage: '',
     currentStepTitle: '开始烹饪',
-    currentStepSubtitle: '跟随步骤，轻松完成美味'
+    currentStepSubtitle: '跟随步骤，轻松完成美味',
+    // 阿姨模式
+    isAyiMode: false
   },
 
   onLoad: function (options) {
@@ -672,6 +674,32 @@ Page({
         }
       } catch (e) {
         console.error('[steps] 从 import 来源生成步骤失败:', e);
+        steps = null;
+      }
+    } else if (options && options.source === 'ayi' && options.recipeIds) {
+      // ── 阿姨模式：从分享卡片打开，强制线性 + 大字只读 ──
+      that._source = 'ayi';
+      that._isAyiMode = true;
+      that._ayiRecipeIds = decodeURIComponent(options.recipeIds);
+      // 屏幕常亮：阿姨手上有油，不能反复点亮屏幕
+      wx.setKeepScreenOn({ keepScreenOn: true });
+
+      try {
+        var ids = that._ayiRecipeIds.split(',').filter(Boolean);
+        var adultCount = Number(options.adultCount) || 2;
+        var ayiPref = { adultCount: adultCount, hasBaby: false, babyMonth: 12 };
+
+        // 先用 recipeIds 构建菜单
+        var result = menuData.generateStepsFromRecipeIds(ids, ayiPref);
+        // 将菜单写入 globalData，使 generateSteps(forceLinear) 可读取
+        var appAyi = getApp();
+        if (appAyi && appAyi.globalData && Array.isArray(result.menus) && result.menus.length > 0) {
+          appAyi.globalData.todayMenus = result.menus;
+        }
+        // 强制线性步骤：阿姨不需要并行统筹
+        steps = menuData.generateSteps(ayiPref, { forceLinear: true });
+      } catch (e) {
+        console.error('[steps] 从 ayi 来源生成步骤失败:', e);
         steps = null;
       }
     } else if (options && options.source === 'mix') {
@@ -731,7 +759,9 @@ Page({
         ? STORAGE_PREFIX + 'import_' + (that._importRecipeName || '')
         : that._source === 'mix'
           ? STORAGE_PREFIX + 'mix_' + (that._mixRecipeNames || '')
-          : stepsStorageKey();
+          : that._source === 'ayi'
+            ? STORAGE_PREFIX + 'ayi_' + (that._ayiRecipeIds || '')
+            : stepsStorageKey();
     that._storageKey = storageKey;
 
     try {
@@ -1010,7 +1040,8 @@ Page({
       currentPhaseLabel: currentPhaseLabel,
       currentPhaseType: currentPhaseType,
       activeParallelTasks: activeParallelTasks,
-      currentStepSubtitle: subtitle
+      currentStepSubtitle: subtitle,
+      isAyiMode: !!this._isAyiMode
     });
 
     // 刷新时间轴统计与并行任务列表
@@ -1353,6 +1384,12 @@ Page({
           }
         }
       });
+    }
+  },
+
+  onUnload: function () {
+    if (this._isAyiMode) {
+      wx.setKeepScreenOn({ keepScreenOn: false });
     }
   },
 

@@ -3,7 +3,7 @@
 
 .import-container {
   min-height: 100vh;
-  background: #FDFCFA;
+  background: var(--bg);
   padding: 0 32rpx env(safe-area-inset-bottom);
   box-sizing: border-box;
 }
@@ -19,7 +19,7 @@
   display: block;
   font-size: 40rpx;
   font-weight: 700;
-  color: #2d2d2d;
+  color: var(--text);
   letter-spacing: 2rpx;
   margin-bottom: 12rpx;
 }
@@ -27,7 +27,7 @@
 .import-subtitle {
   display: block;
   font-size: 26rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
   letter-spacing: 1rpx;
 }
 
@@ -46,14 +46,14 @@
   gap: 8rpx;
   padding: 16rpx 32rpx;
   border-radius: 100rpx;
-  background: #FAF7F4;
-  border: 2rpx solid #E8E4E0;
+  background: var(--card-bg);
+  border: 2rpx solid var(--line-strong);
   transition: all 0.2s ease;
 }
 
 .mode-tab.active {
-  background: linear-gradient(135deg, rgba(232, 168, 124, 0.15) 0%, rgba(212, 149, 106, 0.1) 100%);
-  border-color: #E8A87C;
+  background: linear-gradient(135deg, var(--accent-soft) 0%, var(--accent-soft-2) 100%);
+  border-color: var(--accent);
 }
 
 .mode-tab-icon {
@@ -62,12 +62,12 @@
 
 .mode-tab-text {
   font-size: 26rpx;
-  color: #8e857e;
+  color: var(--text-muted);
   font-weight: 500;
 }
 
 .mode-tab.active .mode-tab-text {
-  color: #D4956A;
+  color: var(--accent);
   font-weight: 600;
 }
 
@@ -82,20 +82,20 @@
   align-items: center;
   gap: 12rpx;
   padding: 16rpx 24rpx;
-  background: #FAF7F4;
+  background: var(--card-bg);
   border-radius: 24rpx;
-  border: 2rpx solid #E8E4E0;
+  border: 2rpx solid var(--line-strong);
 }
 
 .link-input {
   flex: 1;
   font-size: 26rpx;
-  color: #2d2d2d;
+  color: var(--text);
   min-height: 48rpx;
 }
 
 .link-input-placeholder {
-  color: #c4bfb9;
+  color: var(--text-subtle);
   font-size: 26rpx;
 }
 
@@ -113,19 +113,19 @@
 }
 
 .link-paste-btn {
-  background: #E8A87C;
+  background: var(--accent);
 }
 
 .link-paste-btn .link-action-text {
-  color: #fff;
+  color: var(--text-inverse);
 }
 
 .link-clear-btn {
-  background: #F0EDE8;
+  background: var(--line);
 }
 
 .link-clear-btn .link-action-text {
-  color: #8e857e;
+  color: var(--text-muted);
 }
 
 .link-platform-hint {
@@ -152,8 +152,8 @@
   height: 480rpx;
   border-radius: 32rpx;
   overflow: hidden;
-  background: #FAF7F4;
-  border: 2rpx dashed #E8E4E0;
+  background: var(--card-bg);
+  border: 2rpx dashed var(--line-strong);
 }
 
 .photo-placeholder {
@@ -174,12 +174,12 @@
 .photo-placeholder-text {
   font-size: 30rpx;
   font-weight: 500;
-  color: #5a544f;
+  color: var(--text-soft);
 }
 
 .photo-placeholder-hint {
   font-size: 24rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
 }
 
 /* 多图横向滑动列表 */
@@ -201,7 +201,7 @@
   border-radius: 24rpx;
   overflow: hidden;
   flex-shrink: 0;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4rpx 16rpx var(--shadow);
 }
 
 .photo-thumb {
@@ -224,7 +224,7 @@
 }
 
 .photo-thumb-remove-icon {
-  color: #fff;
+  color: var(--text-inverse);
   font-size: 32rpx;
   font-weight: 300;
   line-height: 1;
@@ -234,8 +234,8 @@
   width: 240rpx;
   height: 240rpx;
   border-radius: 24rpx;
-  border: 2rpx dashed #D4CFC9;
-  background: #FAF7F4;
+  border: 2rpx dashed var(--line-strong);
+  background: var(--card-bg);
   display: inline-flex;
   flex-direction: column;
   align-items: center;
@@ -246,14 +246,14 @@
 
 .photo-thumb-add-icon {
   font-size: 64rpx;
-  color: #c4bfb9;
+  color: var(--text-subtle);
   font-weight: 300;
   line-height: 1;
 }
 
 .photo-thumb-add-text {
   font-size: 24rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
 }
 
 .photo-count {
@@ -263,7 +263,7 @@
 
 .photo-count-text {
   font-size: 24rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
   letter-spacing: 1rpx;
 }
 
@@ -277,14 +277,14 @@
   width: 100%;
   height: 96rpx;
   line-height: 96rpx;
-  background: linear-gradient(135deg, #E8A87C 0%, #D4956A 100%);
-  color: #fff;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent) 100%);
+  color: var(--text-inverse);
   border-radius: 100rpx;
   font-weight: 500;
   font-size: 30rpx;
   letter-spacing: 4rpx;
   border: none;
-  box-shadow: 0 12rpx 32rpx rgba(232, 168, 124, 0.35);
+  box-shadow: 0 12rpx 32rpx rgba(212, 149, 106, 0.35);
   transition: transform 0.2s ease;
 }
 
@@ -293,7 +293,7 @@
 }
 
 .extract-btn-text {
-  color: #fff;
+  color: var(--text-inverse);
 }
 
 /* ═══════════════════════════════════════ 使用提示 */
@@ -306,9 +306,9 @@
   display: flex;
   gap: 16rpx;
   padding: 24rpx;
-  background: linear-gradient(135deg, rgba(232, 168, 124, 0.08) 0%, rgba(212, 149, 106, 0.04) 100%);
+  background: linear-gradient(135deg, var(--accent-soft-2) 0%, rgba(212, 149, 106, 0.04) 100%);
   border-radius: 24rpx;
-  border: 1rpx solid rgba(232, 168, 124, 0.15);
+  border: 1rpx solid var(--accent-border);
 }
 
 .tip-icon {
@@ -327,12 +327,12 @@
 .tip-title {
   font-size: 26rpx;
   font-weight: 600;
-  color: #5a544f;
+  color: var(--text-soft);
 }
 
 .tip-text {
   font-size: 24rpx;
-  color: #8e857e;
+  color: var(--text-muted);
   line-height: 1.6;
 }
 
@@ -349,8 +349,8 @@
 .loading-ring {
   width: 80rpx;
   height: 80rpx;
-  border: 6rpx solid #F0EDE8;
-  border-top-color: #E8A87C;
+  border: 6rpx solid var(--line);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -361,7 +361,7 @@
 
 .loading-text {
   font-size: 28rpx;
-  color: #5a544f;
+  color: var(--text-soft);
   font-weight: 500;
   letter-spacing: 1rpx;
 }
@@ -383,15 +383,15 @@
 
 .step-dot {
   font-size: 20rpx;
-  color: #c4bfb9;
+  color: var(--text-subtle);
 }
 
 .loading-step.is-done .step-dot {
-  color: #E8A87C;
+  color: var(--accent);
 }
 
 .loading-step.is-active .step-dot {
-  color: #E8A87C;
+  color: var(--accent);
   animation: pulse-dot 1s ease infinite;
 }
 
@@ -402,23 +402,23 @@
 
 .step-label {
   font-size: 22rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
 }
 
 .loading-step.is-done .step-label,
 .loading-step.is-active .step-label {
-  color: #5a544f;
+  color: var(--text-soft);
 }
 
 .loading-step-line {
   width: 40rpx;
   height: 2rpx;
-  background: #E8E4E0;
+  background: var(--line-strong);
   margin-bottom: 30rpx;
 }
 
 .loading-step-line.is-active {
-  background: #E8A87C;
+  background: var(--accent);
 }
 
 /* ═══════════════════════════════════════ 错误状态 */
@@ -437,7 +437,7 @@
 
 .error-text {
   font-size: 28rpx;
-  color: #8e857e;
+  color: var(--text-muted);
   text-align: center;
   line-height: 1.6;
   padding: 0 40rpx;
@@ -446,8 +446,8 @@
 .retry-btn {
   margin-top: 16rpx;
   padding: 20rpx 60rpx;
-  background: #E8A87C;
-  color: #fff;
+  background: var(--accent);
+  color: var(--text-inverse);
   border-radius: 100rpx;
   font-size: 28rpx;
   font-weight: 500;
@@ -481,7 +481,7 @@
   display: block;
   font-size: 40rpx;
   font-weight: 700;
-  color: #2d2d2d;
+  color: var(--text);
   letter-spacing: 2rpx;
   margin-bottom: 12rpx;
 }
@@ -492,7 +492,7 @@
 
 .preview-source-text {
   font-size: 24rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
 }
 
 /* AI 推断标签 */
@@ -510,28 +510,28 @@
   align-items: center;
   gap: 6rpx;
   padding: 16rpx 24rpx;
-  background: #FAF7F4;
+  background: var(--card-bg);
   border-radius: 20rpx;
-  border: 1rpx solid #E8E4E0;
+  border: 1rpx solid var(--line-strong);
   min-width: 120rpx;
 }
 
 .preview-tag-label {
   font-size: 20rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
   letter-spacing: 1rpx;
 }
 
 .preview-tag-value {
   font-size: 26rpx;
   font-weight: 600;
-  color: #5a544f;
+  color: var(--text-soft);
 }
 
 /* 结果区块（食材、步骤复用） */
 .result-section {
   padding: 32rpx 0;
-  border-bottom: 1rpx solid #F0EDE8;
+  border-bottom: 1rpx solid var(--line);
 }
 
 .result-section:last-of-type {
@@ -548,14 +548,14 @@
 .section-title {
   font-size: 30rpx;
   font-weight: 600;
-  color: #2d2d2d;
+  color: var(--text);
   letter-spacing: 1rpx;
 }
 
 .section-badge {
   font-size: 22rpx;
-  color: #E8A87C;
-  background: rgba(232, 168, 124, 0.12);
+  color: var(--accent);
+  background: var(--accent-soft);
   padding: 4rpx 16rpx;
   border-radius: 100rpx;
   font-weight: 500;
@@ -573,9 +573,9 @@
   align-items: center;
   gap: 8rpx;
   padding: 12rpx 20rpx;
-  background: #FAF7F4;
+  background: var(--card-bg);
   border-radius: 100rpx;
-  border: 1rpx solid #E8E4E0;
+  border: 1rpx solid var(--line-strong);
 }
 
 .ingredient-icon {
@@ -585,12 +585,12 @@
 .ingredient-name {
   font-size: 26rpx;
   font-weight: 500;
-  color: #5a544f;
+  color: var(--text-soft);
 }
 
 .ingredient-amount {
   font-size: 22rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
 }
 
 /* 步骤列表 */
@@ -608,7 +608,7 @@
 .step-number-wrap {
   width: 48rpx;
   height: 48rpx;
-  background: linear-gradient(135deg, #E8A87C 0%, #D4956A 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent) 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -620,7 +620,7 @@
 .step-number {
   font-size: 24rpx;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-inverse);
 }
 
 .step-content {
@@ -649,18 +649,18 @@
 }
 
 .step-action-cook {
-  color: #c1663e;
-  background: rgba(193, 102, 62, 0.1);
+  color: var(--accent-strong);
+  background: var(--accent-soft);
 }
 
 .step-duration {
   font-size: 22rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
 }
 
 .step-text {
   font-size: 26rpx;
-  color: #5a544f;
+  color: var(--text-soft);
   line-height: 1.6;
 }
 
@@ -672,7 +672,7 @@
 
 .empty-hint-text {
   font-size: 26rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
 }
 
 /* 置信度 */
@@ -686,28 +686,28 @@
 
 .confidence-label {
   font-size: 22rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
   flex-shrink: 0;
 }
 
 .confidence-track {
   flex: 1;
   height: 8rpx;
-  background: #F0EDE8;
+  background: var(--line);
   border-radius: 100rpx;
   overflow: hidden;
 }
 
 .confidence-fill {
   height: 100%;
-  background: linear-gradient(90deg, #E8A87C, #D4956A);
+  background: linear-gradient(90deg, var(--accent), var(--accent));
   border-radius: 100rpx;
   transition: width 0.6s ease;
 }
 
 .confidence-value {
   font-size: 22rpx;
-  color: #E8A87C;
+  color: var(--accent);
   font-weight: 600;
   flex-shrink: 0;
 }
@@ -720,8 +720,8 @@
 
 .timing-text {
   font-size: 22rpx;
-  color: #a09a94;
-  background: #FAF7F4;
+  color: var(--text-subtle);
+  background: var(--card-bg);
   padding: 8rpx 24rpx;
   border-radius: 100rpx;
 }
@@ -753,22 +753,22 @@
 }
 
 .action-btn-primary {
-  background: linear-gradient(135deg, #E8A87C 0%, #D4956A 100%);
-  color: #fff;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent) 100%);
+  color: var(--text-inverse);
   box-shadow: 0 12rpx 32rpx rgba(232, 168, 124, 0.35);
 }
 
 .action-btn-text {
-  color: #fff;
+  color: var(--text-inverse);
 }
 
 .action-btn-secondary {
-  background: #FAF7F4;
-  border: 2rpx solid #E8A87C;
+  background: var(--card-bg);
+  border: 2rpx solid var(--accent);
 }
 
 .action-btn-secondary-text {
-  color: #E8A87C;
+  color: var(--accent);
 }
 
 .action-btn-outline {
@@ -776,15 +776,15 @@
   height: 88rpx;
   line-height: 88rpx;
   background: transparent;
-  border: 2rpx solid #D4CFC9;
+  border: 2rpx solid var(--line-strong);
 }
 
 .action-btn-outline:active {
-  background: rgba(232, 168, 124, 0.06);
+  background: var(--accent-soft-2);
 }
 
 .action-btn-outline-text {
-  color: #a09a94;
+  color: var(--text-subtle);
 }
 
 /* ═══════════════════════════════════════ 编辑模式 */
@@ -798,14 +798,14 @@
 .edit-toggle-btn {
   padding: 10rpx 28rpx;
   border-radius: 100rpx;
-  background: rgba(232, 168, 124, 0.1);
-  border: 1rpx solid rgba(232, 168, 124, 0.3);
+  background: var(--accent-soft-2);
+  border: 1rpx solid var(--accent-border);
 }
 
 .edit-toggle-text {
   font-size: 24rpx;
   font-weight: 500;
-  color: #D4956A;
+  color: var(--accent);
 }
 
 /* 食材编辑 */
@@ -821,9 +821,9 @@
   align-items: center;
   gap: 10rpx;
   padding: 12rpx 16rpx;
-  background: #FAF7F4;
+  background: var(--card-bg);
   border-radius: 16rpx;
-  border: 1rpx solid #E8E4E0;
+  border: 1rpx solid var(--line-strong);
 }
 
 .edit-ingredient-icon {
@@ -834,22 +834,22 @@
 .edit-ingredient-name {
   flex: 2;
   font-size: 26rpx;
-  color: #2d2d2d;
+  color: var(--text);
   padding: 8rpx 12rpx;
-  background: #fff;
+  background: var(--card-bg-strong);
   border-radius: 12rpx;
-  border: 1rpx solid #E8E4E0;
+  border: 1rpx solid var(--line-strong);
   min-width: 0;
 }
 
 .edit-ingredient-amount {
   flex: 1;
   font-size: 26rpx;
-  color: #2d2d2d;
+  color: var(--text);
   padding: 8rpx 12rpx;
-  background: #fff;
+  background: var(--card-bg-strong);
   border-radius: 12rpx;
-  border: 1rpx solid #E8E4E0;
+  border: 1rpx solid var(--line-strong);
   text-align: center;
   min-width: 0;
 }
@@ -857,11 +857,11 @@
 .edit-ingredient-unit {
   width: 100rpx;
   font-size: 26rpx;
-  color: #2d2d2d;
+  color: var(--text);
   padding: 8rpx 12rpx;
-  background: #fff;
+  background: var(--card-bg-strong);
   border-radius: 12rpx;
-  border: 1rpx solid #E8E4E0;
+  border: 1rpx solid var(--line-strong);
   text-align: center;
   flex-shrink: 0;
 }
@@ -891,21 +891,21 @@
   gap: 8rpx;
   padding: 20rpx 0;
   border-radius: 16rpx;
-  border: 2rpx dashed #D4CFC9;
-  background: #FDFCFA;
+  border: 2rpx dashed var(--line-strong);
+  background: var(--bg);
   margin-top: 8rpx;
 }
 
 .edit-add-icon {
   font-size: 36rpx;
-  color: #c4bfb9;
+  color: var(--text-subtle);
   font-weight: 300;
   line-height: 1;
 }
 
 .edit-add-text {
   font-size: 24rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
 }
 
 /* 步骤编辑 */
@@ -918,9 +918,9 @@
 
 .edit-step-row {
   padding: 16rpx 20rpx;
-  background: #FAF7F4;
+  background: var(--card-bg);
   border-radius: 16rpx;
-  border: 1rpx solid #E8E4E0;
+  border: 1rpx solid var(--line-strong);
 }
 
 .edit-step-header {
@@ -933,14 +933,14 @@
 .edit-step-number {
   width: 40rpx;
   height: 40rpx;
-  background: linear-gradient(135deg, #E8A87C 0%, #D4956A 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent) 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 22rpx;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-inverse);
   flex-shrink: 0;
 }
 
@@ -965,17 +965,17 @@
 .edit-step-duration {
   width: 64rpx;
   font-size: 24rpx;
-  color: #2d2d2d;
+  color: var(--text);
   padding: 6rpx 8rpx;
-  background: #fff;
+  background: var(--card-bg-strong);
   border-radius: 10rpx;
-  border: 1rpx solid #E8E4E0;
+  border: 1rpx solid var(--line-strong);
   text-align: center;
 }
 
 .edit-step-duration-unit {
   font-size: 22rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
 }
 
 .edit-step-ops {
@@ -991,14 +991,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fff;
+  background: var(--card-bg-strong);
   border-radius: 8rpx;
-  border: 1rpx solid #E8E4E0;
+  border: 1rpx solid var(--line-strong);
 }
 
 .edit-step-op-icon {
   font-size: 24rpx;
-  color: #8e857e;
+  color: var(--text-muted);
   line-height: 1;
 }
 
@@ -1014,12 +1014,12 @@
 .edit-step-text {
   width: 100%;
   font-size: 26rpx;
-  color: #5a544f;
+  color: var(--text-soft);
   line-height: 1.6;
   padding: 12rpx 16rpx;
-  background: #fff;
+  background: var(--card-bg-strong);
   border-radius: 12rpx;
-  border: 1rpx solid #E8E4E0;
+  border: 1rpx solid var(--line-strong);
   box-sizing: border-box;
   min-height: 80rpx;
 }

@@ -93,11 +93,34 @@ Page({
     middleTarget: 0,
     innerTarget: 0,
     spinning: false,
-    stopped: false
+    stopped: false,
+    isZenMode: false
   },
 
-  onLoad: function () {
+  onLoad: function (options) {
     var that = this;
+
+    // Zen Mode：首页"帮我定晚饭"入口，跳过全部配置界面，直接生成
+    if (options && options.zen === '1') {
+      var who = options.who || 'self';
+      var status = options.status || 'ok';
+      // 写入 globalData 供 steps 页读取
+      getApp().globalData.zenWho = who;
+      getApp().globalData.zenStatus = status;
+      that._isZenMode = true;
+      that.setData({ isZenMode: true });
+      // 用默认偏好直接调 onStartGenerate
+      that.setData({
+        adultCount: 2, meatCount: 1, vegCount: 1,
+        hasBaby: false, wantSoup: false,
+        selectedMood: status === 'tired' ? 'tired' : 'any',
+        'userPreference.dietStyle': 'home',
+        'userPreference.isTimeSave': status === 'tired'
+      });
+      that.onStartGenerate();
+      return;
+    }
+
     var menus = getApp().globalData.todayMenus || [];
     var pref = getApp().globalData.preference || {};
 
@@ -471,6 +494,10 @@ Page({
     that.setData({ hasMenusForWheel: true });
     wx.hideLoading();
     that._generating = false;
+    // Zen Mode：跳过转盘动画，直接进入 preview
+    if (that._isZenMode) {
+      that._prepareAndNavigate();
+    }
   },
 
   _applyLocalMenus: function (pref) {
@@ -505,14 +532,20 @@ Page({
       getApp().globalData.todayMenus = menus;
       that._buildWheelFromMenus(menus, pref);
       that.setData({ hasMenusForWheel: true });
-      if (result.fallbackMessage) {
+      if (result.fallbackMessage && !that._isZenMode) {
         wx.showToast({ title: result.fallbackMessage, icon: 'none', duration: 2500 });
       }
     } catch (err) {
-      wx.showModal({ title: '生成失败', content: err.message, showCancel: false });
+      if (!that._isZenMode) {
+        wx.showModal({ title: '生成失败', content: err.message, showCancel: false });
+      }
     }
     wx.hideLoading();
     that._generating = false;
+    // Zen Mode：跳过转盘动画，直接进入 preview
+    if (that._isZenMode) {
+      that._prepareAndNavigate();
+    }
   },
 
   _buildWheelFromMenus: function (menus, pref) {

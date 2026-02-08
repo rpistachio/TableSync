@@ -3,7 +3,7 @@
 
 .myrecipes-container {
   min-height: 100vh;
-  background: #FDFCFA;
+  background: var(--bg);
   padding: 0 32rpx calc(env(safe-area-inset-bottom) + 32rpx);
   box-sizing: border-box;
 }
@@ -17,7 +17,7 @@
   display: block;
   font-size: 40rpx;
   font-weight: 700;
-  color: #2d2d2d;
+  color: var(--text);
   letter-spacing: 2rpx;
   margin-bottom: 12rpx;
 }
@@ -25,16 +25,16 @@
 .myrecipes-subtitle {
   display: block;
   font-size: 26rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
   letter-spacing: 1rpx;
   margin-bottom: 16rpx;
 }
 
 .myrecipes-refresh-btn {
   font-size: 26rpx;
-  color: #E8A87C;
+  color: var(--accent);
   background: transparent;
-  border: 1rpx solid #E8A87C;
+  border: 1rpx solid var(--accent);
   border-radius: 32rpx;
   padding: 12rpx 32rpx;
   line-height: 1.2;
@@ -47,7 +47,7 @@
 
 .myrecipes-loading-text {
   font-size: 28rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
 }
 
 .myrecipes-empty {
@@ -66,22 +66,22 @@
   display: block;
   font-size: 30rpx;
   font-weight: 500;
-  color: #5a544f;
+  color: var(--text-soft);
   margin-bottom: 12rpx;
 }
 
 .myrecipes-empty-hint {
   display: block;
   font-size: 26rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
   margin-bottom: 40rpx;
 }
 
 .myrecipes-empty-btn {
   width: 240rpx;
   margin: 0 auto;
-  background: linear-gradient(135deg, #E8A87C 0%, #D4956A 100%);
-  color: #fff;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent) 100%);
+  color: var(--text-inverse);
   font-size: 28rpx;
   border-radius: 100rpx;
   border: none;
@@ -93,7 +93,7 @@
 
 .myrecipes-refresh-tip {
   font-size: 24rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
   text-align: center;
   padding: 16rpx 0;
 }
@@ -106,17 +106,17 @@
   display: flex;
   align-items: stretch;
   margin-bottom: 24rpx;
-  background: #fff;
+  background: var(--card-bg-strong);
   border-radius: 24rpx;
   overflow: hidden;
-  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.06);
-  border: 1rpx solid #F0EDE8;
+  box-shadow: 0 4rpx 20rpx var(--shadow);
+  border: 1rpx solid var(--line);
 }
 
 .myrecipes-card-cover {
   width: 180rpx;
   min-height: 160rpx;
-  background: #FAF7F4;
+  background: var(--card-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -155,7 +155,7 @@
 .myrecipes-card-name {
   font-size: 30rpx;
   font-weight: 600;
-  color: #2d2d2d;
+  color: var(--text);
   flex: 1;
   margin-right: 8rpx;
 }
@@ -168,17 +168,17 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: #f5f2ef;
+  background: var(--bg-warm);
 }
 
 .myrecipes-delete-icon {
   font-size: 32rpx;
-  color: #c0b8b0;
+  color: var(--text-subtle);
   line-height: 1;
 }
 
 .myrecipes-delete-btn:active {
-  background: #ece6e0;
+  background: var(--line);
 }
 
 .myrecipes-delete-btn:active .myrecipes-delete-icon {
@@ -191,7 +191,7 @@
 
 .myrecipes-card-source {
   font-size: 24rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
   margin-right: 12rpx;
 }
 
@@ -211,14 +211,14 @@
 }
 
 .myrecipes-btn-primary {
-  background: linear-gradient(135deg, #E8A87C 0%, #D4956A 100%);
-  color: #fff;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent) 100%);
+  color: var(--text-inverse);
 }
 
 .myrecipes-btn-secondary {
-  background: #FAF7F4;
-  color: #5a544f;
-  border: 2rpx solid #E8E4E0;
+  background: var(--card-bg);
+  color: var(--text-soft);
+  border: 2rpx solid var(--line-strong);
 }
 
 /* 心形按钮：加入灵感篮子 */
@@ -229,15 +229,15 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: #FAF7F4;
-  border: 2rpx solid #E8E4E0;
+  background: var(--card-bg);
+  border: 2rpx solid var(--line-strong);
   flex-shrink: 0;
   transition: all 0.2s ease;
 }
 
 .myrecipes-heart-btn.is-active {
-  background: rgba(232, 168, 124, 0.15);
-  border-color: #E8A87C;
+  background: var(--accent-soft);
+  border-color: var(--accent);
 }
 
 .myrecipes-heart-btn:active {

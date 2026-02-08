@@ -1,6 +1,6 @@
 .menu-container {
   min-height: 100vh;
-  background-color: #fdf8f2;
+  background-color: var(--bg);
   padding: 32rpx 48rpx 240rpx;
 }
 
@@ -11,20 +11,20 @@
 .curation-tag {
   font-size: 20rpx;
   letter-spacing: 4rpx;
-  color: #c1663e;
+  color: var(--accent-strong);
   font-weight: 700;
 }
 
 .main-title {
   display: block;
   font-size: 52rpx;
-  color: #2d2d2d;
+  color: var(--text);
   margin: 16rpx 0 8rpx;
 }
 
 .sub-title {
   font-size: 26rpx;
-  color: #8e857e;
+  color: var(--text-muted);
 }
 
 .menu-content {
@@ -32,10 +32,10 @@
 }
 
 .plan-card {
-  background: #fff;
+  background: var(--card-bg-strong);
   border-radius: 48rpx;
   padding: 56rpx 48rpx;
-  box-shadow: 0 20rpx 60rpx rgba(74, 69, 64, 0.08);
+  box-shadow: 0 20rpx 60rpx var(--shadow);
 }
 
 .section-header {
@@ -67,13 +67,13 @@
   display: block;
   font-size: 40rpx;
   font-weight: 600;
-  color: #1a1a1a;
+  color: var(--text);
   margin: 0 0 16rpx;
 }
 
 .ingredient-preview {
   font-size: 24rpx;
-  color: #999;
+  color: var(--text-subtle);
 }
 
 /* 小程序不支持 text + text::before，用间距代替伪元素分隔符 */
@@ -91,19 +91,19 @@
 .card-divider .line {
   flex: 1;
   height: 2rpx;
-  background: #f0ede9;
+  background: var(--line);
 }
 
 .card-divider .dot {
   width: 8rpx;
   height: 8rpx;
-  background: #d1cdc7;
+  background: var(--text-subtle);
   border-radius: 50%;
 }
 
 .time-hint {
   font-size: 24rpx;
-  color: #8e857e;
+  color: var(--text-muted);
   margin-top: 32rpx;
   text-align: center;
   display: block;
@@ -115,7 +115,7 @@
   left: 0;
   right: 0;
   padding: 32rpx 48rpx 48rpx;
-  background: linear-gradient(to top, #fdf8f2 85%, transparent);
+  background: linear-gradient(to top, var(--bg) 85%, transparent);
 }
 
 .button-group {
@@ -127,8 +127,8 @@
 .primary-btn {
   flex: 2;
   height: 108rpx;
-  background: #2d2d2d;
-  color: #fdf8f2;
+  background: var(--text);
+  color: var(--text-inverse);
   border-radius: 24rpx;
   font-weight: 600;
   border: none;
@@ -139,10 +139,10 @@
 .secondary-btn {
   flex: 1;
   height: 108rpx;
-  background: #fff;
-  border: 2rpx solid #efe9e2;
+  background: var(--card-bg-strong);
+  border: 2rpx solid var(--line);
   border-radius: 24rpx;
-  color: #5a544f;
+  color: var(--text-soft);
   font-weight: 500;
   line-height: 108rpx;
   font-size: 28rpx;

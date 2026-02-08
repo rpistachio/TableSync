@@ -1,9 +1,14 @@
 <wxs src="./spinner.wxs" module="utils" />
 <view class="spinner-page">
-  <!-- 上下文摘要条 -->
-  <view class="context-bar">
-    <text class="context-text">{{contextSummary}}</text>
+  <view wx:if="{{isZenMode}}" class="zen-loading">
+    <text class="zen-loading-text">正在生成今晚菜单...</text>
   </view>
+
+  <block wx:if="{{!isZenMode}}">
+    <!-- 上下文摘要条 -->
+    <view class="context-bar">
+      <text class="context-text">{{contextSummary}}</text>
+    </view>
 
   <!-- 心情输入区 -->
   <view class="mood-section">
@@ -164,35 +169,36 @@
   </view>
 
   <!-- 转盘区域 -->
-  <view class="spinner-container {{hasMenusForWheel ? 'has-wheel' : ''}}">
-    <block wx:if="{{hasMenusForWheel && outerDishes.length > 0}}">
-      <view class="center-logo {{spinning ? 'spinning' : ''}}" bindtap="startSpin">
-        <image
-          class="logo-image"
-          src="cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/logo/logo-remove-removebg-preview.png"
-          mode="aspectFit"
-        />
-        <text class="start-hint" wx:if="{{!spinning && !stopped}}">点击开始</text>
-      </view>
-      <view class="wheel-ring outer-ring" style="transform: rotate({{outerRotation}}deg);">
-        <view wx:for="{{outerDishes}}" wx:key="index" class="wheel-sector {{index === outerTarget ? 'target-sector' : ''}}" style="transform: rotate({{index * 45}}deg);">
-          <text class="sector-text">{{item}}</text>
+    <view class="spinner-container {{hasMenusForWheel ? 'has-wheel' : ''}}">
+      <block wx:if="{{hasMenusForWheel && outerDishes.length > 0}}">
+        <view class="center-logo {{spinning ? 'spinning' : ''}}" bindtap="startSpin">
+          <image
+            class="logo-image"
+            src="cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/logo/logo-remove-removebg-preview.png"
+            mode="aspectFit"
+          />
+          <text class="start-hint" wx:if="{{!spinning && !stopped}}">点击开始</text>
         </view>
-      </view>
-      <view class="wheel-ring middle-ring" style="transform: rotate({{middleRotation}}deg);">
-        <view wx:for="{{middleDishes}}" wx:key="index" class="wheel-sector {{index === middleTarget ? 'target-sector' : ''}}" style="transform: rotate({{index * 45}}deg);">
-          <text class="sector-text">{{item}}</text>
+        <view class="wheel-ring outer-ring" style="transform: rotate({{outerRotation}}deg);">
+          <view wx:for="{{outerDishes}}" wx:key="index" class="wheel-sector {{index === outerTarget ? 'target-sector' : ''}}" style="transform: rotate({{index * 45}}deg);">
+            <text class="sector-text">{{item}}</text>
+          </view>
         </view>
-      </view>
-      <view class="wheel-ring inner-ring" style="transform: rotate({{innerRotation}}deg);">
-        <view wx:for="{{innerDishes}}" wx:key="index" class="wheel-sector {{index === innerTarget ? 'target-sector' : ''}}" style="transform: rotate({{index * 45}}deg);">
-          <text class="sector-text">{{item}}</text>
+        <view class="wheel-ring middle-ring" style="transform: rotate({{middleRotation}}deg);">
+          <view wx:for="{{middleDishes}}" wx:key="index" class="wheel-sector {{index === middleTarget ? 'target-sector' : ''}}" style="transform: rotate({{index * 45}}deg);">
+            <text class="sector-text">{{item}}</text>
+          </view>
         </view>
+        <view class="wheel-ring inner-ring" style="transform: rotate({{innerRotation}}deg);">
+          <view wx:for="{{innerDishes}}" wx:key="index" class="wheel-sector {{index === innerTarget ? 'target-sector' : ''}}" style="transform: rotate({{index * 45}}deg);">
+            <text class="sector-text">{{item}}</text>
+          </view>
+        </view>
+        <view class="indicator-arrow"></view>
+      </block>
+      <view class="wheel-placeholder" wx:else>
+        <text class="wheel-placeholder-text">配置偏好后点击「开始生成」</text>
       </view>
-      <view class="indicator-arrow"></view>
-    </block>
-    <view class="wheel-placeholder" wx:else>
-      <text class="wheel-placeholder-text">配置偏好后点击「开始生成」</text>
     </view>
-  </view>
+  </block>
 </view>

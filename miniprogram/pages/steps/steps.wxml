@@ -1,4 +1,4 @@
-<view class="steps-container cook-mode">
+<view class="steps-container cook-mode {{isAyiMode ? 'ayi-mode' : ''}}">
   <!-- Layer 1: 极简头部 -->
   <view class="cook-header">
     <view class="progress-bar-track">
@@ -11,7 +11,7 @@
   </view>
 
   <!-- Layer 2: 浮动并行状态条 -->
-  <view wx:if="{{activeParallelTasks.length > 0}}" class="parallel-float-bar" bindtap="toggleGanttSheet">
+  <view wx:if="{{!isAyiMode && activeParallelTasks.length > 0}}" class="parallel-float-bar" bindtap="toggleGanttSheet">
     <scroll-view scroll-x class="parallel-scroll" enhanced show-scrollbar="{{false}}">
       <view class="parallel-chip-row">
         <view wx:for="{{activeParallelTasks}}" wx:key="stepId" class="parallel-chip">
@@ -34,7 +34,7 @@
     <!-- 当前步骤聚焦卡 -->
     <view class="focus-card {{currentStep.completed ? 'is-done' : ''}}">
       <!-- 阶段纤细标签 -->
-      <text wx:if="{{currentPhaseLabel}}" class="phase-chip {{currentPhaseType}}">{{currentPhaseLabel}}</text>
+      <text wx:if="{{!isAyiMode && currentPhaseLabel}}" class="phase-chip {{currentPhaseType}}">{{currentPhaseLabel}}</text>
 
       <!-- 步骤标题 -->
       <text class="focus-title">{{currentStep.title}}</text>
@@ -72,7 +72,7 @@
       </view>
 
       <!-- 时长提示 -->
-      <view wx:if="{{currentStep.duration}}" class="focus-duration">
+      <view wx:if="{{!isAyiMode && currentStep.duration}}" class="focus-duration">
         <text class="duration-icon">⏱</text>
         <text class="duration-text">约 {{currentStep.duration}} 分钟</text>
       </view>
@@ -94,7 +94,7 @@
       class="action-main {{currentStep.completed ? 'is-done' : ''}}"
       catchtap="markCurrentCompleted"
     >
-      <text class="action-main-text">{{currentStep.completed ? '✓ 已完成' : '完成此步'}}</text>
+      <text class="action-main-text">{{isAyiMode ? '做好了，下一步' : (currentStep.completed ? '✓ 已完成' : '完成此步')}}</text>
     </button>
     <view class="action-list" bindtap="toggleStepList">
       <text class="action-list-icon">☰</text>
@@ -131,8 +131,8 @@
   </view>
 
   <!-- 甘特图 Bottom Sheet -->
-  <view wx:if="{{showGanttSheet}}" class="sheet-mask" bindtap="toggleGanttSheet"></view>
-  <view class="bottom-sheet gantt-sheet {{showGanttSheet ? 'is-open' : ''}}">
+  <view wx:if="{{!isAyiMode && showGanttSheet}}" class="sheet-mask" bindtap="toggleGanttSheet"></view>
+  <view wx:if="{{!isAyiMode}}" class="bottom-sheet gantt-sheet {{showGanttSheet ? 'is-open' : ''}}">
     <view class="sheet-header">
       <text class="sheet-title">厨房统筹总览</text>
       <text class="sheet-close" bindtap="toggleGanttSheet">收起</text>

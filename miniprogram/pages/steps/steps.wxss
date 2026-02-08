@@ -1,5 +1,5 @@
 .steps-container {
-  background-color: #fdf8f2;
+  background-color: var(--bg);
   min-height: 100vh;
 }
 
@@ -12,9 +12,9 @@
   position: sticky;
   top: 0;
   z-index: 10;
-  background: #fff;
+  background: var(--card-bg-strong);
   padding: 24rpx 32rpx 20rpx;
-  border-bottom: 1rpx solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1rpx solid var(--line);
 }
 
 .progress-bar-track {
@@ -41,13 +41,13 @@
 .step-counter {
   font-size: 28rpx;
   font-weight: 700;
-  color: #E8A87C;
+  color: var(--accent);
   letter-spacing: 2rpx;
 }
 
 .current-dish-name {
   font-size: 26rpx;
-  color: #5a544f;
+  color: var(--text-soft);
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -63,7 +63,7 @@
   backdrop-filter: blur(16rpx);
   -webkit-backdrop-filter: blur(16rpx);
   padding: 12rpx 24rpx;
-  border-bottom: 1rpx solid rgba(0, 0, 0, 0.04);
+  border-bottom: 1rpx solid var(--line);
 }
 
 .parallel-scroll {
@@ -81,8 +81,8 @@
   gap: 10rpx;
   padding: 12rpx 20rpx;
   border-radius: 999rpx;
-  background: rgba(232, 168, 124, 0.12);
-  border: 1rpx solid rgba(232, 168, 124, 0.25);
+  background: var(--accent-soft);
+  border: 1rpx solid var(--accent-border);
   flex-shrink: 0;
 }
 
@@ -90,7 +90,7 @@
   width: 12rpx;
   height: 12rpx;
   border-radius: 50%;
-  background: #E8A87C;
+  background: var(--accent);
   animation: chipPulse 2s ease-in-out infinite;
 }
 
@@ -102,7 +102,7 @@
 .chip-name {
   font-size: 24rpx;
   font-weight: 500;
-  color: #4b3b33;
+  color: var(--text-soft);
   white-space: nowrap;
 }
 
@@ -112,7 +112,7 @@
   padding: 4rpx 12rpx;
   border-radius: 999rpx;
   background: rgba(255, 255, 255, 0.8);
-  color: #b46535;
+  color: var(--accent-strong);
   white-space: nowrap;
 }
 
@@ -165,10 +165,10 @@
 
 /* --- 聚焦卡片 --- */
 .focus-card {
-  background: #fff;
+  background: var(--card-bg-strong);
   border-radius: 32rpx;
   padding: 40rpx 36rpx;
-  box-shadow: 0 16rpx 48rpx rgba(0, 0, 0, 0.06);
+  box-shadow: 0 16rpx 48rpx var(--shadow);
   flex: 1;
 }
 
@@ -223,7 +223,7 @@
   display: block;
   font-size: 36rpx;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--text);
   margin-bottom: 24rpx;
   line-height: 1.4;
 }
@@ -235,14 +235,14 @@
   gap: 14rpx;
   padding: 10rpx 20rpx;
   border-radius: 999rpx;
-  background: rgba(232, 168, 124, 0.14);
-  border: 1rpx solid rgba(232, 168, 124, 0.2);
+  background: var(--accent-soft);
+  border: 1rpx solid var(--accent-border);
   margin-bottom: 24rpx;
 }
 
 .parallel-hint-text {
   font-size: 24rpx;
-  color: #4b3b33;
+  color: var(--text-soft);
 }
 
 .parallel-hint-timer {
@@ -251,7 +251,7 @@
   padding: 4rpx 12rpx;
   border-radius: 999rpx;
   background: rgba(255, 255, 255, 0.75);
-  color: #b46535;
+  color: var(--accent-strong);
 }
 
 /* 指令正文 - 大字号 */
@@ -272,13 +272,13 @@
   white-space: pre-wrap;
   font-size: 32rpx;
   line-height: 1.85;
-  color: #555;
+  color: var(--text-soft);
 }
 
 /* 宝宝分拨动作高亮 */
 .focus-line.baby-portion-action {
-  background: linear-gradient(90deg, rgba(255, 193, 153, 0.3) 0%, rgba(255, 228, 225, 0.15) 100%);
-  border-left: 6rpx solid #e8a87c;
+  background: linear-gradient(90deg, rgba(212, 149, 106, 0.28) 0%, rgba(212, 149, 106, 0.12) 100%);
+  border-left: 6rpx solid var(--accent);
   padding: 16rpx 20rpx 16rpx 28rpx;
   margin: 0 -36rpx 20rpx;
   padding-left: 42rpx;
@@ -319,7 +319,7 @@
 .ing-tag .a {
   font-size: 24rpx;
   font-weight: 700;
-  color: #E8A87C;
+  color: var(--accent);
   white-space: nowrap;
 }
 
@@ -337,7 +337,7 @@
 
 .duration-text {
   font-size: 24rpx;
-  color: #8e857e;
+  color: var(--text-muted);
 }
 
 /* ========== 底部操作栏 ========== */
@@ -372,7 +372,7 @@
 
 .action-prev-text {
   font-size: 28rpx;
-  color: #5a544f;
+  color: var(--text-soft);
   font-weight: 500;
 }
 
@@ -380,7 +380,7 @@
   flex: 1;
   height: 88rpx;
   border-radius: 24rpx;
-  background: #2d2d2d;
+  background: var(--text);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -396,7 +396,7 @@
 .action-main-text {
   font-size: 30rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-inverse);
   letter-spacing: 2rpx;
 }
 
@@ -409,7 +409,7 @@
 
 .action-list-icon {
   font-size: 40rpx;
-  color: #5a544f;
+  color: var(--text-soft);
 }
 
 /* ========== Bottom Sheet 通用 ========== */
@@ -426,7 +426,7 @@
   right: 0;
   bottom: 0;
   max-height: 70vh;
-  background: #fff;
+  background: var(--card-bg-strong);
   border-radius: 32rpx 32rpx 0 0;
   z-index: 100;
   transform: translateY(100%);
@@ -444,19 +444,19 @@
   align-items: center;
   justify-content: space-between;
   padding: 28rpx 32rpx 20rpx;
-  border-bottom: 1rpx solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1rpx solid var(--line);
   flex-shrink: 0;
 }
 
 .sheet-title {
   font-size: 30rpx;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--text);
 }
 
 .sheet-close {
   font-size: 26rpx;
-  color: #8e857e;
+  color: var(--text-muted);
   padding: 8rpx 16rpx;
 }
 
@@ -469,7 +469,7 @@
 .sheet-footer {
   padding: 16rpx 32rpx;
   padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
-  border-top: 1rpx solid rgba(0, 0, 0, 0.06);
+  border-top: 1rpx solid var(--line);
   flex-shrink: 0;
 }
 
@@ -478,8 +478,8 @@
   height: 80rpx;
   line-height: 80rpx;
   border-radius: 20rpx;
-  background: #2d2d2d;
-  color: #fff;
+  background: var(--text);
+  color: var(--text-inverse);
   font-size: 28rpx;
   font-weight: 600;
   border: none;
@@ -491,7 +491,7 @@
   align-items: center;
   gap: 20rpx;
   padding: 20rpx 0;
-  border-bottom: 1rpx solid rgba(0, 0, 0, 0.04);
+  border-bottom: 1rpx solid var(--line);
 }
 
 .sheet-step-item:last-child {
@@ -514,12 +514,12 @@
 }
 
 .sheet-step-item.is-current .sheet-step-check {
-  background: #E8A87C;
+  background: var(--accent);
 }
 
 .sheet-check-icon {
   font-size: 22rpx;
-  color: #8e857e;
+  color: var(--text-muted);
   font-weight: 600;
 }
 
@@ -540,7 +540,7 @@
 
 .sheet-step-title {
   font-size: 26rpx;
-  color: #2d2d2d;
+  color: var(--text);
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -548,13 +548,13 @@
 }
 
 .sheet-step-item.is-completed .sheet-step-title {
-  color: #a09a94;
+  color: var(--text-subtle);
   text-decoration: line-through;
 }
 
 .sheet-step-meta {
   font-size: 22rpx;
-  color: #8e857e;
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
@@ -572,7 +572,7 @@
 
 .gantt-task-name {
   font-size: 26rpx;
-  color: #5a544f;
+  color: var(--text-soft);
   width: 160rpx;
   flex-shrink: 0;
   overflow: hidden;
@@ -591,14 +591,14 @@
 .gantt-bar-fill {
   height: 100%;
   border-radius: 999rpx;
-  background: linear-gradient(90deg, #E8A87C, #f7c28a);
+  background: linear-gradient(90deg, var(--accent), #f7c28a);
   transition: width 0.4s ease;
 }
 
 .gantt-task-time {
   font-size: 24rpx;
   font-weight: 700;
-  color: #b46535;
+  color: var(--accent-strong);
   width: 60rpx;
   text-align: right;
   flex-shrink: 0;
@@ -611,5 +611,25 @@
 
 .gantt-empty-text {
   font-size: 26rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
+}
+
+/* ========== 阿姨模式：大字只读 ========== */
+.cook-mode.ayi-mode .focus-title {
+  font-size: 44rpx;
+}
+
+.cook-mode.ayi-mode .focus-line-text {
+  font-size: 36rpx;
+  line-height: 1.8;
+}
+
+.cook-mode.ayi-mode .action-main {
+  height: 120rpx;
+  font-size: 38rpx;
+  line-height: 120rpx;
+}
+
+.cook-mode.ayi-mode .action-main-text {
+  font-size: 38rpx;
 }

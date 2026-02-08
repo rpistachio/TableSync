@@ -1,12 +1,36 @@
 /** 全局样式 - TableSync 微信小程序（iPhone 安全区 + 滚动优化） */
 page {
-  --primary: #2d2d2d;
-  --primary-light: #c1663e;
-  --bg: #fdf8f2;
-  --card-bg: #fff;
-  --text: #2d2d2d;
-  --text-muted: #7d746d;
-  --border: #efe9e2;
+  /* Brand palette: TableSync warm neutrals */
+  --bg: #FDF8F2;
+  --bg-soft: #FAF9F7;
+  --bg-warm: #F5EDE3;
+  --bg-contrast: #FFFFFF;
+  --card-bg: #FAF9F7;
+  --card-bg-strong: #FFFFFF;
+
+  --text: #2D2D2D;
+  --text-soft: #5A544F;
+  --text-muted: #8E857E;
+  --text-subtle: #A09A94;
+  --text-inverse: #FFFFFF;
+
+  --accent: #D4956A;
+  --accent-strong: #C1663E;
+  --accent-soft: rgba(212, 149, 106, 0.12);
+  --accent-soft-2: rgba(212, 149, 106, 0.08);
+  --accent-border: rgba(212, 149, 106, 0.35);
+  --accent-border-strong: rgba(193, 102, 62, 0.35);
+
+  --line: #EFE9E2;
+  --line-strong: #E8E4E0;
+
+  --shadow: rgba(45, 45, 45, 0.08);
+  --shadow-strong: rgba(45, 45, 45, 0.12);
+
+  --info: #4A5D6E;
+  --info-soft: rgba(100, 149, 237, 0.12);
+  --info-border: rgba(100, 149, 237, 0.6);
+
   --safe-bottom: env(safe-area-inset-bottom);
   font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
   background-color: var(--bg);

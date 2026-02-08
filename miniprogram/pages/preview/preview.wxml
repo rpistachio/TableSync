@@ -99,6 +99,7 @@
   <view class="preview-actions">
     <button class="preview-btn preview-btn-secondary" catchtap="handleShuffle">换一换</button>
     <button class="preview-btn preview-btn-secondary" catchtap="handleReplaceUnchecked">换掉未勾选</button>
+    <button class="preview-btn preview-btn-share" open-type="share">发给阿姨</button>
     <button class="preview-btn preview-btn-primary" catchtap="confirmAndGo">开始做饭</button>
   </view>
 </view>

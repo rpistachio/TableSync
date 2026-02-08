@@ -53,6 +53,19 @@ Page({
     this.setData({ largeTextMode: !this.data.largeTextMode });
   },
 
+  onShareAppMessage: function () {
+    var menus = getApp().globalData.todayMenus || [];
+    var ids = menus.map(function (m) {
+      return m.adultRecipe ? (m.adultRecipe.id || m.adultRecipe._id || '') : '';
+    }).filter(Boolean).join(',');
+    var pref = getApp().globalData.preference || {};
+    var adultCount = pref.adultCount || 2;
+    return {
+      title: '帮我做今晚的饭，步骤都准备好了',
+      path: '/pages/steps/steps?source=ayi&recipeIds=' + encodeURIComponent(ids) + '&adultCount=' + adultCount
+    };
+  },
+
   onLoad: function () {
     var that = this;
     try {

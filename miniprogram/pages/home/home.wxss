@@ -1,9 +1,9 @@
 .home-container {
   min-height: 100%;
   height: 100%;
-  background-color: #FDFCFA;
+  background-color: var(--bg);
   padding: 0 32rpx 180rpx;
-  color: #2d2d2d;
+  color: var(--text);
   box-sizing: border-box;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -39,16 +39,16 @@
   font-size: 24rpx;
   font-weight: 300;
   letter-spacing: 4rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
 }
 
 /* ============ 今日氛围卡片 ============ */
 .vibe-card {
   margin: 0 0 24rpx;
   padding: 28rpx 32rpx;
-  background: linear-gradient(135deg, rgba(232, 168, 124, 0.1) 0%, rgba(212, 149, 106, 0.05) 100%);
+  background: linear-gradient(135deg, var(--accent-soft) 0%, var(--accent-soft-2) 100%);
   border-radius: 24rpx;
-  border: 1rpx solid rgba(232, 168, 124, 0.25);
+  border: 1rpx solid var(--accent-border);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -58,25 +58,25 @@
 .vibe-date {
   font-size: 26rpx;
   font-weight: 500;
-  color: #5a544f;
+  color: var(--text-soft);
 }
 
 .vibe-weather {
   font-size: 24rpx;
-  color: #8e857e;
+  color: var(--text-muted);
 }
 
 .vibe-greeting {
   font-size: 28rpx;
   font-weight: 500;
-  color: #2d2d2d;
+  color: var(--text);
   text-align: center;
   line-height: 1.4;
 }
 
 .selection-group {
   padding: 40rpx 0;
-  border-bottom: 1rpx solid #F0EDE8;
+  border-bottom: 1rpx solid var(--line);
 }
 
 .selection-group:last-of-type {
@@ -91,7 +91,7 @@
   font-size: 22rpx;
   font-weight: 500;
   letter-spacing: 6rpx;
-  color: #a09a94;
+  color: var(--text-subtle);
   text-transform: uppercase;
   margin-bottom: 28rpx;
   display: block;
@@ -132,7 +132,7 @@
   display: block;
   text-align: center;
   font-size: 26rpx;
-  color: #E8A87C;
+  color: var(--accent);
   font-weight: 500;
 }
 
@@ -166,12 +166,12 @@
 }
 
 .pill-item.is-active {
-  background: #fff;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
+  background: var(--card-bg-strong);
+  box-shadow: 0 4rpx 16rpx var(--shadow-strong);
 }
 
 .pill-item.is-active .pill-text {
-  color: #1C1C1E;
+  color: var(--text);
 }
 
 .pill-divider {
@@ -189,7 +189,7 @@
   margin-top: 20rpx;
   padding: 12rpx 24rpx;
   font-size: 24rpx;
-  color: rgba(0, 0, 0, 0.5);
+  color: var(--text-muted);
 }
 
 .baby-age-tag-label {
@@ -1021,5 +1021,91 @@
     width: 48rpx;
     height: 48rpx;
   }
+}
+
+/* ============ Zen Mode ============ */
+.zen-panel {
+  margin: 32rpx 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 32rpx;
+}
+
+.zen-main-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16rpx;
+  padding: 64rpx 40rpx;
+  background: linear-gradient(135deg, #E8A87C 0%, #D4956A 100%);
+  border-radius: 32rpx;
+  box-shadow: 0 16rpx 48rpx rgba(232, 168, 124, 0.4);
+  transition: transform 0.2s ease;
+}
+
+.zen-main-btn:active {
+  transform: scale(0.97);
+}
+
+.zen-main-btn-icon {
+  font-size: 64rpx;
+}
+
+.zen-main-btn-text {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 4rpx;
+}
+
+.zen-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8rpx;
+}
+
+.zen-toggle-label {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #5a544f;
+}
+
+.zen-toggle-track {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 100rpx;
+  padding: 6rpx;
+  border: 1rpx solid #E8E4E0;
+}
+
+.zen-toggle-item {
+  padding: 16rpx 36rpx;
+  border-radius: 100rpx;
+  transition: all 0.25s ease;
+}
+
+.zen-toggle-item.is-active {
+  background: #fff;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
+}
+
+.zen-toggle-text {
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #969799;
+}
+
+.zen-toggle-item.is-active .zen-toggle-text {
+  color: #2d2d2d;
+}
+
+.zen-advanced-link {
+  color: #bbb;
+  font-size: 24rpx;
+  text-align: center;
+  padding: 40rpx 0;
 }
 
