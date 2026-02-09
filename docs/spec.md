@@ -1,9 +1,10 @@
 # TableSync · Software Design Specification
 
-> **版本**: v1.9 · 2026-02-09  
+> **版本**: v1.10 · 2026-02-09  
 > **用途**: 面向 AI Agent / 协作开发者的工程规范文档  
 > **适用范围**: 项目全部运行时代码、云函数、工具链  
 > **维护者**: TableSync 团队  
+> **v1.10 变更**: 首页高级入口顺序覆盖为「今日灵感→导入→扫描→组餐→菜谱库」; Spinner 页 UI 覆盖为「上下文摘要+篮子优先+最近常做+偏好折叠+开始生成」(无心情选择/无转盘); 10.8/10.8.1 布局快照与 3.1 状态机同步；灵感篮子 10.3 辅助导出补全 batchAdd。  
 > **v1.9 变更**: scan/import 页投篮移入已部署; `createItem()` 恢复 `meat` 字段 (名称推导); 离线食材兜底升级为 cook_type 模板; Spinner 页移除三重转盘 UI，生成后直接跳转预览；spec 状态机与文档同步。  
 > **v1.8 变更**: 全面对齐代码 — Zen Mode 首页重构; `createItem()` 不再生成 `meat`; `removeItemsByMenu` 迁移状态; 冷启动/Observer 从 Planned 移入已部署; 10.2/10.4/10.5/10.8 覆盖更新  
 > **v1.7 变更**: 新增 Preview 页面 UI 优化规范草案（模块收束、视觉语言、WXML/WXSS 映射）  
@@ -522,11 +523,13 @@ generateSteps(preference, options?)               // → Step[]  (多菜并行�
 ```
 [IDLE] 用户在首页
   │
-  ├── 点击"今天吃什么" ──→ [CONFIGURING] Spinner 页（组餐配置）
+  ├── 点击「今日灵感」──→ [CONFIGURING] Spinner 页（组餐配置）
   │                            │
-  │                            ├── 选择心情 (mood)
-  │                            ├── 配置偏好 (preference)
-  │                            └── 点击"开始"
+  │                            ├── 上下文摘要 (天气+时段，只读)
+  │                            ├── 灵感篮子优先策略 (篮子非空时: 我保存的菜谱 / 消耗冰箱食材)
+  │                            ├── 最近常做一键加入 (可选)
+  │                            ├── 偏好配置 (折叠: 人数/荤素/汤/宝宝/忌口/饮食风格)
+  │                            └── 点击「开始生成」
   │                                 │
   │                                 ▼
   │                         [GENERATING_AI] 调用云函数 smartMenuGen
@@ -562,8 +565,8 @@ generateSteps(preference, options?)               // → Step[]  (多菜并行�
 
 | 转换 | 触发条件 | 执行操作 |
 |------|----------|----------|
-| IDLE → CONFIGURING | 用户点击"今天吃什么" | `wx.navigateTo('/pages/spinner/spinner')` |
-| CONFIGURING → GENERATING_AI | 用户点击"开始" | `wx.cloud.callFunction({ name: 'smartMenuGen' })` |
+| IDLE → CONFIGURING | 用户点击首页「今日灵感」入口 | `wx.navigateTo('/pages/spinner/spinner')` |
+| CONFIGURING → GENERATING_AI | 用户点击「开始生成」 | `wx.cloud.callFunction({ name: 'smartMenuGen' })` |
 | GENERATING_AI → AI_RESULT | 云函数返回 `code: 0` | 解析 `recipeIds`, 映射到本地菜谱对象 |
 | GENERATING_AI → FALLBACK_LOCAL | 云函数超时/返回非 0/catch 异常 | 调用 `_applyLocalMenus()`, console.warn 记录 |
 | AI_RESULT / FALLBACK_LOCAL → PREVIEWING | 菜单数据就绪 | 写 Storage, `wx.redirectTo('/pages/preview/preview')`（Spinner 页已移除三重转盘 UI） |
@@ -1765,7 +1768,7 @@ cook_session_start (100%)
 | **冷启动角标** | `home.js` → `getInitialBasketCount()` | `data.basketCount` 首帧即从 Storage 同步读取, 避免 0→N 闪烁 (Donut/iOS 兼容) | ✅ 已上线 |
 | **跨页篮子通知** | `app.js` → `onBasketChange` 回调 | home.onShow 注册、onHide 注销; 其他页面写入篮子后调用 `app.onBasketChange(count)` 即可实时更新首页角标 | ✅ 已上线 |
 | **篮子管理页** | `miniprogram/pages/basketPreview/` (js/wxml/wxss) | 查看/排序/删除/优先级切换/历史推荐加入 | ✅ 已上线 |
-| **Spinner 集成** | `miniprogram/pages/spinner/spinner.js` + `.wxml` | 优先策略开关、basketItems 注入云函数、历史快捷加入 | ✅ 已上线 |
+| **Spinner 集成** | `miniprogram/pages/spinner/spinner.js` + `.wxml` | 上下文摘要(天气+时段)、篮子优先策略、最近常做一键入篮、折叠偏好配置、开始生成→直接跳预览；无心情选择、无转盘 UI | ✅ 已上线 (v1.10 布局见 10.8.1) |
 | **历史推荐** | `miniprogram/utils/menuHistory.js` | 智能推荐算法 (频率+新鲜度+多样性综合评分) | ✅ 已上线 |
 | **globalData 同步** | `app.js` → `getApp().globalData.inspirationBasket` | 跨页面篮子状态共享; 新增 `chefReportText`, `dishHighlights`, `lastBasketItems` | ✅ 已上线 |
 | **myRecipes 页投篮** | `miniprogram/pages/myRecipes/myRecipes.js` + `.wxml` | 心形按钮切换加入/移出篮子 (source: `imported`); 用 `basketIds` 追踪 UI 状态 | ✅ 已上线 |
@@ -1813,11 +1816,11 @@ cook_session_start (100%)
                           └── app.onBasketChange(count) (跨页通知回调)
 
 首页展示 (Zen Mode):
-✅ home.wxml  ←── basketCount (角标, 冷启动零闪烁)
+✅ home.wxml  ←── basketCount (角标在「今日灵感」入口上, 冷启动零闪烁)
               ←── basket-bar (预览条, 非空时)
               ←── history-hint-card (空篮时, 有历史记录)
               ←── zen-panel (一键「想想吃什么」+ 谁做/状态 toggle)
-              ←── zen-advanced-link (折叠: 扫描/导入/组餐/菜谱库)
+              ←── zen-advanced-link (「更多高级功能（扫描/导入）▾」; 展开后顺序: 今日灵感→导入→扫描→组餐→菜谱库)
 ```
 
 ---
@@ -1867,12 +1870,16 @@ source === 'native'                                               → '菜谱库
 返回: 新数组 (不修改原数组, 纯函数)
 ```
 
-#### 辅助导出别名
+#### 辅助导出
 
-| 导出名 | 实际实现 | 用途 |
-|--------|----------|------|
-| `getAll(raw)` | `parseBasket(raw)` | 兼容别名, 由调用方先读 Storage 再传入 |
-| `clear()` | `return []` | 兼容别名, 返回空数组 |
+| 导出名 | 说明 |
+|--------|------|
+| `createItem`, `addItem`, `removeItemById`, `getCount`, `getBySource`, `hasItem` | 单条增删查与去重 |
+| `removeItemsByMenu(list, menus)` | 闭环清理，按 id+name 匹配移除 |
+| `batchAdd(list, recipes, source, optionsFactory?)` | 批量入篮（如 Preview 全员入篮），不写 Storage |
+| `parseBasket`, `serializeBasket`, `getTodayDateKey` | 序列化与日期 key |
+| `getAll(raw)` | `parseBasket(raw)` 兼容别名 |
+| `clear()` | `return []` 兼容别名 |
 
 #### 排序策略 (basketPreview 页)
 
@@ -2161,11 +2168,12 @@ home-container
 │   ├── view.home-main-overlay
 │   └── home-main-content
 │       ├── vibe-card (日期/天气/问候)
-│       ├── zen-panel (wx:if="{{!showAdvanced}}")  ← Zen 模式：主按钮 + 谁来做/今天状态切换
-│       ├── block (wx:if="{{showAdvanced}}")      ← 高级功能入口列表
-│       │   ├── fridge-scan-entry.today-entry (今天吃什么)
-│       │   ├── fridge-scan-entry (拍照清冰箱)
+│       ├── zen-panel (wx:if="{{!showAdvanced}}")  ← Zen 模式：主按钮「想想吃什么」+ 谁来做/今天状态切换
+│       ├── block (wx:if="{{showAdvanced}}")      ← 高级功能入口列表（自上而下顺序固定）
+│       │   ├── zen-advanced-back (返回禅模式)
+│       │   ├── fridge-scan-entry.today-entry (今日灵感 · 角标 basketCount)
 │       │   ├── fridge-scan-entry.import-entry (导入赛博菜谱)
+│       │   ├── fridge-scan-entry (拍照清冰箱)
 │       │   ├── fridge-scan-entry.mix-entry (混合组餐)
 │       │   └── fridge-scan-entry.myrecipes-entry (我的菜谱库)
 │       ├── basket-bar (wx:if="{{basketCount > 0}}")
@@ -2173,6 +2181,34 @@ home-container
 │       ├── zen-advanced-link (wx:if="{{!showAdvanced}}")
 │       └── home-brand (TableSync 品牌线)
 ```
+
+**高级入口顺序**（不可随意调换，与 10.9 角标位置一致）: 今日灵感 → 导入赛博菜谱 → 拍照清冰箱 → 混合组餐 → 我的菜谱库。
+
+---
+
+#### 10.8.1 Spinner 页布局结构 (spinner.wxml 快照)
+
+Spinner 页已移除「心情选择」与「三重转盘」UI；当前为配置表单 + 生成中状态，生成完成后直接跳转预览。
+
+**WXML 结构** (自上而下):
+
+```
+spinner-page
+├── zen-loading (wx:if="{{isZenMode}}")  ← 仅 Zen 跳转时显示「正在生成今晚菜单...」
+└── block (wx:if="{{!isZenMode}}")
+    ├── context-bar           ← 上下文摘要（天气+时段，只读文案）
+    ├── priority-section      ← 灵感篮子优先策略 (wx:if="{{basketCount > 0}}")
+    │   └── 我保存的菜谱 / 消耗冰箱食材 (带数量)
+    ├── history-quick-bar     ← 最近常做，一键加入灵感篮 (wx:if="{{historyQuickList.length > 0}}")
+    ├── pref-section-wrap     ← 折叠式偏好配置
+    │   └── 家庭成员、荤素搭配、定制口味(汤/宝宝/忌口/饮食风格)
+    ├── cta-wrap              ← 「开始生成」按钮 (wx:if="{{!isGenerating}}")
+    └── generating-state      ← 生成中 (wx:if="{{isGenerating}}") 三点 + 「正在为您挑选...」
+```
+
+**与布局相关的 data**: `contextSummary`, `basketCount`, `importedBasketCount`, `fridgeBasketCount`, `priorityImported`, `priorityFridge`, `historyQuickList`, `prefPanelExpanded`, `adultCount`, `meatCount`, `vegCount`, `hasBaby`, `babyMonth`, `expandedPanel`, `userPreference`, `isGenerating`, `isZenMode`。mood 不再由用户选择，由云端/上下文推断。
+
+---
 
 **与布局相关的 data 变量** (须在 `home.js` 的 data 或 onLoad 中定义):
 
@@ -2199,7 +2235,7 @@ home-container
 | 今日状态 Toggle | `.zen-toggle-row` | `!showAdvanced` | 还行 / 很累 切换 |
 | 高级功能入口 | `.zen-advanced-link` | `!showAdvanced` | 「更多高级功能（扫描/导入）▾」折叠入口 |
 | 返回禅模式 | `.zen-advanced-back` | `showAdvanced` | 「‹ 返回禅模式」返回 Zen 面板 |
-| 角标 (今日灵感入口右侧) | `.basket-badge` | `showAdvanced && basketCount > 0` | 显示篮子数量 |
+| 今日灵感入口 | `.fridge-scan-entry.today-entry` | `showAdvanced` | 跳转 Spinner；右侧角标 `.basket-badge` 当 `basketCount > 0` 显示数量 |
 | 灵感篮预览条 | `.basket-bar` | `basketCount > 0` | 点击跳转 basketPreview 页 |
 | 历史推荐卡片 | `.history-hint-card` | `basketCount === 0 && showHistoryHint && historyDishNames.length > 0` | 篮子为空时推荐高频菜品 |
 
@@ -2296,4 +2332,4 @@ Toggle:     .is-active 状态高亮; 值存入 wx.setStorageSync (zen_cook_who /
 
 > **文档编制**: TableSync 工程团队  
 > **最后更新**: 2026-02-09  
-> **版本**: v1.9
+> **版本**: v1.10
