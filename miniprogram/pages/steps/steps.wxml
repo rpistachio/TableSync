@@ -8,6 +8,19 @@
       <text class="step-counter">{{currentStepIndexDisplay}}/{{totalSteps}}</text>
       <text class="current-dish-name">{{currentStepSubtitle}}</text>
     </view>
+    <view wx:if="{{!isAyiMode && rhythmRings.length > 0}}" class="rhythm-ring-row">
+      <view
+        wx:for="{{rhythmRings}}"
+        wx:key="name"
+        class="rhythm-ring accent-{{index}} {{item.isActive ? 'is-active' : ''}} {{item.isPulsing ? 'is-pulsing' : ''}}"
+        style="{{item.ringStyle}}"
+      >
+        <view class="ring-inner">
+          <text class="ring-percent">{{item.percent}}%</text>
+          <text class="ring-label">{{item.name}}</text>
+        </view>
+      </view>
+    </view>
   </view>
 
   <!-- Layer 2: 浮动并行状态条 -->
@@ -38,6 +51,12 @@
 
       <!-- 步骤标题 -->
       <text class="focus-title">{{currentStep.title}}</text>
+
+      <!-- 次动作提示 -->
+      <view wx:if="{{!isAyiMode && secondaryHint}}" class="focus-secondary">
+        <text class="secondary-label">并行节拍</text>
+        <text class="secondary-text">{{secondaryHint}}</text>
+      </view>
 
       <!-- 并行提示（内联） -->
       <view wx:if="{{currentStep.parallelContext}}" class="focus-parallel-hint">
@@ -83,6 +102,27 @@
       <text class="peek-label">下一步</text>
       <text class="peek-text">{{nextStep.title}}</text>
     </view>
+  </view>
+
+  <!-- 底部流水线预览 -->
+  <view wx:if="{{!isAyiMode && pipelineSteps.length > 0}}" class="pipeline-preview">
+    <view class="pipeline-header">
+      <text class="pipeline-title">流水线预览</text>
+      <text class="pipeline-sub">{{completedCount}}/{{totalSteps}} 已完成</text>
+    </view>
+    <scroll-view scroll-x class="pipeline-scroll" enhanced show-scrollbar="{{false}}">
+      <view class="pipeline-row">
+        <view
+          wx:for="{{pipelineSteps}}"
+          wx:key="id"
+          class="pipeline-block {{item.isCompleted ? 'is-completed' : ''}} {{item.isCurrent ? 'is-current' : ''}} {{item.isWaiting ? 'is-waiting' : ''}}"
+        >
+          <text class="pipeline-label">{{item.shortTitle}}</text>
+          <view wx:if="{{item.isCompleted}}" class="pipeline-sticker">完成</view>
+          <view wx:if="{{item.isWaiting}}" class="pipeline-wait-tag">等待</view>
+        </view>
+      </view>
+    </scroll-view>
   </view>
 
   <!-- 底部操作栏 -->

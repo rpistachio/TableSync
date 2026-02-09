@@ -507,6 +507,7 @@ function processStepsForView(steps) {
       details: detailsWithSegments,
       duration: s.duration,
       completed: s.completed,
+      actionType: s.actionType,
       roleTag: stepTag(s),
       isLast: lastId !== null && s.id === lastId,
       knifeWorkLabel: extractKnifeWork(rawDetails),
@@ -519,6 +520,60 @@ function processStepsForView(steps) {
       phaseSubtitle: phaseSubtitle,
       // 并行上下文提示
       parallelContext: parallelContext
+    };
+  });
+}
+
+function buildRhythmRings(viewSteps, currentIndex) {
+  if (!Array.isArray(viewSteps) || viewSteps.length === 0) return [];
+  var map = Object.create(null);
+  var order = [];
+  for (var i = 0; i < viewSteps.length; i++) {
+    var s = viewSteps[i];
+    var name = (s && s.recipeName) ? s.recipeName : '全局步骤';
+    if (!map[name]) {
+      map[name] = { name: name, total: 0, completed: 0, hasLongTerm: false, indices: [] };
+      order.push(name);
+    }
+    map[name].total += 1;
+    if (s && s.completed) map[name].completed += 1;
+    if (s && (s.actionType === 'long_term' || s.phaseType === 'long_term' || (s.parallelContext && s.parallelContext.remainingMinutes != null))) {
+      map[name].hasLongTerm = true;
+    }
+    map[name].indices.push(i);
+  }
+  var rings = [];
+  for (var k = 0; k < order.length; k++) {
+    var key = order[k];
+    var g = map[key];
+    if (!g || g.total <= 0) continue;
+    var pct = Math.round((g.completed / g.total) * 100);
+    var isActive = g.indices.indexOf(currentIndex) !== -1;
+    rings.push({
+      name: g.name,
+      completed: g.completed,
+      total: g.total,
+      percent: pct,
+      isActive: isActive,
+      isPulsing: g.hasLongTerm && pct < 100,
+      ringStyle: '--ring-pct:' + pct + '%;'
+    });
+  }
+  return rings.slice(0, 3);
+}
+
+function buildPipelineSteps(viewSteps, currentIndex) {
+  if (!Array.isArray(viewSteps) || viewSteps.length === 0) return [];
+  return viewSteps.map(function (s, index) {
+    var waiting = s && (s.actionType === 'idle_prep' || s.phaseType === 'gap');
+    var title = (s && s.title) ? String(s.title) : '';
+    return {
+      id: s.id,
+      title: title,
+      shortTitle: title.length > 10 ? title.slice(0, 10) + '…' : title,
+      isCompleted: !!(s && s.completed),
+      isCurrent: index === currentIndex,
+      isWaiting: !!waiting
     };
   });
 }
@@ -623,6 +678,9 @@ Page({
     currentStepImage: '',
     currentStepTitle: '开始烹饪',
     currentStepSubtitle: '跟随步骤，轻松完成美味',
+    rhythmRings: [],
+    pipelineSteps: [],
+    secondaryHint: '',
     // 阿姨模式
     isAyiMode: false
   },
@@ -1017,6 +1075,16 @@ Page({
 
     // 副标题：当前菜名
     var subtitle = currentStep.recipeName || '跟随步骤，轻松完成美味';
+    var rhythmRings = buildRhythmRings(viewSteps, currentIndex);
+    var pipelineSteps = buildPipelineSteps(viewSteps, currentIndex);
+    var secondaryHint = '';
+    if (activeParallelTasks.length > 0) {
+      var firstTask = activeParallelTasks[0];
+      var hintName = firstTask.activeTaskName || firstTask.hint || '';
+      if (hintName) {
+        secondaryHint = hintName + (firstTask.remainingMinutes != null ? ' · ' + firstTask.remainingMinutes + ' 分钟' : '');
+      }
+    }
 
     this.setData({
       steps: viewSteps,
@@ -1041,6 +1109,9 @@ Page({
       currentPhaseType: currentPhaseType,
       activeParallelTasks: activeParallelTasks,
       currentStepSubtitle: subtitle,
+      rhythmRings: rhythmRings,
+      pipelineSteps: pipelineSteps,
+      secondaryHint: secondaryHint,
       isAyiMode: !!this._isAyiMode
     });
 

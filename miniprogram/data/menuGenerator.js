@@ -84,6 +84,16 @@ var babyRecipes = getBabyRecipesList();
 var MEAT_LABEL = { chicken: '鸡肉', pork: '猪肉', beef: '牛肉', fish: '鳕鱼', shrimp: '虾仁', vegetable: '素菜' };
 var MEAT_KEY_MAP = { 鸡肉: 'chicken', 猪肉: 'pork', 牛肉: 'beef', 鱼肉: 'fish', 虾仁: 'shrimp', 素菜: 'vegetable', chicken: 'chicken', pork: 'pork', beef: 'beef', fish: 'fish', shrimp: 'shrimp', vegetable: 'vegetable' };
 
+/** 离线兜底：按 cook_type 生成基础调料清单（当 recipe 无 ingredients 时使用） */
+var COOK_TYPE_SEASONINGS = {
+  stir_fry:   [{ name: '姜', unit: '适量' }, { name: '蒜', unit: '适量' }, { name: '生抽', unit: '适量' }, { name: '料酒', unit: '适量' }, { name: '盐', unit: '适量' }],
+  stew:       [{ name: '姜片', unit: '适量' }, { name: '料酒', unit: '适量' }, { name: '生抽', unit: '适量' }, { name: '老抽', unit: '适量' }, { name: '盐', unit: '适量' }, { name: '糖', unit: '适量' }],
+  steam:      [{ name: '姜丝', unit: '适量' }, { name: '葱', unit: '适量' }, { name: '盐', unit: '适量' }],
+  cold_dress: [{ name: '蒜', unit: '适量' }, { name: '生抽', unit: '适量' }, { name: '醋', unit: '适量' }, { name: '盐', unit: '适量' }, { name: '糖', unit: '适量' }]
+};
+/** 主料默认用量：按 meat 类型区分 */
+var FALLBACK_MAIN_AMOUNT = { chicken: 300, pork: 300, beef: 300, fish: 200, shrimp: 200, vegetable: 250 };
+
 /** 忌口/过敏原 key → 对应 main_ingredients 中可能出现的名称（用于前置过滤） */
 /**
  * avoidOptions value → 对应主料名列表
@@ -865,6 +875,33 @@ function getRecipeNamePrefix(name) {
 }
 
 /**
+ * 从菜名中尽量提取主食材名（用于无配料时的兜底展示）
+ * @param {string} name
+ * @returns {string}
+ */
+function inferMainIngredientFromName(name) {
+  if (!name || typeof name !== 'string') return '';
+  var s = name.trim();
+  if (!s) return '';
+  // 去掉括号/标签前缀
+  s = s.replace(/^[【\[][^】\]]+[】\]]/, '').trim();
+  var beforeStrip = s;
+  var prefix = getRecipeNamePrefix(s);
+  if (prefix) s = s.slice(prefix.length);
+  s = s.replace(/^[·\s\-—]+/, '');
+  // 去掉常见动词前缀（仅处理行首，避免误伤）
+  s = s.replace(/^(炒|蒸|煮|煎|炖|烤|焖|卤|拌|烧|煲|焯|爆|溜|扒|焗|汆|煨)/, '');
+  // 去掉尾部菜式后缀（防止复合汤名整体变食材，如"人参黄芪乌鸡汤"→"人参黄芪乌鸡"）
+  s = s.replace(/(汤|煲|锅|羹)$/, '');
+  s = s.trim();
+  // 剥离后仍 > 3 个字符说明是菜名而非食材名，放弃推导让 MEAT_LABEL 兜底
+  if (s.length > 3) return '';
+  // 若所有剥离操作均未生效（结果 === 原名），说明是不可拆解的菜名，放弃
+  if (s === beforeStrip) return '';
+  return s;
+}
+
+/**
  * 多样性过滤：主料去重、做法限频、命名去重。软性约束，任一层导致池空则跳过该层。
  * @param {Array} pool - 候选菜谱池
  * @param {Array} existingMenus - 已选菜单 [{ adultRecipe }, ...]
@@ -1495,7 +1532,10 @@ function getStepText(step) {
 }
 
 function buildIngredientsInfo(recipe, shoppingList) {
-  if (!recipe || !Array.isArray(recipe.ingredients) || recipe.ingredients.length === 0) return '主食材';
+  if (!recipe || !Array.isArray(recipe.ingredients) || recipe.ingredients.length === 0) {
+    var inferred = recipe && recipe.name ? inferMainIngredientFromName(recipe.name) : '';
+    return inferred ? ('主食材 ' + inferred) : '主食材';
+  }
   var amountByKey = {};
   if (Array.isArray(shoppingList)) {
     shoppingList.forEach(function (item) {
@@ -2992,11 +3032,23 @@ function generateShoppingListRaw(adultRecipe, babyRecipe) {
   add(adultRecipe && adultRecipe.ingredients, false, adultRecipe);
   add(babyRecipe && babyRecipe.ingredients, true, babyRecipe);
   if (items.length === 0) {
-    // 精简版 fallback 数据无 ingredients，基于 meat 类型生成兜底清单条目
+    // 离线兜底：recipe 无 ingredients，按 cook_type 模板生成主料 + 常用调料
     var main = adultRecipe || babyRecipe;
     if (main && main.meat) {
-      var mainName = MEAT_LABEL[main.meat] || main.meat;
-      items.push({ name: mainName, sub_type: undefined, category: '肉类', baseAmount: 200, unit: 'g', isFromBaby: false, _isOfflineFallback: true, recipeName: (main && main.name) || '', sourceType: (main && main.source) || 'native' });
+      var rName = (main && main.name) || '';
+      var rSource = (main && main.source) || 'native';
+      var inferredName = rName ? inferMainIngredientFromName(rName) : '';
+      var mainName = inferredName || MEAT_LABEL[main.meat] || main.meat;
+      var category = main.meat === 'vegetable' ? '蔬菜' : '肉类';
+      var mainAmount = FALLBACK_MAIN_AMOUNT[main.meat] || 200;
+      // 1) 主料
+      items.push({ name: mainName, sub_type: undefined, category: category, baseAmount: mainAmount, unit: 'g', isFromBaby: false, _isOfflineFallback: true, recipeName: rName, sourceType: rSource });
+      // 2) 按 cook_type 追加常用调料
+      var cookType = main.cook_type || 'stir_fry';
+      var seasonings = COOK_TYPE_SEASONINGS[cookType] || COOK_TYPE_SEASONINGS.stir_fry;
+      for (var si = 0; si < seasonings.length; si++) {
+        items.push({ name: seasonings[si].name, sub_type: undefined, category: '调料', baseAmount: 0, unit: seasonings[si].unit, isFromBaby: false, _isOfflineFallback: true, recipeName: rName, sourceType: rSource });
+      }
     }
     if (items.length === 0) items.push({ name: '主料', sub_type: undefined, category: '其他', baseAmount: 1, unit: '份', isFromBaby: false, _isOfflineFallback: true, recipeName: '', sourceType: 'native' });
   }

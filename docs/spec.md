@@ -1,10 +1,12 @@
 # TableSync · Software Design Specification
 
-> **版本**: v1.7 · 2026-02-08  
+> **版本**: v1.9 · 2026-02-09  
 > **用途**: 面向 AI Agent / 协作开发者的工程规范文档  
 > **适用范围**: 项目全部运行时代码、云函数、工具链  
 > **维护者**: TableSync 团队  
-> **v1.7 变更**: 灵感篮子深层优化 — BasketItem 唯一键 uniqueId、addItem 幂等去重 (B-11); 主厨报告 reasoning 降级模板与 sourceDetail 强制; 首页冷启动 basketCount 同步 Storage、onBasketChange 通知  
+> **v1.9 变更**: scan/import 页投篮移入已部署; `createItem()` 恢复 `meat` 字段 (名称推导); 离线食材兜底升级为 cook_type 模板; Spinner 页移除三重转盘 UI，生成后直接跳转预览；spec 状态机与文档同步。  
+> **v1.8 变更**: 全面对齐代码 — Zen Mode 首页重构; `createItem()` 不再生成 `meat`; `removeItemsByMenu` 迁移状态; 冷启动/Observer 从 Planned 移入已部署; 10.2/10.4/10.5/10.8 覆盖更新  
+> **v1.7 变更**: 新增 Preview 页面 UI 优化规范草案（模块收束、视觉语言、WXML/WXSS 映射）  
 > **v1.6 变更**: 代码审查对齐 — myRecipes 投篮、Preview 闭环清理/来源标签移入已部署; BasketItem 补充 meat 字段; Spinner 注入流程补充 globalData 写入链; 架构图更新  
 > **v1.5 变更**: 新增第 10 章「灵感篮子交互规范」— 已部署/未部署清单、数据模型、Agent 必遵守规则  
 > **v1.4 变更**: 新增 R-14 UI/算法变更隔离原则 — 改 UI 不动算法, 改算法不动 UI, 严格单一职责  
@@ -26,6 +28,7 @@
 8. [验证工具与命令](#8-验证工具与命令)
 9. [用户行为埋点协议 (Tracking Protocol)](#9-用户行为埋点协议-tracking-protocol)
 10. [灵感篮子交互规范 (Inspiration Basket)](#10-灵感篮子交互规范-inspiration-basket)
+11. [Preview 页面 UI 优化规范 (Draft)](#11-preview-页面-ui-优化规范-draft)
 
 ---
 
@@ -65,14 +68,6 @@
 - 小程序: 微信开发者工具 / 真机调试
 - 云函数: 微信云开发控制台部署
 - 工具链: 本地 Node.js (>= 18), 在 `tools/` 目录下运行
-
-**Donut / iOS 冷启动** (1.1 与 10.7): 进程被杀后重开时 `globalData` 清空而 Storage 仍在。首页 `basketCount` 初值须从 Storage 同步读取（如 data 初始化时或 onLoad 首行），避免角标 0→N 闪烁；入篮/出篮后可选调用 `getApp().onBasketChange(count)`，home 在 onShow 注册、onHide 注销，使 .basket-bar 平滑更新。
-
-**你现在要改什么？**
-├── UI 展示 / 交互 → pages/
-├── 菜单逻辑 / 生成 → data/ logic/
-├── 数据来源 / 同步 → cloudRecipeService
-├── AI 能力 → cloudfunctions/
 
 ### 1.2 你要遵守什么规则
 
@@ -527,7 +522,7 @@ generateSteps(preference, options?)               // → Step[]  (多菜并行�
 ```
 [IDLE] 用户在首页
   │
-  ├── 点击"今天吃什么" ──→ [CONFIGURING] 转盘页
+  ├── 点击"今天吃什么" ──→ [CONFIGURING] Spinner 页（组餐配置）
   │                            │
   │                            ├── 选择心情 (mood)
   │                            ├── 配置偏好 (preference)
@@ -543,10 +538,7 @@ generateSteps(preference, options?)               // → Step[]  (多菜并行�
   │                            │          │
   │                            └────┬─────┘
   │                                 │
-  │                                 ▼
-  │                         [SPINNING] 三环转盘动画
-  │                                 │
-  │                                 ▼ (动画结束)
+  │                                 ▼ (无转盘 UI，直接跳转)
   │                         [PREVIEWING] 菜单预览页
   │                            │          │
   │                       换菜 │          │ 确认
@@ -574,8 +566,7 @@ generateSteps(preference, options?)               // → Step[]  (多菜并行�
 | CONFIGURING → GENERATING_AI | 用户点击"开始" | `wx.cloud.callFunction({ name: 'smartMenuGen' })` |
 | GENERATING_AI → AI_RESULT | 云函数返回 `code: 0` | 解析 `recipeIds`, 映射到本地菜谱对象 |
 | GENERATING_AI → FALLBACK_LOCAL | 云函数超时/返回非 0/catch 异常 | 调用 `_applyLocalMenus()`, console.warn 记录 |
-| AI_RESULT / FALLBACK_LOCAL → SPINNING | 菜单数据就绪 | 构建转盘数据, 启动旋转动画 |
-| SPINNING → PREVIEWING | 动画计时结束 | `wx.navigateTo('/pages/preview/preview')`, 数据写入 Storage |
+| AI_RESULT / FALLBACK_LOCAL → PREVIEWING | 菜单数据就绪 | 写 Storage, `wx.redirectTo('/pages/preview/preview')`（Spinner 页已移除三重转盘 UI） |
 | PREVIEWING → SHOPPING | 用户点击"开始做饭" | `wx.navigateTo('/pages/shopping/shopping')` |
 | SHOPPING → COOKING | 用户点击"食材已买齐" | `wx.navigateTo('/pages/steps/steps')` |
 | COOKING → COMPLETED | 最后一个步骤 `markCompleted` | `wx.showModal('料理完成！')`, 保存历史记录 |
@@ -915,7 +906,7 @@ cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/
 
 | 场景 | 超时阈值 | 处理策略 | 用户感知 |
 |------|----------|----------|----------|
-| **smartMenuGen 云函数** | 60s | catch → `_applyLocalMenus()` 本地随机生成 | 无感知, 转盘照常旋转 |
+| **smartMenuGen 云函数** | 60s | catch → `_applyLocalMenus()` 本地随机生成 | 无感知, 直接跳转预览页 |
 | **fridgeScan 云函数** | 60s | catch → 显示错误弹窗, 提供"重试"按钮 | `wx.showModal("识别服务暂时不可用")` |
 | **recipeImport 云函数** | 60s | catch → 显示错误弹窗 | `wx.showModal("导入失败, 请稍后重试")` |
 | **recipeCoverGen 云函数** | 90s | catch → 返回 `{ code: 500 }`, 使用默认封面 | 无感知, 显示兜底图 |
@@ -1372,7 +1363,7 @@ wx-cloud-cli deploy --name recipeCoverGen
 ```
 □ 1. 编译检查: 微信开发者工具编译无报错
 □ 2. 步骤完整性: node scripts/steps_sanity_check.js 通过
-□ 3. 离线测试: 关闭网络 → 首页/转盘/预览 功能正常 (降级模式)
+□ 3. 离线测试: 关闭网络 → 首页/Spinner 组餐/预览 功能正常 (降级模式)
 □ 4. 在线测试: 打开网络 → smartMenuGen / fridgeScan 正常返回
 □ 5. 缓存测试: 清除 Storage → 重新进入 → 云端同步正常
 □ 6. 封面图测试: 预览页封面图加载 → 无图的菜显示兜底图
@@ -1769,23 +1760,26 @@ cook_session_start (100%)
 
 | 模块 | 文件 | 功能 | 状态 |
 |------|------|------|------|
-| **数据层** | `miniprogram/data/inspirationBasket.js` | 纯函数数据操作 (增删查序列化) | ✅ 已上线 |
-| **首页入口** | `miniprogram/pages/home/home.js` + `.wxml` + `.wxss` | 角标计数、预览条、历史推荐卡片 | ✅ 已上线 |
+| **数据层** | `miniprogram/data/inspirationBasket.js` | 纯函数数据操作 (增删查序列化); `createItem` v1.9 恢复 `meat` 字段 (三级推导: options > recipe > 名称) | ✅ 已上线 |
+| **首页 Zen Mode** | `miniprogram/pages/home/home.js` + `.wxml` + `.wxss` | 一键「想想吃什么」→ smartMenuGen → 直跳 preview; 角标、预览条、历史推荐; Toggle: 谁做/今日状态; 高级功能折叠 | ✅ 已上线 |
+| **冷启动角标** | `home.js` → `getInitialBasketCount()` | `data.basketCount` 首帧即从 Storage 同步读取, 避免 0→N 闪烁 (Donut/iOS 兼容) | ✅ 已上线 |
+| **跨页篮子通知** | `app.js` → `onBasketChange` 回调 | home.onShow 注册、onHide 注销; 其他页面写入篮子后调用 `app.onBasketChange(count)` 即可实时更新首页角标 | ✅ 已上线 |
 | **篮子管理页** | `miniprogram/pages/basketPreview/` (js/wxml/wxss) | 查看/排序/删除/优先级切换/历史推荐加入 | ✅ 已上线 |
 | **Spinner 集成** | `miniprogram/pages/spinner/spinner.js` + `.wxml` | 优先策略开关、basketItems 注入云函数、历史快捷加入 | ✅ 已上线 |
 | **历史推荐** | `miniprogram/utils/menuHistory.js` | 智能推荐算法 (频率+新鲜度+多样性综合评分) | ✅ 已上线 |
-| **globalData 同步** | `app.js` → `getApp().globalData.inspirationBasket` | 跨页面篮子状态共享 | ✅ 已上线 |
+| **globalData 同步** | `app.js` → `getApp().globalData.inspirationBasket` | 跨页面篮子状态共享; 新增 `chefReportText`, `dishHighlights`, `lastBasketItems` | ✅ 已上线 |
 | **myRecipes 页投篮** | `miniprogram/pages/myRecipes/myRecipes.js` + `.wxml` | 心形按钮切换加入/移出篮子 (source: `imported`); 用 `basketIds` 追踪 UI 状态 | ✅ 已上线 |
-| **Preview 篮子来源标签** | `miniprogram/pages/preview/preview.js` | 读取 `globalData.lastBasketItems`, 在菜单卡片上显示 `fromBasket` + `basketSourceLabel` (如"导入菜谱""冰箱匹配") | ✅ 已上线 |
-| **Preview 闭环清理** | `miniprogram/pages/preview/preview.js` | `confirmAndGo()` 中调用 `basket.removeItemsByMenu(list, menus)`, 确认做饭后自动从篮子移除已选菜品 | ✅ 已上线 |
+| **Preview 篮子来源标签** | `miniprogram/pages/preview/preview.js` | 读取 `globalData.lastBasketItems`, 在菜单卡片上显示 `fromBasket` + `basketSourceLabel` | ✅ 已上线 |
+| **Preview 闭环清理** | `miniprogram/pages/preview/preview.js` | `confirmAndGo()` 中调用 `basket.removeItemsByMenu(list, menus)`, 按 id + name 双重匹配移除已选菜品 | ✅ 已修复 (v1.8) |
+| **scan 页投篮** | `miniprogram/pages/scan/scan.js` | 冰箱扫描结果自动加入篮子 (`_autoAddToBasket`, source: `fridge_match`), 含 meta.fridgeIngredients | ✅ 已上线 (v1.9) |
+| **import 页投篮** | `miniprogram/pages/import/import.js` | 保存菜谱后 ActionSheet 弹出「加入今日灵感篮」(`_promptAddToBasket`, source: `imported`); 降级路径已补全 | ✅ 已上线 (v1.9) |
+| **meat 字段自动推导** | `miniprogram/data/inspirationBasket.js` | `createItem()` 恢复 `meat` 字段: `options.meat` > `recipe.meat` > `inferMeatFromName(name)` 三级优先级 | ✅ 已上线 (v1.9) |
+| **离线食材智能兜底** | `miniprogram/data/menuGenerator.js` | 无 `ingredients` 菜谱按 `cook_type` 模板生成主料+常用调料 (COOK_TYPE_SEASONINGS); 标记 `_isOfflineFallback` | ✅ 已上线 (v1.9) |
 
 #### 未部署 (Planned)
 
 | 模块 | 涉及文件 | 功能 | 优先级 | 备注 |
 |------|----------|------|--------|------|
-| **scan 页投篮** | `pages/scan/scan.js` | 冰箱扫描结果勾选后自动加入篮子 (source: `fridge_match`) | P1 | 需在 scan 页结果列表加「加入灵感篮」按钮 |
-| **import 页投篮** | `pages/import/import.js` | 导入菜谱保存后弹出「同时加入灵感篮？」确认 (source: `imported`) | P1 | 需在保存成功回调中加 `basket.createItem()` |
-| **smartMenuGen 篮子权重** | `cloudfunctions/smartMenuGen/lib/prompt-builder.js` | 云函数 prompt 中注入 basketItems, AI 优先推荐篮子内菜品 | P2 | spinner.js 已传 basketItems, 云函数端需解析 |
 | **篮子满溢提示** | `pages/home/home.js` | 篮子超过 10 道时提示"建议精简" | P3 | 纯 UI 提示, 不阻塞流程 |
 | **篮子数据上云** | `cloudRecipeService.js` | 篮子数据持久化到云 DB (OpenID 关联), 实现跨设备同步 | P4 | 依赖 OpenID 静默画像 (Phase 1.5) |
 
@@ -1794,30 +1788,36 @@ cook_session_start (100%)
 ### 10.2 架构与数据流
 
 ```
-入篮触点 (已部署 ✅ / 待开发 ⬜)                     消费端
-─────────────────────────────────               ──────────────
-                                                
-⬜ scan 页 (冰箱匹配结果) ─┐                        
-⬜ import 页 (保存后) ─────┤                    ┌─ spinner.js
-✅ myRecipes 页 (心形toggle)┤                    │  ·读取篮子
-✅ basketPreview 页 ───────┤── inspirationBasket.js ──┤  ·注入 candidates + meat
-   (历史推荐加入)          │   (纯函数, 不调 wx.*)    │  ·优先策略开关
-✅ spinner 页 ─────────────┤                    │
-   (历史快捷加入)          │                    ├─ ⬜ smartMenuGen
-                           │                    │  (云函数 prompt 注入)
-                           │                    │
-                           │                    └─ ✅ preview.js
-                           │                       ·来源标签 (fromBasket)
-                           │                       ·闭环清理 (removeItemsByMenu)
-                           │
-                           ├── Storage: inspiration_basket (JSON)
-                           ├── Storage: inspiration_basket_date (日期)
-                           └── globalData.inspirationBasket (内存)
+入篮触点 (全部 ✅ 已部署)                     消费端 (两条并行路径)
+─────────────────────────────                ────────────────────────
+                                             
+✅ scan 页 (冰箱匹配) ────┐                  路径 A: Zen Mode (首页一键)
+✅ import 页 (保存后) ────┤                  ┌─ home.js onZenGo()
+✅ myRecipes 页 (心形)────┤                  │  ·读取篮子 → basketItems
+✅ basketPreview 页 ──────┤─ inspirationBasket.js ─┤  ·smartMenuGen 云函数
+   (历史推荐加入)         │  (纯函数, 不调 wx.*)   │  ·直跳 preview
+✅ spinner 页 ────────────┤                  │
+   (历史快捷加入)         │                  路径 B: Spinner (高级)
+                          │                  ├─ spinner.js onStartGenerate()
+                          │                  │  ·读取篮子 → basketItems
+                          │                  │  ·优先策略开关
+                          │                  │  ·smartMenuGen 云函数
+                          │                  │
+                          │                  └─ ✅ preview.js
+                          │                     ·来源标签 (fromBasket)
+                          │                     ·闭环清理 (removeItemsByMenu ✅)
+                          │
+                          ├── Storage: inspiration_basket (JSON)
+                          ├── Storage: inspiration_basket_date (日期)
+                          ├── globalData.inspirationBasket (内存)
+                          └── app.onBasketChange(count) (跨页通知回调)
 
-首页展示:
-✅ home.wxml  ←── basketCount (角标)
+首页展示 (Zen Mode):
+✅ home.wxml  ←── basketCount (角标, 冷启动零闪烁)
               ←── basket-bar (预览条, 非空时)
               ←── history-hint-card (空篮时, 有历史记录)
+              ←── zen-panel (一键「想想吃什么」+ 谁做/状态 toggle)
+              ←── zen-advanced-link (折叠: 扫描/导入/组餐/菜谱库)
 ```
 
 ---
@@ -1834,7 +1834,7 @@ cook_session_start (100%)
 | `sourceDetail` | String | 否 | — | 自动推断 | 来源描述文本 (如 "小红书导入", "冰箱匹配", "菜谱库收藏", "历史推荐") |
 | `addedAt` | Number | 是 | `Date.now()` 时间戳 | — | 加入时间 |
 | `priority` | String | 否 | `'high'` \| `'normal'` | `'normal'` | 优先级 (用户可在 basketPreview 页切换) |
-| `meat` | String | 条件必填 | `'chicken'` \| `'pork'` \| `'beef'` \| `'fish'` \| `'shrimp'` \| `'vegetable'` | 自动推导 | **仅当 `source === 'imported'` 时存在**; 若原始菜谱无 `meat` 字段, 由 `inferMeatFromName(name)` 从菜名中按关键词自动推导 (如"鸡"→chicken, "牛"→beef), 默认 `'vegetable'`; 用于 menuGenerator 兼容 |
+| `meat` | String | 否 | VALID_MEAT_KEYS 枚举或空 | `inferMeatFromName(name)` | 荤素分类: 优先 `options.meat` > `recipe.meat` > 名称推导; v1.9 恢复 |
 | `meta` | Object | 否 | — | `{}` | 扩展元数据 |
 | `meta.fridgeIngredients` | Array\<String\> | 否 | — | — | 冰箱匹配时识别到的食材列表 |
 | `meta.expiringIngredients` | Array\<String\> | 否 | — | — | 临期食材列表 (用于优先排序) |
@@ -1850,21 +1850,21 @@ source === 'fridge_match'                                         → '冰箱匹
 source === 'native'                                               → '菜谱库收藏'
 ```
 
-#### 闭环清理函数 `removeItemsByMenu(list, menus)`
+#### 闭环清理函数 `removeItemsByMenu(list, menus)` ✅
 
-> preview.js `confirmAndGo()` 在用户确认做饭后调用此函数, 自动将已选入菜单的篮子项移除。
+> preview.js `confirmAndGo()` 在用户确认做饭后调用此函数, 自动将已选入菜单的篮子项移除。v1.8 已恢复到 `inspirationBasket.js`。
 
 ```
 输入:
   list   — 当前篮子数组
-  menus  — 完整菜单 [{ adultRecipe: { id, name }, ... }]
+  menus  — 完整菜单 [{ adultRecipe: { id, _id, name }, ... }]
 
 匹配规则:
-  1. 提取 menus 中所有 adultRecipe.id → ids 集合
+  1. 提取 menus 中所有 adultRecipe.id 和 adultRecipe._id → ids 集合
   2. 提取 menus 中所有 adultRecipe.name → names 集合
   3. 篮子项的 id 命中 ids 或 name 命中 names → 移除
 
-返回: 新数组 (不修改原数组)
+返回: 新数组 (不修改原数组, 纯函数)
 ```
 
 #### 辅助导出别名
@@ -1904,27 +1904,126 @@ timeFactor      = lastDayIdx <= 2 ? 1          // 2 天内做过 → +1
 用户打开小程序
     │
     ▼
-home.onShow() → _refreshBasket()
+首帧渲染: data.basketCount = getInitialBasketCount()
+    │  ·直接从 Storage 同步读取 (零闪烁)
+    │  ·若跨天 (dateKey !== today) → 返回 0
+    │
+    ▼
+home.onShow() → _refreshBasketAsync()
     │
     ├── 读取 Storage: inspiration_basket_date
     │
     ├── 日期 === 今天 ──→ 正常加载篮子数据
     │
-    └── 日期 !== 今天 (跨天) ──→ 清空篮子
-                                   ├── Storage 写入空数组
-                                   ├── 更新 date key 为今天
-                                   └── setData({ basketCount: 0 })
+    ├── 日期 !== 今天 (跨天) ──→ 清空篮子
+    │                              ├── Storage 写入空数组
+    │                              ├── 更新 date key 为今天
+    │                              └── setData({ basketCount: 0 })
+    │
+    ├── setData({ basketCount }) ← 先更新角标 (保证首帧不卡)
+    │
+    └── setTimeout(fn, 0) ← 历史推荐 getSmartRecommendations 延后执行
+         ├── 若 _pageAlive === false → 不更新 (避免页面已离开时写入)
+         └── setData({ showHistoryHint, historyDishNames })
 ```
 
 **关键行为**:
 - 篮子是 **日粒度** 临时暂存, 每日自动重置
-- 跨天判断在 `home.onShow()` 中执行, 每次进入首页都检查
+- 跨天判断在 `home.onShow()` → `_refreshBasketAsync()` 中执行
 - 篮子首次有数据时自动补写 date key (首次添加场景兼容)
-- **幂等**：入篮去重以 `uniqueId` 为准，同源同菜只保留一条；`uniqueId` 在 `createItem()` 内由 source 与稳定 id（及可选 sourceUrl）拼接（见 B-11）
+- 历史推荐计算与角标更新解耦, 避免阻塞首帧
+
+#### 冷启动角标 (✅ 已部署)
+
+```javascript
+// home.js — 首帧即从 Storage 读真实值, 避免 0→N 闪烁
+function getInitialBasketCount() {
+  try {
+    var todayKey = basket.getTodayDateKey();
+    var storedKey = wx.getStorageSync(basket.BASKET_DATE_KEY) || '';
+    if (storedKey === todayKey) {
+      var raw = wx.getStorageSync(basket.STORAGE_KEY) || '';
+      return basket.getCount(basket.parseBasket(raw));
+    }
+  } catch (e) { /* ignore */ }
+  return 0;
+}
+
+Page({
+  data: (function () {
+    return { basketCount: getInitialBasketCount(), /* ... */ };
+  })()
+});
+```
+
+#### 跨页篮子通知 Observer (✅ 已部署)
+
+```javascript
+// app.js — 回调槽位
+App({
+  globalData: { /* ... */ },
+  onBasketChange: null   // 首页注册, 其他页面触发
+});
+
+// home.js — 注册/注销
+onShow: function () {
+  var that = this;
+  this._pageAlive = true;
+  getApp().onBasketChange = function (count) {
+    if (that._pageAlive && count != null) that.setData({ basketCount: count });
+  };
+},
+onHide: function () {
+  this._pageAlive = false;
+  getApp().onBasketChange = null;
+}
+
+// 任何入篮/出篮页面写入 Storage 后调用:
+var app = getApp();
+if (app.onBasketChange) app.onBasketChange(newList.length);
+```
+
+#### 幂等性保障
+
+| 层级 | 机制 | 代码位置 |
+|------|------|----------|
+| **数据层去重** | `addItem()` 遍历 `list[i].id === item.id`, 已存在则返回原数组 | `inspirationBasket.js` |
+| **UI Toggle 联动** | `myRecipes.onToggleBasket()` 先 `hasItem()` 判定 → toggle | `myRecipes.js` |
+| **心形状态同步** | `onShow()` 调 `_refreshBasketIds()` 从 Storage 重建映射 | `myRecipes.js` |
+
+**已知边界 (⚠️ import 页 ID 不稳定)**: 同一小红书链接多次导入 → 云 DB 每次生成新 `_id` → 篮子 id 去重失效。推荐修复: 入篮 id 使用 `contentHash` 或 `normalizedSourceUrl`
 
 ---
 
-### 10.5 Spinner 页篮子注入流程
+### 10.5 菜单生成 — 双路径篮子注入
+
+> v1.8: 首页 Zen Mode 新增了与 Spinner 页并行的第二条生成路径。两条路径共享同一套 globalData 写入逻辑。
+
+#### 路径 A: Zen Mode (home.js `onZenGo`)
+
+```
+用户点击「想想吃什么」
+    │
+    ├── _buildZenPreference()
+    │   ·固定 2人 / 1荤1素 / 无汤 / 无宝宝
+    │   ·cookStatus === 'tired' → isTimeSave: true
+    │
+    ├── 读取篮子 → basketItems: [{ id, name, source, priority, meat }]
+    │   ·meat 由 createItem v1.9 自动推导 (options > recipe.meat > 名称关键词)
+    │
+    ├── smartMenuGen 云函数
+    │   data: { preference, mood, weather, recentDishNames, candidates, basketItems }
+    │
+    ├── 成功 → _zenRecipeIdsToMenus() → _zenNavigateToPreview()
+    │   ·globalData.chefReportText  ← reasoning
+    │   ·globalData.dishHighlights  ← dishHighlights
+    │   ·globalData.lastBasketItems ← basketItems
+    │
+    └── 失败 → _zenApplyLocalMenus() 本地降级
+        ·清空上述三个 globalData 字段
+```
+
+#### 路径 B: Spinner (spinner.js `onStartGenerate`)
 
 ```
 spinner.onLoad()
@@ -1939,27 +2038,22 @@ _refreshBasketData()
 用户点击「开始生成」→ onStartGenerate()
     │
     ├── 根据优先策略开关 (priorityImported / priorityFridge) 过滤篮子项
-    │   ·priorityImported === false → 跳过 source: 'imported' 的项
-    │   ·priorityFridge === false   → 跳过 source: 'fridge_match' 的项
     │
-    ├── 构建 basketItems 数组: [{ id, name, source, sourceDetail, priority, meat }]
-    │   ·meat 字段仅 imported 来源的项才有 (由 createItem 时通过 inferMeatFromName 自动推导)
-    │   ·sourceDetail 必传，供 AI 主厨报告话术体现「我看到了你的灵感」及具体来源
+    ├── 构建 basketItems: [{ id, name, source, priority, meat }]
+    │   ·meat 由 createItem v1.9 自动推导; 历史存量项可能为 undefined (不影响生成)
     │
     ├── 传给云函数 smartMenuGen:
     │   data: { preference, mood, weather, recentDishNames, candidates, basketItems }
     │
     ├── AI 成功返回后写入 globalData:
-    │   ·globalData.chefReportText    ← out.data.reasoning (主厨报告文本；空/过短时云函数降级为预设模板)
-    │   ·globalData.dishHighlights    ← out.data.dishHighlights (菜品亮点 { recipeId: text })
-    │   ·globalData.lastBasketItems   ← basketItems (供 preview 页展示来源标签)
+    │   ·globalData.chefReportText    ← out.data.reasoning
+    │   ·globalData.dishHighlights    ← out.data.dishHighlights
+    │   ·globalData.lastBasketItems   ← basketItems
     │
-    └── AI 失败或本地降级时清空上述三个字段 (避免残留旧数据)
+    └── AI 失败或本地降级时清空上述三个字段
 ```
 
-**主厨报告 (reasoning) 约定**:
-- 云函数在 AI 返回的 reasoning 为空或过短（如 &lt; 10 字）时，**降级为预设模板**：有篮子时为「基于你收藏的 [菜名…] 灵感，我为你补全了这顿营养均衡的晚餐。」，无篮子时为「根据今日心情与家常口味，为你搭配了这份套餐。」
-- `basketItems` 必含 `sourceDetail`；prompt 要求 AI 话术必须体现「我看到了你的灵感」并点名来源（冰箱匹配/小红书导入/菜谱库收藏等）。
+**✅ `meat` 字段已恢复 (v1.9)**: `inspirationBasket.createItem()` 重新包含 `inferMeatFromName` 推导逻辑。三级优先级: `options.meat` > `recipe.meat` > 名称关键词匹配。spinner.js 和 home.js 读取 `bItem.meat` 时可获得有效值。新入篮的项自动附带 `meat`; 历史存量项若缺少 `meat` 则在消费端读到 `undefined` (不影响 AI 生成, 仅降低推荐精度)。
 
 ---
 
@@ -1970,22 +2064,22 @@ _refreshBasketData()
 | 编号 | 规则 | 说明 |
 |------|------|------|
 | B-01 | **`inspirationBasket.js` 必须保持纯函数** | 所有函数不得调用 `wx.*`、`this.setData`、`getApp()`; Storage 读写由页面层 (调用方) 完成; 这与 R-01 纯函数设计原则一致 |
-| B-02 | **去重以 `uniqueId` 为准（兼容 `id`）** | `addItem()` 优先按 `item.uniqueId` 去重，同 uniqueId 不重复添加；兼容旧数据无 uniqueId 时按 `item.id` 判断；历史推荐项的 `id` 格式为 `'history-' + dishName`, 不得改为其他格式 |
-| B-11 | **篮子唯一键 `uniqueId`** | `uniqueId` 在 `createItem()` 内由 `source` 与稳定 id（及可选 `sourceUrl`）拼接生成，业务层不得手写；同源同菜只保留一条，后续可扩展「同链接同 uniqueId」以覆盖同一链接多次导入的重复 |
+| B-02 | **去重以 `id` 为准** | `addItem()` 通过 `item.id` 去重; 同一 `id` 不重复添加; 历史推荐项的 `id` 格式为 `'history-' + dishName`, 不得改为其他格式 |
 | B-03 | **跨天清空逻辑只在 `home.onShow()` 中执行** | 不得在 spinner / basketPreview / 其他页面自行实现跨天清空; 统一入口避免竞态 |
 | B-04 | **Storage Key 不得修改** | `inspiration_basket` 和 `inspiration_basket_date` 是已部署的 key, 修改会导致用户数据丢失 |
 | B-05 | **globalData.inspirationBasket 是内存镜像** | 任何对 Storage 的写操作后, 必须同步更新 `getApp().globalData.inspirationBasket`; 读操作优先从 Storage 读 (globalData 可能过期) |
 | B-06 | **入篮后必须更新 date key** | 向篮子添加项后, 必须同时 `wx.setStorageSync(basket.BASKET_DATE_KEY, basket.getTodayDateKey())`, 否则跨天清空逻辑失效 |
 | B-07 | **source 枚举值不得擅自扩展** | 当前仅支持 `'native'`, `'imported'`, `'fridge_match'` 三个值; 新增来源类型需同步更新: `inspirationBasket.js` 的 sourceDetail 推断、`basketPreview.js` 的 SOURCE_LABELS 映射、spinner.js 的优先策略过滤 |
-| B-08 | **不得在篮子数据中存储完整 Recipe 对象** | 篮子项只存 `{ id, uniqueId, name, source, sourceDetail, addedAt, priority, meta }`, 不包含 ingredients / steps 等大字段; 完整数据在消费时按 id 从菜谱库还原 |
+| B-08 | **不得在篮子数据中存储完整 Recipe 对象** | 篮子项只存 `{ id, name, source, sourceDetail, addedAt, priority, meta }`, 不包含 ingredients / steps 等大字段; 完整数据在消费时按 id 从菜谱库还原 |
 | B-09 | **新增入篮触点必须使用 `basket.createItem()` 工厂函数** | 不得手动构造篮子项对象; `createItem()` 确保字段完整、sourceDetail 自动推断、addedAt 自动填充 |
-| B-10 | **不修改排序逻辑时不碰 `basketPreview.js`** | basketPreview 的排序/优先级/删除/历史推荐 UI 已稳定; 新增入篮触点 (scan/import/myRecipes) 只需在对应页面加 `basket.createItem()` + `basket.addItem()` + Storage 写入, 不需要改动 basketPreview |
+| B-10 | **不修改排序逻辑时不碰 `basketPreview.js`** | basketPreview 的排序/优先级/删除/历史推荐 UI 已稳定; 新增入篮触点只需在对应页面加 `basket.createItem()` + `basket.addItem()` + Storage 写入 |
+| B-11 | **写入篮子后必须触发 Observer** | 任何页面执行 Storage 写入后, 若 `getApp().onBasketChange` 非空, 必须调用 `getApp().onBasketChange(newList.length)`; 遗漏会导致首页角标与实际不同步 |
+| B-12 | **Zen Mode 生成路径不得引入 spinner 依赖** | `home.js` 的 `onZenGo()` 独立于 spinner.js; 不得在 home 中 `require('spinner')` 或复用 spinner 页面方法; 两条路径共享 `menuData` / `menuGenerator` 是允许的 |
+| B-13 | **首帧数据必须同步初始化** | `home.js` 的 `data` IIFE 中调用 `getInitialBasketCount()` 使用同步 API; 不得改为异步 (会导致冷启动闪烁回归) |
 
 ---
 
 ### 10.7 新增入篮触点的标准实现模式
-
-**冷启动角标**：首页 `data.basketCount` 初值须从 Storage 同步读取（与 `BASKET_DATE_KEY` 同天则取 `getCount(parseBasket(raw))`），避免 Donut 下 0→N 闪烁。**可选**：写入 Storage 与 globalData 后调用 `getApp().onBasketChange && getApp().onBasketChange(newList.length)`，home 在 onShow 注册、onHide 注销，使 .basket-bar 平滑更新。
 
 > 给 scan / import / myRecipes 页面添加入篮功能时, 统一使用以下模板:
 
@@ -2018,7 +2112,6 @@ function addToBasket(recipe, source, options) {
     // 2e. 同步 globalData (B-05!)
     var app = getApp();
     if (app && app.globalData) app.globalData.inspirationBasket = newList;
-    if (app.onBasketChange) app.onBasketChange(newList.length);
     
     wx.showToast({ title: '已加入灵感篮', icon: 'success' });
   } else {
@@ -2051,13 +2144,64 @@ addToBasket(
 
 ---
 
-### 10.8 首页 UI 组件对照表
+### 10.8 首页布局结构 (home.wxml 快照)
+
+以下为当前 `miniprogram/pages/home/home.wxml` 的嵌套结构，修改首页时须保持标签一一闭合，不得漏写 `</view>`。后续若布局有变更，请同步更新本节。
+
+**WXML 嵌套树**:
+
+```
+home-container
+├── brand-header
+│   └── header-content
+│       ├── image.brand-logo
+│       └── text.brand-slogan
+├── home-main
+│   ├── image.home-main-bg (wx:if="{{homeBgUrl}}")
+│   ├── view.home-main-overlay
+│   └── home-main-content
+│       ├── vibe-card (日期/天气/问候)
+│       ├── zen-panel (wx:if="{{!showAdvanced}}")  ← Zen 模式：主按钮 + 谁来做/今天状态切换
+│       ├── block (wx:if="{{showAdvanced}}")      ← 高级功能入口列表
+│       │   ├── fridge-scan-entry.today-entry (今天吃什么)
+│       │   ├── fridge-scan-entry (拍照清冰箱)
+│       │   ├── fridge-scan-entry.import-entry (导入赛博菜谱)
+│       │   ├── fridge-scan-entry.mix-entry (混合组餐)
+│       │   └── fridge-scan-entry.myrecipes-entry (我的菜谱库)
+│       ├── basket-bar (wx:if="{{basketCount > 0}}")
+│       ├── history-hint-card (wx:if="{{basketCount === 0 && showHistoryHint && ...}}")
+│       ├── zen-advanced-link (wx:if="{{!showAdvanced}}")
+│       └── home-brand (TableSync 品牌线)
+```
+
+**与布局相关的 data 变量** (须在 `home.js` 的 data 或 onLoad 中定义):
+
+| 变量 | 用途 |
+|------|------|
+| `homeBgUrl` | 首页背景图临时 URL (onReady 云存储 getTempFileURL 后 setData) |
+| `currentDate`, `vibeWeather`, `vibeGreeting` | 氛围卡片展示 |
+| `showAdvanced` | false=Zen 模式(主按钮+切换), true=展示高级入口列表 |
+| `cookWho` | Zen 模式「谁来做」: `'self'` \| `'ayi'` |
+| `cookStatus` | Zen 模式「今天状态」: `'ok'` \| `'tired'` |
+| `basketCount` | 灵感篮数量 (角标、预览条显示条件) |
+| `showHistoryHint`, `historyDishNames` | 历史推荐「再来一次？」卡片 |
+
+**闭合规则**: `home-container` → `home-main` → `home-main-content` 三层 view 必须在文件末尾按顺序闭合，即 `</view></view></view>`。
+
+---
+
+### 10.9 首页 UI 组件对照表 (Zen Mode)
 
 | WXML 元素 | CSS class | 显示条件 | 功能 |
 |-----------|-----------|----------|------|
-| 角标 (今天吃什么入口右侧) | `.basket-badge` | `basketCount > 0` | 显示篮子内菜品数量 |
+| Zen 主按钮 | `.zen-main-btn` | `!showAdvanced` | 「想想吃什么」一键生成菜单 |
+| 谁来做 Toggle | `.zen-toggle-row` | `!showAdvanced` | 自己做 / 阿姨做 切换 |
+| 今日状态 Toggle | `.zen-toggle-row` | `!showAdvanced` | 还行 / 很累 切换 |
+| 高级功能入口 | `.zen-advanced-link` | `!showAdvanced` | 「更多高级功能（扫描/导入）▾」折叠入口 |
+| 返回禅模式 | `.zen-advanced-back` | `showAdvanced` | 「‹ 返回禅模式」返回 Zen 面板 |
+| 角标 (今日灵感入口右侧) | `.basket-badge` | `showAdvanced && basketCount > 0` | 显示篮子数量 |
 | 灵感篮预览条 | `.basket-bar` | `basketCount > 0` | 点击跳转 basketPreview 页 |
-| 历史推荐卡片 | `.history-hint-card` | `basketCount === 0 && showHistoryHint && historyDishNames.length > 0` | 篮子为空时, 推荐最近 7 天内的高频菜品 |
+| 历史推荐卡片 | `.history-hint-card` | `basketCount === 0 && showHistoryHint && historyDishNames.length > 0` | 篮子为空时推荐高频菜品 |
 
 **视觉规范** (不得修改):
 
@@ -2065,25 +2209,91 @@ addToBasket(
 角标:       背景 #c1663e, 文字 #fff, 圆角 100rpx, 最小宽度 36rpx
 预览条:     背景渐变 rgba(193,102,62,0.1→0.06), 边框 rgba(193,102,62,0.2)
 历史推荐:   背景渐变 rgba(139,119,101,0.08→0.04), 边框 rgba(139,119,101,0.2)
+Zen 主按钮: 居中, 文字大号, 圆角卡片; 绑定 onZenGo
+Toggle:     .is-active 状态高亮; 值存入 wx.setStorageSync (zen_cook_who / zen_cook_status)
 ```
 
 ---
 
-### 10.9 与现有模块交互影响
+### 10.10 与现有模块交互影响
 
 | 被修改/新增 | 影响的模块 | 注意事项 |
 |------------|-----------|----------|
-| 新增 scan 页入篮 | `scan.js` only | 不影响 AI 识别和配菜逻辑; 仅在结果展示层加按钮 |
-| 新增 import 页入篮 | `import.js` only | 在保存成功回调中添加, 不改变导入/解析流程 |
-| ✅ myRecipes 页投篮 | `myRecipes.js` + `myRecipes.wxml` | **已部署**: 心形按钮 toggle 加入/移出篮子; `basketIds` 追踪 UI 状态; `_refreshBasketIds()` 在 `onShow` 中刷新 |
-| ✅ Preview 篮子来源标签 | `preview.js` | **已部署**: 读取 `globalData.lastBasketItems`, 在菜单卡片上显示 `fromBasket` (Boolean) 和 `basketSourceLabel` (如"导入菜谱""冰箱匹配""收藏"); sourceLabels 映射: `{ imported: '导入菜谱', fridge_match: '冰箱匹配', native: '收藏' }` |
-| ✅ Preview 闭环清理 | `preview.js` → `confirmAndGo()` | **已部署**: 确认做饭后调用 `basket.removeItemsByMenu(list, menus)`, 按 id + name 双重匹配移除已选菜品; 同步更新 Storage 和 globalData |
-| smartMenuGen 解析 basketItems | `smartMenuGen/lib/prompt-builder.js` | spinner.js 已传 `basketItems` 字段 (含 meat), 云函数端需在 prompt 中加 "优先从以下菜品中选取: ..." |
-| `inspirationBasket.js` | home, spinner, basketPreview, **myRecipes, preview** | **任何修改必须验证五个页面都正常工作** |
-| `menuHistory.js` | home, spinner, basketPreview | `getSmartRecommendations()` 的评分公式变更会影响三个页面的推荐结果 |
+| ✅ **home.js Zen Mode** | `home.js`, `menuData`, `menuGenerator`, `recipeCoverSlugs`, `smartMenuGen` | 一键「想想吃什么」→ 云函数 → preview; 独立于 spinner.js, 不得引入 spinner 依赖 (B-12) |
+| ✅ **冷启动零闪烁** | `home.js` data IIFE | `getInitialBasketCount()` 同步读 Storage; 不得改为异步 (B-13) |
+| ✅ **Observer 通知** | `app.js` + `home.js` + 所有入篮页 | `app.onBasketChange(count)` 回调; 入篮/出篮页写入 Storage 后必须触发 (B-11) |
+| ✅ scan 页投篮 | `scan.js` → `_autoAddToBasket()` | 推荐结果自动入篮; source=`fridge_match`; meta 含 fridgeIngredients; 不影响 AI 识别和配菜逻辑 |
+| ✅ import 页投篮 | `import.js` → `_promptAddToBasket()` | 保存成功后 ActionSheet 确认; source=`imported`; 三条保存路径均覆盖; 不改变导入/解析流程 |
+| ✅ myRecipes 页投篮 | `myRecipes.js` + `myRecipes.wxml` | 心形按钮 toggle; `basketIds` UI 追踪; `_refreshBasketIds()` |
+| ✅ Preview 来源标签 | `preview.js` | `globalData.lastBasketItems` → `fromBasket` + `basketSourceLabel` |
+| ✅ Preview 闭环清理 | `preview.js` → `confirmAndGo()` | 调用 `basket.removeItemsByMenu()`, 按 id + name 双重匹配移除; v1.8 已恢复 |
+| `inspirationBasket.js` | home, spinner, basketPreview, myRecipes, preview | **任何修改必须验证六个消费端** (含 home Zen Mode) |
+| `menuHistory.js` | home, spinner, basketPreview | 评分公式变更影响三个页面推荐 |
+
+---
+
+## 11. Preview 页面 UI 优化规范 (Draft)
+
+> **适用范围**: 仅限 `miniprogram/pages/preview/*`，严格遵守 R-12/R-13/R-06/R-15。  
+> **目标**: 降低视觉噪音、强化留白与摄影质感、收束信息层级。
+
+### 11.1 模块层级与信息收束方案
+
+**收束后的模块顺序**（由上到下）:
+1. Header 主区：主标题 + 菜单数量 + 一行组合摘要。
+2. 今日提示条（合并模块，最重要的一条优先展示）。
+3. Dashboard 看板（时间/炉灶/分类，保留）。
+4. 并行节拍（保留 SVG 环，弱化装饰）。
+5. 主厨报告（保留 1 条重点）。
+6. 菜单标题 + 列表卡片。
+7. 底部操作区（主行动 + 次行动）。
+
+**信息收束规则**:
+- Header 只保留三行：`今日用餐` / `2荤1素1汤` / `组合名`（或二选一，避免同时堆叠）。
+- `previewBalanceTip` 从 Header 移入“今日提示条”，避免分散注意力。
+- `preview-hints`、`preview-baby-diff`、`preview-fallback-notice` 合并为单条提示带，默认只展示 1 条（降级提示 > 共用基底提示 > 营养/备菜/顺序提示）。
+- `chefReportText` 若过长，截取前 1 句或 1 行，避免卡片堆叠显得“功能面板化”。
+- 菜单卡片内只保留菜名与最小的辅助信息（勾选/来源），减少多行文本密度。
+
+### 11.2 视觉语言：极简/摄影感策略
+
+**色彩**:
+- 背景与卡片使用“暖白+轻纸感”：`var(--bg)` + `var(--card-bg-strong)`；避免高饱和色块。
+- 主色仅用于“主按钮”和“强调信息”；其余区域采用低对比灰褐（`var(--text)`/`var(--text-muted)`）。
+- 提示条以低饱和浅色块承载，不使用强对比边框。
+
+**阴影**:
+- 统一软阴影：卡片 `0 12rpx 32rpx rgba(0,0,0,0.05)`；小模块 `0 4rpx 12rpx rgba(0,0,0,0.04)`。
+- 禁止重阴影与厚描边，边界尽量用 1rpx 低透明分割线。
+
+**留白与排版**:
+- 页面外边距 32rpx；模块间距 20–24rpx；模块内 padding 16–24rpx。
+- 标题与摘要采用“单列信息”排版，避免多列并排导致紧张感。
+- Emoji 使用克制：仅在必要的“识别性标签”处使用（如来源徽标），其余改用文字或线性图标。
+
+**摄影感**:
+- 菜谱卡片遮罩强度下调到 ~0.35；文字区域缩短高度，让照片“呼吸”。
+- 无封面图时使用低对比浅灰纹理/柔和渐变，避免暖色大块填充。
+- 未勾选态不做强灰度，采用轻微透明度与轻度饱和降低即可。
+
+### 11.3 映射到 `preview.wxml` / `preview.wxss` 的具体改动点
+
+**`preview.wxml`**:
+- Header 区：保留 `preview-heading`、`preview-count`、`preview-combo`；移除/迁移 `preview-balance` → 今日提示条。
+- 合并提示模块：用一个新容器（如 `preview-tip-bar`）承载 `previewFallbackMessage`、`previewBalanceTip`、`previewHasSharedBase`、`previewDashboard.*Hint`；内部只渲染优先级最高的一条。
+- 菜单卡片：`card-header` 仅保留 `dish-name`、`check-badge` 与精简来源角标；`card-footer` 仅保留一行 `dish-reason` 或 `baby-tag`（二选一）。
+- 操作区：按钮改为“主按钮 + 次按钮”；`换一换/换掉未勾选` 合并为一个“换菜”入口；`发给阿姨` 降级为次按钮样式。
+
+**`preview.wxss`**:
+- `.preview-page` 去掉 `height: 100vh`（符合 R-06），使用 `min-height` + `flex` 控制高度。
+- 统一模块阴影与边框透明度；`dashboard-bar`/`chef-report`/提示条改为轻阴影+低饱和背景。
+- 菜单卡片遮罩强度下调（`card-overlay` 透明度 ~0.35）；`dish-card-modern` 阴影减轻。
+- `no-cover` 卡片改为浅灰渐变或轻纹理，文字色使用 `var(--text)`。
+- 未勾选态：改为 `opacity` + `saturate()` 微调，不使用强灰度。
+- 信息收束：同步隐藏弱信息区块，确保信息密度继续可控。
 
 ---
 
 > **文档编制**: TableSync 工程团队  
-> **最后更新**: 2026-02-08  
-> **版本**: v1.7
+> **最后更新**: 2026-02-09  
+> **版本**: v1.9

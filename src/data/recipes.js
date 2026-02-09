@@ -68,10 +68,12 @@ export const adultRecipes = [
     ingredients: [
       { name: '鸡里脊', amount: '300g', category: '肉类' },
       { name: '柠檬', amount: '半个', category: '其他' },
-      { name: '姜片', amount: '3片', category: '调料' }
+      { name: '姜片', amount: '3片', category: '调料' },
+      { name: '生抽', amount: '少许', category: '调料' },
+      { name: '盐', amount: '少许', category: '调料' }
     ],
     steps: [
-      { action: 'prep', text: '主食材需按比例增加至 {{scale_hint}} 倍。鸡里脊去筋膜切片。' },
+      { action: 'prep', text: '主食材需按比例增加至 {{scale_hint}} 倍。鸡里脊去筋膜切片，撒少许盐；柠檬切片，姜切成姜片备用。' },
       { action: 'cook', text: '铺上姜片、柠檬片，水开蒸 10 分钟。' },
       { action: 'cook', text: '淋上极简生抽调味汁即可。' }
     ]

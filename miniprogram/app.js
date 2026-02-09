@@ -2,6 +2,34 @@
 var cloudRecipeService = require('./utils/cloudRecipeService.js');
 var cloudInit = require('./utils/cloudInitRecipes.js');
 
+// 兼容小程序环境：提供 fetch 轻量 shim，保证调试日志可发送
+function ensureFetch() {
+  if (typeof fetch === 'function') return;
+  if (typeof wx !== 'undefined' && wx.request) {
+    // 仅满足日志上报的最小实现（resolve/reject + headers/body）
+    try {
+      // eslint-disable-next-line no-global-assign
+      fetch = function(url, options) {
+        return new Promise(function(resolve, reject) {
+          var method = options && options.method ? options.method : 'GET';
+          var header = options && options.headers ? options.headers : {};
+          var data = options && options.body ? (function() {
+            try { return JSON.parse(options.body); } catch (e) { return options.body; }
+          })() : undefined;
+          wx.request({
+            url: url,
+            method: method,
+            header: header,
+            data: data,
+            success: function(res) { resolve(res); },
+            fail: function(err) { reject(err); }
+          });
+        });
+      };
+    } catch (e) {}
+  }
+}
+
 App({
   globalData: {
     // 跨页传递的偏好参数，供 menu/steps/shopping 使用
@@ -25,6 +53,14 @@ App({
 
   onLaunch: function() {
     var self = this;
+    ensureFetch();
+    // #region agent log
+    try {
+      if (typeof fetch === 'function') {
+        fetch('http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'E',location:'app.js:onLaunch',message:'app launched and fetch shim ready',data:{hasFetch:typeof fetch === 'function',hasWxRequest:typeof wx !== 'undefined' && !!wx.request},timestamp:Date.now()})}).catch(()=>{});
+      }
+    } catch (e) {}
+    // #endregion
     
     // 初始化云开发环境
     if (typeof wx !== 'undefined' && wx.cloud) {
@@ -45,6 +81,18 @@ App({
       forceRefresh: false
     }).then(function(result) {
       self.globalData.cloudSyncState.initialized = true;
+      // 一次性强制刷新/初始化（仅本地缓存层），避免重复触发
+      if (typeof wx !== 'undefined' && wx.getStorageSync && wx.setStorageSync) {
+        var forceKey = 'cloud_recipes_force_refresh_once';
+        var forced = wx.getStorageSync(forceKey);
+        if (!forced) {
+          // 尝试初始化云端集合（若已有数据则会跳过）
+          cloudInit.initRecipesCollection({ force: false }).catch(function () {});
+          // 强制全量刷新云端菜谱到本地缓存
+          self.syncCloudRecipes({ forceRefresh: true }).catch(function () {});
+          wx.setStorageSync(forceKey, '1');
+        }
+      }
     }).catch(function(err) {
       self.globalData.cloudSyncState.error = err;
     });
@@ -78,6 +126,14 @@ App({
    */
   getCloudSyncState: function() {
     return Object.assign({}, this.globalData.cloudSyncState, cloudRecipeService.getSyncState());
+  },
+
+  /**
+   * 获取菜谱数量统计（云端/缓存/本地）
+   * @returns {Object}
+   */
+  getRecipeCounts: function() {
+    return cloudRecipeService.getRecipeCounts();
   },
 
   /**

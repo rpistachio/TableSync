@@ -118,7 +118,8 @@ var SAMPLE_RECIPE = {
   ],
   seasonings: [
     { name: '姜片', amount: 0, unit: '适量' },
-    { name: '生抽', amount: 0, unit: '适量' }
+    { name: '生抽', amount: 0, unit: '适量' },
+    { name: '盐', amount: 0, unit: '适量' }
   ],
 
   steps: [

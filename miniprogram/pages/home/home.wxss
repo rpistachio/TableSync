@@ -42,6 +42,32 @@
   color: var(--text-subtle);
 }
 
+.home-main {
+  position: relative;
+  padding-bottom: 40rpx;
+}
+
+.home-main-bg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 140%;
+  z-index: 0;
+}
+
+.home-main-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(253, 248, 242, 0.92) 0%, rgba(253, 248, 242, 0.6) 38%, rgba(253, 248, 242, 0.25) 70%, rgba(253, 248, 242, 0.1) 100%);
+  z-index: 1;
+}
+
+.home-main-content {
+  position: relative;
+  z-index: 2;
+}
+
 /* ============ 今日氛围卡片 ============ */
 .vibe-card {
   margin: 0 0 24rpx;
@@ -53,6 +79,19 @@
   flex-direction: column;
   align-items: center;
   gap: 8rpx;
+  position: relative;
+  overflow: visible;
+}
+
+.vibe-card-sticker {
+  position: absolute;
+  right: -16rpx;
+  top: 12rpx;
+  width: 92rpx;
+  opacity: 0.9;
+  pointer-events: none;
+  --sticker-rot: 6deg;
+  animation: stickerFloat 4.2s ease-in-out 0.2s infinite;
 }
 
 .vibe-date {
@@ -1026,9 +1065,35 @@
 /* ============ Zen Mode ============ */
 .zen-panel {
   margin: 32rpx 0 0;
+  padding-top: 56rpx;
   display: flex;
   flex-direction: column;
   gap: 32rpx;
+  position: relative;
+}
+
+.zen-toggle-group {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+  margin-top: 72rpx;
+  padding: 20rpx 16rpx;
+  background: rgba(253, 248, 242, 0.92);
+  border-radius: 24rpx;
+  border: 1rpx solid var(--line);
+  position: relative;
+  overflow: visible;
+}
+
+.zen-toggle-sticker {
+  position: absolute;
+  right: 12rpx;
+  top: -34rpx;
+  width: 86rpx;
+  opacity: 0.9;
+  pointer-events: none;
+  --sticker-rot: -8deg;
+  animation: stickerFloat 4s ease-in-out 0.2s infinite;
 }
 
 .zen-main-btn {
@@ -1037,26 +1102,77 @@
   align-items: center;
   justify-content: center;
   gap: 16rpx;
-  padding: 64rpx 40rpx;
-  background: linear-gradient(135deg, #E8A87C 0%, #D4956A 100%);
+  width: 52%;
+  align-self: flex-start;
+  padding: 36rpx 120rpx 36rpx 40rpx;
+  margin-left: 6rpx;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+  border: 1rpx solid var(--accent-border-strong);
   border-radius: 32rpx;
-  box-shadow: 0 16rpx 48rpx rgba(232, 168, 124, 0.4);
+  box-shadow: 0 18rpx 40rpx rgba(193, 102, 62, 0.24);
   transition: transform 0.2s ease;
+  position: relative;
+  overflow: visible;
 }
 
 .zen-main-btn:active {
   transform: scale(0.97);
 }
 
-.zen-main-btn-icon {
-  font-size: 64rpx;
+.zen-sticker {
+  position: absolute;
+  width: 88rpx;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  --sticker-rot: 0deg;
+  animation: stickerIn 0.8s ease-out forwards, stickerFloat 3.6s ease-in-out 0.9s infinite;
+}
+
+.zen-sticker-avocado {
+  top: -26rpx;
+  right: -22rpx;
+  --sticker-rot: 6deg;
+  animation-delay: 0.08s;
+}
+
+.zen-sticker-leaf {
+  bottom: -18rpx;
+  left: -12rpx;
+  width: 80rpx;
+  --sticker-rot: -8deg;
+  animation-delay: 0.18s;
+}
+
+@keyframes stickerIn {
+  0% {
+    opacity: 0;
+    transform: translateY(8rpx) scale(0.5) rotate(var(--sticker-rot));
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(var(--sticker-rot));
+  }
+}
+
+@keyframes stickerFloat {
+  0% { transform: translateY(0) scale(1) rotate(var(--sticker-rot)); }
+  50% { transform: translateY(2rpx) scale(1) rotate(var(--sticker-rot)); }
+  100% { transform: translateY(0) scale(1) rotate(var(--sticker-rot)); }
 }
 
 .zen-main-btn-text {
-  font-size: 36rpx;
-  font-weight: 600;
-  color: #fff;
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #333;
   letter-spacing: 4rpx;
+  text-align: center;
+  width: 100%;
+  text-indent: 12rpx;
+  white-space: nowrap;
+  text-shadow: 0 2rpx 6rpx rgba(253, 248, 242, 0.6);
+  position: relative;
+  z-index: 2;
 }
 
 .zen-toggle-row {
@@ -1107,5 +1223,26 @@
   font-size: 24rpx;
   text-align: center;
   padding: 40rpx 0;
+}
+
+.zen-advanced-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 16rpx 24rpx;
+  margin: 6rpx 0 18rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid #e8e4e0;
+  background: rgba(255, 255, 255, 0.6);
+  color: #6f6a64;
+  font-size: 24rpx;
+}
+
+.zen-advanced-back-icon {
+  font-size: 26rpx;
+}
+
+.zen-advanced-back-text {
+  font-weight: 500;
 }
 

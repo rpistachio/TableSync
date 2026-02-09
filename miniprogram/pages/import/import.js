@@ -167,15 +167,25 @@ Page({
   },
 
   onLoad: function () {
+    this._pageAlive = true;
     // 页面加载时检查剪贴板
     this._checkClipboard();
   },
 
   onShow: function () {
+    this._pageAlive = true;
     // 每次页面可见时检查剪贴板（用户可能从其他 App 复制了链接）
     if (this.data.stage === 'idle' && !this._clipboardCheckedThisSession) {
       this._checkClipboard();
     }
+  },
+  
+  onHide: function () {
+    this._pageAlive = false;
+  },
+  
+  onUnload: function () {
+    this._pageAlive = false;
   },
 
   // ── 选择截图 ────────────────────────────────────────────────
@@ -645,7 +655,9 @@ Page({
                 if (!recipe.coverUrl) {
                   wx.cloud.callFunction({ name: 'recipeCoverGen', data: { docId: docId } }).catch(function () {});
                 }
-                setTimeout(function () { that._promptAddToBasket(recipe); }, 1500);
+                setTimeout(function () {
+                  if (that._pageAlive) that._promptAddToBasket(recipe);
+                }, 1500);
               },
               fail: function (err) {
                 console.warn('[import] 云数据库更新失败:', err);
@@ -670,7 +682,9 @@ Page({
                 if (!recipe.coverUrl && addRes._id) {
                   wx.cloud.callFunction({ name: 'recipeCoverGen', data: { docId: addRes._id } }).catch(function () {});
                 }
-                setTimeout(function () { that._promptAddToBasket(recipe); }, 1500);
+                setTimeout(function () {
+                  if (that._pageAlive) that._promptAddToBasket(recipe);
+                }, 1500);
               },
               fail: function (err) {
                 console.warn('[import] 云数据库保存失败:', err);
@@ -691,6 +705,10 @@ Page({
               if (!recipe.coverUrl && addRes._id) {
                 wx.cloud.callFunction({ name: 'recipeCoverGen', data: { docId: addRes._id } }).catch(function () {});
               }
+              // 降级路径也提示投篮 (B-09)
+              setTimeout(function () {
+                if (that._pageAlive) that._promptAddToBasket(recipe);
+              }, 1500);
             },
             fail: function () {
               wx.hideLoading();

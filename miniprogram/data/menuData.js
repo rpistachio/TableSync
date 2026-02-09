@@ -22,6 +22,11 @@ function getRecipeSource() {
   
   // 如果云端有数据，使用云端
   if (cloudAdult && cloudAdult.length > 0) {
+    // #region agent log
+    if (typeof fetch === 'function') {
+      fetch('http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'G',location:'menuData.js:getRecipeSource',message:'using cloud recipes',data:{adultCount:cloudAdult.length,babyCount:(cloudBaby||[]).length},timestamp:Date.now()})}).catch(()=>{});
+    }
+    // #endregion
     return {
       adultRecipes: cloudAdult,
       babyRecipes: cloudBaby && cloudBaby.length > 0 ? cloudBaby : require('./recipes.js').babyRecipes,
@@ -31,6 +36,11 @@ function getRecipeSource() {
   
   // 降级到本地
   var localRecipes = require('./recipes.js');
+  // #region agent log
+  if (typeof fetch === 'function') {
+    fetch('http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'G',location:'menuData.js:getRecipeSource',message:'using local recipes',data:{adultCount:(localRecipes.adultRecipes||[]).length,babyCount:(localRecipes.babyRecipes||[]).length},timestamp:Date.now()})}).catch(()=>{});
+  }
+  // #endregion
   return {
     adultRecipes: localRecipes.adultRecipes || [],
     babyRecipes: localRecipes.babyRecipes || [],
@@ -191,6 +201,11 @@ exports.deserializeMenusFromStorage = function (slimMenus, options) {
     if (slim.adultRecipeId) {
       var rawAdult = getAdultRecipeById(slim.adultRecipeId);
       if (rawAdult) {
+        // #region agent log
+        if (typeof fetch === 'function') {
+          fetch('http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'H',location:'menuData.js:deserializeMenusFromStorage',message:'adult recipe resolved',data:{adultRecipeId:slim.adultRecipeId,adultName:rawAdult.name||'',adultIng:Array.isArray(rawAdult.ingredients)?rawAdult.ingredients.length:null,isOfflineFallback:!!rawAdult._isOfflineFallback},timestamp:Date.now()})}).catch(()=>{});
+        }
+        // #endregion
         // 使用 generator 来处理人数缩放等逻辑
         var res = generator.generateMenuFromRecipe(rawAdult, babyMonth, false, adultCount, babyTaste);
         adultRecipe = res.adultRecipe;
@@ -1211,13 +1226,29 @@ exports.generateShoppingList = function (preference) {
 
 /** 合并所有选中菜单的食材，不按 category/meat 过滤，确保鱼虾等均进入清单 */
 exports.generateShoppingListFromMenus = function (preference, menus) {
+  var restoredMenus = menus;
+  var usedSlimRestore = false;
+  try {
+    if (exports.isSlimMenuFormat && exports.isSlimMenuFormat(menus)) {
+      restoredMenus = exports.deserializeMenusFromStorage(menus, preference || {});
+      usedSlimRestore = true;
+    }
+  } catch (e) {
+    restoredMenus = menus;
+  }
   var adultCount = preference && typeof preference.adultCount !== 'undefined' ? Math.min(6, Math.max(1, Number(preference.adultCount) || 2)) : 2;
   var avoidList = (preference && preference.avoidList) || [];
+
+  // #region agent log
+  if (typeof fetch === 'function') {
+    fetch('http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'D',location:'menuData.js:generateShoppingListFromMenus',message:'menus restored from slim',data:{usedSlimRestore:usedSlimRestore,menuCount:Array.isArray(restoredMenus)?restoredMenus.length:null,sample:Array.isArray(restoredMenus)?restoredMenus.slice(0,3).map(function(m){return {name:(m.adultRecipe&&m.adultRecipe.name)||'',adultIng:Array.isArray(m.adultRecipe&&m.adultRecipe.ingredients)?m.adultRecipe.ingredients.length:null,hasAdultId:!!(m.adultRecipe&&(m.adultRecipe.id||m.adultRecipe._id))};}):[]},timestamp:Date.now()})}).catch(()=>{});
+  }
+  // #endregion
 
   // 检测是否存在无 ingredients 的精简版菜谱（离线降级）
   var offlineCount = 0;
   var totalCount = 0;
-  ;(menus || []).forEach(function (m) {
+  ;(restoredMenus || []).forEach(function (m) {
     if (m.adultRecipe) {
       totalCount++;
       if (!Array.isArray(m.adultRecipe.ingredients) || m.adultRecipe.ingredients.length === 0) offlineCount++;
@@ -1229,7 +1260,7 @@ exports.generateShoppingListFromMenus = function (preference, menus) {
   });
 
   var raw = [];
-  ;(menus || []).forEach(function (m) {
+  ;(restoredMenus || []).forEach(function (m) {
     if (m.adultRecipe || m.babyRecipe) {
       raw = raw.concat(generator.generateShoppingList(m.adultRecipe || null, m.babyRecipe || null));
     }
@@ -1250,7 +1281,6 @@ exports.generateShoppingListFromMenus = function (preference, menus) {
     list._isOfflineFallback = true;
     list._offlineHint = '当前为离线模式，购物清单仅含主料参考。联网后可自动获取完整食材清单';
   }
-
   return list;
 };
 

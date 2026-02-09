@@ -123,6 +123,22 @@ function normalizeCloudRecipe(cloudRecipe) {
     recipe.steps = [];
   }
 
+  // 若步骤中出现常见调料但配料表缺失，自动补全为调料项
+  if (Array.isArray(recipe.ingredients) && Array.isArray(recipe.steps) && recipe.steps.length > 0) {
+    var stepText = recipe.steps.map(function (s) { return (s && s.text) ? s.text : ''; }).join(' ');
+    var ingredientNames = recipe.ingredients.map(function (it) { return it && it.name ? it.name : ''; }).filter(Boolean);
+    var commonTerms = ['生抽', '老抽', '料酒', '蚝油', '盐', '糖', '白糖', '淀粉', '干淀粉', '姜', '蒜', '葱', '胡椒粉', '酱油', '醋', '食用油', '油', '蛋清', '姜片', '蒜末', '葱花'];
+    var hasMatch = function (term) {
+      return ingredientNames.some(function (n) { return n === term || n.indexOf(term) !== -1 || term.indexOf(n) !== -1; });
+    };
+    commonTerms.forEach(function (term) {
+      if (stepText.indexOf(term) === -1) return;
+      if (hasMatch(term)) return;
+      recipe.ingredients.push({ name: term, baseAmount: 0, unit: '适量', category: '调料' });
+      ingredientNames.push(term);
+    });
+  }
+
   return recipe;
 }
 
@@ -589,6 +605,37 @@ function getSyncState() {
 }
 
 /**
+ * 获取菜谱数量统计（云端/缓存/本地）
+ * @returns {Object}
+ */
+function getRecipeCounts() {
+  var cachedAdult = _memoryCache.adultRecipes || loadFromStorage('adult') || [];
+  var cachedBaby = _memoryCache.babyRecipes || loadFromStorage('baby') || [];
+  var cloudAdult = cachedAdult.filter(function (r) { return r && r._id; }).length;
+  var cloudBaby = cachedBaby.filter(function (r) { return r && r._id; }).length;
+  var fallbackAdult = cachedAdult.filter(function (r) { return r && r._isOfflineFallback; }).length;
+  var fallbackBaby = cachedBaby.filter(function (r) { return r && r._isOfflineFallback; }).length;
+  var localAdult = 0;
+  var localBaby = 0;
+  try {
+    var localRecipes = require('../data/recipes.js');
+    localAdult = (localRecipes.adultRecipes || []).length;
+    localBaby = (localRecipes.babyRecipes || []).length;
+  } catch (e) {}
+  return {
+    cloudAdult: cloudAdult,
+    cloudBaby: cloudBaby,
+    cachedAdult: cachedAdult.length,
+    cachedBaby: cachedBaby.length,
+    localAdult: localAdult,
+    localBaby: localBaby,
+    offlineFallbackAdult: fallbackAdult,
+    offlineFallbackBaby: fallbackBaby,
+    hasCloudData: hasCloudData()
+  };
+}
+
+/**
  * 清除本地缓存（调试用）
  */
 function clearCache() {
@@ -637,6 +684,7 @@ module.exports = {
   
   // 状态查询
   getSyncState: getSyncState,
+  getRecipeCounts: getRecipeCounts,
   hasCloudData: hasCloudData,
   
   // 调试工具
