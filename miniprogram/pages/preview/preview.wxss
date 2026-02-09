@@ -1,282 +1,204 @@
-/* 全屏预览页：极浅高级灰背景，整页可下拉滚动 */
+/* 预览页：暖白底色，使用页面自然滚动 */
 .preview-page {
-  min-height: 100vh;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
   background-color: var(--bg);
   box-sizing: border-box;
 }
 
-/* 整页滚动：顶部到底部菜单区域一体可拉，高度占满除底部按钮外的空间（小程序 scroll-view 需有明确高度） */
 .preview-page-scroll {
-  flex: 1;
-  min-height: 0;
   width: 100%;
   box-sizing: border-box;
 }
 
 .preview-scroll-content {
-  min-height: 100%;
-  padding-bottom: 32rpx;
+  padding-bottom: 220rpx;
   box-sizing: border-box;
 }
 
-/* 右上角：大字模式开关 */
-.preview-top-bar {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding: 24rpx 32rpx 16rpx;
-  padding-top: calc(16rpx + env(safe-area-inset-top));
-}
-
-.preview-top-bar-spacer {
-  flex: 1;
-}
-
-.preview-large-mode-btn {
-  display: flex;
-  align-items: center;
-  gap: 10rpx;
-  padding: 16rpx 28rpx;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 40rpx;
-  box-shadow: 0 4rpx 16rpx var(--shadow-strong);
-  border: 2rpx solid var(--accent-border-strong);
-}
-
-.preview-large-mode-btn.is-active {
-  background: var(--accent-soft);
-  border-color: var(--accent-strong);
-}
-
-.preview-large-mode-icon {
-  font-size: 36rpx;
-  line-height: 1;
-}
-
-.preview-large-mode-label {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--text-soft);
-}
-
-.preview-large-mode-btn.is-active .preview-large-mode-label {
-  color: var(--accent-strong);
-}
 
 .preview-header {
   position: relative;
-  padding: 60rpx 40rpx 40rpx;
+  padding: 44rpx 40rpx 24rpx;
   flex-shrink: 0;
-  overflow: hidden;
+  box-sizing: border-box;
 }
 
-.header-bg-image {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  filter: blur(20rpx);
-  opacity: 0.4;
-  z-index: 0;
-}
-
-.header-bg-overlay {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(180deg, var(--accent-soft) 0%, var(--bg) 100%);
-  z-index: 1;
-}
-
-.preview-heading {
-  display: block;
-  font-size: 26rpx;
-  color: var(--text-muted);
-  margin-bottom: 8rpx;
-}
-
-.preview-count {
-  display: block;
-  font-size: 40rpx;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.preview-combo {
-  display: block;
-  font-size: 28rpx;
-  color: var(--accent-strong);
-  margin-top: 12rpx;
-  font-weight: 500;
-}
-
-.preview-balance {
-  display: block;
-  font-size: 26rpx;
-  color: var(--text-muted);
-  margin-top: 8rpx;
-}
-
-/* 菜谱池降级提示：温和的蓝色调，与错误提示区分 */
-.preview-fallback-notice {
+.preview-header-text {
   display: flex;
-  align-items: flex-start;
-  gap: 12rpx;
-  padding: 20rpx 28rpx;
-  margin: 16rpx 32rpx 0;
-  background: var(--info-soft);
-  border-radius: 16rpx;
-  border-left: 6rpx solid var(--info-border);
+  flex-direction: column;
+  gap: 8rpx;
+  padding: 22rpx 24rpx;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 20rpx;
+  border: 1rpx solid rgba(0, 0, 0, 0.04);
 }
 
-.preview-fallback-notice .fallback-icon {
+.preview-header-divider {
+  margin-top: 18rpx;
+  height: 1rpx;
+  background: rgba(0, 0, 0, 0.06);
+  width: 100%;
+}
+
+.preview-header-title {
+  display: block;
+  font-size: 24rpx;
+  color: var(--text-muted);
+  letter-spacing: 2rpx;
+}
+
+.preview-narrative {
+  display: block;
   font-size: 28rpx;
-  flex-shrink: 0;
-  line-height: 1.4;
+  font-weight: 500;
+  color: var(--text-soft);
+  line-height: 1.6;
 }
 
-.preview-fallback-notice .fallback-text {
-  font-size: 26rpx;
-  color: var(--info);
-  line-height: 1.5;
-  flex: 1;
-}
 
 /* 横向数字看板 */
 .dashboard-bar {
   display: flex;
   flex-direction: row;
   white-space: nowrap;
-  padding: 16rpx 32rpx;
-  gap: 24rpx;
-  margin: 0 32rpx 20rpx;
-  background: rgba(255, 255, 255, 0.6);
-  border-radius: 20rpx;
-  box-shadow: 0 4rpx 20rpx rgba(74, 69, 64, 0.06);
+  padding: 12rpx 28rpx;
+  gap: 16rpx;
+  margin: 0 32rpx 16rpx;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 16rpx;
+  border: 1rpx solid rgba(0, 0, 0, 0.04);
 }
 
 .dash-item {
   display: flex;
   align-items: center;
-  gap: 8rpx;
-  padding: 12rpx 20rpx;
-  background: var(--accent-soft-2);
-  border-radius: 16rpx;
+  padding: 10rpx 16rpx;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 14rpx;
   flex-shrink: 0;
-}
-
-.dash-icon {
-  font-size: 32rpx;
-  line-height: 1;
 }
 
 .dash-value {
-  font-size: 26rpx;
-  font-weight: 600;
+  font-size: 24rpx;
+  font-weight: 500;
   color: var(--text);
 }
 
-.preview-hints {
+/* 今日提示条 */
+.preview-tips-bar {
   display: flex;
   flex-direction: column;
-  gap: 12rpx;
-  padding: 20rpx 32rpx;
-  margin: 0 32rpx 20rpx;
-  background: var(--accent-soft-2);
-  border-radius: 20rpx;
-  border-left: 6rpx solid var(--accent-border-strong);
+  gap: 8rpx;
+  padding: 18rpx 24rpx;
+  margin: 0 32rpx 16rpx;
+  background: rgba(255, 255, 255, 0.75);
+  border-radius: 16rpx;
+  border: 1rpx solid rgba(0, 0, 0, 0.04);
 }
 
-.preview-hints .hint-row {
+.preview-tips-bar .tips-item {
   display: flex;
   align-items: flex-start;
-  gap: 12rpx;
+  gap: 10rpx;
 }
 
-.preview-hints .hint-icon {
-  font-size: 28rpx;
-  flex-shrink: 0;
+.preview-tips-bar .tips-dot {
+  font-size: 20rpx;
+  color: var(--text-muted);
   line-height: 1.4;
 }
 
-.preview-hints .hint-text {
-  font-size: 26rpx;
-  color: #4a4540;
-  line-height: 1.45;
+.preview-tips-bar .tips-text {
+  font-size: 24rpx;
+  color: var(--text-soft);
+  line-height: 1.5;
   flex: 1;
-}
-
-.preview-baby-diff {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  padding: 20rpx 32rpx;
-  margin: 0 32rpx 20rpx;
-  background: rgba(193, 102, 62, 0.08);
-  border-radius: 20rpx;
-  border-left: 6rpx solid #c1663e;
-}
-
-.preview-baby-diff-icon {
-  font-size: 32rpx;
-  flex-shrink: 0;
-}
-
-.preview-baby-diff-text {
-  font-size: 28rpx;
-  color: #5a544f;
-  line-height: 1.45;
 }
 
 /* 主厨报告：AI 推荐理由 */
-.chef-report {
+.preview-menu-header {
   display: flex;
   align-items: flex-start;
-  gap: 12rpx;
-  margin: 0 32rpx 20rpx;
-  padding: 24rpx 28rpx;
-  background: linear-gradient(135deg, rgba(193, 102, 62, 0.1) 0%, rgba(232, 168, 124, 0.06) 100%);
-  border-radius: 20rpx;
-  border: 1rpx solid rgba(193, 102, 62, 0.2);
-}
-
-.chef-report-icon {
-  font-size: 32rpx;
-  flex-shrink: 0;
-  line-height: 1.4;
-}
-
-.chef-report-text {
-  flex: 1;
-  font-size: 28rpx;
-  font-weight: 500;
-  color: #5a544f;
-  line-height: 1.5;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin: 0 32rpx 16rpx;
 }
 
 .preview-menu-label {
   font-size: 30rpx;
   font-weight: 600;
-  color: #4a4540;
-  margin: 0 32rpx 20rpx;
+  color: var(--text);
+}
+
+.preview-menu-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.preview-menu-subtitle {
+  font-size: 24rpx;
+  color: var(--text-muted);
+}
+
+.preview-rhythm-inline {
+  display: flex;
+  gap: 12rpx;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.preview-rhythm-chip {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.preview-ring-svg-wrap {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.02);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-ring-svg {
+  width: 36rpx;
+  height: 36rpx;
+}
+
+.preview-ring-track {
+  fill: none;
+  stroke: rgba(0, 0, 0, 0.08);
+  stroke-width: 8;
+}
+
+.preview-ring-progress {
+  fill: none;
+  stroke-width: 8;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
+.preview-ring-label {
+  font-size: 22rpx;
+  color: var(--text-muted);
+  max-width: 140rpx;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 宝宝餐说明：有宝宝时在菜单列表上方提示 */
 .preview-baby-hint {
   margin: 0 32rpx 20rpx;
-  padding: 16rpx 24rpx;
-  background: rgba(193, 102, 62, 0.08);
-  border-radius: 16rpx;
-  border-left: 6rpx solid #c1663e;
-  font-size: 26rpx;
-  color: #5a544f;
+  padding: 14rpx 22rpx;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 14rpx;
+  font-size: 24rpx;
+  color: var(--text-soft);
   line-height: 1.45;
 }
 
@@ -304,10 +226,10 @@
 /* 现代菜谱卡片：封面图 + 半透明渐变遮罩 */
 .dish-card-modern {
   position: relative;
-  height: 280rpx;
+  height: 260rpx;
   border-radius: 24rpx;
   overflow: hidden;
-  box-shadow: 0 20rpx 60rpx rgba(0, 0, 0, 0.05);
+  box-shadow: 0 12rpx 32rpx rgba(0, 0, 0, 0.06);
   animation: slideInUp 0.5s ease-out both;
 }
 
@@ -315,8 +237,9 @@
   position: absolute;
   left: 0;
   top: 0;
+  right: 0;
+  bottom: 0;
   width: 100%;
-  height: 100%;
   object-fit: cover;
 }
 
@@ -324,9 +247,10 @@
   position: absolute;
   left: 0;
   top: 0;
+  right: 0;
+  bottom: 0;
   width: 100%;
-  height: 100%;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, transparent 60%);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.35) 0%, transparent 62%);
 }
 
 .card-info {
@@ -334,7 +258,7 @@
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 24rpx;
+  padding: 22rpx 24rpx;
   color: #fff;
 }
 
@@ -346,7 +270,7 @@
 }
 
 .dish-name {
-  font-size: 34rpx;
+  font-size: 32rpx;
   font-weight: 600;
   color: #fff;
   line-height: 1.35;
@@ -355,12 +279,12 @@
 }
 
 .check-badge {
-  width: 44rpx;
-  height: 44rpx;
+  width: 40rpx;
+  height: 40rpx;
   border-radius: 12rpx;
-  background: #c1663e;
+  background: rgba(0, 0, 0, 0.55);
   color: #fff;
-  font-size: 28rpx;
+  font-size: 26rpx;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -374,21 +298,21 @@
 
 .dish-reason {
   display: block;
-  font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.9);
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.85);
   line-height: 1.4;
 }
 
 .baby-tag-floating {
   margin-top: 8rpx;
-  font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.85);
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.75);
   line-height: 1.4;
 }
 
 /* 无封面图：温暖渐变背景 */
 .dish-card-modern.no-cover {
-  background: linear-gradient(135deg, #f5e6d3 0%, #e8d4c0 100%);
+  background: linear-gradient(135deg, #f3f1ec 0%, #e9e5dd 100%);
 }
 
 .dish-card-modern.no-cover .card-overlay {
@@ -400,67 +324,76 @@
 }
 
 .dish-card-modern.no-cover .dish-name {
-  color: #2d2d2d;
+  color: #2f2f2f;
 }
 
 .dish-card-modern.no-cover .dish-reason,
 .dish-card-modern.no-cover .baby-tag-floating {
-  color: #5a544f;
+  color: #6b6662;
 }
 
 /* 篮子来源徽标 */
 .basket-origin-badge {
+  position: absolute;
+  left: 16rpx;
+  top: 16rpx;
   display: inline-flex;
   align-items: center;
-  padding: 4rpx 14rpx;
-  background: rgba(232, 168, 124, 0.85);
+  padding: 4rpx 12rpx;
+  background: rgba(255, 255, 255, 0.82);
   border-radius: 100rpx;
-  flex-shrink: 0;
+  border: 1rpx solid rgba(0, 0, 0, 0.08);
+  z-index: 2;
 }
 
 .basket-origin-text {
   font-size: 20rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--text);
   line-height: 1.2;
   white-space: nowrap;
 }
 
 .dish-card-modern.no-cover .basket-origin-badge {
-  background: rgba(193, 102, 62, 0.15);
+  background: rgba(255, 255, 255, 0.9);
 }
 
 .dish-card-modern.no-cover .basket-origin-text {
-  color: #c1663e;
+  color: var(--text);
 }
 
 /* 未勾选：弱化显示 */
 .dish-card-modern.is-unchecked {
-  opacity: 0.65;
+  opacity: 0.72;
 }
 
 .dish-card-modern.is-unchecked .card-bg {
-  filter: grayscale(0.5);
+  filter: saturate(0.85) brightness(0.95);
 }
 
 .preview-actions {
-  flex-shrink: 0;
   display: flex;
-  gap: 20rpx;
-  padding: 24rpx 32rpx;
-  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
-  background: linear-gradient(to top, #F8F9FA 90%, rgba(248, 249, 250, 0));
+  gap: 16rpx;
+  padding: 18rpx 24rpx;
+  padding-bottom: calc(18rpx + env(safe-area-inset-bottom));
+  background: rgba(248, 249, 250, 0.98);
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  box-shadow: 0 -8rpx 24rpx rgba(0, 0, 0, 0.06);
 }
 
 .preview-btn {
   flex: 1;
   min-width: 0;
-  height: 96rpx;
-  line-height: 96rpx;
-  font-size: 30rpx;
+  height: 88rpx;
+  line-height: 88rpx;
+  font-size: 28rpx;
   font-weight: 600;
   border: none;
-  border-radius: 24rpx;
+  border-radius: 20rpx;
   padding: 0 16rpx;
   box-sizing: border-box;
 }
@@ -470,16 +403,25 @@
 }
 
 .preview-btn-secondary {
-  color: #5a544f;
-  background: #efe9e2;
+  color: #4f4a45;
+  background: #f1ede8;
 }
 
-.preview-btn-share {
-  color: #fff;
-  background: #07C160;
+.preview-btn-ghost {
+  color: var(--text-muted);
+  background: transparent;
+  border: 1rpx solid rgba(0, 0, 0, 0.12);
+}
+
+/* 全员入篮：极简不抢主按钮（spec 11.2） */
+.preview-btn-basket {
+  color: var(--text-soft);
+  background: rgba(193, 102, 62, 0.08);
+  border: 1rpx solid rgba(193, 102, 62, 0.2);
 }
 
 .preview-btn-primary {
+  flex: 1.2;
   color: #fff;
   background: #c1663e;
 }
@@ -488,94 +430,3 @@
   opacity: 0.9;
 }
 
-/* ---------- 大字模式：隐藏背景图，高对比度黑白文字，确保护眼 ---------- */
-.preview-page.large-text-mode .dashboard-bar,
-.preview-page.large-text-mode .preview-hints,
-.preview-page.large-text-mode .preview-baby-diff,
-.preview-page.large-text-mode .preview-menu-label,
-.preview-page.large-text-mode .preview-fallback-notice,
-.preview-page.large-text-mode .chef-report,
-.preview-page.large-text-mode .dish-reason {
-  display: none !important;
-}
-
-.preview-page.large-text-mode .card-bg {
-  display: none !important;
-}
-
-.preview-page.large-text-mode .dish-card-modern {
-  background: #fff;
-  min-height: 200rpx;
-  height: auto;
-  padding: 44rpx 40rpx;
-}
-
-.preview-page.large-text-mode .dish-card-modern.no-cover {
-  background: #fff;
-}
-
-.preview-page.large-text-mode .card-overlay {
-  display: none;
-}
-
-.preview-page.large-text-mode .card-info {
-  position: relative;
-  color: #111;
-  padding: 0;
-}
-
-.preview-page.large-text-mode .dish-name {
-  font-size: 51rpx;
-  font-weight: 600;
-  color: #111;
-}
-
-.preview-page.large-text-mode .baby-tag-floating {
-  display: block;
-  margin-top: 12rpx;
-  font-size: 39rpx;
-  color: #333;
-}
-
-.preview-page.large-text-mode .check-badge {
-  width: 56rpx;
-  height: 56rpx;
-  font-size: 42rpx;
-  border-radius: 14rpx;
-  background: #333;
-  color: #fff;
-}
-
-.preview-page.large-text-mode .preview-baby-hint {
-  font-size: 39rpx;
-}
-
-.preview-page.large-text-mode .preview-heading {
-  font-size: 39rpx;
-}
-
-.preview-page.large-text-mode .preview-count {
-  font-size: 60rpx;
-}
-
-.preview-page.large-text-mode .preview-combo {
-  font-size: 42rpx;
-}
-
-.preview-page.large-text-mode .preview-balance {
-  font-size: 39rpx;
-}
-
-.preview-page.large-text-mode .preview-btn {
-  height: 112rpx;
-  line-height: 112rpx;
-  font-size: 45rpx;
-}
-
-.preview-page.large-text-mode .preview-large-mode-icon {
-  font-size: 40rpx;
-}
-
-.preview-page.large-text-mode .preview-large-mode-label {
-  font-size: 32rpx;
-}

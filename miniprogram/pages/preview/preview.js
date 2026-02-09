@@ -2,6 +2,7 @@ var coverService = require('../../data/recipeCoverSlugs.js');
 var recipeResources = require('../../data/recipeResources.js');
 var menuHistory = require('../../utils/menuHistory.js');
 var basket = require('../../data/inspirationBasket.js');
+var menuData = require('../../data/menuData.js');
 
 var ENV_ID = 'cloud1-7g5mdmib90e9f670';
 var CLOUD_ROOT = recipeResources && recipeResources.CLOUD_ROOT ? recipeResources.CLOUD_ROOT : ('cloud://' + ENV_ID);
@@ -39,18 +40,17 @@ Page({
     previewCountText: '',
     previewComboName: '',
     previewBalanceTip: '',
+    previewFallbackMessage: '',
+    previewTips: [],
     previewDashboard: { estimatedTime: '', stoveCount: 0, categoryLabels: '', nutritionHint: '', prepOrderHint: '', prepAheadHint: '', sharedIngredientsHint: '' },
     previewHasSharedBase: false,
     previewHasBaby: false,
-    headerBgUrl: '',
+    previewRhythmRings: [],
+    previewNarrativeText: '',
+    previewMenuSubtitle: '',
     isImageReady: false,
-    largeTextMode: false,
     isEntering: false,
     chefReportText: ''
-  },
-
-  onLargeTextModeTap: function () {
-    this.setData({ largeTextMode: !this.data.largeTextMode });
   },
 
   onShareAppMessage: function () {
@@ -67,10 +67,12 @@ Page({
   },
 
   onLoad: function () {
+    this._pageAlive = true;
     var that = this;
     try {
+      var fallbackMessage = (getApp().globalData && getApp().globalData.previewFallbackMessage) ? getApp().globalData.previewFallbackMessage : '';
       // 图片（cloud://）解析放到 onReady：避免渲染层过早创建 <image> 导致 500 / 被当作本地资源
-      that.setData({ isImageReady: false, headerBgUrl: '' });
+      that.setData({ isImageReady: false });
       that._pageReady = false;
       that._pendingResolve = false;
 
@@ -87,6 +89,14 @@ Page({
       }
 
       var menus = JSON.parse(menusJson);
+      // 若为精简格式（如从「开始做饭」存下来的），还原为完整菜单
+      if (menuData.isSlimMenuFormat && menuData.isSlimMenuFormat(menus)) {
+        var prefRaw = '';
+        try { prefRaw = wx.getStorageSync('today_menus_preference') || ''; } catch (e) {}
+        var storedPref = prefRaw ? JSON.parse(prefRaw) : (getApp().globalData.preference || {});
+        menus = menuData.deserializeMenusFromStorage(menus, storedPref);
+        if (storedPref && Object.keys(storedPref).length) getApp().globalData.preference = storedPref;
+      }
       // 防御：若历史数据中有同名重复菜，只保留每道菜第一次出现
       var seenNames = {};
       menus = menus.filter(function (m) {
@@ -99,6 +109,17 @@ Page({
       if (menus.length > 0) {
         try { wx.setStorageSync('today_menus', JSON.stringify(menus)); } catch (e) {}
       }
+      // #region agent log
+      try {
+        var menuServiceForLog = require('../../data/menuData.js');
+        var isSlim = menuServiceForLog && typeof menuServiceForLog.isSlimMenuFormat === 'function'
+          ? menuServiceForLog.isSlimMenuFormat(menus)
+          : false;
+        if (typeof fetch === 'function') {
+          fetch('http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'D',location:'preview.js:onLoad',message:'menus loaded from storage',data:{menuCount:menus.length,isSlim:isSlim,sample:(menus||[]).slice(0,3).map(function(m){return {name:(m.adultRecipe&&m.adultRecipe.name)||'',adultIng:Array.isArray(m.adultRecipe&&m.adultRecipe.ingredients)?m.adultRecipe.ingredients.length:null,hasAdultId:!!(m.adultRecipe&&(m.adultRecipe.id||m.adultRecipe._id))};})},timestamp:Date.now()})}).catch(()=>{});
+        }
+      } catch (e) {}
+      // #endregion
 
       var pref = getApp().globalData.preference || {};
       var hasBaby = !!(pref && pref.hasBaby);
@@ -146,13 +167,20 @@ Page({
       }
 
       // 4. 一次性 setData
+      var hasSharedBase = rows.some(function (r) { return r.showSharedHint; });
+      var tips = that._buildPreviewTips(dashboard, hasSharedBase, '', fallbackMessage);
       that.setData({
         previewMenuRows: rows,
         previewDashboard: dashboard,
         previewHasBaby: hasBaby,
-        previewHasSharedBase: rows.some(function (r) { return r.showSharedHint; }),
+        previewHasSharedBase: hasSharedBase,
         previewComboName: (pref.meatCount || 2) + '荤' + (pref.vegCount || 1) + '素' + (pref.soupCount ? '1汤' : ''),
-        chefReportText: chefReportText
+        previewRhythmRings: that._buildPreviewRhythmRings(menus),
+        chefReportText: chefReportText,
+        previewNarrativeText: that._buildNarrativeText(dashboard, chefReportText),
+        previewMenuSubtitle: that._buildMenuSubtitle(rows),
+        previewFallbackMessage: fallbackMessage,
+        previewTips: tips
       }, function () {
         // rows 真正进入视图层后，再按 onReady 规则触发图片解析
         if (that._pageReady) that._resolvePreviewImages();
@@ -163,7 +191,7 @@ Page({
 
       // 5. 延迟触发微缩转盘入场动画
       setTimeout(function () {
-        that.setData({ isEntering: true });
+        if (that._pageAlive) that.setData({ isEntering: true });
       }, 300);
 
       // 6. 将解析后的对象同步回 globalData 以便「换一换」逻辑使用
@@ -187,6 +215,18 @@ Page({
         success: function () { wx.navigateBack(); }
       });
     }
+  },
+  
+  onShow: function () {
+    this._pageAlive = true;
+  },
+  
+  onHide: function () {
+    this._pageAlive = false;
+  },
+  
+  onUnload: function () {
+    this._pageAlive = false;
   },
 
   onReady: function () {
@@ -220,11 +260,7 @@ Page({
     }
 
     var rows = that.data.previewMenuRows || [];
-    // 视图层使用 env 简写形式，getTempFileURL 请求用完整 fileID（带 appid 后缀）的形式更稳
-    var headerFileId = 'cloud://' + ENV_ID + '/prep_cover_pic/table.jpg';
-    var headerReqId = toFullFileId(headerFileId);
-
-    var fileIds = [headerReqId];
+    var fileIds = [];
     for (var i = 0; i < rows.length; i++) {
       if (rows[i] && rows[i].hasCover && typeof rows[i].coverUrl === 'string' && rows[i].coverUrl.indexOf('cloud://') === 0) {
         fileIds.push(toFullFileId(rows[i].coverUrl));
@@ -253,9 +289,7 @@ Page({
         return Object.assign({}, r, { coverTempUrl: tmp });
       });
 
-      var headerTmp = tempMap[headerFileId] || tempMap[headerReqId] || '';
       that.setData({
-        headerBgUrl: headerTmp,
         previewMenuRows: newRows,
         isImageReady: true
       });
@@ -403,8 +437,22 @@ Page({
         getApp().globalData.menuPreview.comboName = result.comboName || '';
         getApp().globalData.menuPreview.balanceTip = balanceTip;
       }
+      var tips = that._buildPreviewTips(dashboard, hasSharedBase, balanceTip, that.data.previewFallbackMessage);
       that.setData(
-        { previewMenuRows: newRows, previewComboName: result.comboName || '', previewBalanceTip: balanceTip, previewDashboard: dashboard, previewHasSharedBase: hasSharedBase, previewHasBaby: hasBaby, isImageReady: false, chefReportText: '' },
+        {
+          previewMenuRows: newRows,
+          previewComboName: result.comboName || '',
+          previewBalanceTip: balanceTip,
+          previewDashboard: dashboard,
+          previewHasSharedBase: hasSharedBase,
+          previewHasBaby: hasBaby,
+          previewRhythmRings: that._buildPreviewRhythmRings(newMenus),
+          previewNarrativeText: that._buildNarrativeText(dashboard, ''),
+          previewMenuSubtitle: that._buildMenuSubtitle(newRows),
+          isImageReady: false,
+          chefReportText: '',
+          previewTips: tips
+        },
         function () { if (that._pageReady) that._resolvePreviewImages(); }
       );
 
@@ -508,18 +556,23 @@ Page({
         getApp().globalData.menuPreview.hasSharedBase = newRows.some(function (r) { return r.showSharedHint; });
         getApp().globalData.menuPreview.balanceTip = balanceTip;
       }
+      var dashboard = that._computePreviewDashboard(newMenus, pref);
+      var tips = that._buildPreviewTips(dashboard, newRows.some(function (r) { return r.showSharedHint; }), balanceTip, that.data.previewFallbackMessage);
       that.setData({
         previewMenuRows: newRows,
         previewBalanceTip: balanceTip,
-        previewDashboard: that._computePreviewDashboard(newMenus, pref),
+        previewDashboard: dashboard,
         previewHasSharedBase: newRows.some(function (r) { return r.showSharedHint; }),
         previewHasBaby: !!(pref && pref.hasBaby),
-        isImageReady: false
+        previewRhythmRings: that._buildPreviewRhythmRings(newMenus),
+        previewNarrativeText: that._buildNarrativeText(dashboard, ''),
+        previewMenuSubtitle: that._buildMenuSubtitle(newRows),
+        isImageReady: false,
+        previewTips: tips,
+        chefReportText: ''
       }, function () { if (that._pageReady) that._resolvePreviewImages(); });
 
-      
       // 局部换菜后，主厨报告已不准确，清除
-      that.setData({ chefReportText: '' });
       wx.showToast({ title: '已为您选出更均衡的搭配', icon: 'none' });
     } catch (e) {
       console.error('换掉未勾选失败:', e);
@@ -601,8 +654,117 @@ Page({
     }
   },
 
+  /** 全员入篮：将当前菜单所有菜品一键加入灵感篮子（spec 10.5/10.7） */
+  onAddAllToBasket: function () {
+    var that = this;
+    var menus = that._fullPreviewMenus || getApp().globalData.todayMenus || [];
+    if (!menus || menus.length === 0) {
+      wx.showToast({ title: '暂无菜单', icon: 'none' });
+      return;
+    }
+    var recipes = menus.map(function (m) {
+      var ar = m && m.adultRecipe;
+      if (!ar) return null;
+      return {
+        id: ar.id || ar._id,
+        _id: ar._id || ar.id,
+        name: ar.name,
+        meat: ar.meat
+      };
+    }).filter(Boolean);
+    if (recipes.length === 0) {
+      wx.showToast({ title: '暂无菜品', icon: 'none' });
+      return;
+    }
+    var raw = '';
+    try { raw = wx.getStorageSync(basket.STORAGE_KEY) || ''; } catch (e) { /* ignore */ }
+    var list = basket.parseBasket(raw);
+    var newList = basket.batchAdd(list, recipes, 'native', function () { return { sourceDetail: '生成菜单' }; });
+    if (newList.length <= list.length) {
+      wx.showToast({ title: '已在灵感篮中', icon: 'none' });
+      return;
+    }
+    try {
+      wx.setStorageSync(basket.STORAGE_KEY, basket.serializeBasket(newList));
+      wx.setStorageSync(basket.BASKET_DATE_KEY, basket.getTodayDateKey());
+    } catch (e) {
+      wx.showToast({ title: '保存失败', icon: 'none' });
+      return;
+    }
+    var app = getApp();
+    if (app && app.globalData) app.globalData.inspirationBasket = newList;
+    if (app.onBasketChange) app.onBasketChange(newList.length);
+    that.setData({ basketJustAdded: true });
+    wx.showToast({ title: '已收入灵感篮子', icon: 'success' });
+    setTimeout(function () {
+      if (that._pageAlive) that.setData({ basketJustAdded: false });
+    }, 600);
+  },
+
+  handleSwapOptions: function () {
+    var that = this;
+    wx.showActionSheet({
+      itemList: ['换一换', '换掉未勾选'],
+      success: function (res) {
+        if (res.tapIndex === 0) that.handleShuffle();
+        if (res.tapIndex === 1) that.handleReplaceUnchecked();
+      }
+    });
+  },
+
   _defaultPreference: function () {
     return { adultCount: 2, hasBaby: false, babyMonth: 12, meatCount: 1, vegCount: 1, soupCount: 1 };
+  },
+
+  _buildPreviewRhythmRings: function (menus) {
+    if (!Array.isArray(menus) || menus.length === 0) return [];
+    var rings = [];
+    var colors = ['#c1663e', '#d4956a', '#6cb58b'];
+    var radius = 44;
+    var circumference = 2 * Math.PI * radius;
+    for (var i = 0; i < menus.length && rings.length < 3; i++) {
+      var name = (menus[i].adultRecipe && menus[i].adultRecipe.name) || '未命名菜品';
+      var percent = 0;
+      var dash = (circumference * percent / 100).toFixed(2);
+      var dashArray = dash + ' ' + (circumference - dash).toFixed(2);
+      rings.push({
+        name: name,
+        percent: percent,
+        dashArray: dashArray,
+        color: colors[rings.length % colors.length]
+      });
+    }
+    return rings;
+  },
+
+  _buildMenuSubtitle: function (rows) {
+    var names = (rows || []).map(function (r) { return r && r.adultName ? r.adultName : ''; }).filter(Boolean);
+    if (names.length === 0) return '';
+    var subtitle = names.slice(0, 2).join('、');
+    if (names.length > 2) subtitle += '等';
+    return subtitle;
+  },
+
+  _buildNarrativeText: function (dashboard, chefReportText) {
+    if (chefReportText) return chefReportText;
+    var parts = [];
+    if (dashboard && dashboard.nutritionHint) parts.push(dashboard.nutritionHint);
+    if (dashboard && dashboard.prepAheadHint) parts.push(dashboard.prepAheadHint);
+    if (dashboard && dashboard.prepOrderHint) parts.push(dashboard.prepOrderHint);
+    if (parts.length > 0) return parts.join('；');
+    return '本餐营养覆盖：蛋白质、维生素与膳食纤维；备菜建议：可提前约 15 分钟准备葱姜蒜及腌制食材，下锅更从容';
+  },
+
+  _buildPreviewTips: function (dashboard, hasSharedBase, balanceTip, fallbackMessage) {
+    var tips = [];
+    if (fallbackMessage) tips.push(fallbackMessage);
+    if (balanceTip) tips.push(balanceTip);
+    if (hasSharedBase) tips.push('大人孩子可共用基底，一锅出省时省力');
+    if (dashboard && dashboard.sharedIngredientsHint) tips.push(dashboard.sharedIngredientsHint);
+    if (dashboard && dashboard.nutritionHint) tips.push(dashboard.nutritionHint);
+    if (dashboard && dashboard.prepAheadHint) tips.push(dashboard.prepAheadHint);
+    if (dashboard && dashboard.prepOrderHint) tips.push(dashboard.prepOrderHint);
+    return tips.slice(0, 2);
   },
 
   _computePreviewDashboard: function (menus, pref) {

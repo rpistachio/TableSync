@@ -2,10 +2,34 @@
  * 灵感篮子 (Inspiration Basket) 数据层
  * 纯函数设计，不调用 wx.*；Storage 读写由调用方完成。
  * 存储 key 与日期 key 用于调用方做每日清空判断。
+ * spec v1.5: 入篮时 source 为 imported 的项必须具备 meat 标签，以兼容 menuGenerator/smartMenuGen。
  */
 
 var STORAGE_KEY = 'inspiration_basket';
 var BASKET_DATE_KEY = 'inspiration_basket_date';
+
+/** 与 menuData/menuGenerator 一致的肉类枚举，用于名称推导 */
+var VALID_MEAT_KEYS = ['chicken', 'pork', 'beef', 'fish', 'shrimp', 'vegetable'];
+
+/** 从菜名推导 meat 类型（纯函数，不调用 wx.*） */
+var MEAT_NAME_PATTERNS = [
+  { keys: ['鸡', '鸡肉', '鸡翅', '鸡腿', '鸡丁', '鸡块', '鸡胸', '鸡里脊'], meat: 'chicken' },
+  { keys: ['猪', '猪肉', '排骨', '五花', '肉末', '肉丝', '肉片', '里脊'], meat: 'pork' },
+  { keys: ['牛', '牛肉', '牛腩', '牛柳', '牛排'], meat: 'beef' },
+  { keys: ['鱼', '鳕鱼', '鲈鱼', '三文鱼', '鲫鱼', '带鱼', '黄花鱼'], meat: 'fish' },
+  { keys: ['虾', '虾仁', '大虾', '基围虾', '明虾'], meat: 'shrimp' },
+  { keys: ['豆腐', '青菜', '白菜', '花菜', '西兰花', '茄子', '黄瓜', '冬瓜', '南瓜', '土豆', '番茄', '苦瓜', '韭菜', '菠菜', '芹菜', '花生', '木耳', '蘑菇', '口蘑', '地三鲜', '娃娃菜', '秋葵'], meat: 'vegetable' }
+];
+function inferMeatFromName(name) {
+  if (!name) return '';
+  for (var i = 0; i < MEAT_NAME_PATTERNS.length; i++) {
+    var group = MEAT_NAME_PATTERNS[i];
+    for (var j = 0; j < group.keys.length; j++) {
+      if (name.indexOf(group.keys[j]) !== -1) return group.meat;
+    }
+  }
+  return '';
+}
 
 /**
  * 返回当前日期的 YYYY-MM-DD，用于判断是否跨天清空
@@ -48,22 +72,15 @@ function serializeBasket(list) {
   }
 }
 
-/** menuGenerator 兼容：合法 meat 枚举，imported 项入篮时若无则按名称推导 */
-var VALID_MEAT = { chicken: 1, pork: 1, beef: 1, fish: 1, shrimp: 1, vegetable: 1 };
-function inferMeatFromName(name) {
-  if (!name || typeof name !== 'string') return 'vegetable';
-  var s = name.trim();
-  if (/鸡|鸡丁|鸡翅|鸡胸|鸡腿|黄焖鸡/i.test(s)) return 'chicken';
-  if (/猪|排骨|五花|红烧肉|肉丝|肉片|腊肉/i.test(s)) return 'pork';
-  if (/牛|牛排|牛肉|肥牛/i.test(s)) return 'beef';
-  if (/虾|虾仁|大虾|明虾/i.test(s)) return 'shrimp';
-  if (/鱼|鲈鱼|带鱼|鲫鱼|鳕鱼|三文鱼|水煮鱼/i.test(s)) return 'fish';
-  return 'vegetable';
-}
-
 /**
  * 创建一条篮子项（纯函数，不写存储）
- * source 为 imported 时必填 meat，若无则按名称推导以兼容 menuGenerator。
+ * @param {Object} recipe - 至少含 id, name；可含 sourcePlatform 等
+ * @param {string} source - 'native' | 'imported' | 'fridge_match'
+ * @param {Object} [options]
+ * @param {string} [options.sourceDetail]
+ * @param {string} [options.priority] - 'high' | 'normal'
+ * @param {Object} [options.meta] - { fridgeIngredients, expiringIngredients, importPlatform }
+ * @returns {Object} basket item
  */
 function createItem(recipe, source, options) {
   options = options || {};
@@ -76,41 +93,40 @@ function createItem(recipe, source, options) {
   if (!sourceDetail && source === 'fridge_match') sourceDetail = '冰箱匹配';
   if (!sourceDetail && source === 'native') sourceDetail = '菜谱库收藏';
 
-  // 唯一键：同源同菜只保留一条，用于 addItem 幂等去重（B-11）
-  var stableId = (recipe.sourceUrl && typeof recipe.sourceUrl === 'string') ? recipe.sourceUrl : (id || '');
-  var uniqueId = source + '_' + (stableId || '');
-  var item = {
+  // meat 推导：优先用调用方传入 → 原始 recipe 字段 → 从菜名推导
+  var meat = '';
+  if (options.meat && VALID_MEAT_KEYS.indexOf(options.meat) !== -1) {
+    meat = options.meat;
+  } else if (recipe.meat && VALID_MEAT_KEYS.indexOf(recipe.meat) !== -1) {
+    meat = recipe.meat;
+  } else {
+    meat = inferMeatFromName(name);
+  }
+
+  return {
     id: id,
-    uniqueId: uniqueId,
     name: name,
     source: source,
     sourceDetail: sourceDetail,
     addedAt: Date.now(),
     priority: options.priority || 'normal',
+    meat: meat,
     meta: options.meta || {}
   };
-  if (source === 'imported') {
-    var meat = recipe.meat && VALID_MEAT[recipe.meat] ? recipe.meat : inferMeatFromName(name);
-    item.meat = meat;
-  }
-  return item;
 }
 
 /**
- * 向篮子列表追加一条（去重：以 uniqueId 为准幂等，兼容旧数据按 id 判断）
+ * 向篮子列表追加一条（去重：同 id 不重复添加）
  * @param {Array} list
- * @param {Object} item - createItem 的返回值（含 uniqueId）
+ * @param {Object} item - createItem 的返回值
  * @returns {Array} 新数组，不修改原数组
  */
 function addItem(list, item) {
   if (!Array.isArray(list)) list = [];
   var id = item && item.id;
-  var uid = item && item.uniqueId;
-  if (!id && !uid) return list.slice();
+  if (!id) return list.slice();
   for (var i = 0; i < list.length; i++) {
-    var existing = list[i];
-    if (uid && existing.uniqueId === uid) return list.slice();
-    if (existing.id === id) return list.slice();
+    if (list[i].id === id) return list.slice();
   }
   return list.concat([item]);
 }
@@ -161,36 +177,59 @@ function hasItem(list, id) {
 }
 
 /**
+ * 闭环清理：移除篮子中已选入菜单的项（按 id + name 双重匹配）
+ * preview.js confirmAndGo() 在用户确认做饭后调用。
+ * @param {Array} list - 当前篮子数组
+ * @param {Array} menus - 菜单数组 [{ adultRecipe: { id, _id, name } }]
+ * @returns {Array} 新数组（不修改原数组）
+ */
+function removeItemsByMenu(list, menus) {
+  if (!Array.isArray(list) || !Array.isArray(menus)) return list ? list.slice() : [];
+  var ids = {};
+  var names = {};
+  for (var i = 0; i < menus.length; i++) {
+    var ar = menus[i] && menus[i].adultRecipe;
+    if (!ar) continue;
+    if (ar.id) ids[ar.id] = true;
+    if (ar._id) ids[ar._id] = true;
+    if (ar.name) names[ar.name] = true;
+  }
+  return list.filter(function (item) {
+    if (item.id && ids[item.id]) return false;
+    if (item.name && names[item.name]) return false;
+    return true;
+  });
+}
+
+/**
+ * 批量向篮子列表追加多项（去重：同 id 不重复添加）
+ * Preview 页「全员入篮」使用；不写 Storage，由调用方写入。
+ * @param {Array} list - 当前篮子数组
+ * @param {Array} recipes - 至少含 { id, name, meat? } 的数组
+ * @param {string} source - 'native' | 'imported' | 'fridge_match'
+ * @param {Function} [optionsFactory] - (recipe) => options，可选，为每项生成 createItem 的 options
+ * @returns {Array} 新数组（不修改原数组）
+ */
+function batchAdd(list, recipes, source, optionsFactory) {
+  if (!Array.isArray(list)) list = [];
+  if (!Array.isArray(recipes)) return list.slice();
+  var current = list.slice();
+  for (var i = 0; i < recipes.length; i++) {
+    var recipe = recipes[i];
+    if (!recipe || (!recipe.id && !recipe._id)) continue;
+    var opts = (typeof optionsFactory === 'function' ? optionsFactory(recipe) : {}) || {};
+    var item = createItem(recipe, source, opts);
+    current = addItem(current, item);
+  }
+  return current;
+}
+
+/**
  * 返回空篮子数组（用于跨天清空）
  * @returns {Array}
  */
 function emptyBasket() {
   return [];
-}
-
-/**
- * 从篮子中移除已选入菜单的项（闭环清理，纯函数）
- * @param {Array} list - 当前篮子
- * @param {Array} menus - 完整菜单 [{ adultRecipe: { id, name }, ... }]
- * @returns {Array} 新列表
- */
-function removeItemsByMenu(list, menus) {
-  if (!Array.isArray(list) || list.length === 0) return list;
-  if (!Array.isArray(menus) || menus.length === 0) return list.slice();
-  var ids = {};
-  var names = {};
-  for (var i = 0; i < menus.length; i++) {
-    var r = menus[i] && menus[i].adultRecipe;
-    if (r) {
-      if (r.id) ids[r.id] = true;
-      if (r.name && r.name.trim()) names[r.name.trim()] = true;
-    }
-  }
-  return list.filter(function (x) {
-    if (x.id && ids[x.id]) return false;
-    if (x.name && names[(x.name || '').trim()]) return false;
-    return true;
-  });
 }
 
 module.exports = {
@@ -205,8 +244,9 @@ module.exports = {
   getCount: getCount,
   getBySource: getBySource,
   hasItem: hasItem,
-  emptyBasket: emptyBasket,
   removeItemsByMenu: removeItemsByMenu,
+  batchAdd: batchAdd,
+  emptyBasket: emptyBasket,
 
   /** 兼容：getAll 即 parseBasket，由调用方先读 Storage 再传入 */
   getAll: function (raw) { return parseBasket(raw); },

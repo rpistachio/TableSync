@@ -24,80 +24,11 @@
 }
 
 .context-text {
-  font-size: 24rpx;
-  color: var(--text-muted);
-}
-
-.mood-section {
-  margin: 0 24rpx 24rpx;
-  padding: 24rpx 28rpx;
-  background: var(--card-bg-strong);
-  border-radius: 24rpx;
-  border: 1rpx solid var(--line);
-}
-
-.mood-label {
-  display: block;
-  font-size: 22rpx;
-  font-weight: 500;
-  letter-spacing: 2rpx;
-  color: var(--text-subtle);
-  margin-bottom: 20rpx;
-}
-
-.mood-cards {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16rpx;
-  margin-bottom: 20rpx;
-}
-
-.mood-card {
-  flex: 1;
-  min-width: calc(25% - 12rpx);
-  padding: 20rpx 12rpx;
-  border-radius: 20rpx;
-  border: 1rpx solid var(--line-strong);
-  background: var(--card-bg);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6rpx;
-}
-
-.mood-card.is-active {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-}
-
-.mood-emoji {
-  font-size: 36rpx;
-}
-
-.mood-text {
-  font-size: 24rpx;
-  color: var(--text-soft);
-  font-weight: 500;
-}
-
-.mood-card.is-active .mood-text {
-  color: var(--accent-strong);
-}
-
-.mood-custom-wrap {
-  padding: 0 4rpx;
-}
-
-.mood-custom-input {
-  width: 100%;
-  height: 72rpx;
-  padding: 0 24rpx;
   font-size: 26rpx;
-  color: var(--text);
-  background: var(--card-bg);
-  border-radius: 16rpx;
-  border: 1rpx solid var(--line-strong);
+  color: var(--text-soft);
+  line-height: 1.5;
 }
+
 
 /* ============ 灵感篮子优先策略 ============ */
 .priority-section {

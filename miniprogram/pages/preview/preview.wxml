@@ -1,105 +1,72 @@
-<view class="preview-page {{largeTextMode ? 'large-text-mode' : ''}}">
-  <scroll-view class="preview-page-scroll" scroll-y>
+<view class="preview-page">
+  <view class="preview-page-scroll">
     <view class="preview-scroll-content">
-      <view class="preview-top-bar">
-        <view class="preview-top-bar-spacer"></view>
-        <view class="preview-large-mode-btn {{largeTextMode ? 'is-active' : ''}}" bindtap="onLargeTextModeTap">
-          <text class="preview-large-mode-icon">🔤</text>
-          <text class="preview-large-mode-label">{{largeTextMode ? '退出大字' : '大字模式'}}</text>
-        </view>
-      </view>
       <view class="preview-header">
-        <image wx:if="{{isImageReady && headerBgUrl}}" class="header-bg-image" src="{{headerBgUrl}}" mode="aspectFill" />
-        <view class="header-bg-overlay"></view>
-        <view class="header-brand-lines"></view>
-        <text class="preview-heading">今日用餐</text>
-        <text class="preview-count">{{previewCountText}}</text>
-        <text class="preview-combo" wx:if="{{previewComboName}}">{{previewComboName}}</text>
-        <text class="preview-balance" wx:if="{{previewBalanceTip}}">{{previewBalanceTip}}</text>
-      </view>
-      
-      <!-- 菜谱池降级提示 -->
-      <view class="preview-fallback-notice" wx:if="{{previewFallbackMessage}}">
-        <text class="fallback-icon">💡</text>
-        <text class="fallback-text">{{previewFallbackMessage}}</text>
+        <view class="preview-header-text">
+          <text class="preview-header-title">营养师推荐理由</text>
+          <text class="preview-narrative">{{previewNarrativeText}}</text>
+        </view>
+        <view class="preview-header-divider"></view>
       </view>
 
       <scroll-view wx:if="{{previewDashboard.estimatedTime || previewDashboard.stoveCount > 0 || previewDashboard.categoryLabels}}" class="dashboard-bar" scroll-x enable-flex>
         <view class="dash-item">
-          <text class="dash-icon">⏰</text>
           <text class="dash-value">{{previewDashboard.estimatedTime}}</text>
         </view>
         <view class="dash-item">
-          <text class="dash-icon">🔥</text>
           <text class="dash-value">{{previewDashboard.stoveCount}}火</text>
         </view>
         <view class="dash-item" wx:if="{{previewDashboard.categoryLabels}}">
-          <text class="dash-icon">🥕</text>
           <text class="dash-value">{{previewDashboard.categoryLabels}}</text>
         </view>
       </scroll-view>
 
-      <view class="preview-hints" wx:if="{{previewDashboard.nutritionHint || previewDashboard.prepOrderHint || previewDashboard.prepAheadHint || previewDashboard.sharedIngredientsHint}}">
-        <view class="hint-row" wx:if="{{previewDashboard.sharedIngredientsHint}}">
-          <text class="hint-icon">🛒</text>
-          <text class="hint-text">{{previewDashboard.sharedIngredientsHint}}</text>
+      <view class="preview-menu-header">
+        <view class="preview-menu-titles">
+          <text class="preview-menu-label">今日菜单</text>
+          <text class="preview-menu-subtitle" wx:if="{{previewMenuSubtitle}}">{{previewMenuSubtitle}}</text>
         </view>
-        <view class="hint-row" wx:if="{{previewDashboard.nutritionHint}}">
-          <text class="hint-icon">🥗</text>
-          <text class="hint-text">{{previewDashboard.nutritionHint}}</text>
-        </view>
-        <view class="hint-row" wx:if="{{previewDashboard.prepAheadHint}}">
-          <text class="hint-icon">⏱</text>
-          <text class="hint-text">{{previewDashboard.prepAheadHint}}</text>
-        </view>
-        <view class="hint-row" wx:if="{{previewDashboard.prepOrderHint}}">
-          <text class="hint-icon">📋</text>
-          <text class="hint-text">{{previewDashboard.prepOrderHint}}</text>
+        <view class="preview-rhythm-inline" wx:if="{{previewRhythmRings.length > 0}}">
+          <view wx:for="{{previewRhythmRings}}" wx:key="name" class="preview-rhythm-chip">
+            <view class="preview-ring-svg-wrap">
+              <svg class="preview-ring-svg" viewBox="0 0 100 100">
+                <circle class="preview-ring-track" cx="50" cy="50" r="44"></circle>
+                <circle class="preview-ring-progress" cx="50" cy="50" r="44" stroke="{{item.color}}" stroke-dasharray="{{item.dashArray}}"></circle>
+              </svg>
+            </view>
+            <text class="preview-ring-label">{{item.name}}</text>
+          </view>
         </view>
       </view>
-
-      <view class="preview-baby-diff" wx:if="{{previewHasSharedBase}}">
-        <text class="preview-baby-diff-icon">💡</text>
-        <text class="preview-baby-diff-text">大人孩子可共用基底，一锅出省时省力</text>
-      </view>
-
-      <!-- 主厨报告：AI 推荐理由 -->
-      <view class="chef-report" wx:if="{{chefReportText}}">
-        <text class="chef-report-icon">👨‍🍳</text>
-        <text class="chef-report-text">{{chefReportText}}</text>
-      </view>
-
-      <view class="preview-menu-label">🍱 今日菜单</view>
-      <view class="preview-baby-hint" wx:if="{{previewHasBaby}}">👶 下方标「宝宝」的为宝宝辅食</view>
-
+      <view class="preview-baby-hint" wx:if="{{previewHasBaby}}">下方标「宝宝」的为宝宝辅食</view>
       <view class="preview-dish-list">
         <view wx:for="{{previewMenuRows}}" wx:key="index" class="dish-card-wrap" data-index="{{index}}" bindtap="onCheckRow">
           <view class="dish-card-modern {{item.checked ? '' : 'is-unchecked'}} {{item.hasCover ? '' : 'no-cover'}}" style="animation-delay: {{index * 120}}ms">
             <image wx:if="{{item.hasCover && isImageReady && item.coverTempUrl}}" class="card-bg" src="{{item.coverTempUrl}}" mode="aspectFill" />
             <view class="card-overlay"></view>
+            <view class="basket-origin-badge" wx:if="{{item.fromBasket}}">
+              <text class="basket-origin-text">{{item.basketSourceLabel}}</text>
+            </view>
             <view class="card-info">
               <view class="card-header">
                 <text class="dish-name">{{item.adultName}}</text>
-                <view class="basket-origin-badge" wx:if="{{item.fromBasket}}">
-                  <text class="basket-origin-text">🧺 {{item.basketSourceLabel}}</text>
-                </view>
                 <view class="check-badge" wx:if="{{item.checked}}">✓</view>
               </view>
               <view class="card-footer">
                 <text class="dish-reason">{{item.recommendReason}}</text>
-                <view class="baby-tag-floating" wx:if="{{item.babyName}}">👶 宝宝吃：{{item.babyName}}</view>
+                <view class="baby-tag-floating" wx:if="{{item.babyName}}">宝宝吃：{{item.babyName}}</view>
               </view>
             </view>
           </view>
         </view>
       </view>
     </view>
-  </scroll-view>
+  </view>
 
   <view class="preview-actions">
-    <button class="preview-btn preview-btn-secondary" catchtap="handleShuffle">换一换</button>
-    <button class="preview-btn preview-btn-secondary" catchtap="handleReplaceUnchecked">换掉未勾选</button>
-    <button class="preview-btn preview-btn-share" open-type="share">发给阿姨</button>
+    <button class="preview-btn preview-btn-basket" catchtap="onAddAllToBasket">全员入篮</button>
+    <button class="preview-btn preview-btn-secondary" catchtap="handleSwapOptions">换菜</button>
+    <button class="preview-btn preview-btn-ghost" open-type="share">发给阿姨</button>
     <button class="preview-btn preview-btn-primary" catchtap="confirmAndGo">开始做饭</button>
   </view>
 </view>

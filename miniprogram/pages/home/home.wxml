@@ -10,59 +10,80 @@
     </view>
   </view>
 
-  <!-- 今日氛围卡片（Phase 2 填充天气/问候） -->
-  <view class="vibe-card">
-    <text class="vibe-date">{{currentDate}}</text>
-    <text class="vibe-weather" wx:if="{{vibeWeather}}">{{vibeWeather}}</text>
-    <text class="vibe-greeting">{{vibeGreeting}}</text>
-  </view>
+  <view class="home-main">
+    <image wx:if="{{homeBgUrl}}" class="home-main-bg" src="{{homeBgUrl}}" mode="aspectFill" />
+    <view class="home-main-overlay"></view>
+    <view class="home-main-content">
+      <!-- 今日氛围卡片（Phase 2 填充天气/问候） -->
+      <view class="vibe-card">
+        <text class="vibe-date">{{currentDate}}</text>
+        <text class="vibe-weather" wx:if="{{vibeWeather}}">{{vibeWeather}}</text>
+        <text class="vibe-greeting">{{vibeGreeting}}</text>
+      </view>
 
-  <!-- ===== Zen Mode: 一键定晚饭 ===== -->
-  <view class="zen-panel" wx:if="{{!showAdvanced}}">
-    <view class="zen-main-btn" bindtap="onZenGo">
-      <text class="zen-main-btn-icon">🍽</text>
-      <text class="zen-main-btn-text">帮我定晚饭</text>
-    </view>
-
-    <view class="zen-toggle-row">
-      <text class="zen-toggle-label">谁来做</text>
-      <view class="zen-toggle-track">
-        <view class="zen-toggle-item {{cookWho === 'self' ? 'is-active' : ''}}" data-value="self" bindtap="onToggleCookWho">
-          <text class="zen-toggle-text">自己做</text>
+      <!-- ===== Zen Mode: 一键定晚饭 ===== -->
+      <view class="zen-panel" wx:if="{{!showAdvanced}}">
+        <view class="zen-main-btn" bindtap="onZenGo">
+          <text class="zen-main-btn-text">想想吃什么</text>
         </view>
-        <view class="zen-toggle-item {{cookWho === 'ayi' ? 'is-active' : ''}}" data-value="ayi" bindtap="onToggleCookWho">
-          <text class="zen-toggle-text">阿姨做</text>
+
+        <view class="zen-toggle-group">
+          <view class="zen-toggle-row">
+            <text class="zen-toggle-label">谁来做</text>
+            <view class="zen-toggle-track">
+              <view class="zen-toggle-item {{cookWho === 'self' ? 'is-active' : ''}}" data-value="self" bindtap="onToggleCookWho">
+                <text class="zen-toggle-text">自己做</text>
+              </view>
+              <view class="zen-toggle-item {{cookWho === 'ayi' ? 'is-active' : ''}}" data-value="ayi" bindtap="onToggleCookWho">
+                <text class="zen-toggle-text">别人做</text>
+              </view>
+            </view>
+          </view>
+
+          <view class="zen-toggle-row">
+            <text class="zen-toggle-label">今天状态</text>
+            <view class="zen-toggle-track">
+              <view class="zen-toggle-item {{cookStatus === 'ok' ? 'is-active' : ''}}" data-value="ok" bindtap="onToggleCookStatus">
+                <text class="zen-toggle-text">还行</text>
+              </view>
+              <view class="zen-toggle-item {{cookStatus === 'tired' ? 'is-active' : ''}}" data-value="tired" bindtap="onToggleCookStatus">
+                <text class="zen-toggle-text">疲惫</text>
+              </view>
+            </view>
+          </view>
         </view>
       </view>
-    </view>
-
-    <view class="zen-toggle-row">
-      <text class="zen-toggle-label">今天状态</text>
-      <view class="zen-toggle-track">
-        <view class="zen-toggle-item {{cookStatus === 'ok' ? 'is-active' : ''}}" data-value="ok" bindtap="onToggleCookStatus">
-          <text class="zen-toggle-text">还行</text>
-        </view>
-        <view class="zen-toggle-item {{cookStatus === 'tired' ? 'is-active' : ''}}" data-value="tired" bindtap="onToggleCookStatus">
-          <text class="zen-toggle-text">很累</text>
-        </view>
-      </view>
-    </view>
-  </view>
 
   <!-- ===== 高级功能入口（默认隐藏） ===== -->
   <block wx:if="{{showAdvanced}}">
-  <!-- 今天吃什么入口 -->
+  <view class="zen-advanced-back" bindtap="onHideAdvanced">
+    <text class="zen-advanced-back-icon">‹</text>
+    <text class="zen-advanced-back-text">返回禅模式</text>
+  </view>
+  <!-- 今日灵感入口 -->
   <view class="fridge-scan-entry today-entry" bindtap="onGoSpinner">
     <view class="fridge-scan-icon-wrap today-icon-wrap">
       <text class="fridge-scan-icon">🎲</text>
     </view>
     <view class="fridge-scan-text-wrap">
-      <text class="fridge-scan-title">今天吃什么</text>
-      <text class="fridge-scan-desc">输入心情，AI 帮你搭配今日晚餐</text>
+      <text class="fridge-scan-title">今日灵感</text>
+      <text class="fridge-scan-desc">天气与时段智能推荐，灵感篮 AI 搭配晚餐</text>
     </view>
     <!-- 灵感篮子角标 -->
     <view class="basket-badge" wx:if="{{basketCount > 0}}">
       <text class="basket-badge-num">{{basketCount}}</text>
+    </view>
+    <text class="fridge-scan-arrow">›</text>
+  </view>
+
+  <!-- 导入赛博菜谱入口（前置：与今日灵感并列） -->
+  <view class="fridge-scan-entry import-entry" bindtap="onGoImport">
+    <view class="fridge-scan-icon-wrap import-icon-wrap">
+      <text class="fridge-scan-icon">🔗</text>
+    </view>
+    <view class="fridge-scan-text-wrap">
+      <text class="fridge-scan-title">导入赛博菜谱</text>
+      <text class="fridge-scan-desc">截图小红书/抖音菜谱，AI 秒变可执行食谱</text>
     </view>
     <text class="fridge-scan-arrow">›</text>
   </view>
@@ -75,18 +96,6 @@
     <view class="fridge-scan-text-wrap">
       <text class="fridge-scan-title">拍照清冰箱</text>
       <text class="fridge-scan-desc">拍冰箱照片，AI 帮你搭配晚餐</text>
-    </view>
-    <text class="fridge-scan-arrow">›</text>
-  </view>
-
-  <!-- 导入赛博菜谱入口 -->
-  <view class="fridge-scan-entry import-entry" bindtap="onGoImport">
-    <view class="fridge-scan-icon-wrap import-icon-wrap">
-      <text class="fridge-scan-icon">🔗</text>
-    </view>
-    <view class="fridge-scan-text-wrap">
-      <text class="fridge-scan-title">导入赛博菜谱</text>
-      <text class="fridge-scan-desc">截图小红书/抖音菜谱，AI 秒变可执行食谱</text>
     </view>
     <text class="fridge-scan-arrow">›</text>
   </view>
@@ -139,5 +148,7 @@
   <view class="home-brand">
     <view class="brand-line"></view>
     <text class="brand-text">TableSync</text>
+  </view>
+  </view>
   </view>
 </view>

@@ -1,9 +1,9 @@
 var menuGen = require('../../data/menuGenerator.js');
 var menuData = require('../../data/menuData.js');
 var locationWeather = require('../home/locationWeather');
+var vibeGreeting = require('../home/vibeGreeting.js');
 var basket = require('../../data/inspirationBasket.js');
 var menuHistory = require('../../utils/menuHistory.js');
-var recipeCoverSlugs = require('../../data/recipeCoverSlugs');
 
 function getTodayDateKey() {
   var d = new Date();
@@ -17,14 +17,6 @@ Page({
   data: {
     contextSummary: '今日 · 本地',
     weatherForApi: null,
-    moodOptions: [
-      { value: 'happy', label: '开心', emoji: '😊' },
-      { value: 'tired', label: '疲惫', emoji: '😴' },
-      { value: 'craving', label: '馋了', emoji: '🤤' },
-      { value: 'any', label: '随便', emoji: '🙂' }
-    ],
-    selectedMood: 'any',
-    moodCustom: '',
     prefPanelExpanded: false,
     hasMenusForWheel: false,
     adultCount: 2,
@@ -93,44 +85,22 @@ Page({
     middleTarget: 0,
     innerTarget: 0,
     spinning: false,
-    stopped: false,
-    isZenMode: false
+    stopped: false
   },
 
-  onLoad: function (options) {
+  onLoad: function () {
     var that = this;
-
-    // Zen Mode：首页"帮我定晚饭"入口，跳过全部配置界面，直接生成
-    if (options && options.zen === '1') {
-      var who = options.who || 'self';
-      var status = options.status || 'ok';
-      // 写入 globalData 供 steps 页读取
-      getApp().globalData.zenWho = who;
-      getApp().globalData.zenStatus = status;
-      that._isZenMode = true;
-      that.setData({ isZenMode: true });
-      // 用默认偏好直接调 onStartGenerate
-      that.setData({
-        adultCount: 2, meatCount: 1, vegCount: 1,
-        hasBaby: false, wantSoup: false,
-        selectedMood: status === 'tired' ? 'tired' : 'any',
-        'userPreference.dietStyle': 'home',
-        'userPreference.isTimeSave': status === 'tired'
-      });
-      that.onStartGenerate();
-      return;
-    }
-
+    this._pageAlive = true;
     var menus = getApp().globalData.todayMenus || [];
     var pref = getApp().globalData.preference || {};
+    var hasExistingMenus = !!(menus && menus.length > 0);
 
     if (menus && menus.length > 0) {
-      that._refreshBasketData();
       that._buildWheelFromMenus(menus, pref);
       that.setData({ hasMenusForWheel: true });
       that._updateContextSummary(pref.adultCount != null ? pref.adultCount : 2);
       locationWeather.getWeather().then(function (w) {
-        that.setData({ weatherForApi: w });
+        if (that._pageAlive) that.setData({ weatherForApi: w });
         that._updateContextSummary(pref.adultCount != null ? pref.adultCount : 2, w);
       });
       return;
@@ -173,32 +143,39 @@ Page({
     that._refreshBasketData();
     that._updateContextSummary(updates.adultCount != null ? updates.adultCount : that.data.adultCount);
     locationWeather.getWeather().then(function (w) {
-      that.setData({ weatherForApi: w });
+      if (that._pageAlive) that.setData({ weatherForApi: w });
       that._updateContextSummary(that.data.adultCount, w);
     });
   },
-
+  
   onShow: function () {
-    this._refreshBasketData();
+    this._pageAlive = true;
+  },
+  
+  onHide: function () {
+    this._pageAlive = false;
+  },
+  
+  onUnload: function () {
+    this._pageAlive = false;
   },
 
   _updateContextSummary: function (adultCount, weather) {
-    var n = adultCount != null ? adultCount : this.data.adultCount;
-    var weatherPart = '';
-    if (weather && (weather.fullText || weather.text || weather.temp)) {
-      weatherPart = (weather.fullText && weather.fullText.trim()) ? weather.fullText.trim() : ((weather.text || '') + (weather.temp ? ' ' + weather.temp + '°C' : '')).trim();
-    }
-    var summary = (weatherPart ? weatherPart + ' · ' : '今日 · ') + n + '人';
-    this.setData({ contextSummary: summary });
+    var greeting = vibeGreeting.pickGreeting(weather || {});
+    this.setData({ contextSummary: greeting });
   },
 
-  onMoodTap: function (e) {
-    var value = e.currentTarget.dataset.value;
-    if (value) this.setData({ selectedMood: value });
-  },
-
-  onMoodCustomInput: function (e) {
-    this.setData({ moodCustom: (e.detail && e.detail.value) || '' });
+  /** 根据天气+时段推导默认 mood，供 smartMenuGen 使用（今日灵感默认建议，无手动选择） */
+  _getDefaultMood: function (weather) {
+    var hour = new Date().getHours();
+    var isEvening = (hour >= 14 && hour < 22) || (hour >= 18 && hour < 22);
+    var text = (weather && weather.text) ? String(weather.text) : '';
+    var isCold = /冷|寒|冻|雨|雪/.test(text);
+    var isHot = /晴|热|高温/.test(text);
+    if (isEvening && isCold) return '想吃热乎的';
+    if (isEvening && isHot) return '馋了';
+    if (hour >= 22 || hour < 6) return '疲惫';
+    return '随便';
   },
 
   onTogglePrefPanel: function () {
@@ -347,10 +324,7 @@ Page({
     wx.showLoading({ title: '生成中...' });
 
     var pref = that._buildPreference();
-    var moodLabel = that.data.moodCustom && that.data.moodCustom.trim()
-      ? that.data.moodCustom.trim()
-      : (that.data.moodOptions || []).find(function (o) { return o.value === that.data.selectedMood; });
-    var moodText = (moodLabel && moodLabel.label) ? moodLabel.label : '随便';
+    var moodText = that._getDefaultMood(that.data.weatherForApi);
 
     var source = menuData.getRecipeSource && menuData.getRecipeSource();
     var adultRecipes = (source && source.adultRecipes) || [];
@@ -382,7 +356,6 @@ Page({
           id: bItem.id,
           name: bItem.name,
           source: bItem.source,
-          sourceDetail: bItem.sourceDetail || '',
           priority: bItem.priority || 'normal',
           meat: bItem.meat
         });
@@ -442,31 +415,14 @@ Page({
 
   _applyAiMenus: function (recipeIds, pref) {
     var that = this;
+    var recipeCoverSlugs = require('../../data/recipeCoverSlugs');
     var hasBaby = pref.hasBaby === true;
     var babyMonth = pref.babyMonth || 12;
     var adultCount = pref.adultCount || 2;
     var firstMeatIndex = -1;
     var menus = [];
-    var lastBasket = getApp().globalData.lastBasketItems || [];
-    var basketById = {};
-    for (var bi = 0; bi < lastBasket.length; bi++) {
-      var b = lastBasket[bi];
-      if (b && b.id) basketById[b.id] = b;
-    }
     for (var i = 0; i < recipeIds.length; i++) {
-      var rid = recipeIds[i];
-      var recipe = menuData.getAdultRecipeById && menuData.getAdultRecipeById(rid);
-      if (!recipe && basketById[rid]) {
-        var bItem = basketById[rid];
-        recipe = {
-          id: bItem.id,
-          name: bItem.name || '未命名',
-          meat: bItem.meat || 'vegetable',
-          steps: [],
-          ingredients: [],
-          base_serving: 2
-        };
-      }
+      var recipe = menuData.getAdultRecipeById && menuData.getAdultRecipeById(recipeIds[i]);
       if (!recipe) continue;
       if (firstMeatIndex < 0 && recipe.meat !== 'vegetable') firstMeatIndex = menus.length;
       var hasBabyThis = hasBaby && recipe.meat !== 'vegetable' && menus.length === firstMeatIndex;
@@ -494,10 +450,8 @@ Page({
     that.setData({ hasMenusForWheel: true });
     wx.hideLoading();
     that._generating = false;
-    // Zen Mode：跳过转盘动画，直接进入 preview
-    if (that._isZenMode) {
-      that._prepareAndNavigate();
-    }
+    // 无转盘 UI 时：生成成功后直接写 storage 并跳转 preview（与 home 禅模式一致）
+    that._prepareAndNavigate();
   },
 
   _applyLocalMenus: function (pref) {
@@ -515,6 +469,7 @@ Page({
           }
         }
       } catch (e) {}
+      var recipeCoverSlugs = require('../../data/recipeCoverSlugs');
       var result = menuData.getTodayMenusByCombo(pref);
       var menus = result.menus || result;
       if (!menus || menus.length === 0) {
@@ -532,20 +487,19 @@ Page({
       getApp().globalData.todayMenus = menus;
       that._buildWheelFromMenus(menus, pref);
       that.setData({ hasMenusForWheel: true });
-      if (result.fallbackMessage && !that._isZenMode) {
+      if (result.fallbackMessage) {
         wx.showToast({ title: result.fallbackMessage, icon: 'none', duration: 2500 });
       }
+      wx.hideLoading();
+      that._generating = false;
+      // 无转盘 UI 时：生成成功后直接写 storage 并跳转 preview
+      that._prepareAndNavigate();
+      return;
     } catch (err) {
-      if (!that._isZenMode) {
-        wx.showModal({ title: '生成失败', content: err.message, showCancel: false });
-      }
+      wx.showModal({ title: '生成失败', content: err.message, showCancel: false });
     }
     wx.hideLoading();
     that._generating = false;
-    // Zen Mode：跳过转盘动画，直接进入 preview
-    if (that._isZenMode) {
-      that._prepareAndNavigate();
-    }
   },
 
   _buildWheelFromMenus: function (menus, pref) {
@@ -644,18 +598,19 @@ Page({
     var innerFinalAngle = 4320 - (that.data.innerTarget * 45) + 720;
 
     setTimeout(function () {
-      that.setData({ outerRotation: outerFinalAngle });
+      if (that._pageAlive) that.setData({ outerRotation: outerFinalAngle });
     }, 100);
 
     setTimeout(function () {
-      that.setData({ middleRotation: middleFinalAngle });
+      if (that._pageAlive) that.setData({ middleRotation: middleFinalAngle });
     }, 500);
 
     setTimeout(function () {
-      that.setData({ innerRotation: innerFinalAngle });
+      if (that._pageAlive) that.setData({ innerRotation: innerFinalAngle });
     }, 1000);
 
     setTimeout(function () {
+      if (!that._pageAlive) return;
       that.setData({ stopped: true });
       that._prepareAndNavigate();
     }, 5000);
@@ -710,7 +665,6 @@ Page({
     } catch (e) { /* ignore */ }
     var app = getApp();
     if (app && app.globalData) app.globalData.inspirationBasket = bList;
-    if (app.onBasketChange) app.onBasketChange(bList.length);
     this._refreshBasketData();
     wx.showToast({ title: '已加入灵感篮', icon: 'success' });
   },
@@ -727,6 +681,11 @@ Page({
     var menus = getApp().globalData.todayMenus || [];
     var pref = getApp().globalData.preference || {};
 
+    // #region agent log
+    if (typeof fetch === 'function') {
+      fetch('http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'F',location:'spinner.js:_prepareAndNavigate',message:'about to generate shopping list',data:{menuCount:menus.length,sample:(menus||[]).slice(0,3).map(function(m){return {name:(m.adultRecipe&&m.adultRecipe.name)||'',adultIng:Array.isArray(m.adultRecipe&&m.adultRecipe.ingredients)?m.adultRecipe.ingredients.length:null};})},timestamp:Date.now()})}).catch(()=>{});
+    }
+    // #endregion
     var shoppingList = menuData.generateShoppingListFromMenus(pref, menus);
     wx.setStorageSync('cart_ingredients', shoppingList || []);
     wx.setStorageSync('today_menus', JSON.stringify(menus));
@@ -755,8 +714,9 @@ Page({
       preference: pref
     };
 
+    // 无转盘时由 _applyAiMenus/_applyLocalMenus 直接调用，短延迟后跳转
     setTimeout(function () {
       wx.redirectTo({ url: '/pages/preview/preview' });
-    }, 1000);
+    }, 300);
   }
 });

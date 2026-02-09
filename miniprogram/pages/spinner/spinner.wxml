@@ -5,35 +5,10 @@
   </view>
 
   <block wx:if="{{!isZenMode}}">
-    <!-- 上下文摘要条 -->
+    <!-- 上下文摘要条：天气+时段默认建议（无手动心情选择） -->
     <view class="context-bar">
       <text class="context-text">{{contextSummary}}</text>
     </view>
-
-  <!-- 心情输入区 -->
-  <view class="mood-section">
-    <text class="mood-label">今日心情</text>
-    <view class="mood-cards">
-      <view
-        wx:for="{{moodOptions}}"
-        wx:key="value"
-        class="mood-card {{selectedMood === item.value ? 'is-active' : ''}}"
-        data-value="{{item.value}}"
-        bindtap="onMoodTap"
-      >
-        <text class="mood-emoji">{{item.emoji}}</text>
-        <text class="mood-text">{{item.label}}</text>
-      </view>
-    </view>
-    <view class="mood-custom-wrap">
-      <input
-        class="mood-custom-input"
-        placeholder="说点别的..."
-        value="{{moodCustom}}"
-        bindinput="onMoodCustomInput"
-      />
-    </view>
-  </view>
 
   <!-- 灵感篮子优先策略（篮子非空时显示） -->
   <view class="priority-section" wx:if="{{basketCount > 0}}">
@@ -164,41 +139,18 @@
   </view>
 
   <!-- 开始生成按钮 -->
-  <view class="cta-wrap" wx:if="{{!hasMenusForWheel}}">
+  <view class="cta-wrap" wx:if="{{!isGenerating}}">
     <button class="premium-btn" bindtap="onStartGenerate">开始生成</button>
   </view>
 
-  <!-- 转盘区域 -->
-    <view class="spinner-container {{hasMenusForWheel ? 'has-wheel' : ''}}">
-      <block wx:if="{{hasMenusForWheel && outerDishes.length > 0}}">
-        <view class="center-logo {{spinning ? 'spinning' : ''}}" bindtap="startSpin">
-          <image
-            class="logo-image"
-            src="cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/logo/logo-remove-removebg-preview.png"
-            mode="aspectFit"
-          />
-          <text class="start-hint" wx:if="{{!spinning && !stopped}}">点击开始</text>
-        </view>
-        <view class="wheel-ring outer-ring" style="transform: rotate({{outerRotation}}deg);">
-          <view wx:for="{{outerDishes}}" wx:key="index" class="wheel-sector {{index === outerTarget ? 'target-sector' : ''}}" style="transform: rotate({{index * 45}}deg);">
-            <text class="sector-text">{{item}}</text>
-          </view>
-        </view>
-        <view class="wheel-ring middle-ring" style="transform: rotate({{middleRotation}}deg);">
-          <view wx:for="{{middleDishes}}" wx:key="index" class="wheel-sector {{index === middleTarget ? 'target-sector' : ''}}" style="transform: rotate({{index * 45}}deg);">
-            <text class="sector-text">{{item}}</text>
-          </view>
-        </view>
-        <view class="wheel-ring inner-ring" style="transform: rotate({{innerRotation}}deg);">
-          <view wx:for="{{innerDishes}}" wx:key="index" class="wheel-sector {{index === innerTarget ? 'target-sector' : ''}}" style="transform: rotate({{index * 45}}deg);">
-            <text class="sector-text">{{item}}</text>
-          </view>
-        </view>
-        <view class="indicator-arrow"></view>
-      </block>
-      <view class="wheel-placeholder" wx:else>
-        <text class="wheel-placeholder-text">配置偏好后点击「开始生成」</text>
-      </view>
+  <!-- 生成中状态 (Kitchen Story 风格: 居中文案 + 微动画) -->
+  <view class="generating-state" wx:if="{{isGenerating}}">
+    <view class="generating-dot-wrap">
+      <view class="generating-dot"></view>
+      <view class="generating-dot"></view>
+      <view class="generating-dot"></view>
     </view>
+    <text class="generating-text">正在为您挑选...</text>
+  </view>
   </block>
 </view>
