@@ -448,10 +448,7 @@ exports.getTodayMenusByCombo = function (preference) {
   var soupCount = Math.min(1, Math.max(0, Number(preference && preference.soupCount) || 0));
   var soupType = (preference && preference.soupType) === 'meat' ? 'meat' : (preference && preference.soupType) === 'veg' ? 'veg' : null;
   var isTimeSave = preference && (preference.isTimeSave === true || preference.is_time_save === true);
-  if (isTimeSave) {
-    meatCount = Math.min(meatCount, 1);
-    vegCount = Math.min(vegCount, 1);
-  }
+  // 疲惫模式不影响菜品数量，只影响制作方式（空气炸锅/凉拌），故不再对 meatCount/vegCount 做上限
   if (meatCount === 0 && vegCount === 0 && soupCount === 0) vegCount = 1;
 
   var userPreference = {

@@ -755,7 +755,14 @@ Page({
           steps = [];
         } else {
           var adultCount = Number(options.adultCount) || 2;
-          var ayiPref = { adultCount: adultCount, hasBaby: false, babyMonth: 12 };
+          var avoidList = [];
+          if (options.avoid && typeof options.avoid === 'string') {
+            try {
+              var decoded = decodeURIComponent(options.avoid);
+              avoidList = decoded.split(',').map(function (s) { return (s || '').trim(); }).filter(Boolean);
+            } catch (e) {}
+          }
+          var ayiPref = { adultCount: adultCount, hasBaby: false, babyMonth: 12, avoidList: avoidList };
 
           var result = menuData.generateStepsFromRecipeIds(ids, ayiPref);
           var appAyi = getApp();
