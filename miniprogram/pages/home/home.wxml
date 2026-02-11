@@ -46,11 +46,6 @@
             </view>
           </view>
         </view>
-
-        <!-- Zen Mode 核心指标文案 -->
-        <view class="zen-indicator" wx:if="{{zenBgIndicator}}">
-          <text class="zen-indicator-text">{{zenBgIndicator}}</text>
-        </view>
       </view>
 
   <!-- ===== 高级功能入口（默认隐藏） ===== -->

@@ -31,6 +31,12 @@
       <view class="preview-menu-header">
         <view class="preview-menu-titles">
           <text class="preview-menu-label">{{previewPageTitle}}</text>
+          <view class="preview-person-picker-wrap" catchtap="onTogglePersonPicker">
+            <text class="preview-person-picker-label">{{adultCount}}人份 ▾</text>
+            <view class="preview-person-bubble" wx:if="{{showPersonPicker}}">
+              <view wx:for="{{[1,2,3,4]}}" wx:key="*this" class="preview-person-option" data-value="{{item}}" catchtap="onChangeAdultCount">{{item}}人</view>
+            </view>
+          </view>
         </view>
       </view>
       <view class="preview-baby-hint" wx:if="{{previewHasBaby && !isHelperMode}}">下方标「宝宝」的为宝宝辅食</view>
@@ -65,6 +71,62 @@
           </view>
         </view>
       </view>
+
+      <!-- 统筹预览：串行 vs 并行对比（仅当有感知效率时展示） -->
+      <view wx:if="{{!isHelperMode && schedulePreview.savedTime > 0 && schedulePreview.efficiency > 10}}" class="schedule-compare-section">
+        <view class="compare-row compare-row-serial">
+          <text class="compare-label">常规烹饪</text>
+          <view class="compare-bar-track">
+            <view class="compare-bar-fill compare-bar-serial" style="width:100%"></view>
+          </view>
+          <text class="compare-time compare-time-serial">{{schedulePreview.serialTime}}分钟</text>
+        </view>
+        <view class="compare-row compare-row-parallel">
+          <text class="compare-label">TableSync 统筹</text>
+          <view class="compare-bar-track">
+            <view class="compare-bar-fill compare-bar-parallel" style="width:{{schedulePreview.parallelPercent}}%"></view>
+          </view>
+          <text class="compare-time compare-time-parallel">{{schedulePreview.totalTime}}分钟</text>
+        </view>
+        <view wx:if="{{!isTiredMode}}" class="efficiency-stamp">
+          <text class="efficiency-stamp-text">节省 {{schedulePreview.savedTime}} 分钟</text>
+        </view>
+        <view wx:if="{{isTiredMode}}" class="tired-mode-hint">
+          <text class="tired-hint-text">已开启极简统筹，减少 60% 手动操作</text>
+        </view>
+        <view class="cooking-timeline" wx:if="{{schedulePreview.cookingOrder && schedulePreview.cookingOrder.length > 0}}">
+          <view class="timeline-title">
+            <text class="timeline-title-text">最佳烹饪顺序</text>
+          </view>
+          <view class="timeline-list">
+            <view class="timeline-item {{item.noWatch ? 'timeline-item-no-watch' : ''}}" wx:for="{{schedulePreview.cookingOrder}}" wx:key="phase">
+              <view class="timeline-dot-wrap">
+                <view class="timeline-dot">
+                  <text class="timeline-dot-icon">{{item.icon}}</text>
+                </view>
+                <view class="timeline-line" wx:if="{{index < schedulePreview.cookingOrder.length - 1}}"></view>
+              </view>
+              <view class="timeline-content">
+                <view class="timeline-phase-row">
+                  <text class="timeline-phase">{{item.phase}}</text>
+                  <text class="timeline-time">{{item.time}}</text>
+                </view>
+                <text class="timeline-dishes">{{item.dishesText}}</text>
+                <text class="timeline-note">{{item.note}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="preview-add-dish-placeholder" catchtap="onAddDish">
+        <text class="preview-add-dish-text">+ 再加个菜？</text>
+      </view>
+      <scroll-view class="preview-avoid-bar" scroll-x enable-flex>
+        <view wx:for="{{avoidCapsules}}" wx:key="key" class="preview-avoid-chip {{item.active ? 'is-active' : ''}}" data-key="{{item.key}}" catchtap="onToggleAvoid">
+          <text class="preview-avoid-label">{{item.label}}</text>
+        </view>
+      </scroll-view>
     </view>
   </view>
 

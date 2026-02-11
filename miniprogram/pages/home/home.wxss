@@ -1123,32 +1123,6 @@
   color: #2d2d2d;
 }
 
-/* ============ Zen Mode 核心指标文案 ============ */
-.zen-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16rpx 24rpx;
-  margin-top: 16rpx;
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(8rpx);
-  border-radius: 100rpx;
-  border: 1rpx solid rgba(0, 0, 0, 0.04);
-  animation: zenIndicatorIn 0.6s ease-out;
-}
-
-.zen-indicator-text {
-  font-size: 24rpx;
-  font-weight: 500;
-  color: #5a544f;
-  letter-spacing: 2rpx;
-}
-
-@keyframes zenIndicatorIn {
-  0% { opacity: 0; transform: translateY(8rpx); }
-  100% { opacity: 1; transform: translateY(0); }
-}
-
 .zen-advanced-link {
   color: #bbb;
   font-size: 24rpx;

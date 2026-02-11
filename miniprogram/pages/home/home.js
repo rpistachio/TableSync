@@ -2,6 +2,8 @@ var menuHistory = require('../../utils/menuHistory.js');
 var menuData = require('../../data/menuData.js');
 var menuGen = require('../../data/menuGenerator.js');
 var recipeCoverSlugs = require('../../data/recipeCoverSlugs.js');
+var vibeGreeting = require('../../utils/vibeGreeting.js');
+var locationWeather = require('../../utils/locationWeather.js');
 
 function getCurrentDate() {
   var d = new Date();
@@ -15,19 +17,6 @@ function getTodayDateKey() {
   var m = String(d.getMonth() + 1);
   var day = String(d.getDate());
   return y + '-' + (m.length < 2 ? '0' + m : m) + '-' + (day.length < 2 ? '0' + day : day);
-}
-
-/** Phase 1: 简单问候，Phase 2 可替换为天气/时段模板 */
-function getDefaultVibeGreeting() {
-  var d = new Date();
-  var weekDay = d.getDay();
-  var hour = d.getHours();
-  var isWeekend = weekDay === 0 || weekDay === 6;
-  if (hour >= 6 && hour < 10) return '早安，今天也要好好吃饭';
-  if (hour >= 10 && hour < 14) return '午安，想好晚上吃什么了吗';
-  if (hour >= 14 && hour < 18) return '下午好，晚饭可以开始想想啦';
-  if (isWeekend) return '周末愉快，做顿好吃的犒劳自己';
-  return '下班后，来顿称心的晚餐吧';
 }
 
 var HOME_BG_CLOUD_PATH = 'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/frontpage_stickers/Rona_Prompt_Ultra-minimalist_flat_layout_for_a_cooking_app_in_7f423079-ed33-4f7e-b466-c9bc4f6d174f_3.png';
@@ -50,7 +39,7 @@ Page({
     return {
       currentDate: getCurrentDate(),
       vibeWeather: '',
-      vibeGreeting: getDefaultVibeGreeting(),
+      vibeGreeting: vibeGreeting.pickGreeting(null),
       showAdvanced: false,
       cookWho: 'self',
       cookStatus: 'ok',
@@ -58,7 +47,6 @@ Page({
       // Zen Mode 背景氛围切换
       zenBgUrl: '',          // 当前 Zen 背景 URL（用于渲染）
       zenBgFading: false,    // 淡入淡出动画控制
-      zenBgIndicator: '',    // 核心指标文案 ("效率提升 +42%" / "上手难度：极简")
       showStickerDrop: false,
       stickerDropName: '',
       stickerDropId: ''
@@ -81,6 +69,16 @@ Page({
       cookStatus: savedStatus
     });
     this._zenBgUrlMap = {};  // 初始化，onReady 中批量解析后填充
+
+    var that = this;
+    locationWeather.getWeather().then(function (weather) {
+      var greeting = vibeGreeting.pickGreeting(weather);
+      var weatherStr = '';
+      if (weather && (weather.temp || weather.text)) {
+        weatherStr = [weather.temp, weather.text].filter(Boolean).join(' ');
+      }
+      that.setData({ vibeGreeting: greeting, vibeWeather: weatherStr });
+    }).catch(function () {});
   },
 
   onReady: function () {
@@ -307,7 +305,7 @@ Page({
 
   /**
    * Zen Mode 背景氛围切换（0.8s 淡入淡出）
-   * 根据 cookStatus（ok/tired）+ cookWho（self/ayi）选择对应背景图和指标文案
+   * 根据 cookStatus（ok/tired）+ cookWho（self/ayi）选择对应背景图
    */
   _updateZenBackground: function () {
     var that = this;
@@ -317,31 +315,15 @@ Page({
     var urlMap = this._zenBgUrlMap || {};
     var newUrl = urlMap[stateKey] || urlMap['ok_self'] || this.data.homeBgUrl || '';
 
-    // 核心指标文案
-    var indicator = '';
-    if (status === 'tired') {
-      indicator = '空气炸锅模式 · 极致减负';
-    } else {
-      indicator = '效率提升 +42%';
-    }
+    if (newUrl === this.data.zenBgUrl) return;
 
-    // 如果 URL 没变只更新文案
-    if (newUrl === this.data.zenBgUrl) {
-      this.setData({ zenBgIndicator: indicator });
-      return;
-    }
-
-    // 触发淡出
     this.setData({ zenBgFading: true });
 
-    // 0.4s 后换图 + 淡入（总计 0.8s 视觉过渡）
     setTimeout(function () {
       that.setData({
         zenBgUrl: newUrl,
-        zenBgIndicator: indicator,
-        homeBgUrl: newUrl   // 同步更新首页主背景
+        homeBgUrl: newUrl
       });
-      // 下一帧移除 fading 触发淡入
       setTimeout(function () {
         that.setData({ zenBgFading: false });
       }, 50);
