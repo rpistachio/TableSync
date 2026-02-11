@@ -1151,10 +1151,195 @@
   font-weight: 500;
 }
 
-.home-collection-entry {
-  margin-top: 24rpx;
-  font-size: 24rpx;
-  color: var(--text-muted);
-  letter-spacing: 2rpx;
+/* ============ 烟火集：悬浮书脊入口 (The Floating Spine) ============ */
+.collection-spine {
+  position: fixed;
+  right: 0;
+  top: 54%;
+  transform: translateY(-50%);
+  z-index: 80;
+  width: 52rpx;
+  padding: 28rpx 6rpx 24rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14rpx;
+
+  /* 皮革质感 */
+  background: linear-gradient(
+    180deg,
+    #9B8A72 0%,
+    #7D6B52 20%,
+    #6B5A3E 50%,
+    #7D6B52 80%,
+    #9B8A72 100%
+  );
+  border-radius: 16rpx 0 0 16rpx;
+  box-shadow:
+    -4rpx 2rpx 12rpx rgba(107, 90, 62, 0.35),
+    inset 1rpx 0 3rpx rgba(255, 255, 255, 0.12),
+    inset -1rpx 0 2rpx rgba(0, 0, 0, 0.15);
+
+  /* 首次出现：从右侧缓缓探出 */
+  animation: spineSlideIn 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  animation-delay: 0.6s;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+@keyframes spineSlideIn {
+  0% { transform: translateY(-50%) translateX(60rpx); opacity: 0; }
+  100% { transform: translateY(-50%) translateX(0); opacity: 1; }
+}
+
+.collection-spine:active {
+  transform: translateY(-50%) translateX(-10rpx);
+  box-shadow:
+    -8rpx 2rpx 20rpx rgba(107, 90, 62, 0.45),
+    inset 1rpx 0 3rpx rgba(255, 255, 255, 0.12);
+}
+
+/* -- 火漆印章 -- */
+.spine-seal {
+  width: 38rpx;
+  height: 38rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 38%, #C43E2A 20%, #9B2318 70%, #6E1810 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-shadow:
+    0 2rpx 6rpx rgba(139, 32, 32, 0.4),
+    inset 0 1rpx 2rpx rgba(255, 200, 180, 0.25);
+  flex-shrink: 0;
+}
+
+.spine-seal-icon {
+  font-size: 18rpx;
+  line-height: 1;
+  filter: brightness(1.1);
+}
+
+/* -- 微光呼吸：未查看的新烹饪记录 -- */
+.spine-glow-layer {
+  position: absolute;
+  top: -8rpx;
+  left: -8rpx;
+  right: -8rpx;
+  bottom: -8rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 200, 100, 0.6) 0%, rgba(255, 180, 80, 0.2) 50%, transparent 72%);
+  animation: sealGlow 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes sealGlow {
+  0%, 100% { opacity: 0.25; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.2); }
+}
+
+/* -- 竖排书名 -- */
+.spine-text {
+  writing-mode: vertical-rl;
+  font-size: 20rpx;
+  color: rgba(255, 248, 240, 0.65);
+  letter-spacing: 6rpx;
+  font-weight: 300;
+  text-shadow: 0 1rpx 2rpx rgba(0, 0, 0, 0.3);
+}
+
+/* ---- 时段模式：白天（默认） ---- */
+.collection-spine.spine-day {
+  background: linear-gradient(
+    180deg,
+    #A89279 0%, #8B7355 30%, #7D6B52 50%, #8B7355 70%, #A89279 100%
+  );
+}
+
+.spine-day .spine-text {
+  color: rgba(255, 248, 240, 0.7);
+}
+
+/* ---- 时段模式：清晨 ---- */
+.collection-spine.spine-morning {
+  background: linear-gradient(
+    180deg,
+    #B8A68E 0%, #A08F76 30%, #8B7D66 50%, #A08F76 70%, #B8A68E 100%
+  );
+}
+
+.spine-morning .spine-seal {
+  background: radial-gradient(circle at 40% 38%, #D4724A 20%, #B85A38 70%, #8B4028 100%);
+  box-shadow:
+    0 2rpx 8rpx rgba(180, 80, 50, 0.35),
+    0 0 12rpx rgba(232, 168, 124, 0.2),
+    inset 0 1rpx 2rpx rgba(255, 220, 200, 0.3);
+}
+
+.spine-morning .spine-text {
+  color: rgba(255, 248, 240, 0.75);
+}
+
+/* ---- 时段模式：深夜普通 ---- */
+.collection-spine.spine-night {
+  background: linear-gradient(
+    180deg,
+    #5C4E3A 0%, #4A3C2A 30%, #3D3224 50%, #4A3C2A 70%, #5C4E3A 100%
+  );
+}
+
+.spine-night .spine-seal {
+  background: radial-gradient(circle at 40% 38%, #A8352A 20%, #802018 70%, #5E1510 100%);
+}
+
+.spine-night .spine-text {
+  color: rgba(255, 248, 240, 0.45);
+}
+
+/* ---- 时段模式：深夜 + 疲惫 → 小油灯 ---- */
+.collection-spine.spine-night-tired {
+  background: linear-gradient(
+    180deg,
+    #4E4030 0%, #3D3224 25%, #342A1E 50%, #3D3224 75%, #4E4030 100%
+  );
+  box-shadow:
+    -4rpx 2rpx 12rpx rgba(60, 45, 25, 0.5),
+    0 0 24rpx rgba(232, 168, 124, 0.12),
+    inset 1rpx 0 3rpx rgba(255, 220, 180, 0.08);
+}
+
+.spine-night-tired .spine-seal {
+  background: radial-gradient(circle at 45% 35%, #F0C87C 10%, #E8A44C 35%, #C07830 65%, #8B5520 100%);
+  box-shadow:
+    0 0 16rpx rgba(232, 168, 100, 0.5),
+    0 0 32rpx rgba(232, 168, 100, 0.2),
+    inset 0 1rpx 2rpx rgba(255, 240, 200, 0.35);
+  animation: lampFlicker 4s ease-in-out infinite;
+}
+
+@keyframes lampFlicker {
+  0%, 100% { box-shadow: 0 0 16rpx rgba(232, 168, 100, 0.45), 0 0 28rpx rgba(232, 168, 100, 0.15); }
+  30% { box-shadow: 0 0 20rpx rgba(232, 168, 100, 0.6), 0 0 36rpx rgba(232, 168, 100, 0.25); }
+  60% { box-shadow: 0 0 14rpx rgba(232, 168, 100, 0.4), 0 0 24rpx rgba(232, 168, 100, 0.12); }
+  80% { box-shadow: 0 0 18rpx rgba(232, 168, 100, 0.55), 0 0 32rpx rgba(232, 168, 100, 0.2); }
+}
+
+.spine-night-tired .spine-seal-icon {
+  filter: brightness(1.3) saturate(0.9);
+}
+
+.spine-night-tired .spine-text {
+  color: rgba(255, 230, 190, 0.5);
+}
+
+/* ---- 贴纸收下后：火漆印章短暂高亮 ---- */
+.collection-spine.spine-highlight .spine-seal {
+  animation: sealPulse 1.2s ease-out;
+}
+
+@keyframes sealPulse {
+  0% { box-shadow: 0 0 0 0 rgba(232, 168, 100, 0.6); transform: scale(1); }
+  40% { box-shadow: 0 0 24rpx 8rpx rgba(232, 168, 100, 0.4); transform: scale(1.15); }
+  100% { box-shadow: 0 2rpx 6rpx rgba(139, 32, 32, 0.4); transform: scale(1); }
 }
 

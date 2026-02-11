@@ -1,13 +1,26 @@
 <view class="collection-page">
   <view class="collection-header">
     <text class="collection-title">烟火集</text>
+    <view class="collection-divider">
+      <view class="collection-divider-line"></view>
+      <text class="collection-divider-dot">✦</text>
+      <view class="collection-divider-line"></view>
+    </view>
     <text class="collection-desc">完成烹饪与分享，收集贴纸</text>
     <text class="collection-progress">{{totalEarned}} / {{totalDefs}}</text>
   </view>
   <view class="collection-grid">
-    <view wx:for="{{earnedList}}" wx:key="id" class="sticker-cell {{item.earned ? 'is-earned' : ''}}">
+    <view
+      wx:for="{{earnedList}}"
+      wx:key="id"
+      class="sticker-cell {{item.earned ? 'is-earned' : ''}} {{item.tapePos === 'left' ? 'tape-left' : 'tape-right'}}"
+      style="transform: rotate({{item.rotation}}deg) translateX({{item.offsetX}}rpx);"
+    >
       <view class="sticker-cell-inner">
-        <text class="sticker-cell-emoji">{{item.earned ? item.emoji : '○'}}</text>
+        <view class="sticker-seal-wrap">
+          <image wx:if="{{item.stickerImageUrl}}" class="sticker-cell-img" src="{{item.stickerImageUrl}}" mode="aspectFit" />
+          <text wx:else class="sticker-cell-emoji">{{item.earned ? item.emoji : '○'}}</text>
+        </view>
         <text class="sticker-cell-name">{{item.name}}</text>
         <text class="sticker-cell-desc">{{item.desc}}</text>
         <text wx:if="{{item.earned && item.repeatable}}" class="sticker-cell-count">×{{item.count}}/{{item.maxCount}}</text>

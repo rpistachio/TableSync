@@ -1444,6 +1444,8 @@ Page({
     // 最后一步完成
     var lastId = steps[steps.length - 1].id;
     if (step.id === lastId) {
+      // ====== 书脊微光：记录烹饪完成时间 ======
+      wx.setStorageSync('last_cook_complete_time', Date.now());
       // ====== 烟火集：统一检测所有贴纸掉落 ======
       try {
         var stickerCollection = require('../../data/stickerCollection.js');
@@ -1638,6 +1640,8 @@ Page({
 
     var lastId = steps[steps.length - 1].id;
     if (step.id === lastId) {
+      // ====== 书脊微光：记录烹饪完成时间 ======
+      wx.setStorageSync('last_cook_complete_time', Date.now());
       // ====== 烟火集：统一检测所有贴纸掉落 ======
       try {
         var stickerCollectionComplete = require('../../data/stickerCollection.js');

@@ -316,6 +316,88 @@ flowchart TD
 | miniprogram/pages/home/home.js | onShow 犹豫追踪（_homeShowTime / _toggleCount）；onZenGo 犹豫检测；pendingStickerDrop 改数组；onStickerDropClose 清空队列。 |
 | miniprogram/pages/home/home.wxml | sticker-drop 组件改用 queue 属性。 |
 | miniprogram/pages/steps/steps.js | 两处完成路径改用 checkAllDropsOnComplete；传入 isTired / isHesitant / recipeNames。 |
-| miniprogram/pages/collection/collection.js | 支持 emoji / repeatable count / totalEarned 进度。 |
+| miniprogram/pages/collection/collection.js | 支持 emoji / repeatable count / totalEarned 进度；onShow 写入 `last_view_collection_time`。 |
 | miniprogram/pages/collection/collection.wxml | emoji 展示、可重复贴纸计数徽章、进度条。 |
 | miniprogram/pages/collection/collection.wxss | 进度文字、计数徽章样式。 |
+
+### 10.8 悬浮书脊入口 (The Floating Spine)
+
+> **设计意图**：烟火集的入口不应隐藏在页面底部，它应该始终可见、有质感、有情绪反馈。书脊暗示用户——「你所有的努力最终都会汇聚到这里」。
+
+#### 结构
+
+- **位置**：首页右侧中段，`position: fixed`，脱离页面滚动流。
+- **外观**：极窄竖条（52rpx 宽），带皮革质感渐变背景，左侧圆角贴边于屏幕右侧。
+- **火漆印章**：顶部 38rpx 圆形印章，红色径向渐变，暗示勋章微缩版。
+- **竖排文字**：`writing-mode: vertical-rl`，「烟火集」三字半透明浮于皮面。
+
+#### 动态反馈（替代红点）
+
+| 状态 | 表现 | 触发条件 |
+|------|------|----------|
+| 微光呼吸 | 火漆印章外圈金色光晕 3s 缓慢呼吸闪烁 | `last_cook_complete_time > last_view_collection_time` |
+| 微光消解 | 光晕消失 | 用户进入烟火集页（`onShow` 写入 `last_view_collection_time`） |
+| 贴纸联动高亮 | 印章短暂放大脉冲（1.2s） | 贴纸飘落关闭后（`onStickerDropClose`） |
+
+#### 时段模式
+
+| 模式 | 时段 | 条件 | 表现 |
+|------|------|------|------|
+| `spine-morning` | 5:00–9:00 | — | 浅暖色皮革，印章偏暖橘 |
+| `spine-day` | 9:00–22:00 | — | 标准棕色皮革（默认） |
+| `spine-night` | 22:00–5:00 | 状态「还行」 | 深色皮革，印章偏暗红 |
+| `spine-night-tired` | 22:00–5:00 | 状态「疲惫」 | 最深皮革，印章变为金色小油灯（🪔），灯光微微闪烁，指引用户去手账本里寻找慰藉 |
+
+#### 涉及文件
+
+| 文件 | 改动摘要 |
+|------|----------|
+| home.wxml | 移除底部 `.home-collection-entry` 文字入口；新增 `.collection-spine` 悬浮层（火漆印章 + 微光层 + 竖排书名）。 |
+| home.wxss | 删除 `.home-collection-entry`；新增书脊完整样式（皮革渐变、印章、4 种时段模式、微光呼吸 `sealGlow`、油灯闪烁 `lampFlicker`、入场 `spineSlideIn`、高亮脉冲 `sealPulse`）。 |
+| home.js | data 新增 `spineMode` / `spineSealIcon` / `hasUnviewedCooks` / `spineHighlight`；新增 `_updateSpineMode()` 时段判断 + `_checkUnviewedCooks()` 微光检测；`onStickerDropClose` 追加高亮联动。 |
+| steps.js | 两处烹饪完成路径写入 `wx.setStorageSync('last_cook_complete_time', Date.now())`。 |
+| collection.js | `onShow` 写入 `wx.setStorageSync('last_view_collection_time', Date.now())`；手账布局预计算 `rotation` / `offsetX` / `tapePos`。 |
+
+### 10.9 烟火集手账视觉规范 (Phase 1)
+
+> **目标**：通过视觉降噪与大地色系，让烟火集页面呈现「可呼吸的私人手记」质感，与快节奏 App 形成代差。
+
+#### 配色方案（页面级变量，collection.wxss）
+
+| 角色 | 变量名 | 色值 | 用途 |
+|------|--------|------|------|
+| 纸张背景 | `--paper` | #F9F8F4 | 霜白/暖素，和纸底色 |
+| 核心文字 | `--ink` | #3A3D40 | 碳灰/黛青，干墨色 |
+| 辅助修饰 | `--wood` | #A69482 | 枯木/浅褐，日期、胶带 |
+| 勋章/火漆 | `--seal` | #9E3E32 | 茜红/晚香，唯一视觉重心 |
+| 阴影/深度 | `--dust` | rgba(0,0,0,0.05) | 纸张叠层投影 |
+
+#### 字体策略
+
+- **标题「烟火集」**：系统楷体（STKaiti / KaiTi）+ `letter-spacing`、微弱 `text-shadow` 模拟墨晕。
+- **正文/进度**：沿用全局 `-apple-system`，颜色使用 `--ink` / `--wood` / `--seal`。
+
+#### 纸张肌理
+
+- 背景：`background-color: var(--paper)` + 多层 `radial-gradient` 重复叠加，模拟 200g 细纹棉纸的微弱颗粒感（纯 CSS，无外部图片）。
+
+#### 布局规范
+
+- **留白率**：页面 padding、grid gap 增大，目标 35%+ 绝对留白。
+- **散落式排列**：每张贴纸卡片 -2°～2° 随机旋转 + 微小 X 偏移，由 JS 基于 index 的伪随机预计算（`rotation`、`offsetX`），保证每次进入布局一致。
+- **胶带**：已获得卡片通过 `tape-left` / `tape-right` 在左上或右上角显示半透明胶带（`::after`，颜色 `--wood` 30% 透明）。
+
+#### 贴纸卡片与火漆印章
+
+- **已获得**：和纸质感背景、`--dust` 投影；emoji 外包火漆印章圆形容器（`--seal` 径向渐变 + 多层 box-shadow 厚度感）。
+- **未获得**：虚线边框（`dashed`）、极淡灰底；空心圆 + 虚线作为印章占位。
+- 卡片圆角 6rpx，模拟真实纸片。
+
+#### 涉及文件
+
+| 文件 | 改动摘要 |
+|------|----------|
+| collection.json | 导航栏背景色改为霜白 #F9F8F4。 |
+| collection.wxss | 手账配色变量、纸张肌理、楷体标题、散落网格、卡片手账化、胶带伪元素、火漆印章样式、进度色。 |
+| collection.wxml | 标题区装饰线（✦ 分隔）、火漆印章包裹层、卡片 `style` 绑定旋转/偏移、`tape-left`/`tape-right` class。 |
+| collection.js | `_refreshList` 中为每条贴纸增加 `rotation`、`offsetX`、`tapePos` 预计算。 |

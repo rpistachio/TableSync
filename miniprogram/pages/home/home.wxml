@@ -100,8 +100,20 @@
     <view class="brand-line"></view>
     <text class="brand-text">TableSync</text>
   </view>
-  <view class="home-collection-entry" bindtap="onGoCollection">烟火集</view>
   </view>
+  </view>
+
+  <!-- ===== 烟火集：悬浮书脊入口 (The Floating Spine) ===== -->
+  <view class="collection-spine {{spineMode}} {{spineHighlight ? 'spine-highlight' : ''}}"
+        bindtap="onGoCollection">
+    <!-- 火漆印章 -->
+    <view class="spine-seal">
+      <view class="spine-seal-icon">{{spineSealIcon}}</view>
+      <!-- 微光层：有新烹饪记录未查看时显示 -->
+      <view class="spine-glow-layer" wx:if="{{hasUnviewedCooks}}"></view>
+    </view>
+    <!-- 竖排书名 -->
+    <text class="spine-text">烟火集</text>
   </view>
 
   <sticker-drop

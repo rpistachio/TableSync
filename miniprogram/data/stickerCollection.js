@@ -19,6 +19,13 @@
 var STORAGE_KEY = 'sticker_collection';
 var COOK_HISTORY_KEY = 'cook_recipe_history';
 
+// 贴纸图片云存储目录（与云端 frontpage_stickers 一致，文件名 = id.png）
+var CLOUD_STICKERS_BASE = 'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/frontpage_stickers';
+
+function getStickerCloudFileId(stickerId) {
+  return CLOUD_STICKERS_BASE + '/' + stickerId + '.png';
+}
+
 // ====== 贴纸定义 ======
 
 var STICKER_DEFS = {
@@ -200,6 +207,8 @@ function getAllDefs() {
 module.exports = {
   STORAGE_KEY: STORAGE_KEY,
   COOK_HISTORY_KEY: COOK_HISTORY_KEY,
+  CLOUD_STICKERS_BASE: CLOUD_STICKERS_BASE,
+  getStickerCloudFileId: getStickerCloudFileId,
   STICKER_DEFS: STICKER_DEFS,
   loadCollection: loadCollection,
   saveCollection: saveCollection,

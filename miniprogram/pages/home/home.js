@@ -36,6 +36,13 @@ var ZEN_BG_CLOUD_PATHS = {
 
 Page({
   data: (function () {
+    // 书脊时段模式初始值
+    var _hour = new Date().getHours();
+    var _initSpineMode = 'spine-day';
+    if (_hour >= 22 || _hour < 5) _initSpineMode = 'spine-night';
+    else if (_hour >= 5 && _hour < 9) _initSpineMode = 'spine-morning';
+    var _initSealIcon = (_hour >= 22 || _hour < 5) ? '🪔' : '🔖';
+
     return {
       currentDate: getCurrentDate(),
       vibeWeather: '',
@@ -48,7 +55,12 @@ Page({
       zenBgUrl: '',          // 当前 Zen 背景 URL（用于渲染）
       zenBgFading: false,    // 淡入淡出动画控制
       showStickerDrop: false,
-      stickerDropQueue: []     // [{ stickerId, name, emoji }]
+      stickerDropQueue: [],    // [{ stickerId, name, emoji }]
+      // ====== 烟火集悬浮书脊 ======
+      spineMode: _initSpineMode,      // spine-day / spine-morning / spine-night / spine-night-tired
+      spineSealIcon: _initSealIcon,    // 🔖 常规 / 🪔 深夜疲惫小油灯
+      hasUnviewedCooks: false,         // 有新烹饪记录未查看 → 微光呼吸
+      spineHighlight: false            // 贴纸收下后短暂高亮
     };
   })(),
 
@@ -68,6 +80,8 @@ Page({
       cookStatus: savedStatus
     });
     this._zenBgUrlMap = {};  // 初始化，onReady 中批量解析后填充
+    // 书脊：根据已知状态更新模式
+    this._updateSpineMode();
 
     var that = this;
     locationWeather.getWeather().then(function (weather) {
@@ -133,6 +147,10 @@ Page({
     // ====== 犹豫追踪：记录 onShow 时间戳 ======
     this._homeShowTime = Date.now();
     this._toggleCount = 0;
+    // ====== 书脊：检测未查看的烹饪记录（微光呼吸） ======
+    this._checkUnviewedCooks();
+    // ====== 书脊：刷新时段模式 ======
+    this._updateSpineMode();
   },
 
   /** Zen Mode: 大按钮 -> 自动生成菜谱并进入 preview 页（不跳转今日灵感/spinner） */
@@ -322,6 +340,8 @@ Page({
     this._updateZenBackground();
     // 犹豫追踪：累计切换次数
     this._toggleCount = (this._toggleCount || 0) + 1;
+    // 书脊：状态切换影响深夜油灯模式
+    this._updateSpineMode();
   },
 
   /**
@@ -376,9 +396,50 @@ Page({
   onStickerDropClose: function () {
     getApp().globalData.pendingStickerDrop = null;
     this.setData({ showStickerDrop: false, stickerDropQueue: [] });
+    // 书脊：贴纸收下后，火漆印章短暂高亮 → 暗示"已收入烟火集"
+    var that = this;
+    that.setData({ spineHighlight: true });
+    setTimeout(function () {
+      that.setData({ spineHighlight: false });
+    }, 1300);
+    // 同时刷新微光状态
+    this._checkUnviewedCooks();
   },
 
   onGoCollection: function () {
     wx.navigateTo({ url: '/pages/collection/collection' });
+  },
+
+  // ====== 书脊：时段模式判断 ======
+  _updateSpineMode: function () {
+    var hour = new Date().getHours();
+    var isTired = this.data.cookStatus === 'tired';
+    var mode = 'spine-day';
+    var sealIcon = '🔖';
+
+    if ((hour >= 22 || hour < 5) && isTired) {
+      mode = 'spine-night-tired';
+      sealIcon = '🪔';       // 小油灯
+    } else if (hour >= 22 || hour < 5) {
+      mode = 'spine-night';
+      sealIcon = '🔖';
+    } else if (hour >= 5 && hour < 9) {
+      mode = 'spine-morning';
+      sealIcon = '🔖';
+    }
+
+    if (mode !== this.data.spineMode || sealIcon !== this.data.spineSealIcon) {
+      this.setData({ spineMode: mode, spineSealIcon: sealIcon });
+    }
+  },
+
+  // ====== 书脊：检测是否有新烹饪记录未查看（微光呼吸） ======
+  _checkUnviewedCooks: function () {
+    var lastCookTime = wx.getStorageSync('last_cook_complete_time') || 0;
+    var lastViewTime = wx.getStorageSync('last_view_collection_time') || 0;
+    var hasUnviewed = lastCookTime > 0 && lastCookTime > lastViewTime;
+    if (hasUnviewed !== this.data.hasUnviewedCooks) {
+      this.setData({ hasUnviewedCooks: hasUnviewed });
+    }
   }
 });
