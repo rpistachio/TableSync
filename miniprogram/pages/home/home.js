@@ -48,8 +48,7 @@ Page({
       zenBgUrl: '',          // 当前 Zen 背景 URL（用于渲染）
       zenBgFading: false,    // 淡入淡出动画控制
       showStickerDrop: false,
-      stickerDropName: '',
-      stickerDropId: ''
+      stickerDropQueue: []     // [{ stickerId, name, emoji }]
     };
   })(),
 
@@ -119,20 +118,38 @@ Page({
 
   onShow: function () {
     var that = this;
+    // ====== 烟火集：展示贴纸飘落队列 ======
     var pending = getApp().globalData.pendingStickerDrop;
-    if (pending && pending.name) {
-      that.setData({
-        showStickerDrop: true,
-        stickerDropName: pending.name,
-        stickerDropId: pending.stickerId || ''
-      });
+    if (pending) {
+      // 兼容旧格式（单对象）和新格式（数组）
+      var queue = Array.isArray(pending) ? pending : (pending.name ? [pending] : []);
+      if (queue.length > 0) {
+        that.setData({
+          showStickerDrop: true,
+          stickerDropQueue: queue
+        });
+      }
     }
+    // ====== 犹豫追踪：记录 onShow 时间戳 ======
+    this._homeShowTime = Date.now();
+    this._toggleCount = 0;
   },
 
   /** Zen Mode: 大按钮 -> 自动生成菜谱并进入 preview 页（不跳转今日灵感/spinner） */
   onZenGo: function () {
     if (this._zenGenerating) return;
     this._zenGenerating = true;
+
+    // ====== 犹豫检测：停留 > 60s 或切换 >= 3 次 → 标记为犹豫 ======
+    var dwellTime = this._homeShowTime ? (Date.now() - this._homeShowTime) : 0;
+    var toggleCount = this._toggleCount || 0;
+    if (dwellTime > 60000 || toggleCount >= 3) {
+      getApp().globalData._hesitantStart = true;
+    }
+    // 重置追踪（下次回来重新计）
+    this._homeShowTime = Date.now();
+    this._toggleCount = 0;
+
     wx.showLoading({ title: '生成中...' });
     var that = this;
     var pref = that._buildZenPreference();
@@ -303,6 +320,8 @@ Page({
     this.setData({ cookStatus: val });
     wx.setStorageSync('zen_cook_status', val);
     this._updateZenBackground();
+    // 犹豫追踪：累计切换次数
+    this._toggleCount = (this._toggleCount || 0) + 1;
   },
 
   /**
@@ -356,7 +375,7 @@ Page({
 
   onStickerDropClose: function () {
     getApp().globalData.pendingStickerDrop = null;
-    this.setData({ showStickerDrop: false, stickerDropName: '', stickerDropId: '' });
+    this.setData({ showStickerDrop: false, stickerDropQueue: [] });
   },
 
   onGoCollection: function () {

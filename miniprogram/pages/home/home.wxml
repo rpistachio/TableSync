@@ -106,8 +106,7 @@
 
   <sticker-drop
     visible="{{showStickerDrop}}"
-    stickerName="{{stickerDropName}}"
-    stickerId="{{stickerDropId}}"
+    queue="{{stickerDropQueue}}"
     bindclose="onStickerDropClose"
   />
 </view>

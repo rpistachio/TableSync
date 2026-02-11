@@ -1444,16 +1444,25 @@ Page({
     // 最后一步完成
     var lastId = steps[steps.length - 1].id;
     if (step.id === lastId) {
-      var pref = getApp().globalData.preference || {};
-      var isTired = pref.isTimeSave === true || pref.is_time_save === true || wx.getStorageSync('zen_cook_status') === 'tired';
-      if (isTired) {
-        try {
-          var stickerCollection = require('../../data/stickerCollection.js');
-          var result = stickerCollection.tryDropSticker('tired_done', 'steps_complete');
-          if (result.dropped && result.sticker) {
-            getApp().globalData.pendingStickerDrop = { stickerId: result.sticker.id, name: result.sticker.name };
-          }
-        } catch (e) {}
+      // ====== 烟火集：统一检测所有贴纸掉落 ======
+      try {
+        var stickerCollection = require('../../data/stickerCollection.js');
+        var pref = getApp().globalData.preference || {};
+        var isTired = pref.isTimeSave === true || pref.is_time_save === true || wx.getStorageSync('zen_cook_status') === 'tired';
+        var recipeNames = (that._menuRecipes || []).map(function (r) { return r.name; }).filter(Boolean);
+        var isHesitant = !!getApp().globalData._hesitantStart;
+        var drops = stickerCollection.checkAllDropsOnComplete({
+          isTired: isTired,
+          isHesitant: isHesitant,
+          recipeNames: recipeNames
+        });
+        if (drops.length > 0) {
+          getApp().globalData.pendingStickerDrop = drops;
+        }
+        // 清除犹豫标记
+        getApp().globalData._hesitantStart = false;
+      } catch (e) {
+        console.warn('[steps] 贴纸检测异常:', e);
       }
       if (that._isHelperRole) {
         wx.showModal({
@@ -1629,16 +1638,24 @@ Page({
 
     var lastId = steps[steps.length - 1].id;
     if (step.id === lastId) {
-      var prefComplete = getApp().globalData.preference || {};
-      var isTiredComplete = prefComplete.isTimeSave === true || prefComplete.is_time_save === true || wx.getStorageSync('zen_cook_status') === 'tired';
-      if (isTiredComplete) {
-        try {
-          var stickerCollectionComplete = require('../../data/stickerCollection.js');
-          var resultComplete = stickerCollectionComplete.tryDropSticker('tired_done', 'steps_complete');
-          if (resultComplete.dropped && resultComplete.sticker) {
-            getApp().globalData.pendingStickerDrop = { stickerId: resultComplete.sticker.id, name: resultComplete.sticker.name };
-          }
-        } catch (e) {}
+      // ====== 烟火集：统一检测所有贴纸掉落 ======
+      try {
+        var stickerCollectionComplete = require('../../data/stickerCollection.js');
+        var prefComplete = getApp().globalData.preference || {};
+        var isTiredComplete = prefComplete.isTimeSave === true || prefComplete.is_time_save === true || wx.getStorageSync('zen_cook_status') === 'tired';
+        var recipeNamesComplete = (that._menuRecipes || []).map(function (r) { return r.name; }).filter(Boolean);
+        var isHesitantComplete = !!getApp().globalData._hesitantStart;
+        var dropsComplete = stickerCollectionComplete.checkAllDropsOnComplete({
+          isTired: isTiredComplete,
+          isHesitant: isHesitantComplete,
+          recipeNames: recipeNamesComplete
+        });
+        if (dropsComplete.length > 0) {
+          getApp().globalData.pendingStickerDrop = dropsComplete;
+        }
+        getApp().globalData._hesitantStart = false;
+      } catch (e) {
+        console.warn('[steps] 贴纸检测异常:', e);
       }
       if (that._isHelperRole) {
         wx.showModal({

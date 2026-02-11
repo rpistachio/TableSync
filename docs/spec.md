@@ -61,7 +61,7 @@ flowchart TD
 | 空气炸锅强制 (is_airfryer_alt) | 已完成 | menuGenerator 疲惫模式优先空气炸锅池；recipes 新增 9 道 `cook_type: 'air_fryer'` 且 `is_airfryer_alt: true`。 |
 | 纸条化交付 (Helper Memo) | 已完成 | components/helper-card 三大区（帮我准备 / 极简动作 / 情绪话术）；menuGenerator.formatForHelper(menus, preference, shoppingList)；preview 在 isHelperMode 下展示 helper-card。 |
 | 全链路状态贯通 | 已完成 | preview/shopping/steps 读取 preference 与 Storage，展示 isHelperMode / isTiredMode 差异；steps 在 preference.who === 'caregiver' 时自动 isAyiMode。 |
-| 烟火集与贴纸 | 已完成 | stickerCollection.js 数据层与 tryDropSticker；疲惫模式完成烹饪掉落 tired_done；sticker-drop 组件；collection 页与 home 入口。 |
+| 烟火集与贴纸 | 已完成 | stickerCollection.js 数据层（9 种贴纸定义 + checkAllDropsOnComplete 批量检测 + 烹饪历史追踪）；sticker-drop 落叶飘落动画组件（队列 + 自动消失）；collection 页支持 emoji、可重复贴纸计数。详见 §10。 |
 | preview 菜单区去重 | 已完成 | 今日菜单标题区仅保留主标题（今日菜单 / 给 Ta 的菜单），移除副标题 `previewMenuSubtitle` 与节奏芯片 `previewRhythmRings`，菜名仅在下方案品卡片展示，避免重复。 |
 | 卖点后置与体验升级 | 已完成 | 首页移除「效率提升 +42%」/「空气炸锅模式」文案，改用天气感知问候；preview 页在菜品列表后展示串行 vs 并行统筹对比与烹饪顺序时间线；统筹逻辑抽至 utils/scheduleEngine.js；疲惫模式统筹区文案与色调差异化。详见 §5。 |
 | 导入页入口与 UI | 已完成 | 导入页新增「加入混搭组餐」「随机配一桌」；英雄卡片、卡片化 section、AI 辅助信息合并、5 按钮布局。详见 §5.6。 |
@@ -149,12 +149,22 @@ flowchart TD
   - 位置：`miniprogram/data/menuGenerator.js`  
   - 返回：`{ prepItems: [{ name, amountDisplay }], actions: [{ text }], heartMessage: string }`
 
+- **stickerCollection.checkAllDropsOnComplete(ctx)**  
+  - 位置：`miniprogram/data/stickerCollection.js`  
+  - 参数：`{ isTired: boolean, isHesitant: boolean, recipeNames: string[] }`  
+  - 返回：`[{ stickerId, name, emoji }]` 新掉落贴纸列表  
+  - 内部依次检测：first_cook → tired_done → night_cook/morning_cook → hesitant_go → favorite_dish → lucky_cat
+
 - **stickerCollection.tryDropSticker(stickerId, source)**  
   - 位置：`miniprogram/data/stickerCollection.js`  
-  - 掉落 ID：`tired_done`（疲惫模式完成）、`share_memo`（分享纸条，可扩展触发时机）
+  - 支持 repeatable 贴纸（如 lucky_cat，上限 5 次）
 
 - **globalData.pendingStickerDrop**  
-  - 步骤页完成时若掉落贴纸则写入；home 的 onShow 读取并展示 sticker-drop，关闭后清空。
+  - **数组格式**：`[{ stickerId, name, emoji }]`（兼容旧单对象格式）  
+  - 步骤页完成时由 `checkAllDropsOnComplete` 写入；home 的 onShow 读取并传入 sticker-drop 组件队列展示。
+
+- **globalData._hesitantStart**  
+  - home 页 onZenGo 中检测到犹豫（停留 > 60s 或切换状态 >= 3 次）时设为 true；steps 完成时读取并传入贴纸检测。
 
 - **scheduleEngine.computeSchedulePreview(recipes)**  
   - 位置：`miniprogram/utils/scheduleEngine.js`  
@@ -239,3 +249,73 @@ flowchart TD
 
 - **分享进入的 helper-card（steps 页）**：入口为 `role=helper&recipeIds=...`，步骤由 `generateStepsFromRecipeIds(ids, pref)` 生成，内部通过 `getAdultRecipeById` 从 cloudRecipeService 缓存取菜谱。若缓存暂无完整步骤（如首次打开、未同步），会展示「需联网获取」；**约 800ms 后自动调用** `retryLoadStepsFromCloud()`（与 menu/mix/scan 一致，不排除 helper 入口），同步后按 ayi 分支重新生成步骤并刷新视图。
 - **分享前用户看到的 preview 纸条**：helper 模式下先用当前缓存（含本地或已同步云端）构建 helperData；**onLoad 完成后会再调一次** `syncCloudRecipes()`，同步成功后用 `generateStepsFromRecipeIds` + `formatForHelperFromResult` 重算 helperData 并 setData，从而在云端数据就绪后纸条中的「极简动作」与分享打开后的步骤一致且为完整步骤。
+
+---
+
+## 10. 烟火集贴纸系统（2026 扩展）
+
+> **设计哲学**：在用户的情感波动点给予微小而精美的肯定，强化"生活仪式感"与"被陪伴感"。贴纸触发不打断用户流程——像落叶一样从屏幕顶部飘下，轻柔地停在角落。
+
+### 10.1 贴纸定义（9 种）
+
+| ID | 名称 | Emoji | 类别 | 触发条件 | 可重复 | 设计意图 |
+|----|------|-------|------|----------|--------|----------|
+| first_cook | 初见火光 | 🔥 | milestone | 首次完成烹饪 | 否 | 降低新用户流失，"我其实很会生活"的暗示 |
+| tired_done | 疲惫治愈 | 🛋️ | milestone | 疲惫模式完成烹饪 | 否 | 肯定"即使累了也愿意做饭"的自我关怀 |
+| share_memo | 纸条传情 | 💌 | social | 成功分享给帮手 | 否 | 鼓励社交裂变 |
+| night_cook | 月亮守望者 | 🌙 | time | 22:00–2:00 完成 | 否 | 深夜陪伴感 |
+| morning_cook | 晨曦主厨 | 🌅 | time | 6:00–9:00 完成 | 否 | 清晨能量感 |
+| hesitant_go | 心定时刻 | 🍃 | emotion | 首页犹豫后（停留>60s 或切换>=3次）完成 | 否 | 治愈决策焦虑 |
+| favorite_dish | 偏爱这一味 | ❤️ | habit | 同一道菜制作 3 次 | 否 | 用户对菜品的"主权感"，提升复用 |
+| lucky_cat | 流浪的小猫 | 🐱 | surprise | 5% 随机掉落 | 是(×5) | 不确定性奖励，维持每日打开动机 |
+| monthly_all | 月度全勤 | 📅 | milestone | 月内每周至少烹饪 1 次（预留） | 否 | 长期留存 |
+
+### 10.2 触发流程
+
+1. **steps.js** 的两处完成路径（`markCurrentCompleted` / `markCompleted`）统一调用 `stickerCollection.checkAllDropsOnComplete(ctx)`。
+2. `checkAllDropsOnComplete` 按顺序检测所有条件，返回新掉落贴纸数组。
+3. 写入 `getApp().globalData.pendingStickerDrop`（数组格式）。
+4. 用户返回 home 页，`onShow` 读取队列，传入 `sticker-drop` 组件。
+
+### 10.3 犹豫检测（心定时刻）
+
+- **home.js** 的 `onShow` 记录 `_homeShowTime` 和重置 `_toggleCount`。
+- `onToggleCookStatus` 每次切换时 `_toggleCount++`。
+- `onZenGo` 中计算停留时长和切换次数，满足任一条件（`> 60s` 或 `>= 3 次`）则写 `globalData._hesitantStart = true`。
+- steps 完成时读取该标记传入贴纸检测。
+
+### 10.4 烹饪历史（偏爱这一味）
+
+- Storage Key：`cook_recipe_history`，格式 `{ [recipeName]: count }`。
+- 每次完成烹饪时由 `checkAllDropsOnComplete` 自动更新。
+- 某道菜 count 达到 3 时触发 `favorite_dish`。
+
+### 10.5 UI 表现 — 落叶飘落动画
+
+- **取消全屏遮罩**：不打断用户视觉焦点。
+- **飘落轨迹**：从右上角出发，1.2s 内沿 S 形曲线飘到屏幕右侧中下方（`leafFall` 关键帧：左右摇摆 + 轻微旋转 + 渐入）。
+- **落地停留**：微弹安顿（`leafSettle`，0.4s），展示"获得贴纸"标签和名称，停留 2.5s。
+- **退场**：向右飘出淡出（`leafLeave`，0.5s）。
+- **队列播放**：多个贴纸依次飘落，间隔 0.4s。用户点击可提前收下。
+
+### 10.6 收集展示（collection 页）
+
+- 2 列网格，每格展示 emoji + 名称 + 描述。
+- 已获得：暖黄渐变背景 + 赭色边框；未获得：灰色半透明。
+- 可重复贴纸（如 lucky_cat）显示 `×count/maxCount` 徽章。
+- 顶部显示进度 `totalEarned / totalDefs`。
+
+### 10.7 涉及文件
+
+| 文件 | 改动摘要 |
+|------|----------|
+| miniprogram/data/stickerCollection.js | 9 种贴纸定义；checkAllDropsOnComplete 批量检测；countSticker 支持可重复；loadCookHistory / saveCookHistory 烹饪历史。 |
+| miniprogram/components/sticker-drop/sticker-drop.js | 重写为队列组件：properties.queue 数组；_showNext 依次播放；_dismiss 自动退场。 |
+| miniprogram/components/sticker-drop/sticker-drop.wxml | 落叶飘落结构：sticker-leaf + animPhase 控制；emoji + info 标签。 |
+| miniprogram/components/sticker-drop/sticker-drop.wxss | leafFall / leafSettle / leafLeave / infoFadeIn 关键帧动画；无遮罩浮层。 |
+| miniprogram/pages/home/home.js | onShow 犹豫追踪（_homeShowTime / _toggleCount）；onZenGo 犹豫检测；pendingStickerDrop 改数组；onStickerDropClose 清空队列。 |
+| miniprogram/pages/home/home.wxml | sticker-drop 组件改用 queue 属性。 |
+| miniprogram/pages/steps/steps.js | 两处完成路径改用 checkAllDropsOnComplete；传入 isTired / isHesitant / recipeNames。 |
+| miniprogram/pages/collection/collection.js | 支持 emoji / repeatable count / totalEarned 进度。 |
+| miniprogram/pages/collection/collection.wxml | emoji 展示、可重复贴纸计数徽章、进度条。 |
+| miniprogram/pages/collection/collection.wxss | 进度文字、计数徽章样式。 |
