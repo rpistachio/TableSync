@@ -25,11 +25,11 @@
       <text class="step-counter">{{currentStepIndexDisplay}}/{{totalSteps}}</text>
       <text class="current-dish-name">{{currentStepSubtitle}}</text>
     </view>
-    <view wx:if="{{!isAyiMode && rhythmRings.length > 0}}" class="rhythm-ring-row">
+    <scroll-view wx:if="{{!isAyiMode && rhythmRings.length > 0}}" class="rhythm-ring-row" scroll-x enable-flex enhanced show-scrollbar="{{false}}">
       <view
         wx:for="{{rhythmRings}}"
         wx:key="name"
-        class="rhythm-ring accent-{{index}} {{item.isActive ? 'is-active' : ''}} {{item.isPulsing ? 'is-pulsing' : ''}}"
+        class="rhythm-ring accent-{{index % 6}} {{item.isActive ? 'is-active' : ''}} {{item.isPulsing ? 'is-pulsing' : ''}}"
         style="{{item.ringStyle}}"
       >
         <view class="ring-inner">
@@ -37,7 +37,7 @@
           <text class="ring-label">{{item.name}}</text>
         </view>
       </view>
-    </view>
+    </scroll-view>
   </view>
 
   <!-- Layer 2: 浮动并行状态条 -->
@@ -141,11 +141,10 @@
         <view
           wx:for="{{pipelineSteps}}"
           wx:key="id"
-          class="pipeline-block {{item.isCompleted ? 'is-completed' : ''}} {{item.isCurrent ? 'is-current' : ''}} {{item.isWaiting ? 'is-waiting' : ''}}"
+          class="pipeline-block {{item.isCompleted ? 'is-completed' : ''}} {{item.isCurrent ? 'is-current' : ''}}"
         >
           <text class="pipeline-label">{{item.shortTitle}}</text>
           <view wx:if="{{item.isCompleted}}" class="pipeline-sticker">完成</view>
-          <view wx:if="{{item.isWaiting}}" class="pipeline-wait-tag">等待</view>
         </view>
       </view>
     </scroll-view>

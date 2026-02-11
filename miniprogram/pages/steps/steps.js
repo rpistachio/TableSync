@@ -33,14 +33,7 @@ function stepsStorageKey() {
 
 function highlightSegments(text) {
   if (!text || typeof text !== 'string') return [{ text: String(text), strong: false }];
-  var parts = text.split(KEY_ACTIONS_RE);
-  if (parts.length <= 1) return [{ text: text, strong: false }];
-  var segments = [];
-  for (var i = 0; i < parts.length; i++) {
-    if (!parts[i]) continue;
-    segments.push({ text: parts[i], strong: i % 2 === 1 });
-  }
-  return segments.length > 0 ? segments : [{ text: text, strong: false }];
+  return [{ text: text, strong: false }];
 }
 
 /**
@@ -101,10 +94,8 @@ function isBabyPortionLine(line) {
   return /宝宝/.test(line) && /分拨|分出/.test(line);
 }
 
-/** 短句序号：①～⑩，超过用 "11." "12." */
-var ORDINAL_CIRCLED = '\u2460\u2461\u2462\u2463\u2464\u2465\u2466\u2467\u2468\u2469'; /* ①②③④⑤⑥⑦⑧⑨⑩ */
+/** 短句序号：统一使用 "1." "2." "3." 格式 */
 function getOrdinalPrefix(n) {
-  if (n >= 1 && n <= 10) return ORDINAL_CIRCLED[n - 1];
   return n + '.';
 }
 
@@ -562,21 +553,19 @@ function buildRhythmRings(viewSteps, currentIndex) {
       ringStyle: '--ring-pct:' + pct + '%;'
     });
   }
-  return rings.slice(0, 3);
+  return rings;
 }
 
 function buildPipelineSteps(viewSteps, currentIndex) {
   if (!Array.isArray(viewSteps) || viewSteps.length === 0) return [];
   return viewSteps.map(function (s, index) {
-    var waiting = s && (s.actionType === 'idle_prep' || s.phaseType === 'gap');
     var title = (s && s.title) ? String(s.title) : '';
     return {
       id: s.id,
       title: title,
       shortTitle: title.length > 10 ? title.slice(0, 10) + '…' : title,
       isCompleted: !!(s && s.completed),
-      isCurrent: index === currentIndex,
-      isWaiting: !!waiting
+      isCurrent: index === currentIndex
     };
   });
 }

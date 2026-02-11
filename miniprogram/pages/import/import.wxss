@@ -466,28 +466,32 @@
 }
 
 /* 菜名 + 来源 */
-.preview-name-section {
-  text-align: center;
-  padding: 32rpx 0 24rpx;
+/* ── 英雄卡片（菜名 + 来源 + 标签） ── */
+
+.preview-hero-card {
+  background: var(--card-bg);
+  border-radius: 24rpx;
+  padding: 40rpx 28rpx 28rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.05);
 }
 
-.preview-recipe-icon {
-  font-size: 48rpx;
-  display: block;
-  margin-bottom: 12rpx;
+.preview-name-section {
+  text-align: center;
+  padding-bottom: 24rpx;
 }
 
 .preview-recipe-name {
   display: block;
-  font-size: 40rpx;
+  font-size: 42rpx;
   font-weight: 700;
   color: var(--text);
   letter-spacing: 2rpx;
-  margin-bottom: 12rpx;
+  margin-bottom: 8rpx;
 }
 
 .preview-source {
-  margin-top: 8rpx;
+  margin-top: 4rpx;
 }
 
 .preview-source-text {
@@ -499,21 +503,21 @@
 .preview-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 16rpx;
+  gap: 12rpx;
   justify-content: center;
-  padding: 16rpx 0 32rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid var(--line);
 }
 
 .preview-tag {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6rpx;
-  padding: 16rpx 24rpx;
-  background: var(--card-bg);
-  border-radius: 20rpx;
-  border: 1rpx solid var(--line-strong);
-  min-width: 120rpx;
+  gap: 4rpx;
+  padding: 12rpx 20rpx;
+  background: var(--bg, #f9f6f2);
+  border-radius: 16rpx;
+  min-width: 100rpx;
 }
 
 .preview-tag-label {
@@ -535,6 +539,11 @@
 }
 
 .result-section:last-of-type {
+  border-bottom: none;
+}
+
+/* 卡片化模式时覆盖 border */
+.result-section.result-card {
   border-bottom: none;
 }
 
@@ -676,54 +685,59 @@
 }
 
 /* 置信度 */
-.confidence-info {
+/* ═══════════════════════════════════════ AI 辅助信息行 */
+
+.ai-meta-row {
   display: flex;
   align-items: center;
-  gap: 16rpx;
-  margin-top: 24rpx;
-  padding: 16rpx 0;
+  justify-content: center;
+  gap: 12rpx;
+  margin-top: 20rpx;
+  padding: 12rpx 24rpx;
+  background: var(--card-bg);
+  border-radius: 100rpx;
 }
 
-.confidence-label {
-  font-size: 22rpx;
-  color: var(--text-subtle);
-  flex-shrink: 0;
+.ai-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
 }
 
-.confidence-track {
-  flex: 1;
-  height: 8rpx;
+.confidence-mini-track {
+  width: 64rpx;
+  height: 6rpx;
   background: var(--line);
   border-radius: 100rpx;
   overflow: hidden;
 }
 
-.confidence-fill {
+.confidence-mini-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--accent), var(--accent));
+  background: var(--accent);
   border-radius: 100rpx;
   transition: width 0.6s ease;
 }
 
-.confidence-value {
-  font-size: 22rpx;
-  color: var(--accent);
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
-/* 耗时 */
-.timing-info {
-  text-align: center;
-  padding: 12rpx 0;
-}
-
-.timing-text {
+.ai-meta-text {
   font-size: 22rpx;
   color: var(--text-subtle);
+}
+
+.ai-meta-dot {
+  font-size: 22rpx;
+  color: var(--line-strong);
+}
+
+/* ═══════════════════════════════════════ 卡片化 section */
+
+.result-card {
   background: var(--card-bg);
-  padding: 8rpx 24rpx;
-  border-radius: 100rpx;
+  border-radius: 24rpx;
+  padding: 32rpx 28rpx;
+  margin-bottom: 20rpx;
+  border: none;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04);
 }
 
 /* ═══════════════════════════════════════ 底部操作按钮 */
@@ -733,7 +747,7 @@
   flex-direction: column;
   align-items: center;
   gap: 20rpx;
-  padding: 40rpx 0 32rpx;
+  padding: 40rpx 0 env(safe-area-inset-bottom);
 }
 
 .action-btn {
@@ -762,19 +776,63 @@
   color: var(--text-inverse);
 }
 
-.action-btn-secondary {
-  background: var(--card-bg);
-  border: 2rpx solid var(--accent);
+/* ── 两按钮并排行 ── */
+
+.action-row {
+  display: flex;
+  width: 100%;
+  gap: 16rpx;
 }
 
-.action-btn-secondary-text {
+.action-btn-half {
+  flex: 1;
+  height: 88rpx;
+  line-height: 88rpx;
+  border-radius: 20rpx;
+  font-size: 28rpx;
+  font-weight: 500;
+  border: none;
+  transition: transform 0.2s ease;
+  text-align: center;
+}
+
+.action-btn-half:active {
+  transform: scale(0.96);
+}
+
+.action-btn-half-text {
+  display: block;
+  line-height: 88rpx;
+}
+
+.action-btn-mix {
+  background: var(--accent-soft-2, rgba(232,168,124,0.15));
   color: var(--accent);
 }
 
+.action-btn-mix .action-btn-half-text {
+  color: var(--accent);
+}
+
+.action-btn-preview {
+  background: linear-gradient(135deg, #7eb8c9 0%, #96c8b2 100%);
+  color: #fff;
+}
+
+.action-btn-preview .action-btn-half-text {
+  color: #fff;
+}
+
+.action-btn-secondary {
+  background: var(--card-bg);
+  border: 2rpx solid var(--line-strong);
+}
+
+.action-btn-secondary-text {
+  color: var(--text-subtle);
+}
+
 .action-btn-outline {
-  width: 60%;
-  height: 88rpx;
-  line-height: 88rpx;
   background: transparent;
   border: 2rpx solid var(--line-strong);
 }

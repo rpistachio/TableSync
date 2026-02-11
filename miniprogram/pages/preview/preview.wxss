@@ -389,6 +389,17 @@
   flex-shrink: 0;
 }
 
+.replace-badge {
+  padding: 6rpx 16rpx;
+  border-radius: 12rpx;
+  background: rgba(255, 255, 255, 0.85);
+  color: #4f4a45;
+  font-size: 22rpx;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .card-footer {
   margin-top: 8rpx;
 }

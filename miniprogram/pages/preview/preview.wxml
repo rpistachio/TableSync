@@ -62,6 +62,7 @@
               <view class="card-header">
                 <text class="dish-name">{{item.adultName}}</text>
                 <view class="check-badge" wx:if="{{item.checked}}">✓</view>
+                <view class="replace-badge" wx:else catchtap="onReplaceSingle" data-index="{{index}}">换这道</view>
               </view>
               <view class="card-footer">
                 <text class="dish-reason">{{item.recommendReason}}</text>
@@ -131,7 +132,7 @@
   </view>
 
   <view class="preview-actions">
-    <button class="preview-btn preview-btn-secondary" catchtap="handleSwapOptions">换菜</button>
+    <button class="preview-btn preview-btn-secondary" catchtap="handleShuffle">{{shuffleBtnText}}</button>
     <button class="preview-btn preview-btn-ghost" open-type="share">发给别人</button>
     <button wx:if="{{!isHelperMode}}" class="preview-btn preview-btn-primary" catchtap="confirmAndGo">{{previewPrimaryCta}}</button>
   </view>

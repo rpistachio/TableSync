@@ -187,6 +187,9 @@
 .rhythm-ring.accent-0 { --ring-accent: #c1663e; }
 .rhythm-ring.accent-1 { --ring-accent: #d4956a; }
 .rhythm-ring.accent-2 { --ring-accent: #6cb58b; }
+.rhythm-ring.accent-3 { --ring-accent: #7ba0c9; }
+.rhythm-ring.accent-4 { --ring-accent: #b07db8; }
+.rhythm-ring.accent-5 { --ring-accent: #c9a355; }
 
 /* ========== Layer 2: 浮动并行状态条 ========== */
 .parallel-float-bar {
@@ -593,11 +596,6 @@
   opacity: 0.7;
 }
 
-.pipeline-block.is-waiting {
-  background: rgba(74, 69, 64, 0.08);
-  border-style: dashed;
-}
-
 .pipeline-label {
   font-size: 22rpx;
   color: var(--text-soft);
@@ -614,18 +612,6 @@
   background: #6cb58b;
   border-radius: 999rpx;
   transform: rotate(6deg);
-}
-
-.pipeline-wait-tag {
-  position: absolute;
-  bottom: -10rpx;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 4rpx 10rpx;
-  font-size: 20rpx;
-  color: #fff;
-  background: #a09a94;
-  border-radius: 999rpx;
 }
 
 /* ========== 底部操作栏 ========== */

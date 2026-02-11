@@ -233,6 +233,21 @@ exports.isSlimMenuFormat = function (menus) {
 };
 
 /**
+ * 是否可安全存为 slim：每道菜的 adultRecipe 均有内置 id（无 id 或 ext- 开头的反序列化会丢）
+ * @param {Array} menus - 完整菜单数组
+ * @returns {boolean}
+ */
+exports.canSafelySlimMenus = function (menus) {
+  if (!Array.isArray(menus) || menus.length === 0) return false;
+  for (var i = 0; i < menus.length; i++) {
+    var ar = menus[i] && menus[i].adultRecipe;
+    var rid = ar && (ar.id || ar._id);
+    if (!rid || String(rid).indexOf('ext-') === 0) return false;
+  }
+  return true;
+};
+
+/**
  * 根据菜单与偏好构建预览页所需 payload（Logic 层聚合，页面只做 setData）
  * @param {Array} menus - 完整菜单数组
  * @param {Object} pref - 偏好
@@ -459,6 +474,10 @@ exports.getTodayMenusByCombo = function (preference) {
     isTimeSave: isTimeSave
   };
   if (preference && preference.kitchenConfig) userPreference.kitchenConfig = preference.kitchenConfig;
+  if (preference && Array.isArray(preference.excludeRecipeNames) && preference.excludeRecipeNames.length > 0) {
+    userPreference.excludeRecipeNames = preference.excludeRecipeNames;
+  }
+  var shuffleMode = preference && preference.shuffleMode;
   var stewCountRef = { stewCount: 0 };
   
   // 收集降级原因
@@ -528,6 +547,13 @@ exports.getTodayMenusByCombo = function (preference) {
       for (i = 0; i < meatCount; i++) slots.push({ meat: meats[i], taste: VALID_ADULT_TASTES[Math.floor(Math.random() * VALID_ADULT_TASTES.length)] });
       for (i = 0; i < vegCount; i++) slots.push({ meat: 'vegetable', taste: VALID_ADULT_TASTES[Math.floor(Math.random() * VALID_ADULT_TASTES.length)] });
       for (i = 0; i < soupCount; i++) slots.push({ meat: 'vegetable', taste: 'quick_stir_fry', isSoup: true });
+      if (shuffleMode === 'surprise' && slots.length > 0) {
+        var surpriseIdx = Math.floor(Math.random() * slots.length);
+        if (slots[surpriseIdx].isSoup) surpriseIdx = (surpriseIdx + 1) % slots.length;
+        var currentTaste = slots[surpriseIdx].taste;
+        var otherTastes = VALID_ADULT_TASTES.filter(function (t) { return t !== currentTaste; });
+        if (otherTastes.length > 0) slots[surpriseIdx].taste = otherTastes[Math.floor(Math.random() * otherTastes.length)];
+      }
     }
     var firstMeatIndex = -1;
     for (var s = 0; s < slots.length; s++) { if (slots[s].meat !== 'vegetable') { firstMeatIndex = s; break; } }
@@ -597,6 +623,17 @@ exports.getTodayMenusByCombo = function (preference) {
           } else {
             res = generator.generateMenu(slot.taste, slot.meat, babyMonth, hasBabyThis, adultCount, babyTaste, userPreference, menus, stewCountRef);
           }
+        } else if (shuffleMode === 'complement' && k === slots.length - 1) {
+          var flavorCounts = getFlavorProfileCounts(menus);
+          var complementFlavor = (flavorCounts.light === 0 && flavorCounts.sweet_sour === 0 && flavorCounts.sour_fresh === 0)
+            ? (Math.random() < 0.5 ? 'light' : 'sweet_sour')
+            : (flavorCounts.spicy === 0 ? 'spicy' : (flavorCounts.light === 0 ? 'light' : 'sweet_sour'));
+          res = generator.generateMenuWithFilters(slot.meat, babyMonth, hasBabyThis, adultCount, babyTaste, {
+            preferredFlavor: complementFlavor,
+            existingMenus: menus,
+            userPreference: userPreference,
+            stewCountRef: stewCountRef
+          });
         } else {
           res = generator.generateMenu(slot.taste, slot.meat, babyMonth, hasBabyThis, adultCount, babyTaste, userPreference, menus, stewCountRef);
         }

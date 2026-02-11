@@ -270,7 +270,9 @@ Page({
     getApp().globalData.todayMenus = menus;
     var shoppingList = menuData.generateShoppingListFromMenus(pref, menus);
     wx.setStorageSync('cart_ingredients', shoppingList || []);
-    wx.setStorageSync('today_menus', JSON.stringify(menus));
+    var slimMenus = menuData.serializeMenusForStorage && menuData.serializeMenusForStorage(menus);
+    wx.setStorageSync('today_menus', JSON.stringify(slimMenus && slimMenus.length > 0 ? slimMenus : menus));
+    wx.setStorageSync('today_menus_preference', JSON.stringify(pref));
     wx.setStorageSync('menu_generated_date', getTodayDateKey());
     var maxPrepTime = 0;
     menus.forEach(function (m) {

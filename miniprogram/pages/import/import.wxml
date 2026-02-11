@@ -146,36 +146,37 @@
   <!-- ═══ 菜谱预览（preview）═══ -->
   <view class="preview-area" wx:if="{{stage === 'preview'}}">
 
-    <!-- 菜名 + 来源 -->
-    <view class="preview-name-section">
-      <text class="preview-recipe-icon">🍳</text>
-      <text class="preview-recipe-name">{{recipeName}}</text>
-      <view class="preview-source" wx:if="{{sourceAuthor}}">
-        <text class="preview-source-text">来源：{{sourceAuthor}}</text>
+    <!-- 菜名 + 来源 + 标签（合为一张英雄卡片）-->
+    <view class="preview-hero-card">
+      <view class="preview-name-section">
+        <text class="preview-recipe-name">{{recipeName}}</text>
+        <view class="preview-source" wx:if="{{sourceAuthor}}">
+          <text class="preview-source-text">来源：{{sourceAuthor}}</text>
+        </view>
       </view>
-    </view>
 
-    <!-- AI 推断标签 -->
-    <view class="preview-tags">
-      <view class="preview-tag">
-        <text class="preview-tag-label">烹饪方式</text>
-        <text class="preview-tag-value">{{cookTypeLabel}}</text>
-      </view>
-      <view class="preview-tag">
-        <text class="preview-tag-label">主料</text>
-        <text class="preview-tag-value">{{meatLabel}}</text>
-      </view>
-      <view class="preview-tag">
-        <text class="preview-tag-label">口味</text>
-        <text class="preview-tag-value">{{flavorLabel}}</text>
-      </view>
-      <view class="preview-tag" wx:if="{{prepTimeText}}">
-        <text class="preview-tag-label">备菜</text>
-        <text class="preview-tag-value">{{prepTimeText}}</text>
-      </view>
-      <view class="preview-tag" wx:if="{{cookTimeText}}">
-        <text class="preview-tag-label">烹饪</text>
-        <text class="preview-tag-value">{{cookTimeText}}</text>
+      <!-- AI 推断标签 -->
+      <view class="preview-tags">
+        <view class="preview-tag">
+          <text class="preview-tag-label">烹饪方式</text>
+          <text class="preview-tag-value">{{cookTypeLabel}}</text>
+        </view>
+        <view class="preview-tag">
+          <text class="preview-tag-label">主料</text>
+          <text class="preview-tag-value">{{meatLabel}}</text>
+        </view>
+        <view class="preview-tag">
+          <text class="preview-tag-label">口味</text>
+          <text class="preview-tag-value">{{flavorLabel}}</text>
+        </view>
+        <view class="preview-tag" wx:if="{{prepTimeText}}">
+          <text class="preview-tag-label">备菜</text>
+          <text class="preview-tag-value">{{prepTimeText}}</text>
+        </view>
+        <view class="preview-tag" wx:if="{{cookTimeText}}">
+          <text class="preview-tag-label">烹饪</text>
+          <text class="preview-tag-value">{{cookTimeText}}</text>
+        </view>
       </view>
     </view>
 
@@ -187,7 +188,7 @@
     </view>
 
     <!-- ═══ 查看模式：食材列表 ═══ -->
-    <view class="result-section" wx:if="{{!isEditing}}">
+    <view class="result-section result-card" wx:if="{{!isEditing}}">
       <view class="section-header">
         <text class="section-title">食材清单</text>
         <text class="section-badge" wx:if="{{ingredientList.length > 0}}">{{ingredientList.length}} 种</text>
@@ -228,7 +229,7 @@
     </view>
 
     <!-- ═══ 查看模式：步骤列表 ═══ -->
-    <view class="result-section" wx:if="{{!isEditing}}">
+    <view class="result-section result-card" wx:if="{{!isEditing}}">
       <view class="section-header">
         <text class="section-title">步骤预览</text>
         <text class="section-badge" wx:if="{{stepList.length > 0}}">{{stepList.length}} 步</text>
@@ -290,18 +291,14 @@
       </view>
     </view>
 
-    <!-- AI 置信度 -->
-    <view class="confidence-info" wx:if="{{confidence > 0 && !isEditing}}">
-      <text class="confidence-label">AI 识别置信度</text>
-      <view class="confidence-track">
-        <view class="confidence-fill" style="width: {{confidence * 100}}%;"></view>
+    <!-- AI 辅助信息（置信度 + 耗时 合为一行） -->
+    <view class="ai-meta-row" wx:if="{{!isEditing && (confidence > 0 || totalMs > 0)}}">
+      <view class="ai-meta-item" wx:if="{{confidence > 0}}">
+        <view class="confidence-mini-track"><view class="confidence-mini-fill" style="width:{{confidence * 100}}%"></view></view>
+        <text class="ai-meta-text">置信度 {{confidence > 0 ? (confidence * 100) + '%' : ''}}</text>
       </view>
-      <text class="confidence-value">{{confidence > 0 ? (confidence * 100) + '%' : ''}}</text>
-    </view>
-
-    <!-- 耗时 -->
-    <view class="timing-info" wx:if="{{totalMs > 0 && !isEditing}}">
-      <text class="timing-text">识别耗时 {{totalMs > 1000 ? (totalMs / 1000) + 's' : totalMs + 'ms'}}</text>
+      <text class="ai-meta-dot" wx:if="{{confidence > 0 && totalMs > 0}}">·</text>
+      <text class="ai-meta-text" wx:if="{{totalMs > 0}}">耗时 {{totalMs > 1000 ? (totalMs / 1000) + 's' : totalMs + 'ms'}}</text>
     </view>
 
     <!-- 底部操作按钮 -->
@@ -309,12 +306,22 @@
       <button class="action-btn action-btn-primary" bindtap="onStartCooking">
         <text class="action-btn-text">直接开始做</text>
       </button>
-      <button class="action-btn action-btn-secondary" bindtap="onSaveRecipe">
-        <text class="action-btn-secondary-text">保存到我的菜谱</text>
-      </button>
-      <button class="action-btn action-btn-outline" bindtap="onRetry">
-        <text class="action-btn-outline-text">重新导入</text>
-      </button>
+      <view class="action-row">
+        <button class="action-btn-half action-btn-mix" bindtap="onGoMix">
+          <text class="action-btn-half-text">加入混搭组餐</text>
+        </button>
+        <button class="action-btn-half action-btn-preview" bindtap="onGoPreviewWithMenu">
+          <text class="action-btn-half-text">随机配一桌</text>
+        </button>
+      </view>
+      <view class="action-row">
+        <button class="action-btn-half action-btn-secondary" bindtap="onSaveRecipe">
+          <text class="action-btn-secondary-text">保存到菜谱</text>
+        </button>
+        <button class="action-btn-half action-btn-outline" bindtap="onRetry">
+          <text class="action-btn-outline-text">重新导入</text>
+        </button>
+      </view>
     </view>
   </view>
 

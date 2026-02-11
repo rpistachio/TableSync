@@ -437,8 +437,15 @@ Page({
         app.globalData.mergedShoppingList = shoppingList;
         app.globalData.todayMenus = menus;
 
-        // 存储购物清单到 Storage
-        wx.setStorageSync('cart_ingredients', shoppingList);
+        // 与 preview 一致：写入 slim + preference + cart，冷启或分享进 steps/shopping 可读到 mix 这桌菜
+        wx.setStorageSync('cart_ingredients', shoppingList || []);
+        var pref = { adultCount: that.data.adultCount || 2, hasBaby: false, babyMonth: 12 };
+        app.globalData.preference = pref;
+        if (menuData.serializeMenusForStorage) {
+          var slimMenus = menuData.serializeMenusForStorage(menus);
+          wx.setStorageSync('today_menus', JSON.stringify(slimMenus));
+          wx.setStorageSync('today_menus_preference', JSON.stringify(pref));
+        }
       }
 
       // 清除草稿
@@ -487,14 +494,20 @@ Page({
         menus.push(menu);
       }
 
-      var preference = { adultCount: adultCount };
+      var preference = { adultCount: adultCount, hasBaby: false, babyMonth: 12 };
       var shoppingList = menuData.generateShoppingListFromMenus(preference, menus);
 
       var app = getApp();
       if (app && app.globalData) {
         app.globalData.mergedShoppingList = shoppingList;
         app.globalData.todayMenus = menus;
-        wx.setStorageSync('cart_ingredients', shoppingList);
+        app.globalData.preference = preference;
+        wx.setStorageSync('cart_ingredients', shoppingList || []);
+        if (menuData.serializeMenusForStorage) {
+          var slimMenus = menuData.serializeMenusForStorage(menus);
+          wx.setStorageSync('today_menus', JSON.stringify(slimMenus));
+          wx.setStorageSync('today_menus_preference', JSON.stringify(preference));
+        }
       }
 
       wx.navigateTo({ url: '/pages/shopping/shopping' });

@@ -602,6 +602,89 @@ Page({
     }
   },
 
+  // ── 加入混搭组餐 ──────────────────────────────────────────────
+
+  onGoMix: function () {
+    var recipe = this.data.recipe;
+    if (!recipe) {
+      wx.showToast({ title: '请先导入菜谱', icon: 'none' });
+      return;
+    }
+    try {
+      saveToLocalCache(recipe);
+      getApp().globalData._pendingMixRecipe = recipe;
+      wx.navigateTo({ url: '/pages/mix/mix' });
+    } catch (err) {
+      wx.showToast({ title: '跳转失败', icon: 'none' });
+    }
+  },
+
+  // ── 随机配一桌 ──────────────────────────────────────────────
+
+  onGoPreviewWithMenu: function () {
+    var recipe = this.data.recipe;
+    if (!recipe) {
+      wx.showToast({ title: '请先导入菜谱', icon: 'none' });
+      return;
+    }
+    try {
+      saveToLocalCache(recipe);
+      var menuData = require('../../data/menuData.js');
+      var menuGen = require('../../data/menuGenerator.js');
+      var app = getApp();
+      var pref = app.globalData.preference || { adultCount: 2, meatCount: 1, vegCount: 1, soupCount: 0 };
+      pref = Object.assign({}, pref, { adultCount: pref.adultCount || 2 });
+      // 以导入菜谱为第一道菜
+      var firstMenu = menuGen.generateMenuFromRecipe
+        ? menuGen.generateMenuFromRecipe(recipe, 12, false, pref.adultCount, 'soft_porridge')
+        : { adultRecipe: recipe, babyRecipe: null, meat: recipe.meat || 'vegetable', taste: recipe.taste || 'quick_stir_fry' };
+      firstMenu.meat = recipe.meat || firstMenu.meat || 'vegetable';
+      firstMenu.taste = recipe.taste || firstMenu.taste || 'quick_stir_fry';
+      // 生成其余菜品（排除已有的导入菜）
+      pref.excludeRecipeNames = [recipe.name];
+      // 减一道同类型菜，避免重复
+      var isMeat = firstMenu.meat && firstMenu.meat !== 'vegetable';
+      if (isMeat && pref.meatCount > 0) pref.meatCount = Math.max(0, (pref.meatCount || 1) - 1);
+      if (!isMeat && pref.vegCount > 0) pref.vegCount = Math.max(0, (pref.vegCount || 1) - 1);
+      var result = menuData.getTodayMenusByCombo(pref);
+      var menus = result.menus || result;
+      if (!Array.isArray(menus)) menus = [];
+      menus.unshift(firstMenu);
+      menus.forEach(function (m) { m.checked = true; });
+      // 写入 globalData，与 home._zenNavigateToPreview 一致
+      app.globalData.preference = pref;
+      app.globalData.todayMenus = menus;
+      var shoppingList = menuData.generateShoppingListFromMenus(pref, menus);
+      wx.setStorageSync('cart_ingredients', shoppingList || []);
+      // 任一道菜的 adultRecipe 无 id 或为外部 id（ext-）时无法被 deserialize 还原，只存完整格式
+      var canSafelySlim = menuData.canSafelySlimMenus && menuData.canSafelySlimMenus(menus) && menuData.serializeMenusForStorage;
+      if (canSafelySlim) {
+        var slimMenus = menuData.serializeMenusForStorage(menus);
+        wx.setStorageSync('today_menus', JSON.stringify(slimMenus));
+      } else {
+        wx.setStorageSync('today_menus', JSON.stringify(menus));
+      }
+      wx.setStorageSync('today_menus_preference', JSON.stringify(pref));
+      var payload = menuData.buildPreviewPayload
+        ? menuData.buildPreviewPayload(menus, pref, { comboName: '导入菜 + 随机搭配', countText: menus.length + '道菜' })
+        : { rows: [], dashboard: {}, comboName: '', balanceTip: '', hasSharedBase: false };
+      app.globalData.menuPreview = {
+        menus: menus,
+        rows: payload.rows,
+        dashboard: payload.dashboard,
+        countText: payload.countText || menus.length + '道菜',
+        comboName: payload.comboName || '',
+        balanceTip: payload.balanceTip || '',
+        hasSharedBase: payload.hasSharedBase || false,
+        preference: pref
+      };
+      wx.navigateTo({ url: '/pages/preview/preview' });
+    } catch (err) {
+      console.error('[import] onGoPreviewWithMenu 失败:', err);
+      wx.showToast({ title: '生成失败: ' + (err.message || '未知错误'), icon: 'none' });
+    }
+  },
+
   // ── 保存到我的菜谱 ──────────────────────────────────────────
 
   onSaveRecipe: function () {
