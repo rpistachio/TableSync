@@ -430,6 +430,31 @@
   color: var(--text-muted);
 }
 
+/* 云端步骤缺失时：重新加载区域 */
+.offline-reload-area {
+  margin-top: 32rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid var(--line);
+}
+.offline-reload-btn {
+  font-size: 28rpx;
+  color: var(--accent);
+  background: rgba(193, 102, 62, 0.1);
+  border: 1rpx solid var(--accent);
+  border-radius: 12rpx;
+  padding: 20rpx 32rpx;
+}
+.offline-reload-loading {
+  font-size: 26rpx;
+  color: var(--text-muted);
+}
+.offline-reload-error {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  color: #c62828;
+}
+
 /* 底部流水线预览 */
 .pipeline-preview {
   padding: 16rpx 32rpx 24rpx;

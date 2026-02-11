@@ -13,7 +13,7 @@ var STORAGE_KEY_TODAY_SHOPPING = 'tablesync_shopping_checked_today';
 function getStepsPreference() {
   var app = getApp();
   var p = app.globalData.preference || {};
-  return {
+  var out = {
     adultTaste: p.adultTaste != null ? p.adultTaste : p.taste,
     babyTaste: p.babyTaste,
     meat: p.meat || 'chicken',
@@ -21,6 +21,9 @@ function getStepsPreference() {
     babyMonth: Number(p.babyMonth) || 6,
     hasBaby: p.hasBaby === '1' || p.hasBaby === true
   };
+  if (p.who) out.who = p.who;
+  if (p.forceLinear === true) out.forceLinear = true;
+  return out;
 }
 
 function stepsStorageKey() {
@@ -682,7 +685,11 @@ Page({
     pipelineSteps: [],
     secondaryHint: '',
     // 阿姨模式
-    isAyiMode: false
+    isAyiMode: false,
+    // 云端步骤缺失时：是否显示「重新加载」、加载中、同步错误
+    showOfflineHint: false,
+    stepsReloading: false,
+    stepsSyncError: ''
   },
 
   onLoad: function (options) {
@@ -739,6 +746,7 @@ Page({
       that._source = 'ayi';
       that._isAyiMode = true;
       that._ayiRecipeIds = decodeURIComponent(options.recipeIds);
+      that._ayiAdultCount = Number(options.adultCount) || 2;
       // 屏幕常亮：阿姨手上有油，不能反复点亮屏幕
       wx.setKeepScreenOn({ keepScreenOn: true });
 
@@ -795,9 +803,12 @@ Page({
     } else {
       that._source = 'menu';
 
-      // 原有逻辑：从 todayMenus / preference 生成步骤
+      // 原有逻辑：从 todayMenus / preference 生成步骤；透传 who/forceLinear 以支持 caregiver 线性分流
       try {
-        steps = menuData.generateSteps(preference);
+        var stepOptions = (preference && (preference.who || preference.forceLinear != null))
+          ? { forceLinear: preference.forceLinear, who: preference.who }
+          : undefined;
+        steps = menuData.generateSteps(preference, stepOptions);
       } catch (e) {
         console.error('生成步骤失败:', e);
         steps = null;
@@ -845,6 +856,18 @@ Page({
     this._currentStepIndex = 0;
     this._updateView(steps);
     this._updateHeaderImage(steps, 0);
+
+    // 只要出现「需联网获取」就自动触发一次同步并重试（不依赖用户点按钮）
+    var isOfflineHint = Array.isArray(steps) && steps.length === 1 && (
+      steps[0]._isOfflineHint === true ||
+      (steps[0].title === '提示' && steps[0].details && String(steps[0].details[0] || '').indexOf('联网') !== -1)
+    );
+    if (isOfflineHint) {
+      console.log('[steps] 检测到需联网获取，800ms 后自动拉取云端并重试');
+      setTimeout(function () {
+        that.retryLoadStepsFromCloud();
+      }, 800);
+    }
   },
   
   /**
@@ -1086,6 +1109,9 @@ Page({
       }
     }
 
+    // 是否为「需联网获取步骤」的提示（仅一条且带 _isOfflineHint）
+    var showOfflineHint = steps.length === 1 && steps[0]._isOfflineHint === true;
+
     this.setData({
       steps: viewSteps,
       viewSteps: viewSteps,
@@ -1112,7 +1138,8 @@ Page({
       rhythmRings: rhythmRings,
       pipelineSteps: pipelineSteps,
       secondaryHint: secondaryHint,
-      isAyiMode: !!this._isAyiMode
+      isAyiMode: !!this._isAyiMode,
+      showOfflineHint: showOfflineHint
     });
 
     // 刷新时间轴统计与并行任务列表
@@ -1184,6 +1211,127 @@ Page({
     }
 
     this.setData({ parallelTasks: tasks });
+  },
+
+  /**
+   * 步骤缺失时从云端重新拉取并刷新步骤
+   * - 从今日菜单进入（menu）：同步后清空 todayMenus 并重新生成步骤
+   * - 其他来源：仅同步云端，提示用户返回重新进入
+   */
+  retryLoadStepsFromCloud: function () {
+    var that = this;
+    console.log('[steps] retryLoadStepsFromCloud 被调用, source=' + (that._source || ''));
+    that.setData({ stepsReloading: true, stepsSyncError: '' });
+
+    function done(err) {
+      that.setData({
+        stepsReloading: false,
+        stepsSyncError: err ? ((err && err.message) ? err.message : '同步失败，请检查网络后重试') : ''
+      });
+    }
+
+    try {
+      menuData.syncCloudRecipes({ forceRefresh: true })
+        .then(function (result) {
+          try {
+            if (result && result.message === '同步进行中') {
+              that.setData({ stepsReloading: false });
+              setTimeout(function () { that.retryLoadStepsFromCloud(); }, 2500);
+              return;
+            }
+            if (that._source === 'menu') {
+              var app = getApp();
+              if (app && app.globalData) app.globalData.todayMenus = null;
+              var preference = getStepsPreference();
+              var stepOptions = (preference && (preference.who || preference.forceLinear != null))
+                ? { forceLinear: preference.forceLinear, who: preference.who }
+                : undefined;
+              var steps = menuData.generateSteps(preference, stepOptions);
+              if (!Array.isArray(steps)) steps = [];
+              console.log('[steps] 重新生成步骤数: ' + steps.length + (steps.length === 1 && steps[0]._isOfflineHint ? ' (仍为联网提示)' : ''));
+              that._stepsRaw = steps;
+              that._currentStepIndex = 0;
+              that._updateView(steps);
+              that._updateHeaderImage(steps, 0);
+            } else if (that._source === 'mix' && Array.isArray(that._mixMenus) && that._mixMenus.length > 0) {
+              // 混合组餐：用当前缓存按 id 重新解析菜谱后再生成步骤
+              var appMix = getApp();
+              var mixMenus = appMix && appMix.globalData && appMix.globalData.mixMenus ? appMix.globalData.mixMenus : that._mixMenus;
+              var mixShoppingList = (appMix && appMix.globalData && appMix.globalData.mergedShoppingList) || [];
+              var resolveOne = function (m) {
+                var aid = m.adultRecipe && m.adultRecipe.id;
+                var bid = m.babyRecipe && m.babyRecipe.id;
+                return {
+                  adultRecipe: aid ? (menuData.getAdultRecipeById(aid) || m.adultRecipe) : m.adultRecipe,
+                  babyRecipe: bid ? (menuData.getBabyRecipeById(bid) || m.babyRecipe) : m.babyRecipe,
+                  meat: m.meat,
+                  taste: m.taste,
+                  checked: m.checked
+                };
+              };
+              var resolvedMix = mixMenus.map(resolveOne);
+              var menuGenerator = require('../../data/menuGenerator.js');
+              var steps;
+              if (resolvedMix.length > 1 && menuGenerator.generateUnifiedSteps) {
+                steps = menuGenerator.generateUnifiedSteps(resolvedMix, mixShoppingList);
+              } else if (resolvedMix.length === 1) {
+                steps = menuGenerator.generateSteps(
+                  resolvedMix[0].adultRecipe, resolvedMix[0].babyRecipe, mixShoppingList
+                );
+              } else {
+                steps = [];
+              }
+              if (!Array.isArray(steps)) steps = [];
+              console.log('[steps] mix 重新生成步骤数: ' + steps.length + (steps.length === 1 && steps[0]._isOfflineHint ? ' (仍为联网提示)' : ''));
+              that._stepsRaw = steps;
+              that._currentStepIndex = 0;
+              that._updateView(steps);
+              that._updateHeaderImage(steps, 0);
+            } else if (that._source === 'scan' && that._scanRecipeIds) {
+              // 扫描/冰箱组餐：用当前缓存按 id 重新生成步骤
+              var idOrNames = that._scanRecipeIds.split(',').filter(function (s) { return s.trim(); });
+              var prefScan = getStepsPreference();
+              var resultScan = menuData.generateStepsFromRecipeIds(idOrNames, prefScan);
+              var stepsScan = resultScan.steps || [];
+              that._scanMenus = resultScan.menus || [];
+              console.log('[steps] scan 重新生成步骤数: ' + stepsScan.length + (stepsScan.length === 1 && stepsScan[0]._isOfflineHint ? ' (仍为联网提示)' : ''));
+              that._stepsRaw = stepsScan;
+              that._currentStepIndex = 0;
+              that._updateView(stepsScan);
+              that._updateHeaderImage(stepsScan, 0);
+            } else if (that._source === 'ayi' && that._ayiRecipeIds) {
+              // 阿姨模式：用当前缓存按 id 重新生成步骤（强制线性）
+              var idsAyi = that._ayiRecipeIds.split(',').filter(Boolean);
+              var adultCountAyi = that._ayiAdultCount != null ? that._ayiAdultCount : 2;
+              var ayiPref = { adultCount: adultCountAyi, hasBaby: false, babyMonth: 12 };
+              var resultAyi = menuData.generateStepsFromRecipeIds(idsAyi, ayiPref);
+              var appAyi = getApp();
+              if (appAyi && appAyi.globalData && Array.isArray(resultAyi.menus) && resultAyi.menus.length > 0) {
+                appAyi.globalData.todayMenus = resultAyi.menus;
+              }
+              var stepsAyi = menuData.generateSteps(ayiPref, { forceLinear: true });
+              if (!Array.isArray(stepsAyi)) stepsAyi = [];
+              console.log('[steps] ayi 重新生成步骤数: ' + stepsAyi.length + (stepsAyi.length === 1 && stepsAyi[0]._isOfflineHint ? ' (仍为联网提示)' : ''));
+              that._stepsRaw = stepsAyi;
+              that._currentStepIndex = 0;
+              that._updateView(stepsAyi);
+              that._updateHeaderImage(stepsAyi, 0);
+            } else {
+              if (typeof wx !== 'undefined' && wx.showToast) {
+                wx.showToast({ title: '已同步，请返回重新进入', icon: 'none' });
+              }
+            }
+            done(null);
+          } catch (e) {
+            done(e);
+          }
+        })
+        .catch(function (err) {
+          done(err);
+        });
+    } catch (e) {
+      done(e);
+    }
   },
 
   /**

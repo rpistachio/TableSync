@@ -157,42 +157,36 @@ function fetchRecipesFromCloud(type, lastSyncTime) {
     }
 
     var collection = db.collection('recipes');
-    var query = collection.where({
-      type: type || 'adult'
-    });
+    // 小程序端 get() 单次最多 20 条，每次分页必须重新构建查询
+    var pageSize = 20;
+    var allRecipes = [];
 
-    // 增量更新：只拉取 updateTime 大于上次同步时间的记录
-    if (lastSyncTime && lastSyncTime instanceof Date) {
-      query = collection.where({
-        type: type || 'adult',
-        updateTime: db.command.gt(lastSyncTime)
-      });
+    function buildQuery() {
+      var whereOpt = { type: type || 'adult' };
+      if (lastSyncTime && lastSyncTime instanceof Date) {
+        whereOpt.updateTime = db.command.gt(lastSyncTime);
+      }
+      return collection.where(whereOpt);
     }
 
-    // 云数据库单次最多返回 100 条，需要分页
-    var allRecipes = [];
-    var pageSize = 100;
-
     function fetchPage(skip) {
-      query.skip(skip).limit(pageSize).get().then(function(res) {
-        var data = res.data || [];
-        allRecipes = allRecipes.concat(data);
-        
-        if (data.length === pageSize) {
-          // 可能还有更多数据，继续拉取
-          fetchPage(skip + pageSize);
-        } else {
-          // 数据拉取完成
-          resolve(allRecipes);
-        }
-      }).catch(function(err) {
-        // 集合不存在等错误，返回空数组
-        if (err.errCode === -1 || (err.errMsg && err.errMsg.indexOf('collection') !== -1)) {
-          resolve([]);
-        } else {
-          reject(err);
-        }
-      });
+      buildQuery().skip(skip).limit(pageSize).get()
+        .then(function(res) {
+          var data = res.data || [];
+          allRecipes = allRecipes.concat(data);
+          if (data.length >= pageSize) {
+            fetchPage(skip + pageSize);
+          } else {
+            resolve(allRecipes);
+          }
+        })
+        .catch(function(err) {
+          if (err.errCode === -1 || (err.errMsg && err.errMsg.indexOf('collection') !== -1)) {
+            resolve([]);
+          } else {
+            reject(err);
+          }
+        });
     }
 
     fetchPage(0);
@@ -222,19 +216,29 @@ function loadFromStorage(type) {
   return [];
 }
 
+/** 单 key 存储约 6MB 以内较安全（微信本地存储总上限 10MB） */
+var STORAGE_SIZE_WARN = 5 * 1024 * 1024;
+
 /**
  * 将菜谱保存到本地存储
  * @param {String} type - 'adult' | 'baby'
  * @param {Array} recipes - 菜谱数组
+ * @returns {boolean} 是否保存成功
  */
 function saveToStorage(type, recipes) {
-  if (typeof wx === 'undefined' || !wx.setStorageSync) return;
-  
+  if (typeof wx === 'undefined' || !wx.setStorageSync) return false;
+  if (!Array.isArray(recipes) || recipes.length === 0) return false;
+  var key = type === 'baby' ? STORAGE_KEY_BABY : STORAGE_KEY_ADULT;
   try {
-    var key = type === 'baby' ? STORAGE_KEY_BABY : STORAGE_KEY_ADULT;
-    wx.setStorageSync(key, JSON.stringify(recipes));
+    var json = JSON.stringify(recipes);
+    if (json.length > STORAGE_SIZE_WARN) {
+      console.warn('[cloudRecipeService] 菜谱数据较大(' + (json.length / 1024 / 1024).toFixed(2) + 'MB)，写入可能失败，本次会话仍使用内存缓存');
+    }
+    wx.setStorageSync(key, json);
+    return true;
   } catch (e) {
-    // saveToStorage error，静默处理
+    console.warn('[cloudRecipeService] 写入本地存储失败(可能超限):', e.message || e);
+    return false;
   }
 }
 
@@ -366,6 +370,9 @@ function syncFromCloud(options) {
   ]).then(function(results) {
     var cloudAdult = results[0] || [];
     var cloudBaby = results[1] || [];
+    if (cloudAdult.length > 0 || cloudBaby.length > 0) {
+      console.log('[cloudRecipeService] 云端拉取: adult=' + cloudAdult.length + ', baby=' + cloudBaby.length);
+    }
     
     // 加载本地缓存
     var localAdult = forceRefresh ? [] : loadFromStorage('adult');
@@ -375,12 +382,11 @@ function syncFromCloud(options) {
     var mergedAdult = mergeRecipes(localAdult, cloudAdult);
     var mergedBaby = mergeRecipes(localBaby, cloudBaby);
 
-    // ── 安全网：云端数据不足时，用本地 recipes.js 兜底 ──
-    // 如果合并后的数量明显少于本地 recipes.js 基线（不到 50%），
-    // 说明云端尚未上传完整，不应覆盖已有缓存，改用本地 fallback 补齐
-    var prevCachedAdult = loadFromStorage('adult');
-    if (localFallbackCount > 0 && mergedAdult.length < localFallbackCount * 0.5) {
-      console.warn('[cloudRecipeService] 安全网触发：云端菜谱数(' + mergedAdult.length + ')远少于本地基线(' + localFallbackCount + ')，合并本地 fallback');
+    // ── 安全网：仅当云端/合并结果为空时，用本地 recipes.js 兜底 ──
+    // 若云端有数据（哪怕只有几条），也以云端为准，保证这些菜有完整步骤；
+    // 只有云端一条都没有时（首次部署或未同步），才合并本地 fallback 避免列表为空。
+    if (localFallbackCount > 0 && mergedAdult.length === 0) {
+      console.warn('[cloudRecipeService] 安全网触发：云端无菜谱，合并本地 fallback(' + localFallbackCount + ' 条)');
       try {
         var fallbackRecipes = require('../data/recipes.js');
         mergedAdult = mergeRecipes(fallbackRecipes.adultRecipes || [], mergedAdult);
@@ -388,15 +394,7 @@ function syncFromCloud(options) {
       } catch (e) {}
     }
     
-    // 保存到本地
-    if (mergedAdult.length > 0) {
-      saveToStorage('adult', mergedAdult);
-    }
-    if (mergedBaby.length > 0) {
-      saveToStorage('baby', mergedBaby);
-    }
-    
-    // 更新内存缓存
+    // 先更新内存缓存，保证本次会话一定能用到云端数据（即使本地存储写入失败）
     if (mergedAdult.length > 0) {
       _memoryCache.adultRecipes = mergedAdult;
     }
@@ -404,6 +402,14 @@ function syncFromCloud(options) {
       _memoryCache.babyRecipes = mergedBaby;
     }
     _memoryCache.lastSync = syncTime;
+    
+    // 再尝试写入本地存储（数据量大时可能超 10MB 限制而失败，不影响内存缓存）
+    if (mergedAdult.length > 0) {
+      saveToStorage('adult', mergedAdult);
+    }
+    if (mergedBaby.length > 0) {
+      saveToStorage('baby', mergedBaby);
+    }
     
     // 保存同步时间和版本
     saveLastSyncTime(syncTime);

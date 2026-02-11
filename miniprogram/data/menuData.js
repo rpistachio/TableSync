@@ -22,11 +22,6 @@ function getRecipeSource() {
   
   // 如果云端有数据，使用云端
   if (cloudAdult && cloudAdult.length > 0) {
-    // #region agent log
-    if (typeof fetch === 'function') {
-      fetch('http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'G',location:'menuData.js:getRecipeSource',message:'using cloud recipes',data:{adultCount:cloudAdult.length,babyCount:(cloudBaby||[]).length},timestamp:Date.now()})}).catch(()=>{});
-    }
-    // #endregion
     return {
       adultRecipes: cloudAdult,
       babyRecipes: cloudBaby && cloudBaby.length > 0 ? cloudBaby : require('./recipes.js').babyRecipes,
@@ -36,11 +31,6 @@ function getRecipeSource() {
   
   // 降级到本地
   var localRecipes = require('./recipes.js');
-  // #region agent log
-  if (typeof fetch === 'function') {
-    fetch('http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'G',location:'menuData.js:getRecipeSource',message:'using local recipes',data:{adultCount:(localRecipes.adultRecipes||[]).length,babyCount:(localRecipes.babyRecipes||[]).length},timestamp:Date.now()})}).catch(()=>{});
-  }
-  // #endregion
   return {
     adultRecipes: localRecipes.adultRecipes || [],
     babyRecipes: localRecipes.babyRecipes || [],
@@ -201,11 +191,6 @@ exports.deserializeMenusFromStorage = function (slimMenus, options) {
     if (slim.adultRecipeId) {
       var rawAdult = getAdultRecipeById(slim.adultRecipeId);
       if (rawAdult) {
-        // #region agent log
-        if (typeof fetch === 'function') {
-          fetch('http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'H',location:'menuData.js:deserializeMenusFromStorage',message:'adult recipe resolved',data:{adultRecipeId:slim.adultRecipeId,adultName:rawAdult.name||'',adultIng:Array.isArray(rawAdult.ingredients)?rawAdult.ingredients.length:null,isOfflineFallback:!!rawAdult._isOfflineFallback},timestamp:Date.now()})}).catch(()=>{});
-        }
-        // #endregion
         // 使用 generator 来处理人数缩放等逻辑
         var res = generator.generateMenuFromRecipe(rawAdult, babyMonth, false, adultCount, babyTaste);
         adultRecipe = res.adultRecipe;
@@ -462,14 +447,21 @@ exports.getTodayMenusByCombo = function (preference) {
   var vegCount = Math.min(3, Math.max(0, Number(preference && preference.vegCount) || 1));
   var soupCount = Math.min(1, Math.max(0, Number(preference && preference.soupCount) || 0));
   var soupType = (preference && preference.soupType) === 'meat' ? 'meat' : (preference && preference.soupType) === 'veg' ? 'veg' : null;
+  var isTimeSave = preference && (preference.isTimeSave === true || preference.is_time_save === true);
+  if (isTimeSave) {
+    meatCount = Math.min(meatCount, 1);
+    vegCount = Math.min(vegCount, 1);
+  }
   if (meatCount === 0 && vegCount === 0 && soupCount === 0) vegCount = 1;
 
   var userPreference = {
     allergens: (preference && preference.avoidList) || (preference && preference.allergens) || [],
     dietary_preference: (preference && preference.dietStyle) || (preference && preference.dietary_preference) || '',
     avoidList: (preference && preference.avoidList) || [],
-    dietStyle: (preference && preference.dietStyle) || ''
+    dietStyle: (preference && preference.dietStyle) || '',
+    isTimeSave: isTimeSave
   };
+  if (preference && preference.kitchenConfig) userPreference.kitchenConfig = preference.kitchenConfig;
   var stewCountRef = { stewCount: 0 };
   
   // 收集降级原因
@@ -1037,22 +1029,45 @@ exports.generateSteps = function (preference, options) {
   var effectivePref = storedPref || preference || {};
   
   if (todayMenus && todayMenus.length > 0) {
-    var first = todayMenus[0];
+    // 按 id 从当前缓存重新解析菜谱，保证用上同步后的完整数据（含 steps/ingredients）
+    var cacheList = cloudRecipeService.getAdultRecipes ? cloudRecipeService.getAdultRecipes() : [];
+    var cacheCount = Array.isArray(cacheList) ? cacheList.length : 0;
+    var resolveMenu = function (m) {
+      var adultId = m.adultRecipe && m.adultRecipe.id;
+      var babyId = m.babyRecipe && m.babyRecipe.id;
+      var freshAdult = adultId ? (getAdultRecipeById(adultId) || m.adultRecipe) : m.adultRecipe;
+      var freshBaby = babyId ? (getBabyRecipeById(babyId) || m.babyRecipe) : m.babyRecipe;
+      if (adultId && (!freshAdult || !Array.isArray(freshAdult.steps) || freshAdult.steps.length === 0)) {
+        console.warn('[menuData.generateSteps] 缓存条数=' + cacheCount + ', 未找到带步骤的菜谱 id=' + adultId);
+      }
+      return {
+        adultRecipe: freshAdult,
+        babyRecipe: freshBaby,
+        meat: m.meat,
+        taste: m.taste,
+        checked: m.checked
+      };
+    };
+    var menusWithFreshRecipes = todayMenus.map(resolveMenu);
+    var first = menusWithFreshRecipes[0];
     var list = (app && app.globalData && app.globalData.mergedShoppingList && app.globalData.mergedShoppingList.length > 0)
       ? app.globalData.mergedShoppingList
-      : exports.generateShoppingListFromMenus(effectivePref, todayMenus);
+      : exports.generateShoppingListFromMenus(effectivePref, menusWithFreshRecipes);
 
-    var forceLinear = options && options.forceLinear === true;
+    // 线性步骤：options 显式指定或 who=caregiver（阿姨/别人做）时禁用并行调度
+    var forceLinear = (options && options.forceLinear === true) ||
+      (options && options.who === 'caregiver') ||
+      (effectivePref && effectivePref.who === 'caregiver');
 
     // 多菜场景：根据是否强制线性选择策略
-    if (todayMenus.length > 1) {
+    if (menusWithFreshRecipes.length > 1) {
       if (!forceLinear && generator.generateUnifiedSteps) {
-        return generator.generateUnifiedSteps(todayMenus, list, {
+        return generator.generateUnifiedSteps(menusWithFreshRecipes, list, {
           kitchenConfig: effectivePref.kitchenConfig
         });
       }
       if (generator.linearFallback) {
-        return generator.linearFallback(todayMenus, list);
+        return generator.linearFallback(menusWithFreshRecipes, list);
       }
     }
 
@@ -1239,12 +1254,6 @@ exports.generateShoppingListFromMenus = function (preference, menus) {
   var adultCount = preference && typeof preference.adultCount !== 'undefined' ? Math.min(6, Math.max(1, Number(preference.adultCount) || 2)) : 2;
   var avoidList = (preference && preference.avoidList) || [];
 
-  // #region agent log
-  if (typeof fetch === 'function') {
-    fetch('http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'D',location:'menuData.js:generateShoppingListFromMenus',message:'menus restored from slim',data:{usedSlimRestore:usedSlimRestore,menuCount:Array.isArray(restoredMenus)?restoredMenus.length:null,sample:Array.isArray(restoredMenus)?restoredMenus.slice(0,3).map(function(m){return {name:(m.adultRecipe&&m.adultRecipe.name)||'',adultIng:Array.isArray(m.adultRecipe&&m.adultRecipe.ingredients)?m.adultRecipe.ingredients.length:null,hasAdultId:!!(m.adultRecipe&&(m.adultRecipe.id||m.adultRecipe._id))};}):[]},timestamp:Date.now()})}).catch(()=>{});
-  }
-  // #endregion
-
   // 检测是否存在无 ingredients 的精简版菜谱（离线降级）
   var offlineCount = 0;
   var totalCount = 0;
@@ -1297,6 +1306,7 @@ exports.refreshRecipeCache = function () {
   adultByIdCache = null;
   babyByIdCache = null;
   cache = {};
+  if (generator.clearRecipeListCache) generator.clearRecipeListCache();
 };
 
 /**

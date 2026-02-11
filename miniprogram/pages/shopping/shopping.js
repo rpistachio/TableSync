@@ -76,6 +76,8 @@ Page({
   },
 
   onShow: function () {
+    // 每次显示时刷新清单（与 steps 一致：若已同步，用缓存重新解析今日菜单生成完整清单）
+    this.updateList();
     var list = wx.getStorageSync('cart_ingredients') || [];
     var dishName = wx.getStorageSync('selected_dish_name') || '未选菜品';
     var prepTime = wx.getStorageSync('today_prep_time');
@@ -98,11 +100,53 @@ Page({
 
   updateList: function () {
     var pref = getPreference();
+    var app = getApp();
     var cart = wx.getStorageSync('cart_ingredients') || [];
     var isPlaceholder = Array.isArray(cart) && cart.length === 1 && cart[0].name === '请先生成菜单后查看清单';
-    var todayItems = (Array.isArray(cart) && cart.length > 0 && !isPlaceholder)
-      ? cart.slice()
-      : menuData.generateShoppingList(pref);
+
+    // 与 steps 页一致：用当前缓存的今日菜单按 id 重新解析后生成清单，避免显示同步前的残缺数据
+    var todayMenus = app && app.globalData && app.globalData.todayMenus;
+    if (!todayMenus || todayMenus.length === 0) {
+      try {
+        var raw = wx.getStorageSync('today_menus');
+        if (raw) {
+          var parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0 && menuData.isSlimMenuFormat && menuData.isSlimMenuFormat(parsed)) {
+            var prefRaw = wx.getStorageSync('today_menus_preference');
+            var restorePref = prefRaw ? JSON.parse(prefRaw) : pref;
+            todayMenus = menuData.deserializeMenusFromStorage(parsed, restorePref);
+          } else if (Array.isArray(parsed) && parsed.length > 0) {
+            todayMenus = parsed;
+          }
+        }
+      } catch (e) {}
+    }
+    var todayItems;
+    if (todayMenus && todayMenus.length > 0) {
+      var resolvedMenus = todayMenus.map(function (m) {
+        var aid = m.adultRecipe && m.adultRecipe.id;
+        var bid = m.babyRecipe && m.babyRecipe.id;
+        return {
+          adultRecipe: aid ? (menuData.getAdultRecipeById(aid) || m.adultRecipe) : m.adultRecipe,
+          babyRecipe: bid ? (menuData.getBabyRecipeById(bid) || m.babyRecipe) : m.babyRecipe,
+          meat: m.meat,
+          taste: m.taste,
+          checked: m.checked
+        };
+      });
+      todayItems = menuData.generateShoppingListFromMenus(pref, resolvedMenus) || [];
+      if (Array.isArray(todayItems) && todayItems.length > 0) {
+        try {
+          wx.setStorageSync('cart_ingredients', todayItems);
+          if (app.globalData) app.globalData.mergedShoppingList = todayItems;
+        } catch (e) {}
+      }
+    }
+    if (!todayItems || todayItems.length === 0) {
+      todayItems = (Array.isArray(cart) && cart.length > 0 && !isPlaceholder)
+        ? cart.slice()
+        : menuData.generateShoppingList(pref);
+    }
     restoreChecked(todayItems, STORAGE_KEY_TODAY);
 
     // 为混合来源食材计算来源菜品文本描述

@@ -95,6 +95,13 @@
         <text class="duration-icon">⏱</text>
         <text class="duration-text">约 {{currentStep.duration}} 分钟</text>
       </view>
+
+      <!-- 云端步骤缺失时：重新加载入口与错误提示 -->
+      <view wx:if="{{showOfflineHint}}" class="offline-reload-area">
+        <button wx:if="{{!stepsReloading}}" class="offline-reload-btn" type="plain" catchtap="retryLoadStepsFromCloud">重新加载步骤</button>
+        <view wx:if="{{stepsReloading}}" class="offline-reload-loading">正在从云端加载…</view>
+        <text wx:if="{{stepsSyncError}}" class="offline-reload-error">{{stepsSyncError}}</text>
+      </view>
     </view>
 
     <!-- 下一步预览 -->
