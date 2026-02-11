@@ -85,4 +85,17 @@ node tools/sync.js --draft drafts/2026-02-07_batch.json --index 0 --image ~/Down
 
 ---
 
+## 七、空气炸锅菜封面补图（无草稿）
+
+`recipes.js` 里 9 道「空气炸锅替代菜谱」未走 generate 流程，默认无封面图。可用脚本一次性生成图并上传、更新 `recipeCoverSlugs.js`：
+
+```bash
+cd tools && node generate-covers-for-airfryer.js
+```
+
+- **依赖**：`tools/.env` 中 `MINIMAX_API_KEY`（或复用 `cloudfunctions/recipeCoverGen/secret-config.json`）；上传需 `TCB_ENV_ID` / `TCB_SECRET_ID` / `TCB_SECRET_KEY`。
+- **预览**：`node generate-covers-for-airfryer.js --dry-run` 只出图到 `drafts/images/`，不上传、不写 slug。
+
+---
+
 **查看 sync 帮助**：`node tools/sync.js --help`
