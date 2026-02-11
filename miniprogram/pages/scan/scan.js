@@ -710,6 +710,11 @@ Page({
       if (app.onBasketChange) app.onBasketChange(list.length);
 
       wx.showToast({ title: '已将 ' + addedCount + ' 道菜放入灵感篮', icon: 'none', duration: 2000 });
+      try {
+        var tracker = require('../../utils/tracker.js');
+        var recipeIds = recommendations.slice(0, 5).map(function (r) { return r.id; }).filter(Boolean);
+        tracker.trackEvent('basket_add', { source: 'fridge_match', count: addedCount, recipe_ids: recipeIds });
+      } catch (e2) { /* ignore */ }
     }
   },
 

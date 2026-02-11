@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * 从云数据库 recipes 集合中删除「与本地已去重逻辑一致」的重复菜谱记录。
- * 本地 recipes.js 已删除的 id：a-veg-5（西红柿炒蛋）、s001（紫菜蛋花汤）、m006（宫保鸡丁）、m007（白切鸡）、s004（玉米排骨汤）。
+ * 本地 recipes.js 已删除的 id：a-veg-5（西红柿炒蛋）、s001（紫菜蛋花汤）、m006（宫保鸡丁）、m007（白切鸡）、s004（玉米排骨汤）、a-chi-13（蒜香蜂蜜空炸鸡翅，保留蒜香蜂蜜鸡翅）。
  * 运行此脚本后云端与本地一致，用户同步后不会再看到重复菜。
  *
  * 用法：cd tools && node remove-duplicate-recipes-from-cloud.js
@@ -15,7 +15,7 @@ import chalk from 'chalk';
 import { CONFIG } from './config.js';
 
 /** 本地已删除的重复菜 id（与 recipes.js 去重一致） */
-const DUPLICATE_IDS_TO_REMOVE = ['a-veg-5', 's001', 'm006', 'm007', 's004'];
+const DUPLICATE_IDS_TO_REMOVE = ['a-veg-5', 's001', 'm006', 'm007', 's004', 'a-chi-13'];
 
 function getDb() {
   if (!CONFIG.tcbEnvId || !CONFIG.tcbSecretId || !CONFIG.tcbSecretKey) {

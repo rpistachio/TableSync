@@ -64,9 +64,9 @@
   </view>
 
   <view class="preview-actions">
-    <button class="preview-btn preview-btn-basket" catchtap="onAddAllToBasket">全员入篮</button>
+    <button class="preview-btn preview-btn-basket" catchtap="onAddAllToBasket">加入灵感</button>
     <button class="preview-btn preview-btn-secondary" catchtap="handleSwapOptions">换菜</button>
-    <button class="preview-btn preview-btn-ghost" open-type="share">发给阿姨</button>
+    <button class="preview-btn preview-btn-ghost" open-type="share">发给别人</button>
     <button class="preview-btn preview-btn-primary" catchtap="confirmAndGo">开始做饭</button>
   </view>
 </view>

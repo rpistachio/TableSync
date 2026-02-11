@@ -145,7 +145,7 @@
     <text>更多高级功能（扫描/导入）▾</text>
   </view>
 
-  <view class="home-brand">
+  <view class="home-brand" bindlongpress="onDebugSyncCloud">
     <view class="brand-line"></view>
     <text class="brand-text">TableSync</text>
   </view>

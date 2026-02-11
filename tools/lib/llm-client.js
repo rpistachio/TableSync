@@ -1,8 +1,50 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import Anthropic from '@anthropic-ai/sdk';
+import Anthropic, { APIConnectionError } from '@anthropic-ai/sdk';
 import { CONFIG } from '../config.js';
+
+/** 网络/连接类错误时重试次数 */
+const CONNECTION_RETRIES = 3;
+/** 重试间隔基数（毫秒），指数退避 */
+const RETRY_DELAY_MS = 2000;
+
+function isRetryableConnectionError(err) {
+  if (err instanceof APIConnectionError) return true;
+  const code = err?.cause?.code ?? err?.code;
+  return code === 'ECONNRESET' || code === 'ETIMEDOUT' || code === 'ENOTFOUND' || code === 'ECONNREFUSED';
+}
+
+async function withRetry(fn) {
+  let lastErr;
+  for (let attempt = 1; attempt <= CONNECTION_RETRIES; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (attempt === CONNECTION_RETRIES || !isRetryableConnectionError(err)) throw err;
+      const delay = RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+  throw lastErr;
+}
+
+function wrapConnectionError(err, baseURL) {
+  if (!(err instanceof APIConnectionError) && !isRetryableConnectionError(err)) return err;
+  let host = 'api.anthropic.com';
+  if (baseURL) {
+    try {
+      host = new URL(baseURL.startsWith('http') ? baseURL : `https://${baseURL}`).host;
+    } catch (_) {}
+  }
+  const hint = baseURL
+    ? `当前使用代理/中转: ${baseURL}。请检查：1) 网络/VPN 是否可达 ${host}；2) 代理服务是否正常。`
+    : `请检查网络是否可访问 api.anthropic.com。`;
+  const wrapped = new Error(`连接 API 失败 (${host})：${err.message}\n${hint}`);
+  wrapped.cause = err;
+  return wrapped;
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -53,21 +95,23 @@ export async function generateRecipesFromInput({ mode, input, count, excludeName
   }
   const client = new Anthropic(opts);
   const systemPrompt = loadSystemPrompt(excludeNames);
-
   const userInstruction = buildUserInstruction(mode, input, count);
+  const baseURL = opts.baseURL || process.env.ANTHROPIC_BASE_URL;
 
-  const msg = await client.messages.create({
-    model: CONFIG.llmModel,
-    max_tokens: 8192,
-    temperature: 0.6,
-    system: systemPrompt,
-    messages: [
-      {
-        role: 'user',
-        content: userInstruction
-      }
-    ]
-  });
+  let msg;
+  try {
+    msg = await withRetry(() =>
+      client.messages.create({
+        model: CONFIG.llmModel,
+        max_tokens: 8192,
+        temperature: 0.6,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userInstruction }]
+      })
+    );
+  } catch (err) {
+    throw wrapConnectionError(err, baseURL);
+  }
 
   const text = (msg.content && msg.content[0] && msg.content[0].text) || '';
   return safeParseJson(text);
@@ -132,14 +176,22 @@ export async function optimizeRecipesWithLlm(recipes) {
   const client = new Anthropic(opts);
   const systemPrompt = loadOptimizeSystemPrompt();
   const userMessage = `请对以下 ${recipes.length} 道菜谱分别进行优化，严格按模板只返回每道菜的 id、ingredients、steps、baby_variant（若原无则补充）。\n\n输入菜谱 JSON：\n${JSON.stringify(recipes, null, 2)}`;
+  const baseURL = opts.baseURL || process.env.ANTHROPIC_BASE_URL;
 
-  const msg = await client.messages.create({
-    model: CONFIG.llmModel,
-    max_tokens: 8192,
-    temperature: 0.3,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userMessage }]
-  });
+  let msg;
+  try {
+    msg = await withRetry(() =>
+      client.messages.create({
+        model: CONFIG.llmModel,
+        max_tokens: 8192,
+        temperature: 0.3,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userMessage }]
+      })
+    );
+  } catch (err) {
+    throw wrapConnectionError(err, baseURL);
+  }
 
   const text = (msg.content && msg.content[0] && msg.content[0].text) || '';
   return safeParseJson(text);

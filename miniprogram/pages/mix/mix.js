@@ -366,6 +366,8 @@ Page({
   },
 
   onShow: function () {
+    // 允许本页本次展示时再上报一次统筹预览
+    this._hasTrackedSchedulePreview = false;
     // 刷新已导入菜谱（用户可能从 import 页面添加了新的）
     var importedRecipes = getImportedRecipes();
     this.setData({ importedRecipes: importedRecipes });
@@ -557,8 +559,22 @@ Page({
   // ── 更新统筹预览 ────────────────────────────────────────────
 
   _updateSchedulePreview: function () {
-    var preview = computeSchedulePreview(this.data.selectedRecipes);
+    var selectedRecipes = this.data.selectedRecipes || [];
+    var preview = computeSchedulePreview(selectedRecipes);
     this.setData({ schedulePreview: preview });
+    // 统筹预览展示时自动记录轨迹（每页一次）
+    if (selectedRecipes.length > 0 && !this._hasTrackedSchedulePreview) {
+      this._hasTrackedSchedulePreview = true;
+      try {
+        var tracker = require('../../utils/tracker.js');
+        tracker.trackEvent('schedule_preview_view', {
+          recipe_count: selectedRecipes.length,
+          total_time: preview.totalTime,
+          efficiency: preview.efficiency,
+          stove_count: preview.stoveCount
+        });
+      } catch (e) { /* ignore */ }
+    }
   },
 
   // ── 人数调整 ────────────────────────────────────────────────

@@ -134,7 +134,7 @@ async function main() {
 
   const pending = data.items
     .map((it, idx) => ({ it, idx }))
-    .filter(({ it }) => it.status === 'approved' || it.status === 'pending');
+    .filter(({ it }) => it.status === 'approved' || it.status === 'pending' || it.status === 'has_image');
 
   if (opts.index != null) {
     const target = data.items[opts.index];
@@ -155,7 +155,7 @@ async function main() {
       .filter(({ it }) => it.status === 'approved');
     if (approved.length === 0) {
       console.log(
-        chalk.yellow('没有 status=approved 的条目，将尝试处理全部 pending+approved 项。')
+        chalk.yellow('没有 status=approved 的条目，将尝试处理全部 pending / has_image / approved 项。')
       );
       for (const { it } of pending) {
         // eslint-disable-next-line no-await-in-loop

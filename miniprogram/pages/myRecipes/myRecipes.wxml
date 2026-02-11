@@ -1,20 +1,28 @@
-<!--pages/myRecipes/myRecipes.wxml-->
+<!--pages/myRecipes/myRecipes.wxml - 视觉与首页一致 -->
 <view class="myrecipes-container">
-  <view class="myrecipes-header">
-    <text class="myrecipes-title">我的菜谱库</text>
-    <text class="myrecipes-subtitle">过去导入的菜谱，今天继续做</text>
-    <button class="myrecipes-refresh-btn" bindtap="onRefresh">刷新</button>
+  <!-- 与首页入口一致的头部卡片 -->
+  <view class="myrecipes-header-card">
+    <view class="myrecipes-header-icon-wrap">
+      <text class="myrecipes-header-icon">📚</text>
+    </view>
+    <view class="myrecipes-header-text-wrap">
+      <text class="myrecipes-title">我的菜谱库</text>
+      <text class="myrecipes-subtitle">过去导入的菜谱，今天继续做</text>
+    </view>
+    <view class="myrecipes-refresh-wrap" bindtap="onRefresh">
+      <text class="myrecipes-refresh-text">刷新</text>
+    </view>
   </view>
 
   <view class="myrecipes-loading" wx:if="{{loading}}">
     <text class="myrecipes-loading-text">加载中...</text>
   </view>
 
-  <view class="myrecipes-empty" wx:elif="{{empty}}">
+  <view class="myrecipes-empty-card" wx:elif="{{empty}}">
     <text class="myrecipes-empty-icon">📚</text>
     <text class="myrecipes-empty-text">还没有导入过菜谱</text>
     <text class="myrecipes-empty-hint">在「导入赛博菜谱」中保存的菜谱会出现在这里</text>
-    <button class="myrecipes-empty-btn" bindtap="onGoImport">去导入</button>
+    <view class="myrecipes-empty-btn" bindtap="onGoImport">去导入</view>
   </view>
 
   <view wx:else class="myrecipes-list-wrap">
@@ -49,8 +57,8 @@
             <view class="myrecipes-heart-btn {{basketIds[item.id] ? 'is-active' : ''}}" data-index="{{index}}" catchtap="onToggleBasket">
               <text class="myrecipes-heart-icon">{{basketIds[item.id] ? '❤️' : '🤍'}}</text>
             </view>
-            <button class="myrecipes-btn myrecipes-btn-primary" data-index="{{index}}" bindtap="onCookToday">今天做</button>
-            <button class="myrecipes-btn myrecipes-btn-secondary" data-index="{{index}}" bindtap="onAddToMix">加入组餐</button>
+            <view class="myrecipes-btn myrecipes-btn-primary" data-index="{{index}}" bindtap="onCookToday">今天做</view>
+            <view class="myrecipes-btn myrecipes-btn-secondary" data-index="{{index}}" bindtap="onAddToMix">加入组餐</view>
           </view>
         </view>
       </view>

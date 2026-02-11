@@ -925,6 +925,7 @@ Page({
    */
   _promptAddToBasket: function (recipe) {
     if (!recipe || !recipe.id) return;
+    var tracker = require('../../utils/tracker.js');
     wx.showActionSheet({
       itemList: ['加入今日灵感篮'],
       success: function (res) {
@@ -947,6 +948,7 @@ Page({
           if (app && app.globalData) app.globalData.inspirationBasket = newList;
           if (app.onBasketChange) app.onBasketChange(newList.length);
           wx.showToast({ title: '已加入灵感篮', icon: 'success' });
+          tracker.trackEvent('basket_add', { source: 'import', recipe_id: recipe.id, recipe_name: recipe.name || '' });
         }
       }
     });

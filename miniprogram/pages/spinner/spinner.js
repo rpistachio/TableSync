@@ -302,7 +302,8 @@ Page({
     var kitchenConfig = d.kitchenConfig ||
       (app && app.globalData && app.globalData.kitchenConfig) ||
       { burners: 2, hasSteamer: false, hasAirFryer: false, hasOven: false };
-    return {
+    var prevPref = (app && app.globalData && app.globalData.preference) || {};
+    var pref = {
       adultCount: Math.min(6, Math.max(1, d.adultCount || 2)),
       hasBaby: !!hasBaby,
       babyMonth: Math.min(36, Math.max(6, d.babyMonth)),
@@ -315,6 +316,10 @@ Page({
       isTimeSave: userPref.isTimeSave === true || userPref.is_time_save === true,
       kitchenConfig: kitchenConfig
     };
+    if (prevPref.maxTotalTime != null) pref.maxTotalTime = prevPref.maxTotalTime;
+    if (prevPref.who) pref.who = prevPref.who;
+    if (prevPref.forceLinear === true) pref.forceLinear = true;
+    return pref;
   },
 
   onStartGenerate: function () {
@@ -325,6 +330,18 @@ Page({
 
     var pref = that._buildPreference();
     var moodText = that._getDefaultMood(that.data.weatherForApi);
+    // 硬约束归一化：省时/疲惫 → maxTotalTime=30；caregiver → forceLinear；疲惫模式菜量上限 1+1
+    if (pref.isTimeSave === true || moodText === '疲惫') {
+      pref.maxTotalTime = 30;
+    }
+    if (pref.who === 'caregiver' || pref.who === 'ayi') {
+      pref.forceLinear = true;
+      pref.who = 'caregiver';
+    }
+    if (pref.isTimeSave === true) {
+      pref.meatCount = Math.min(pref.meatCount, 1);
+      pref.vegCount = Math.min(pref.vegCount, 1);
+    }
 
     var source = menuData.getRecipeSource && menuData.getRecipeSource();
     var adultRecipes = (source && source.adultRecipes) || [];
@@ -680,12 +697,6 @@ Page({
   _prepareAndNavigate: function () {
     var menus = getApp().globalData.todayMenus || [];
     var pref = getApp().globalData.preference || {};
-
-    // #region agent log
-    if (typeof fetch === 'function') {
-      fetch('http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'F',location:'spinner.js:_prepareAndNavigate',message:'about to generate shopping list',data:{menuCount:menus.length,sample:(menus||[]).slice(0,3).map(function(m){return {name:(m.adultRecipe&&m.adultRecipe.name)||'',adultIng:Array.isArray(m.adultRecipe&&m.adultRecipe.ingredients)?m.adultRecipe.ingredients.length:null};})},timestamp:Date.now()})}).catch(()=>{});
-    }
-    // #endregion
     var shoppingList = menuData.generateShoppingListFromMenus(pref, menus);
     wx.setStorageSync('cart_ingredients', shoppingList || []);
     wx.setStorageSync('today_menus', JSON.stringify(menus));

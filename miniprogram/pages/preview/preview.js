@@ -109,17 +109,6 @@ Page({
       if (menus.length > 0) {
         try { wx.setStorageSync('today_menus', JSON.stringify(menus)); } catch (e) {}
       }
-      // #region agent log
-      try {
-        var menuServiceForLog = require('../../data/menuData.js');
-        var isSlim = menuServiceForLog && typeof menuServiceForLog.isSlimMenuFormat === 'function'
-          ? menuServiceForLog.isSlimMenuFormat(menus)
-          : false;
-        if (typeof fetch === 'function') {
-          fetch('http://127.0.0.1:7243/ingest/2601ac33-4192-4086-adc2-d77ecd51bad3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'D',location:'preview.js:onLoad',message:'menus loaded from storage',data:{menuCount:menus.length,isSlim:isSlim,sample:(menus||[]).slice(0,3).map(function(m){return {name:(m.adultRecipe&&m.adultRecipe.name)||'',adultIng:Array.isArray(m.adultRecipe&&m.adultRecipe.ingredients)?m.adultRecipe.ingredients.length:null,hasAdultId:!!(m.adultRecipe&&(m.adultRecipe.id||m.adultRecipe._id))};})},timestamp:Date.now()})}).catch(()=>{});
-        }
-      } catch (e) {}
-      // #endregion
 
       var pref = getApp().globalData.preference || {};
       var hasBaby = !!(pref && pref.hasBaby);

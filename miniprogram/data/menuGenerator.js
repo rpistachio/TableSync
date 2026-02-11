@@ -19,9 +19,9 @@
  * 2. Core Selection & Balancing：抽选时 stewCount，stew > 1 则舍弃并重抽非炖煮替代
  * 3. Dynamic Scaling：非调料项 amount = (totalCount / base_serving) * baseAmount
  */
-var recipes = require('./recipes.js');
 var cloudRecipeService = null;
 var recipeSchema = null;
+var _recipesModule = null;
 
 // 延迟加载云端菜谱服务，避免循环依赖
 function getCloudRecipeService() {
@@ -47,6 +47,14 @@ function getRecipeSchema() {
   return recipeSchema;
 }
 
+/** 延迟加载本地 recipes.js，仅在云端无数据时使用，减轻首屏卡顿 */
+function getRecipesModule() {
+  if (!_recipesModule) {
+    _recipesModule = require('./recipes.js');
+  }
+  return _recipesModule;
+}
+
 /**
  * 获取大人菜谱列表（优先云端，降级本地）
  * @returns {Array}
@@ -59,7 +67,7 @@ function getAdultRecipesList() {
       return cloudData;
     }
   }
-  return recipes.adultRecipes || [];
+  return getRecipesModule().adultRecipes || [];
 }
 
 /**
@@ -74,12 +82,8 @@ function getBabyRecipesList() {
       return cloudData;
     }
   }
-  return recipes.babyRecipes || [];
+  return getRecipesModule().babyRecipes || [];
 }
-
-// 使用动态获取而非静态引用
-var adultRecipes = getAdultRecipesList();
-var babyRecipes = getBabyRecipesList();
 
 var MEAT_LABEL = { chicken: '鸡肉', pork: '猪肉', beef: '牛肉', fish: '鳕鱼', shrimp: '虾仁', vegetable: '素菜' };
 var MEAT_KEY_MAP = { 鸡肉: 'chicken', 猪肉: 'pork', 牛肉: 'beef', 鱼肉: 'fish', 虾仁: 'shrimp', 素菜: 'vegetable', chicken: 'chicken', pork: 'pork', beef: 'beef', fish: 'fish', shrimp: 'shrimp', vegetable: 'vegetable' };
@@ -146,7 +150,10 @@ function normalizeUserPreference(pref) {
       isTimeSave: false,
       allergens: [],
       dietary_preference: '',
-      kitchenConfig: { burners: 2, hasSteamer: false, hasAirFryer: false, hasOven: false }
+      kitchenConfig: { burners: 2, hasSteamer: false, hasAirFryer: false, hasOven: false },
+      maxTotalTime: undefined,
+      who: undefined,
+      forceLinear: undefined
     };
   }
   var avoidList = Array.isArray(pref.avoidList) ? pref.avoidList : (Array.isArray(pref.allergens) ? pref.allergens : []);
@@ -159,7 +166,7 @@ function normalizeUserPreference(pref) {
     hasAirFryer: kc.hasAirFryer === true,
     hasOven: kc.hasOven === true
   };
-  return {
+  var out = {
     avoidList: avoidList,
     dietStyle: dietStyle,
     isTimeSave: isTimeSave,
@@ -167,6 +174,10 @@ function normalizeUserPreference(pref) {
     dietary_preference: dietStyle,
     kitchenConfig: kitchenConfig
   };
+  if (pref.maxTotalTime != null) out.maxTotalTime = Number(pref.maxTotalTime);
+  if (pref.who === 'caregiver' || pref.who === 'ayi') out.who = 'caregiver';
+  if (pref.forceLinear === true) out.forceLinear = true;
+  return out;
 }
 
 // ============ 第一层：Pre-Filter（前置过滤） ============
@@ -272,7 +283,9 @@ var COOK_TYPE_TO_DEVICE = {
   cold: 'none',              // 凉菜 → 无需设备
   cold_dress: 'none',        // 凉拌 → 无需设备 (与 mix.js 一致)
   salad: 'none',             // 拌菜 → 无需设备
-  boil: 'pot'                // 煮汤 → 汤锅
+  boil: 'pot',               // 煮汤 → 汤锅
+  air_fryer: 'air_fryer',    // 空气炸锅 → 独立设备，不占灶
+  rice_cooker: 'rice_cooker' // 电饭煲 → 独立设备，不占灶
 };
 
 /** 设备数量限制（普通家庭厨房配置，fallback 用） */
@@ -281,19 +294,23 @@ var DEVICE_LIMITS = {
   stove_long: 1,             // 最多 1 道长时间占灶（炖菜）
   steamer: 1,                // 最多 1 道蒸菜
   pot: 1,                    // 最多 1 道汤
-  none: 99                   // 凉菜无限制
+  none: 99,                  // 凉菜无限制
+  air_fryer: 1,              // 最多 1 道空气炸锅菜
+  rice_cooker: 1             // 最多 1 道电饭煲菜
 };
 
 /**
  * 根据用户厨房配置计算动态设备上限
- * 核心约束: wok + stove_long + pot 共享 burners 个火眼
- * @param {Object} kitchenConfig - { burners, hasSteamer, hasAirFryer, hasOven }
+ * 核心约束: wok + stove_long + pot 共享 burners 个火眼；空气炸锅/电饭煲不占灶。
+ * @param {Object} kitchenConfig - { burners, hasSteamer, hasAirFryer, hasRiceCooker, hasOven }
  * @returns {Object} 设备上限对象，含 _burners、_needsBurner 元信息
  */
 function computeDeviceLimits(kitchenConfig) {
   var cfg = kitchenConfig || {};
   var burners = Math.max(1, Math.min(4, cfg.burners != null ? cfg.burners : 2));
   var hasSteamer = cfg.hasSteamer === true;
+  var hasAirFryer = cfg.hasAirFryer === true;
+  var hasRiceCooker = cfg.hasRiceCooker === true;
 
   return {
     wok: Math.min(burners, 2),         // 炒锅上限 = min(火眼数, 2)
@@ -301,13 +318,17 @@ function computeDeviceLimits(kitchenConfig) {
     steamer: 1,                         // 蒸锅始终允许 1 道
     pot: burners >= 2 ? 1 : 0,         // 汤锅: 双灶及以上才允许独占 1 眼煲汤
     none: 99,
+    air_fryer: hasAirFryer ? 1 : 0,   // 有空气炸锅则最多 1 道，否则 0
+    rice_cooker: hasRiceCooker ? 1 : 0, // 有电饭煲则最多 1 道，否则 0
     _burners: burners,
     _needsBurner: {
       wok: true,
       stove_long: true,
       steamer: !hasSteamer,             // 电蒸锅不占灶
       pot: true,
-      none: false
+      none: false,
+      air_fryer: false,                 // 空气炸锅不占灶
+      rice_cooker: false                // 电饭煲不占灶
     }
   };
 }
@@ -328,7 +349,7 @@ function getRecipeDevice(recipe) {
  * @returns {Object} { wok: 0, stove_long: 0, steamer: 0, pot: 0, none: 0 }
  */
 function initDeviceCounts() {
-  return { wok: 0, stove_long: 0, steamer: 0, pot: 0, none: 0 };
+  return { wok: 0, stove_long: 0, steamer: 0, pot: 0, none: 0, air_fryer: 0, rice_cooker: 0 };
 }
 
 /**
@@ -339,7 +360,7 @@ function initDeviceCounts() {
  */
 function createDeviceTracker(kitchenConfig) {
   var useBurnerPool = kitchenConfig != null && typeof kitchenConfig === 'object';
-  var limits = useBurnerPool ? computeDeviceLimits(kitchenConfig) : { wok: 2, stove_long: 1, steamer: 1, pot: 1, none: 99 };
+  var limits = useBurnerPool ? computeDeviceLimits(kitchenConfig) : { wok: 2, stove_long: 1, steamer: 1, pot: 1, none: 99, air_fryer: 1, rice_cooker: 1 };
   var reservations = { wok: [], stove_long: [], steamer: [], pot: [], none: [] };
   var totalBurners = useBurnerPool && limits._burners != null ? limits._burners : null;
   var needsBurner = useBurnerPool && limits._needsBurner ? limits._needsBurner : null;
@@ -1424,6 +1445,28 @@ function generateMenuWithFilters(meat, babyMonth, hasBaby, adultCount, babyTaste
     fallbackReason = 'preference_filter_empty';
   }
 
+  // ★ isTimeSave 最高优先级硬约束：cook_minutes≤20 且 steps≤6（spec 疲惫模式）
+  var isTimeSave = (userPreference && (userPreference.isTimeSave === true || userPreference.is_time_save === true));
+  if (isTimeSave && aPool.length > 0) {
+    var beforeTimeSave = aPool.length;
+    aPool = aPool.filter(function (r) {
+      var cookOk = (typeof r.cook_minutes !== 'number') || r.cook_minutes <= 20;
+      var stepsOk = !Array.isArray(r.steps) || r.steps.length <= 6;
+      return cookOk && stepsOk;
+    });
+    if (aPool.length === 0 && beforeTimeSave > 0) {
+      fallbackReason = 'time_save_filter_empty';
+      // 最小回退：仅用同 meat 池再按硬条件筛一次（不破约束）
+      var fallbackPool = currentAdultRecipes.filter(function (r) { return r.meat === meatKey; });
+      if (meatKey === 'vegetable' && fallbackPool.length === 0) fallbackPool = currentAdultRecipes.filter(function (r) { return r.meat === 'vegetable'; });
+      aPool = fallbackPool.filter(function (r) {
+        var cookOk = (typeof r.cook_minutes !== 'number') || r.cook_minutes <= 20;
+        var stepsOk = !Array.isArray(r.steps) || r.steps.length <= 6;
+        return cookOk && stepsOk;
+      });
+    }
+  }
+
   if (preferredFlavor === 'light') aPool = aPool.filter(function (r) { var f = r.flavor_profile || ''; return f === 'light' || f === 'sour_fresh'; });
   else if (preferredFlavor) aPool = aPool.filter(function (r) { return (r.flavor_profile || '') === preferredFlavor; });
   if (preferQuick && aPool.length > 0) {
@@ -1578,11 +1621,22 @@ function validateIngredientStepConsistency(recipe) {
   var stepTexts = steps.map(function (s) { return (typeof s === 'object' && s && s.text != null ? s.text : s) || ''; });
   var fullText = stepTexts.join(' ');
 
-  // 1) 配料表中每一项都应在步骤文案中出现
+  // 1) 配料表中每一项都应在步骤文案中出现（全名或至少两字子串，如「长茄子」步骤里写「茄子」即视为出现）
+  function stepMentionsIngredient(text, ingredientName) {
+    if (!text || !ingredientName) return false;
+    if (text.indexOf(ingredientName) !== -1) return true;
+    var len = ingredientName.length;
+    if (len >= 2) {
+      for (var i = 0; i <= len - 2; i++) {
+        if (text.indexOf(ingredientName.slice(i, i + 2)) !== -1) return true;
+      }
+    }
+    return false;
+  }
   ingredients.forEach(function (it) {
     var name = typeof it === 'string' ? it : (it && it.name);
     if (!name) return;
-    if (fullText.indexOf(name) === -1) missingInSteps.push(name);
+    if (!stepMentionsIngredient(fullText, name)) missingInSteps.push(name);
   });
 
   // 2) 步骤中常见调料/食材关键词应在配料表中有对应项（按名称包含或一致）
@@ -2490,7 +2544,9 @@ var DEVICE_GANTT_COLORS = {
   stove_long: '#e65100',
   steamer: '#2196f3',
   pot: '#9c27b0',
-  none: '#9e9e9e'
+  none: '#9e9e9e',
+  air_fryer: '#4caf50',
+  rice_cooker: '#795548'
 };
 
 /**

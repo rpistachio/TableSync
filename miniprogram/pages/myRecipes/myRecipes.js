@@ -332,6 +332,10 @@ Page({
       );
       newList = basket.addItem(bList, item);
       wx.showToast({ title: '已加入灵感篮', icon: 'success' });
+      try {
+        var tracker = require('../../utils/tracker.js');
+        tracker.trackEvent('basket_add', { source: 'myRecipes', recipe_id: recipeId, recipe_name: recipe.name || '' });
+      } catch (e4) { /* ignore */ }
     }
 
     try {
