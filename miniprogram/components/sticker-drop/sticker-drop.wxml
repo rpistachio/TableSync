@@ -1,0 +1,10 @@
+<view class="sticker-drop-mask" wx:if="{{visible}}" catchtap="onClose">
+  <view class="sticker-drop-card" catchtap="onCardTap">
+    <view class="sticker-drop-badge">
+      <text class="sticker-drop-emoji">✨</text>
+      <text class="sticker-drop-label">获得贴纸</text>
+      <text class="sticker-drop-name">{{stickerName}}</text>
+    </view>
+    <text class="sticker-drop-cta" bindtap="onClose">收下</text>
+  </view>
+</view>

@@ -1,4 +1,21 @@
-<view class="steps-container cook-mode {{isAyiMode ? 'ayi-mode' : ''}}">
+<view class="steps-container cook-mode {{isAyiMode ? 'ayi-mode' : ''}} {{isHelperRole ? 'helper-role' : ''}}">
+  <!-- 执行者模式：顶部唯一标题 + 可折叠食材准备 -->
+  <view wx:if="{{isHelperRole && helperTitle}}" class="helper-role-header">
+    <text class="helper-role-title">{{helperTitle}}</text>
+    <view wx:if="{{helperIngredientsList.length > 0}}" class="helper-ingredients-panel">
+      <view class="helper-ingredients-head" bindtap="toggleHelperIngredients">
+        <text class="helper-ingredients-label">食材准备</text>
+        <text class="helper-ingredients-toggle">{{helperIngredientsExpanded ? '收起' : '展开'}}</text>
+      </view>
+      <view wx:if="{{helperIngredientsExpanded}}" class="helper-ingredients-list">
+        <view wx:for="{{helperIngredientsList}}" wx:key="name" class="helper-ingredient-item">
+          <text class="helper-ingredient-name">{{item.name}}</text>
+          <text class="helper-ingredient-amount">{{item.amount}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
   <!-- Layer 1: 极简头部 -->
   <view class="cook-header">
     <view class="progress-bar-track">
@@ -48,6 +65,8 @@
     <view class="focus-card {{currentStep.completed ? 'is-done' : ''}}">
       <!-- 阶段纤细标签 -->
       <text wx:if="{{!isAyiMode && currentPhaseLabel}}" class="phase-chip {{currentPhaseType}}">{{currentPhaseLabel}}</text>
+      <!-- 疲惫模式：空气炸锅步骤设备标识 -->
+      <view wx:if="{{isTiredMode && currentStepDevice === 'air_fryer'}}" class="device-chip device-chip-airfryer">空气炸锅</view>
 
       <!-- 步骤标题 -->
       <text class="focus-title">{{currentStep.title}}</text>
@@ -172,7 +191,7 @@
         </view>
       </view>
     </scroll-view>
-    <view class="sheet-footer">
+    <view class="sheet-footer" wx:if="{{!isHelperRole}}">
       <button class="sheet-share-btn" open-type="share">分享今日菜单</button>
     </view>
   </view>

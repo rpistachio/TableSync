@@ -105,6 +105,24 @@
   color: var(--text-muted);
 }
 
+/* Zen Mode 别人做：温暖话术条 */
+.helper-banner {
+  padding: 24rpx 28rpx;
+  margin: 0 32rpx 20rpx;
+  background: linear-gradient(135deg, rgba(253, 248, 236, 0.95) 0%, rgba(252, 245, 224, 0.9) 100%);
+  border-radius: 20rpx;
+  border: 1rpx solid rgba(193, 102, 62, 0.15);
+}
+
+.helper-banner-text {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #5a544f;
+  line-height: 1.5;
+  text-align: center;
+}
+
 /* 今日提示 - 家人贴心叮嘱风格 */
 .today-tips {
   padding: 24rpx 28rpx;

@@ -67,7 +67,10 @@ Page({
     todayAllergens: [],
     todayAllergensText: '',
     todayTips: [],
-    heroCoverImage: ''
+    heroCoverImage: '',
+    isHelperMode: false,
+    isTiredMode: false,
+    helperBannerText: ''
   },
 
   onLoad: function () {
@@ -142,6 +145,28 @@ Page({
         } catch (e) {}
       }
     }
+    // 无今日菜单时尝试混合组餐（mix）：用当前缓存按 id 重新解析后生成清单
+    if ((!todayItems || todayItems.length === 0) && app && app.globalData && app.globalData.mixMenus && app.globalData.mixMenus.length > 0) {
+      var mixMenus = app.globalData.mixMenus;
+      var resolvedMixMenus = mixMenus.map(function (m) {
+        var aid = m.adultRecipe && m.adultRecipe.id;
+        var bid = m.babyRecipe && m.babyRecipe.id;
+        return {
+          adultRecipe: aid ? (menuData.getAdultRecipeById(aid) || m.adultRecipe) : m.adultRecipe,
+          babyRecipe: bid ? (menuData.getBabyRecipeById(bid) || m.babyRecipe) : m.babyRecipe,
+          meat: m.meat,
+          taste: m.taste,
+          checked: m.checked
+        };
+      });
+      todayItems = menuData.generateShoppingListFromMenus(pref, resolvedMixMenus) || [];
+      if (Array.isArray(todayItems) && todayItems.length > 0) {
+        try {
+          wx.setStorageSync('cart_ingredients', todayItems);
+          if (app.globalData) app.globalData.mergedShoppingList = todayItems;
+        } catch (e) {}
+      }
+    }
     if (!todayItems || todayItems.length === 0) {
       todayItems = (Array.isArray(cart) && cart.length > 0 && !isPlaceholder)
         ? cart.slice()
@@ -149,12 +174,24 @@ Page({
     }
     restoreChecked(todayItems, STORAGE_KEY_TODAY);
 
-    // 为混合来源食材计算来源菜品文本描述
+    var fullPref = (app && app.globalData && app.globalData.preference) || {};
+    var who = fullPref.who || wx.getStorageSync('zen_cook_who') || 'self';
+    var isTimeSave = fullPref.isTimeSave === true || fullPref.is_time_save === true || (wx.getStorageSync('zen_cook_status') === 'tired');
+    var isHelperMode = who === 'caregiver' || who === 'ayi';
+    var isTiredMode = isTimeSave;
+    var helperBannerText = isHelperMode ? '帮我准备好以下食材，辛苦啦' : '';
+
+    // 为混合来源食材计算来源菜品文本描述；疲惫模式下调料统一显示「按包装说明」
     todayItems.forEach(function (item) {
       if (Array.isArray(item.fromRecipes) && item.fromRecipes.length > 1) {
         item.fromRecipesText = item.fromRecipes.join('、');
       } else {
         item.fromRecipesText = '';
+      }
+      if (isTiredMode && (item.category || '') === '调料') {
+        item.displayAmount = '按包装说明';
+      } else {
+        item.displayAmount = item.amount;
       }
     });
 
@@ -179,7 +216,10 @@ Page({
     this.setData({
       todayItems: todayItems,
       groupedTodayItems: groupedToday,
-      todayTips: todayTips
+      todayTips: todayTips,
+      isHelperMode: isHelperMode,
+      isTiredMode: isTiredMode,
+      helperBannerText: helperBannerText
     });
   },
 

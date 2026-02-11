@@ -686,6 +686,14 @@ Page({
     secondaryHint: '',
     // 阿姨模式
     isAyiMode: false,
+    // 执行者模式（role=helper 分享进入）：单标题+折叠食材、隐藏重新生成/回首页
+    isHelperRole: false,
+    helperTitle: '',
+    helperIngredientsList: [],
+    helperIngredientsExpanded: true,
+    // Zen Mode 疲惫模式（空气炸锅步骤可标注设备）
+    isTiredMode: false,
+    currentStepDevice: '',
     // 云端步骤缺失时：是否显示「重新加载」、加载中、同步错误
     showOfflineHint: false,
     stepsReloading: false,
@@ -697,22 +705,7 @@ Page({
     var preference = getStepsPreference();
     var steps;
 
-    // Part 3: 支持从 scan 页跳转，传入选中的菜谱 IDs
-    if (options && options.source === 'scan' && options.recipeIds) {
-      that._source = 'scan';
-      that._scanRecipeIds = decodeURIComponent(options.recipeIds);
-
-      try {
-        var idOrNames = that._scanRecipeIds.split(',').filter(function (s) { return s.trim(); });
-        var result = menuData.generateStepsFromRecipeIds(idOrNames, preference);
-        steps = result.steps;
-        // 保存菜单信息，供头图与图片展示使用
-        that._scanMenus = result.menus;
-      } catch (e) {
-        console.error('[steps] 从 scan 来源生成步骤失败:', e);
-        steps = null;
-      }
-    } else if (options && options.source === 'import') {
+    if (options && options.source === 'import') {
       // ── 外部菜谱导入模式 ──
       that._source = 'import';
       that._importRecipeName = options.recipeName ? decodeURIComponent(options.recipeName) : '';
@@ -741,31 +734,64 @@ Page({
         console.error('[steps] 从 import 来源生成步骤失败:', e);
         steps = null;
       }
-    } else if (options && options.source === 'ayi' && options.recipeIds) {
-      // ── 阿姨模式：从分享卡片打开，强制线性 + 大字只读 ──
+    } else if (options && (options.source === 'ayi' || options.role === 'helper') && options.recipeIds) {
+      // ── 阿姨/帮手模式：从分享卡片打开（role=helper），用 result.menus 直接生成线性步骤，避免二次 resolve 导致步骤丢失 ──
       that._source = 'ayi';
       that._isAyiMode = true;
-      that._ayiRecipeIds = decodeURIComponent(options.recipeIds);
+      that._isHelperRole = options.role === 'helper';
+      try {
+        that._ayiRecipeIds = decodeURIComponent(String(options.recipeIds || ''));
+      } catch (decodeErr) {
+        console.error('[steps] recipeIds 解析失败:', options.recipeIds, decodeErr);
+        that._ayiRecipeIds = '';
+      }
       that._ayiAdultCount = Number(options.adultCount) || 2;
-      // 屏幕常亮：阿姨手上有油，不能反复点亮屏幕
       wx.setKeepScreenOn({ keepScreenOn: true });
 
       try {
-        var ids = that._ayiRecipeIds.split(',').filter(Boolean);
-        var adultCount = Number(options.adultCount) || 2;
-        var ayiPref = { adultCount: adultCount, hasBaby: false, babyMonth: 12 };
+        var ids = (that._ayiRecipeIds || '').split(',').map(function (s) { return (s || '').trim(); }).filter(Boolean);
+        if (ids.length === 0) {
+          console.error('[steps] role=helper 分享链路 recipeIds 为空，请检查分享 path 是否携带 recipeIds');
+          steps = [];
+        } else {
+          var adultCount = Number(options.adultCount) || 2;
+          var ayiPref = { adultCount: adultCount, hasBaby: false, babyMonth: 12 };
 
-        // 先用 recipeIds 构建菜单
-        var result = menuData.generateStepsFromRecipeIds(ids, ayiPref);
-        // 将菜单写入 globalData，使 generateSteps(forceLinear) 可读取
-        var appAyi = getApp();
-        if (appAyi && appAyi.globalData && Array.isArray(result.menus) && result.menus.length > 0) {
-          appAyi.globalData.todayMenus = result.menus;
+          var result = menuData.generateStepsFromRecipeIds(ids, ayiPref);
+          var appAyi = getApp();
+          if (appAyi && appAyi.globalData && Array.isArray(result.menus) && result.menus.length > 0) {
+            appAyi.globalData.todayMenus = result.menus;
+          }
+          var menuGenerator = require('../../data/menuGenerator.js');
+          var shopList = menuData.generateShoppingListFromMenus(ayiPref, result.menus || []);
+          if (Array.isArray(result.menus) && result.menus.length > 1 && menuGenerator.linearFallback) {
+            steps = menuGenerator.linearFallback(result.menus, shopList || []);
+          } else if (Array.isArray(result.menus) && result.menus.length === 1 && Array.isArray(result.steps) && result.steps.length > 0) {
+            steps = result.steps;
+          } else if (Array.isArray(result.steps) && result.steps.length > 0) {
+            steps = result.steps;
+          } else {
+            steps = menuData.generateSteps(ayiPref, { forceLinear: true });
+          }
+          if (!Array.isArray(steps) || steps.length === 0) {
+            console.error('[steps] helper 模式步骤为空，recipeIds=', ids, 'menus.length=', (result.menus || []).length);
+          }
+          if (that._isHelperRole && result.menus && result.menus.length > 0) {
+            var dishNames = result.menus.map(function (m) { return (m.adultRecipe && m.adultRecipe.name) || ''; }).filter(Boolean);
+            that._helperTitle = '辛苦啦，今晚想吃：' + dishNames.join('、');
+            that._helperIngredientsList = [];
+            for (var si = 0; si < (shopList || []).length; si++) {
+              var it = shopList[si];
+              if (!it || (it.category || '') === '调料') continue;
+              var iname = it.name || it.ingredient || '';
+              if (!iname) continue;
+              var amt = it.amount != null && it.amount !== '' ? it.amount : (it.baseAmount != null ? (it.baseAmount + (it.unit || '')) : (it.unit || '适量'));
+              that._helperIngredientsList.push({ name: iname, amount: amt });
+            }
+          }
         }
-        // 强制线性步骤：阿姨不需要并行统筹
-        steps = menuData.generateSteps(ayiPref, { forceLinear: true });
       } catch (e) {
-        console.error('[steps] 从 ayi 来源生成步骤失败:', e);
+        console.error('[steps] 从 ayi/helper 来源生成步骤失败:', e);
         steps = null;
       }
     } else if (options && options.source === 'mix') {
@@ -813,6 +839,12 @@ Page({
         console.error('生成步骤失败:', e);
         steps = null;
       }
+
+      // Zen Mode「别人做」：与分享进入的阿姨模式一致，简化 UI（隐藏甘特图、并行任务条等）
+      if (preference && (preference.who === 'caregiver' || preference.who === 'ayi')) {
+        that._isAyiMode = true;
+        wx.setKeepScreenOn({ keepScreenOn: true });
+      }
     }
 
     // 确保 steps 是数组
@@ -822,9 +854,7 @@ Page({
     }
     
     // 恢复已完成状态
-    var storageKey = that._source === 'scan'
-      ? STORAGE_PREFIX + 'scan_' + (that._scanRecipeIds || '')
-      : that._source === 'import'
+    var storageKey = that._source === 'import'
         ? STORAGE_PREFIX + 'import_' + (that._importRecipeName || '')
         : that._source === 'mix'
           ? STORAGE_PREFIX + 'mix_' + (that._mixRecipeNames || '')
@@ -852,21 +882,27 @@ Page({
     that._loadMenuData();
     
     this._stepsRaw = steps;
-    this._hasLinearFallback = false; // 标记是否已触发线性降级
+    this._hasLinearFallback = false;
     this._currentStepIndex = 0;
     this._updateView(steps);
     this._updateHeaderImage(steps, 0);
 
-    // 只要出现「需联网获取」就自动触发一次同步并重试（不依赖用户点按钮）
+    if (that._isHelperRole) {
+      that.setData({
+        isHelperRole: true,
+        helperTitle: that._helperTitle || '',
+        helperIngredientsList: that._helperIngredientsList || [],
+        helperIngredientsExpanded: true
+      });
+    }
+
     var isOfflineHint = Array.isArray(steps) && steps.length === 1 && (
       steps[0]._isOfflineHint === true ||
       (steps[0].title === '提示' && steps[0].details && String(steps[0].details[0] || '').indexOf('联网') !== -1)
     );
     if (isOfflineHint) {
-      console.log('[steps] 检测到需联网获取，800ms 后自动拉取云端并重试');
-      setTimeout(function () {
-        that.retryLoadStepsFromCloud();
-      }, 800);
+      console.log('[steps] 检测到需联网获取，800ms 后自动拉取云端并重试' + (that._isHelperRole ? '（helper 分享入口）' : ''));
+      setTimeout(function () { that.retryLoadStepsFromCloud(); }, 800);
     }
   },
   
@@ -878,17 +914,6 @@ Page({
     that._menuRecipes = [];
 
     try {
-      // Part 3: scan 来源 —— 直接使用 _scanMenus 构建菜品列表
-      if (that._source === 'scan' && Array.isArray(that._scanMenus) && that._scanMenus.length > 0) {
-        that._menuRecipes = that._scanMenus.map(function (m) {
-          return {
-            name: (m.adultRecipe && m.adultRecipe.name) || '',
-            type: 'adult'
-          };
-        }).filter(function (r) { return r.name; });
-        return;
-      }
-
       // 混合组餐来源 —— 使用 _mixMenus 构建菜品列表
       if (that._source === 'mix' && Array.isArray(that._mixMenus) && that._mixMenus.length > 0) {
         that._menuRecipes = that._mixMenus.map(function (m) {
@@ -1139,7 +1164,13 @@ Page({
       pipelineSteps: pipelineSteps,
       secondaryHint: secondaryHint,
       isAyiMode: !!this._isAyiMode,
-      showOfflineHint: showOfflineHint
+      isHelperRole: !!this._isHelperRole,
+      showOfflineHint: showOfflineHint && !this._isHelperRole,
+      isTiredMode: (function () {
+        var p = getApp().globalData.preference || {};
+        return p.isTimeSave === true || p.is_time_save === true || wx.getStorageSync('zen_cook_status') === 'tired';
+      })(),
+      currentStepDevice: (currentStep && currentStep.device) ? currentStep.device : ''
     });
 
     // 刷新时间轴统计与并行任务列表
@@ -1287,18 +1318,6 @@ Page({
               that._currentStepIndex = 0;
               that._updateView(steps);
               that._updateHeaderImage(steps, 0);
-            } else if (that._source === 'scan' && that._scanRecipeIds) {
-              // 扫描/冰箱组餐：用当前缓存按 id 重新生成步骤
-              var idOrNames = that._scanRecipeIds.split(',').filter(function (s) { return s.trim(); });
-              var prefScan = getStepsPreference();
-              var resultScan = menuData.generateStepsFromRecipeIds(idOrNames, prefScan);
-              var stepsScan = resultScan.steps || [];
-              that._scanMenus = resultScan.menus || [];
-              console.log('[steps] scan 重新生成步骤数: ' + stepsScan.length + (stepsScan.length === 1 && stepsScan[0]._isOfflineHint ? ' (仍为联网提示)' : ''));
-              that._stepsRaw = stepsScan;
-              that._currentStepIndex = 0;
-              that._updateView(stepsScan);
-              that._updateHeaderImage(stepsScan, 0);
             } else if (that._source === 'ayi' && that._ayiRecipeIds) {
               // 阿姨模式：用当前缓存按 id 重新生成步骤（强制线性）
               var idsAyi = that._ayiRecipeIds.split(',').filter(Boolean);
@@ -1429,18 +1448,38 @@ Page({
     // 最后一步完成
     var lastId = steps[steps.length - 1].id;
     if (step.id === lastId) {
-      wx.showModal({
-        title: '料理完成！',
-        content: '全家人的美味已准备就绪，开启幸福用餐时光吧。',
-        confirmText: '回首页',
-        cancelText: '再看看',
-        success: function (res) {
-          if (res.confirm) {
-            try { wx.removeStorageSync(that._storageKey || stepsStorageKey()); } catch (e) {}
-            wx.reLaunch({ url: '/pages/home/home' });
+      var pref = getApp().globalData.preference || {};
+      var isTired = pref.isTimeSave === true || pref.is_time_save === true || wx.getStorageSync('zen_cook_status') === 'tired';
+      if (isTired) {
+        try {
+          var stickerCollection = require('../../data/stickerCollection.js');
+          var result = stickerCollection.tryDropSticker('tired_done', 'steps_complete');
+          if (result.dropped && result.sticker) {
+            getApp().globalData.pendingStickerDrop = { stickerId: result.sticker.id, name: result.sticker.name };
           }
-        }
-      });
+        } catch (e) {}
+      }
+      if (that._isHelperRole) {
+        wx.showModal({
+          title: '料理完成！',
+          content: '按步骤都做好啦，开启幸福用餐时光吧。',
+          showCancel: false,
+          confirmText: '知道了'
+        });
+      } else {
+        wx.showModal({
+          title: '料理完成！',
+          content: '全家人的美味已准备就绪，开启幸福用餐时光吧。',
+          confirmText: '回首页',
+          cancelText: '再看看',
+          success: function (res) {
+            if (res.confirm) {
+              try { wx.removeStorageSync(that._storageKey || stepsStorageKey()); } catch (e) {}
+              wx.reLaunch({ url: '/pages/home/home' });
+            }
+          }
+        });
+      }
     }
   },
 
@@ -1452,6 +1491,11 @@ Page({
   /** 甘特图 Bottom Sheet 开关 */
   toggleGanttSheet: function () {
     this.setData({ showGanttSheet: !this.data.showGanttSheet, showStepList: false });
+  },
+
+  /** 执行者模式：折叠/展开食材准备 */
+  toggleHelperIngredients: function () {
+    this.setData({ helperIngredientsExpanded: !this.data.helperIngredientsExpanded });
   },
 
   /** 从步骤列表 sheet 跳转到指定步骤 */
@@ -1581,28 +1625,46 @@ Page({
     // 根据最新进度，自动高亮下一步、滚动并刷新头图/阶段/并行提示
     this.autoHighlightNextStep();
 
-    // 在用户开始执行步骤后检测是否存在缺料情况，必要时触发线性降级
-    var missingResult = this.checkMissingIngredients();
-    if (missingResult && missingResult.hasMissing) {
-      this.triggerFallback(missingResult);
+    // 非执行者模式才做缺料检测（执行者从分享进入，无采购页勾选状态）
+    if (!this._isHelperRole) {
+      var missingResult = this.checkMissingIngredients();
+      if (missingResult && missingResult.hasMissing) this.triggerFallback(missingResult);
     }
 
     var lastId = steps[steps.length - 1].id;
     if (step.id === lastId) {
-      wx.showModal({
-        title: '料理完成！',
-        content: '全家人的美味已准备就绪，开启幸福用餐时光吧。',
-        confirmText: '回首页',
-        cancelText: '再看看',
-        success: function (res) {
-          if (res.confirm) {
-            try {
-              wx.removeStorageSync(that._storageKey || stepsStorageKey());
-            } catch (e) {}
-            wx.reLaunch({ url: '/pages/home/home' });
+      var prefComplete = getApp().globalData.preference || {};
+      var isTiredComplete = prefComplete.isTimeSave === true || prefComplete.is_time_save === true || wx.getStorageSync('zen_cook_status') === 'tired';
+      if (isTiredComplete) {
+        try {
+          var stickerCollectionComplete = require('../../data/stickerCollection.js');
+          var resultComplete = stickerCollectionComplete.tryDropSticker('tired_done', 'steps_complete');
+          if (resultComplete.dropped && resultComplete.sticker) {
+            getApp().globalData.pendingStickerDrop = { stickerId: resultComplete.sticker.id, name: resultComplete.sticker.name };
           }
-        }
-      });
+        } catch (e) {}
+      }
+      if (that._isHelperRole) {
+        wx.showModal({
+          title: '料理完成！',
+          content: '按步骤都做好啦，开启幸福用餐时光吧。',
+          showCancel: false,
+          confirmText: '知道了'
+        });
+      } else {
+        wx.showModal({
+          title: '料理完成！',
+          content: '全家人的美味已准备就绪，开启幸福用餐时光吧。',
+          confirmText: '回首页',
+          cancelText: '再看看',
+          success: function (res) {
+            if (res.confirm) {
+              try { wx.removeStorageSync(that._storageKey || stepsStorageKey()); } catch (e) {}
+              wx.reLaunch({ url: '/pages/home/home' });
+            }
+          }
+        });
+      }
     }
   },
 

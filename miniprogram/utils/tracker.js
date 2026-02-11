@@ -16,7 +16,6 @@ var CORE_EVENT_IDS = [
   'cooking_abort',
   'cook_session_finish',
   'linear_fallback_trigger',
-  'basket_add',           // 投篮：加入灵感篮
   'schedule_preview_view' // 统筹预览：在 mix 页查看统筹预览
 ];
 

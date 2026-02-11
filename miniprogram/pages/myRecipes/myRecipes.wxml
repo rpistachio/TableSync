@@ -54,9 +54,6 @@
             <text class="myrecipes-card-source" wx:elif="{{item.source === 'external'}}">外部导入</text>
           </view>
           <view class="myrecipes-card-actions">
-            <view class="myrecipes-heart-btn {{basketIds[item.id] ? 'is-active' : ''}}" data-index="{{index}}" catchtap="onToggleBasket">
-              <text class="myrecipes-heart-icon">{{basketIds[item.id] ? '❤️' : '🤍'}}</text>
-            </view>
             <view class="myrecipes-btn myrecipes-btn-primary" data-index="{{index}}" bindtap="onCookToday">今天做</view>
             <view class="myrecipes-btn myrecipes-btn-secondary" data-index="{{index}}" bindtap="onAddToMix">加入组餐</view>
           </view>

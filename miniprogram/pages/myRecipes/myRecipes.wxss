@@ -8,7 +8,7 @@
   color: var(--text);
 }
 
-/* ============ 头部：与首页 fridge-scan-entry / myrecipes-entry 一致 ============ */
+/* ============ 头部：与首页 feature-entry / myrecipes-entry 一致 ============ */
 .myrecipes-header-card {
   display: flex;
   align-items: center;

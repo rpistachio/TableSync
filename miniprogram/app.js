@@ -35,14 +35,10 @@ App({
   globalData: {
     // 跨页传递的偏好参数，供 menu/steps/shopping 使用
     preference: null,
-    // 灵感篮子：跨页面共享的当日备选池
-    inspirationBasket: [],
     // AI 主厨报告文本（reasoning）
     chefReportText: '',
     // AI 返回的每道菜选择理由
     dishHighlights: {},
-    // 最近一次生成时使用的篮子项，供 preview 页展示来源标签
-    lastBasketItems: [],
     // 云端菜谱同步状态
     cloudSyncState: {
       initialized: false,
@@ -154,9 +150,4 @@ App({
     cloudRecipeService.clearCache();
   },
 
-  /**
-   * 篮子变更通知（可选）：入篮/出篮页写入后调用，home 在 onShow 时注册、onHide 时注销，用于 .basket-bar 平滑更新
-   * @param {number} count - 当前篮子条数
-   */
-  onBasketChange: null
 });

@@ -1,4 +1,4 @@
-<view class="preview-page">
+<view class="preview-page {{isTiredMode ? 'preview-page-tired' : ''}} {{isHelperMode ? 'preview-page-helper' : ''}}">
   <view class="preview-page-scroll">
     <view class="preview-scroll-content">
       <view class="preview-header">
@@ -9,44 +9,49 @@
         <view class="preview-header-divider"></view>
       </view>
 
-      <scroll-view wx:if="{{previewDashboard.estimatedTime || previewDashboard.stoveCount > 0 || previewDashboard.categoryLabels}}" class="dashboard-bar" scroll-x enable-flex>
-        <view class="dash-item">
-          <text class="dash-value">{{previewDashboard.estimatedTime}}</text>
-        </view>
-        <view class="dash-item">
-          <text class="dash-value">{{previewDashboard.stoveCount}}火</text>
-        </view>
-        <view class="dash-item" wx:if="{{previewDashboard.categoryLabels}}">
-          <text class="dash-value">{{previewDashboard.categoryLabels}}</text>
-        </view>
+      <scroll-view wx:if="{{isHelperMode || previewDashboard.estimatedTime || previewDashboard.stoveCount > 0 || previewDashboard.categoryLabels}}" class="dashboard-bar" scroll-x enable-flex>
+        <block wx:if="{{isHelperMode}}">
+          <view class="dash-item dash-item-helper">
+            <text class="dash-value">上手难度：极简</text>
+          </view>
+        </block>
+        <block wx:else>
+          <view class="dash-item">
+            <text class="dash-value">{{previewDashboard.estimatedTime}}</text>
+          </view>
+          <view class="dash-item">
+            <text class="dash-value">{{previewDashboard.stoveCount}}火</text>
+          </view>
+          <view class="dash-item" wx:if="{{previewDashboard.categoryLabels}}">
+            <text class="dash-value">{{previewDashboard.categoryLabels}}</text>
+          </view>
+        </block>
       </scroll-view>
 
       <view class="preview-menu-header">
         <view class="preview-menu-titles">
-          <text class="preview-menu-label">今日菜单</text>
-          <text class="preview-menu-subtitle" wx:if="{{previewMenuSubtitle}}">{{previewMenuSubtitle}}</text>
-        </view>
-        <view class="preview-rhythm-inline" wx:if="{{previewRhythmRings.length > 0}}">
-          <view wx:for="{{previewRhythmRings}}" wx:key="name" class="preview-rhythm-chip">
-            <view class="preview-ring-svg-wrap">
-              <svg class="preview-ring-svg" viewBox="0 0 100 100">
-                <circle class="preview-ring-track" cx="50" cy="50" r="44"></circle>
-                <circle class="preview-ring-progress" cx="50" cy="50" r="44" stroke="{{item.color}}" stroke-dasharray="{{item.dashArray}}"></circle>
-              </svg>
-            </view>
-            <text class="preview-ring-label">{{item.name}}</text>
-          </view>
+          <text class="preview-menu-label">{{previewPageTitle}}</text>
         </view>
       </view>
-      <view class="preview-baby-hint" wx:if="{{previewHasBaby}}">下方标「宝宝」的为宝宝辅食</view>
-      <view class="preview-dish-list">
+      <view class="preview-baby-hint" wx:if="{{previewHasBaby && !isHelperMode}}">下方标「宝宝」的为宝宝辅食</view>
+
+      <block wx:if="{{isHelperMode}}">
+        <view class="helper-card-wrap">
+          <helper-card
+            mergedTitle="{{helperData.mergedTitle}}"
+            combinedPrepItems="{{helperData.combinedPrepItems}}"
+            combinedActions="{{helperData.combinedActions}}"
+            heartMessage="{{helperData.heartMessage}}"
+          />
+        </view>
+      </block>
+
+      <view wx:if="{{!isHelperMode}}" class="preview-dish-list">
         <view wx:for="{{previewMenuRows}}" wx:key="index" class="dish-card-wrap" data-index="{{index}}" bindtap="onCheckRow">
           <view class="dish-card-modern {{item.checked ? '' : 'is-unchecked'}} {{item.hasCover ? '' : 'no-cover'}}" style="animation-delay: {{index * 120}}ms">
             <image wx:if="{{item.hasCover && isImageReady && item.coverTempUrl}}" class="card-bg" src="{{item.coverTempUrl}}" mode="aspectFill" />
             <view class="card-overlay"></view>
-            <view class="basket-origin-badge" wx:if="{{item.fromBasket}}">
-              <text class="basket-origin-text">{{item.basketSourceLabel}}</text>
-            </view>
+            <view class="airfryer-tag" wx:if="{{isTiredMode && item.cookType === 'air_fryer'}}">空气炸锅</view>
             <view class="card-info">
               <view class="card-header">
                 <text class="dish-name">{{item.adultName}}</text>
@@ -64,9 +69,8 @@
   </view>
 
   <view class="preview-actions">
-    <button class="preview-btn preview-btn-basket" catchtap="onAddAllToBasket">加入灵感</button>
     <button class="preview-btn preview-btn-secondary" catchtap="handleSwapOptions">换菜</button>
     <button class="preview-btn preview-btn-ghost" open-type="share">发给别人</button>
-    <button class="preview-btn preview-btn-primary" catchtap="confirmAndGo">开始做饭</button>
+    <button wx:if="{{!isHelperMode}}" class="preview-btn preview-btn-primary" catchtap="confirmAndGo">{{previewPrimaryCta}}</button>
   </view>
 </view>

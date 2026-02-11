@@ -1,4 +1,6 @@
 {
-  "usingComponents": {},
+  "usingComponents": {
+    "sticker-drop": "/components/sticker-drop/sticker-drop"
+  },
   "navigationBarTitleText": "TableSync 家庭餐桌智能助手"
 }

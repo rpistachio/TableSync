@@ -564,7 +564,26 @@ exports.getTodayMenusByCombo = function (preference) {
           res = generator.generateMenu('quick_stir_fry', 'vegetable', babyMonth, false, adultCount, babyTaste, userPreference, menus, stewCountRef);
         }
       } else {
-        if (k > 0 && slot.meat === 'vegetable') {
+        // 当 isTimeSave 时，所有槽位都走 generateMenuWithFilters 以触发空气炸锅/凉拌逻辑
+        if (isTimeSave) {
+          var excludeNames = [];
+          for (var pi = 0; pi < k && excludeNames.length < 8; pi++) {
+            var rec = menus[pi].adultRecipe;
+            if (!rec || !Array.isArray(rec.ingredients)) continue;
+            for (var pj = 0; pj < rec.ingredients.length && excludeNames.length < 8; pj++) {
+              var ing = rec.ingredients[pj];
+              if (!ing || (ing.category && String(ing.category).trim() === '调料')) continue;
+              var nm = (ing.name && String(ing.name).trim()) || '';
+              if (nm && excludeNames.indexOf(nm) === -1) excludeNames.push(nm);
+            }
+          }
+          res = generator.generateMenuWithFilters(slot.meat, babyMonth, hasBabyThis, adultCount, babyTaste, {
+            excludeIngredients: excludeNames.length > 0 ? excludeNames : null,
+            userPreference: userPreference,
+            existingMenus: menus,
+            stewCountRef: stewCountRef
+          });
+        } else if (k > 0 && slot.meat === 'vegetable') {
           var excludeNames = [];
           for (var pi = 0; pi < k && excludeNames.length < 8; pi++) {
             var rec = menus[pi].adultRecipe;

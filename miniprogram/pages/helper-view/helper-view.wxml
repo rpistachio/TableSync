@@ -1,0 +1,18 @@
+<view class="helper-view-page">
+  <scroll-view class="helper-view-scroll" scroll-y>
+    <view class="helper-view-card-wrap" wx:if="{{loaded && mergedTitle}}">
+      <helper-card
+        mergedTitle="{{mergedTitle}}"
+        combinedPrepItems="{{combinedPrepItems}}"
+        combinedActions="{{combinedActions}}"
+        heartMessage="{{heartMessage}}"
+      />
+    </view>
+    <view class="helper-view-placeholder" wx:elif="{{loaded}}">
+      <text class="helper-view-placeholder-text">暂无任务</text>
+    </view>
+  </scroll-view>
+  <view class="helper-view-actions" wx:if="{{loaded && mergedTitle}}">
+    <button class="helper-view-btn-primary" catchtap="onConfirmStart">收到，准备开工</button>
+  </view>
+</view>

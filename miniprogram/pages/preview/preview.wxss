@@ -332,36 +332,6 @@
   color: #6b6662;
 }
 
-/* 篮子来源徽标 */
-.basket-origin-badge {
-  position: absolute;
-  left: 16rpx;
-  top: 16rpx;
-  display: inline-flex;
-  align-items: center;
-  padding: 4rpx 12rpx;
-  background: rgba(255, 255, 255, 0.82);
-  border-radius: 100rpx;
-  border: 1rpx solid rgba(0, 0, 0, 0.08);
-  z-index: 2;
-}
-
-.basket-origin-text {
-  font-size: 20rpx;
-  font-weight: 600;
-  color: var(--text);
-  line-height: 1.2;
-  white-space: nowrap;
-}
-
-.dish-card-modern.no-cover .basket-origin-badge {
-  background: rgba(255, 255, 255, 0.9);
-}
-
-.dish-card-modern.no-cover .basket-origin-text {
-  color: var(--text);
-}
-
 /* 未勾选：弱化显示 */
 .dish-card-modern.is-unchecked {
   opacity: 0.72;
@@ -413,13 +383,6 @@
   border: 1rpx solid rgba(0, 0, 0, 0.12);
 }
 
-/* 全员入篮：极简不抢主按钮（spec 11.2） */
-.preview-btn-basket {
-  color: var(--text-soft);
-  background: rgba(193, 102, 62, 0.08);
-  border: 1rpx solid rgba(193, 102, 62, 0.2);
-}
-
 .preview-btn-primary {
   flex: 1.2;
   color: #fff;
@@ -428,5 +391,37 @@
 
 .preview-btn:active {
   opacity: 0.9;
+}
+
+/* Zen Mode 状态差异化：疲惫模式冷色调 */
+.preview-page-tired {
+  background: linear-gradient(180deg, rgba(235, 240, 248, 0.4) 0%, var(--bg) 30%);
+}
+
+.preview-page-helper {
+  background: linear-gradient(180deg, rgba(253, 248, 236, 0.35) 0%, var(--bg) 25%);
+}
+
+.dash-item-helper .dash-value {
+  color: #5a9b6e;
+  font-weight: 600;
+}
+
+.airfryer-tag {
+  position: absolute;
+  top: 16rpx;
+  right: 16rpx;
+  padding: 6rpx 14rpx;
+  font-size: 20rpx;
+  font-weight: 500;
+  color: #2d7a3e;
+  background: rgba(76, 175, 80, 0.2);
+  border-radius: 100rpx;
+  border: 1rpx solid rgba(76, 175, 80, 0.35);
+  z-index: 2;
+}
+
+.helper-card-wrap {
+  margin: 0 32rpx 24rpx;
 }
 

@@ -54,6 +54,13 @@
   width: 100%;
   height: 140%;
   z-index: 0;
+  opacity: 1;
+  transition: opacity 0.4s ease-in-out;
+}
+
+/* Zen 背景淡入淡出：先 opacity→0 (0.4s)，换图后 opacity→1 (0.4s)，总计 0.8s */
+.home-main-bg.zen-bg-fading {
+  opacity: 0;
 }
 
 .home-main-overlay {
@@ -61,6 +68,12 @@
   inset: 0;
   background: linear-gradient(to bottom, rgba(253, 248, 242, 0.92) 0%, rgba(253, 248, 242, 0.6) 38%, rgba(253, 248, 242, 0.25) 70%, rgba(253, 248, 242, 0.1) 100%);
   z-index: 1;
+  transition: background 0.6s ease-in-out;
+}
+
+/* 疲惫模式：冷色调遮罩（治愈蓝紫调） */
+.home-main-overlay.overlay-tired {
+  background: linear-gradient(to bottom, rgba(235, 240, 248, 0.92) 0%, rgba(218, 228, 240, 0.65) 38%, rgba(200, 215, 232, 0.3) 70%, rgba(200, 215, 232, 0.12) 100%);
 }
 
 .home-main-content {
@@ -599,8 +612,8 @@
   font-weight: 500;
 }
 
-/* ============ 拍照清冰箱入口 ============ */
-.fridge-scan-entry {
+/* ============ 高级功能入口（今日灵感/导入/混合组餐/我的菜谱库） ============ */
+.feature-entry {
   display: flex;
   align-items: center;
   gap: 20rpx;
@@ -612,12 +625,12 @@
   transition: all 0.2s ease;
 }
 
-.fridge-scan-entry:active {
+.feature-entry:active {
   transform: scale(0.98);
   background: rgba(232, 168, 124, 0.12);
 }
 
-.fridge-scan-icon-wrap {
+.feature-icon-wrap {
   width: 72rpx;
   height: 72rpx;
   display: flex;
@@ -628,30 +641,30 @@
   flex-shrink: 0;
 }
 
-.fridge-scan-icon {
+.feature-icon {
   font-size: 36rpx;
 }
 
-.fridge-scan-text-wrap {
+.feature-text-wrap {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 6rpx;
 }
 
-.fridge-scan-title {
+.feature-title {
   font-size: 28rpx;
   font-weight: 600;
   color: #2d2d2d;
   letter-spacing: 1rpx;
 }
 
-.fridge-scan-desc {
+.feature-desc {
   font-size: 22rpx;
   color: #a09a94;
 }
 
-.fridge-scan-arrow {
+.feature-arrow {
   font-size: 36rpx;
   color: #c4bfb9;
   flex-shrink: 0;
@@ -699,114 +712,6 @@
 
 .myrecipes-icon-wrap {
   background: rgba(139, 119, 101, 0.15);
-}
-
-/* ============ 灵感篮子角标 ============ */
-.basket-badge {
-  min-width: 36rpx;
-  height: 36rpx;
-  padding: 0 10rpx;
-  border-radius: 100rpx;
-  background: #c1663e;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  margin-right: 8rpx;
-  box-shadow: 0 4rpx 12rpx rgba(193, 102, 62, 0.4);
-}
-
-.basket-badge-num {
-  font-size: 22rpx;
-  font-weight: 700;
-  color: #fff;
-  line-height: 1;
-}
-
-/* ============ 灵感篮子预览条 ============ */
-.basket-bar {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  margin: 24rpx 0 0;
-  padding: 24rpx 32rpx;
-  background: linear-gradient(135deg, rgba(193, 102, 62, 0.1) 0%, rgba(232, 168, 124, 0.06) 100%);
-  border-radius: 20rpx;
-  border: 1rpx solid rgba(193, 102, 62, 0.2);
-  transition: all 0.2s ease;
-}
-
-.basket-bar:active {
-  transform: scale(0.98);
-  background: rgba(193, 102, 62, 0.15);
-}
-
-.basket-bar-icon {
-  font-size: 32rpx;
-  flex-shrink: 0;
-}
-
-.basket-bar-text {
-  flex: 1;
-  font-size: 26rpx;
-  font-weight: 500;
-  color: #5a544f;
-}
-
-.basket-bar-arrow {
-  font-size: 32rpx;
-  color: #c4bfb9;
-  flex-shrink: 0;
-  font-weight: 300;
-}
-
-/* Phase C：历史推荐「再来一次？」卡片 */
-.history-hint-card {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8rpx 16rpx;
-  margin: 24rpx 0 0;
-  padding: 24rpx 28rpx;
-  background: linear-gradient(135deg, rgba(139, 119, 101, 0.08) 0%, rgba(139, 119, 101, 0.04) 100%);
-  border-radius: 20rpx;
-  border: 1rpx solid rgba(139, 119, 101, 0.2);
-  transition: all 0.2s ease;
-}
-
-.history-hint-card:active {
-  transform: scale(0.98);
-  background: rgba(139, 119, 101, 0.12);
-}
-
-.history-hint-title {
-  font-size: 26rpx;
-  font-weight: 600;
-  color: #5a544f;
-  flex-shrink: 0;
-}
-
-.history-hint-dishes {
-  font-size: 26rpx;
-  color: #2d2d2d;
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.history-hint-cta {
-  font-size: 22rpx;
-  color: #8e857e;
-  flex-shrink: 0;
-}
-
-.history-hint-arrow {
-  font-size: 28rpx;
-  color: #c4bfb9;
-  flex-shrink: 0;
-  font-weight: 300;
 }
 
 /* TableSync 品牌露出 */
@@ -1218,6 +1123,32 @@
   color: #2d2d2d;
 }
 
+/* ============ Zen Mode 核心指标文案 ============ */
+.zen-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16rpx 24rpx;
+  margin-top: 16rpx;
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(8rpx);
+  border-radius: 100rpx;
+  border: 1rpx solid rgba(0, 0, 0, 0.04);
+  animation: zenIndicatorIn 0.6s ease-out;
+}
+
+.zen-indicator-text {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #5a544f;
+  letter-spacing: 2rpx;
+}
+
+@keyframes zenIndicatorIn {
+  0% { opacity: 0; transform: translateY(8rpx); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
 .zen-advanced-link {
   color: #bbb;
   font-size: 24rpx;
@@ -1244,5 +1175,12 @@
 
 .zen-advanced-back-text {
   font-weight: 500;
+}
+
+.home-collection-entry {
+  margin-top: 24rpx;
+  font-size: 24rpx;
+  color: var(--text-muted);
+  letter-spacing: 2rpx;
 }
 

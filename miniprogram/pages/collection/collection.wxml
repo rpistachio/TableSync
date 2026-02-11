@@ -1,0 +1,15 @@
+<view class="collection-page">
+  <view class="collection-header">
+    <text class="collection-title">烟火集</text>
+    <text class="collection-desc">完成烹饪与分享，收集贴纸</text>
+  </view>
+  <view class="collection-grid">
+    <view wx:for="{{earnedList}}" wx:key="id" class="sticker-cell {{item.earned ? 'is-earned' : ''}}">
+      <view class="sticker-cell-inner">
+        <text class="sticker-cell-emoji">{{item.earned ? '✨' : '○'}}</text>
+        <text class="sticker-cell-name">{{item.name}}</text>
+        <text class="sticker-cell-desc">{{item.desc}}</text>
+      </view>
+    </view>
+  </view>
+</view>

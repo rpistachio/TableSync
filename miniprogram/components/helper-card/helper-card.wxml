@@ -1,0 +1,35 @@
+<view class="helper-card">
+  <view class="helper-card-inner">
+    <!-- v2026：合并托付语+菜名，全页唯一视觉重心 -->
+    <view class="helper-merged-title-wrap" wx:if="{{mergedTitle}}">
+      <text class="helper-merged-title">{{mergedTitle}}</text>
+    </view>
+
+    <!-- 帮我准备：合并食材 -->
+    <view class="helper-section helper-prep">
+      <text class="helper-section-title">帮我准备</text>
+      <view class="helper-prep-list">
+        <view wx:for="{{combinedPrepItems}}" wx:key="index" class="helper-prep-item">
+          <text class="helper-prep-name">{{item.name}}</text>
+          <text class="helper-prep-amount">{{item.amountDisplay}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 极简动作：合并步骤，多菜时显示 [菜名简称] -->
+    <view class="helper-section helper-action">
+      <text class="helper-section-title">极简动作</text>
+      <view class="helper-action-list">
+        <view wx:for="{{combinedActions}}" wx:key="index" class="helper-action-item">
+          <text class="helper-action-num">{{index + 1}}</text>
+          <text class="helper-action-text"><text wx:if="{{item.dishShortName}}" class="helper-action-prefix">[{{item.dishShortName}}] </text>{{item.text}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 底部话术 -->
+    <view class="helper-section helper-heart" wx:if="{{heartMessage}}">
+      <text class="helper-heart-text">{{heartMessage}}</text>
+    </view>
+  </view>
+</view>

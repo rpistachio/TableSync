@@ -1,0 +1,77 @@
+.collection-page {
+  min-height: 100vh;
+  background: var(--bg);
+  padding: 48rpx 32rpx 80rpx;
+}
+
+.collection-header {
+  text-align: center;
+  margin-bottom: 48rpx;
+}
+
+.collection-title {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 12rpx;
+}
+
+.collection-desc {
+  display: block;
+  font-size: 26rpx;
+  color: var(--text-muted);
+}
+
+.collection-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24rpx;
+  justify-content: center;
+}
+
+.sticker-cell {
+  width: calc(50% - 12rpx);
+  max-width: 320rpx;
+  padding: 32rpx 24rpx;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 24rpx;
+  border: 2rpx solid rgba(0, 0, 0, 0.06);
+}
+
+.sticker-cell.is-earned {
+  background: linear-gradient(135deg, rgba(253, 248, 236, 0.9) 0%, rgba(250, 242, 220, 0.8) 100%);
+  border-color: rgba(193, 102, 62, 0.2);
+}
+
+.sticker-cell-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.sticker-cell-emoji {
+  font-size: 56rpx;
+}
+
+.sticker-cell:not(.is-earned) .sticker-cell-emoji {
+  opacity: 0.35;
+}
+
+.sticker-cell-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sticker-cell:not(.is-earned) .sticker-cell-name {
+  color: var(--text-muted);
+}
+
+.sticker-cell-desc {
+  font-size: 22rpx;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.4;
+}

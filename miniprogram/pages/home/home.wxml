@@ -11,8 +11,14 @@
   </view>
 
   <view class="home-main">
-    <image wx:if="{{homeBgUrl}}" class="home-main-bg" src="{{homeBgUrl}}" mode="aspectFill" />
-    <view class="home-main-overlay"></view>
+    <!-- Zen Mode 全屏氛围背景层 -->
+    <image
+      wx:if="{{zenBgUrl || homeBgUrl}}"
+      class="home-main-bg {{zenBgFading ? 'zen-bg-fading' : ''}}"
+      src="{{zenBgUrl || homeBgUrl}}"
+      mode="aspectFill"
+    />
+    <view class="home-main-overlay {{cookStatus === 'tired' ? 'overlay-tired' : ''}}"></view>
     <view class="home-main-content">
       <!-- 今日氛围卡片（Phase 2 填充天气/问候） -->
       <view class="vibe-card">
@@ -29,18 +35,6 @@
 
         <view class="zen-toggle-group">
           <view class="zen-toggle-row">
-            <text class="zen-toggle-label">谁来做</text>
-            <view class="zen-toggle-track">
-              <view class="zen-toggle-item {{cookWho === 'self' ? 'is-active' : ''}}" data-value="self" bindtap="onToggleCookWho">
-                <text class="zen-toggle-text">自己做</text>
-              </view>
-              <view class="zen-toggle-item {{cookWho === 'ayi' ? 'is-active' : ''}}" data-value="ayi" bindtap="onToggleCookWho">
-                <text class="zen-toggle-text">别人做</text>
-              </view>
-            </view>
-          </view>
-
-          <view class="zen-toggle-row">
             <text class="zen-toggle-label">今天状态</text>
             <view class="zen-toggle-track">
               <view class="zen-toggle-item {{cookStatus === 'ok' ? 'is-active' : ''}}" data-value="ok" bindtap="onToggleCookStatus">
@@ -52,6 +46,11 @@
             </view>
           </view>
         </view>
+
+        <!-- Zen Mode 核心指标文案 -->
+        <view class="zen-indicator" wx:if="{{zenBgIndicator}}">
+          <text class="zen-indicator-text">{{zenBgIndicator}}</text>
+        </view>
       </view>
 
   <!-- ===== 高级功能入口（默认隐藏） ===== -->
@@ -61,94 +60,71 @@
     <text class="zen-advanced-back-text">返回禅模式</text>
   </view>
   <!-- 今日灵感入口 -->
-  <view class="fridge-scan-entry today-entry" bindtap="onGoSpinner">
-    <view class="fridge-scan-icon-wrap today-icon-wrap">
-      <text class="fridge-scan-icon">🎲</text>
+  <view class="feature-entry today-entry" bindtap="onGoSpinner">
+    <view class="feature-icon-wrap today-icon-wrap">
+      <text class="feature-icon">🎲</text>
     </view>
-    <view class="fridge-scan-text-wrap">
-      <text class="fridge-scan-title">今日灵感</text>
-      <text class="fridge-scan-desc">天气与时段智能推荐，灵感篮 AI 搭配晚餐</text>
+    <view class="feature-text-wrap">
+      <text class="feature-title">今日灵感</text>
+      <text class="feature-desc">天气与时段智能推荐</text>
     </view>
-    <!-- 灵感篮子角标 -->
-    <view class="basket-badge" wx:if="{{basketCount > 0}}">
-      <text class="basket-badge-num">{{basketCount}}</text>
-    </view>
-    <text class="fridge-scan-arrow">›</text>
+    <text class="feature-arrow">›</text>
   </view>
 
   <!-- 导入赛博菜谱入口（前置：与今日灵感并列） -->
-  <view class="fridge-scan-entry import-entry" bindtap="onGoImport">
-    <view class="fridge-scan-icon-wrap import-icon-wrap">
-      <text class="fridge-scan-icon">🔗</text>
+  <view class="feature-entry import-entry" bindtap="onGoImport">
+    <view class="feature-icon-wrap import-icon-wrap">
+      <text class="feature-icon">🔗</text>
     </view>
-    <view class="fridge-scan-text-wrap">
-      <text class="fridge-scan-title">导入赛博菜谱</text>
-      <text class="fridge-scan-desc">截图小红书/抖音菜谱，AI 秒变可执行食谱</text>
+    <view class="feature-text-wrap">
+      <text class="feature-title">导入赛博菜谱</text>
+      <text class="feature-desc">截图小红书/抖音菜谱，AI 秒变可执行食谱</text>
     </view>
-    <text class="fridge-scan-arrow">›</text>
-  </view>
-
-  <!-- 拍照清冰箱入口 -->
-  <view class="fridge-scan-entry" bindtap="onGoScan">
-    <view class="fridge-scan-icon-wrap">
-      <text class="fridge-scan-icon">📷</text>
-    </view>
-    <view class="fridge-scan-text-wrap">
-      <text class="fridge-scan-title">拍照清冰箱</text>
-      <text class="fridge-scan-desc">拍冰箱照片，AI 帮你搭配晚餐</text>
-    </view>
-    <text class="fridge-scan-arrow">›</text>
+    <text class="feature-arrow">›</text>
   </view>
 
   <!-- 混合组餐入口 -->
-  <view class="fridge-scan-entry mix-entry" bindtap="onGoMix">
-    <view class="fridge-scan-icon-wrap mix-icon-wrap">
-      <text class="fridge-scan-icon">🍳</text>
+  <view class="feature-entry mix-entry" bindtap="onGoMix">
+    <view class="feature-icon-wrap mix-icon-wrap">
+      <text class="feature-icon">🍳</text>
     </view>
-    <view class="fridge-scan-text-wrap">
-      <text class="fridge-scan-title">混合组餐</text>
-      <text class="fridge-scan-desc">自由搭配原生 + 导入菜谱，一键统筹做饭</text>
+    <view class="feature-text-wrap">
+      <text class="feature-title">混合组餐</text>
+      <text class="feature-desc">自由搭配原生 + 导入菜谱，一键统筹做饭</text>
     </view>
-    <text class="fridge-scan-arrow">›</text>
+    <text class="feature-arrow">›</text>
   </view>
 
   <!-- 我的菜谱库入口 -->
-  <view class="fridge-scan-entry myrecipes-entry" bindtap="onGoMyRecipes">
-    <view class="fridge-scan-icon-wrap myrecipes-icon-wrap">
-      <text class="fridge-scan-icon">📚</text>
+  <view class="feature-entry myrecipes-entry" bindtap="onGoMyRecipes">
+    <view class="feature-icon-wrap myrecipes-icon-wrap">
+      <text class="feature-icon">📚</text>
     </view>
-    <view class="fridge-scan-text-wrap">
-      <text class="fridge-scan-title">我的菜谱库</text>
-      <text class="fridge-scan-desc">过去做过的菜，今天继续做</text>
+    <view class="feature-text-wrap">
+      <text class="feature-title">我的菜谱库</text>
+      <text class="feature-desc">过去做过的菜，今天继续做</text>
     </view>
-    <text class="fridge-scan-arrow">›</text>
+    <text class="feature-arrow">›</text>
   </view>
   </block>
 
-  <!-- 灵感篮子预览条（篮子非空时显示） -->
-  <view class="basket-bar" wx:if="{{basketCount > 0}}" bindtap="onGoBasketPreview">
-    <text class="basket-bar-icon">🧺</text>
-    <text class="basket-bar-text">今日灵感篮 · {{basketCount}} 道备选</text>
-    <text class="basket-bar-arrow">›</text>
-  </view>
-
-  <!-- Phase C：历史推荐「再来一次？」（篮子为空且有 7 天内记录时显示） -->
-  <view class="history-hint-card" wx:if="{{basketCount === 0 && showHistoryHint && historyDishNames.length > 0}}" bindtap="onGoBasketPreview">
-    <text class="history-hint-title">再来一次？</text>
-    <text class="history-hint-dishes">{{historyDishNames[0]}}{{historyDishNames[1] ? '、' + historyDishNames[1] : ''}}{{historyDishNames[2] ? '、' + historyDishNames[2] : ''}}</text>
-    <text class="history-hint-cta">去看看 · 加入今日灵感篮</text>
-    <text class="history-hint-arrow">›</text>
-  </view>
-
   <!-- 更多高级功能入口（Zen 模式下显示） -->
   <view class="zen-advanced-link" wx:if="{{!showAdvanced}}" bindtap="onShowAdvanced">
-    <text>更多高级功能（扫描/导入）▾</text>
+    <text>更多高级功能（导入）▾</text>
   </view>
 
   <view class="home-brand" bindlongpress="onDebugSyncCloud">
     <view class="brand-line"></view>
     <text class="brand-text">TableSync</text>
   </view>
+  <view class="home-collection-entry" bindtap="onGoCollection">烟火集</view>
   </view>
   </view>
+
+  <sticker-drop
+    visible="{{showStickerDrop}}"
+    stickerName="{{stickerDropName}}"
+    stickerId="{{stickerDropId}}"
+    bindclose="onStickerDropClose"
+  />
 </view>

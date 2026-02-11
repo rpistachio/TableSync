@@ -190,8 +190,7 @@ var STORAGE_KEY = {
   SELECTED_DISH_NAME: 'selected_dish_name',
   TODAY_PREP_TIME: 'today_prep_time',
   TODAY_ALLERGENS: 'today_allergens',
-  SHOPPING_CHECKED_TODAY: 'tablesync_shopping_checked_today',
-  INSPIRATION_BASKET: 'inspiration_basket'
+  SHOPPING_CHECKED_TODAY: 'tablesync_shopping_checked_today'
 };
 
 // ==================== 导出 ====================

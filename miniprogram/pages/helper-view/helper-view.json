@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "今日任务",
+  "usingComponents": {
+    "helper-card": "/components/helper-card/helper-card"
+  }
+}

@@ -1,8 +1,6 @@
 // pages/import/import.js
 // 外部菜谱导入页 —— 截图上传 + AI 结构化提取 + 预览确认
 
-var basket = require('../../data/inspirationBasket.js');
-
 /** 烹饪方式中文映射 */
 var COOK_TYPE_LABELS = {
   'stir_fry': '炒/煎',
@@ -655,9 +653,6 @@ Page({
                 if (!recipe.coverUrl) {
                   wx.cloud.callFunction({ name: 'recipeCoverGen', data: { docId: docId } }).catch(function () {});
                 }
-                setTimeout(function () {
-                  if (that._pageAlive) that._promptAddToBasket(recipe);
-                }, 1500);
               },
               fail: function (err) {
                 console.warn('[import] 云数据库更新失败:', err);
@@ -682,9 +677,6 @@ Page({
                 if (!recipe.coverUrl && addRes._id) {
                   wx.cloud.callFunction({ name: 'recipeCoverGen', data: { docId: addRes._id } }).catch(function () {});
                 }
-                setTimeout(function () {
-                  if (that._pageAlive) that._promptAddToBasket(recipe);
-                }, 1500);
               },
               fail: function (err) {
                 console.warn('[import] 云数据库保存失败:', err);
@@ -705,10 +697,6 @@ Page({
               if (!recipe.coverUrl && addRes._id) {
                 wx.cloud.callFunction({ name: 'recipeCoverGen', data: { docId: addRes._id } }).catch(function () {});
               }
-              // 降级路径也提示投篮 (B-09)
-              setTimeout(function () {
-                if (that._pageAlive) that._promptAddToBasket(recipe);
-              }, 1500);
             },
             fail: function () {
               wx.hideLoading();
@@ -916,42 +904,6 @@ Page({
     list[idx + 1] = temp;
     list.forEach(function (item, i) { item.index = i; });
     this.setData({ editingSteps: list });
-  },
-
-  // ── 灵感篮子：保存后提示加入 ─────────────────────────────────
-
-  /**
-   * 保存成功后弹出 ActionSheet 询问是否加入灵感篮子
-   */
-  _promptAddToBasket: function (recipe) {
-    if (!recipe || !recipe.id) return;
-    var tracker = require('../../utils/tracker.js');
-    wx.showActionSheet({
-      itemList: ['加入今日灵感篮'],
-      success: function (res) {
-        if (res.tapIndex === 0) {
-          var raw = '';
-          try { raw = wx.getStorageSync(basket.STORAGE_KEY) || ''; } catch (e) { /* ignore */ }
-          var list = basket.parseBasket(raw);
-          var item = basket.createItem(recipe, 'imported', {
-            sourceDetail: recipe.sourcePlatform === 'xiaohongshu' ? '小红书导入' : (recipe.sourcePlatform === 'douyin' ? '抖音导入' : '导入菜谱'),
-            meta: { importPlatform: recipe.sourcePlatform || '' }
-          });
-          var newList = basket.addItem(list, item);
-          try {
-            wx.setStorageSync(basket.STORAGE_KEY, basket.serializeBasket(newList));
-            var todayKey = basket.getTodayDateKey();
-            wx.setStorageSync(basket.BASKET_DATE_KEY, todayKey);
-          } catch (e) { /* ignore */ }
-          // 同步到 globalData
-          var app = getApp();
-          if (app && app.globalData) app.globalData.inspirationBasket = newList;
-          if (app.onBasketChange) app.onBasketChange(newList.length);
-          wx.showToast({ title: '已加入灵感篮', icon: 'success' });
-          tracker.trackEvent('basket_add', { source: 'import', recipe_id: recipe.id, recipe_name: recipe.name || '' });
-        }
-      }
-    });
   },
 
   // ── 返回首页 ────────────────────────────────────────────────

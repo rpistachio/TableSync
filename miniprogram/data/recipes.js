@@ -3680,7 +3680,101 @@ var adultRecipes = [
       ]
     },
     "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/black_pepper_beef_cubes.png"
-  }
+  },
+
+  // ====== 空气炸锅替代菜谱 (is_airfryer_alt) ======
+  // 疲惫模式下的极简空气炸锅方案，含 ingredients + steps，保证 preview/shopping/steps 全链路可用
+  { id: 'af-chi-1', name: '空气炸锅蜜汁鸡翅', type: 'adult', meat: 'chicken', taste: 'quick_stir_fry', flavor_profile: 'sweet_sour', cook_type: 'air_fryer', prep_time: 5, cook_minutes: 18, is_baby_friendly: true, can_share_base: false, is_airfryer_alt: true, common_allergens: [], base_serving: 2, ingredients: [
+    { name: '鸡翅', baseAmount: 400, unit: 'g', category: '肉类' },
+    { name: '料酒', baseAmount: 0, unit: '适量', category: '调料' },
+    { name: '生抽', baseAmount: 0, unit: '适量', category: '调料' },
+    { name: '蜂蜜', baseAmount: 0, unit: '适量', category: '调料' },
+    { name: '姜片', baseAmount: 2, unit: '片', category: '调料' },
+    { name: '盐', baseAmount: 0, unit: '适量', category: '调料' }
+  ], steps: [
+    { text: '鸡翅洗净划刀，加料酒、生抽、蜂蜜、姜片、盐腌制约 10 分钟。' },
+    { text: '放入空气炸锅，180 度烤 18 分钟。' },
+    { text: '中途翻面一次，取出即可。' }
+  ] },
+  { id: 'af-chi-2', name: '空气炸锅盐焗鸡腿', type: 'adult', meat: 'chicken', taste: 'quick_stir_fry', flavor_profile: 'salty_umami', cook_type: 'air_fryer', prep_time: 3, cook_minutes: 20, is_baby_friendly: true, can_share_base: false, is_airfryer_alt: true, common_allergens: [], base_serving: 2, ingredients: [
+    { name: '鸡腿', baseAmount: 350, unit: 'g', category: '肉类' },
+    { name: '盐焗粉', baseAmount: 0, unit: '适量', category: '调料' },
+    { name: '姜片', baseAmount: 2, unit: '片', category: '调料' },
+    { name: '油', baseAmount: 0, unit: '少许', category: '调料' }
+  ], steps: [
+    { text: '鸡腿洗净，抹匀盐焗粉、姜片，腌 5 分钟。' },
+    { text: '放入空气炸锅，200 度 20 分钟。' },
+    { text: '中途翻面，取出即可。' }
+  ] },
+  { id: 'af-pork-1', name: '空气炸锅脆皮五花肉', type: 'adult', meat: 'pork', taste: 'quick_stir_fry', flavor_profile: 'salty_umami', cook_type: 'air_fryer', prep_time: 5, cook_minutes: 20, is_baby_friendly: false, can_share_base: false, is_airfryer_alt: true, common_allergens: [], base_serving: 2, ingredients: [
+    { name: '五花肉', baseAmount: 350, unit: 'g', category: '肉类' },
+    { name: '五香粉', baseAmount: 0, unit: '适量', category: '调料' },
+    { name: '盐', baseAmount: 0, unit: '适量', category: '调料' }
+  ], steps: [
+    { text: '五花肉切厚片，抹五香粉、盐，腌 5 分钟。' },
+    { text: '放入空气炸锅，200 度 20 分钟，中途翻面。' },
+    { text: '表面金黄脆皮后取出即可。' }
+  ] },
+  { id: 'af-pork-2', name: '空气炸锅蒜香排骨', type: 'adult', meat: 'pork', taste: 'quick_stir_fry', flavor_profile: 'salty_umami', cook_type: 'air_fryer', prep_time: 5, cook_minutes: 18, is_baby_friendly: true, can_share_base: false, is_airfryer_alt: true, common_allergens: [], base_serving: 2, ingredients: [
+    { name: '排骨', baseAmount: 350, unit: 'g', category: '肉类' },
+    { name: '蒜末', baseAmount: 0, unit: '适量', category: '调料' },
+    { name: '生抽', baseAmount: 0, unit: '适量', category: '调料' },
+    { name: '料酒', baseAmount: 0, unit: '适量', category: '调料' },
+    { name: '盐', baseAmount: 0, unit: '适量', category: '调料' }
+  ], steps: [
+    { text: '排骨加蒜末、生抽、料酒、盐腌制 10 分钟。' },
+    { text: '放入空气炸锅，190 度 18 分钟。' },
+    { text: '中途翻面，取出即可。' }
+  ] },
+  { id: 'af-beef-1', name: '空气炸锅黑椒牛肉粒', type: 'adult', meat: 'beef', taste: 'quick_stir_fry', flavor_profile: 'salty_umami', cook_type: 'air_fryer', prep_time: 5, cook_minutes: 15, is_baby_friendly: true, can_share_base: false, is_airfryer_alt: true, common_allergens: [], base_serving: 2, ingredients: [
+    { name: '牛肉', baseAmount: 300, unit: 'g', category: '肉类' },
+    { name: '黑胡椒', baseAmount: 0, unit: '适量', category: '调料' },
+    { name: '生抽', baseAmount: 0, unit: '适量', category: '调料' },
+    { name: '油', baseAmount: 0, unit: '少许', category: '调料' }
+  ], steps: [
+    { text: '牛肉切粒，加黑胡椒、生抽、油拌匀。' },
+    { text: '放入空气炸锅，200 度 15 分钟，中途翻动。' },
+    { text: '取出即可。' }
+  ] },
+  { id: 'af-fish-1', name: '空气炸锅香酥鳕鱼块', type: 'adult', meat: 'fish', taste: 'quick_stir_fry', flavor_profile: 'light', cook_type: 'air_fryer', prep_time: 5, cook_minutes: 15, is_baby_friendly: true, can_share_base: false, is_airfryer_alt: true, common_allergens: ['鱼'], base_serving: 2, ingredients: [
+    { name: '鳕鱼', baseAmount: 250, unit: 'g', category: '肉类' },
+    { name: '淀粉', baseAmount: 0, unit: '适量', category: '调料' },
+    { name: '盐', baseAmount: 0, unit: '适量', category: '调料' },
+    { name: '柠檬', baseAmount: 0, unit: '少许', category: '蔬菜' }
+  ], steps: [
+    { text: '鳕鱼切块，裹薄淀粉，撒盐。' },
+    { text: '放入空气炸锅，180 度 15 分钟。' },
+    { text: '取出挤柠檬汁即可。' }
+  ] },
+  { id: 'af-shrimp-1', name: '空气炸锅椒盐虾', type: 'adult', meat: 'shrimp', taste: 'quick_stir_fry', flavor_profile: 'salty_umami', cook_type: 'air_fryer', prep_time: 3, cook_minutes: 12, is_baby_friendly: true, can_share_base: false, is_airfryer_alt: true, common_allergens: ['虾'], base_serving: 2, ingredients: [
+    { name: '虾', baseAmount: 250, unit: 'g', category: '肉类' },
+    { name: '椒盐', baseAmount: 0, unit: '适量', category: '调料' },
+    { name: '料酒', baseAmount: 0, unit: '少许', category: '调料' }
+  ], steps: [
+    { text: '虾洗净剪须，加料酒、椒盐拌匀。' },
+    { text: '放入空气炸锅，200 度 12 分钟，中途翻动。' },
+    { text: '取出即可。' }
+  ] },
+  { id: 'af-veg-1', name: '空气炸锅蒜香杏鲍菇', type: 'adult', meat: 'vegetable', taste: 'quick_stir_fry', flavor_profile: 'salty_umami', cook_type: 'air_fryer', prep_time: 3, cook_minutes: 12, is_baby_friendly: true, can_share_base: true, is_airfryer_alt: true, common_allergens: [], base_serving: 2, ingredients: [
+    { name: '杏鲍菇', baseAmount: 300, unit: 'g', category: '蔬菜' },
+    { name: '蒜末', baseAmount: 0, unit: '适量', category: '调料' },
+    { name: '生抽', baseAmount: 0, unit: '适量', category: '调料' },
+    { name: '油', baseAmount: 0, unit: '少许', category: '调料' }
+  ], steps: [
+    { text: '杏鲍菇切条，加蒜末、生抽、油拌匀。' },
+    { text: '放入空气炸锅，180 度 12 分钟，中途翻动。' },
+    { text: '取出即可。' }
+  ] },
+  { id: 'af-veg-2', name: '空气炸锅孜然土豆块', type: 'adult', meat: 'vegetable', taste: 'quick_stir_fry', flavor_profile: 'spicy', cook_type: 'air_fryer', prep_time: 5, cook_minutes: 15, is_baby_friendly: false, can_share_base: true, is_airfryer_alt: true, common_allergens: [], base_serving: 2, ingredients: [
+    { name: '土豆', baseAmount: 400, unit: 'g', category: '蔬菜' },
+    { name: '孜然粉', baseAmount: 0, unit: '适量', category: '调料' },
+    { name: '盐', baseAmount: 0, unit: '适量', category: '调料' },
+    { name: '油', baseAmount: 0, unit: '少许', category: '调料' }
+  ], steps: [
+    { text: '土豆切块，加孜然、盐、油拌匀。' },
+    { text: '放入空气炸锅，200 度 15 分钟。' },
+    { text: '中途翻动，表面金黄取出即可。' }
+  ] }
 ];
 
 var babyRecipes = [

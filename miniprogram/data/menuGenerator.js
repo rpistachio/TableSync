@@ -1403,6 +1403,34 @@ function recipeUsesAnyIngredient(recipe, ingredientNames) {
 }
 
 /**
+ * 疲惫模式下的 timeSave 硬过滤（cook_minutes≤20 且 steps≤6）
+ * 提取为辅助函数，供空气炸锅逻辑降级时复用
+ * @param {Array} pool - 已过滤的菜谱池
+ * @param {Array} allRecipes - 全量菜谱（用于最小回退）
+ * @param {string} meatKey - 主料键
+ * @returns {Array} 过滤后的菜谱池
+ */
+function _applyTimeSaveFilter(pool, allRecipes, meatKey) {
+  var beforeTimeSave = pool.length;
+  var result = pool.filter(function (r) {
+    var cookOk = (typeof r.cook_minutes !== 'number') || r.cook_minutes <= 20;
+    var stepsOk = !Array.isArray(r.steps) || r.steps.length <= 6;
+    return cookOk && stepsOk;
+  });
+  if (result.length === 0 && beforeTimeSave > 0) {
+    // 最小回退：仅用同 meat 池再按硬条件筛一次（不破约束）
+    var fallbackPool = allRecipes.filter(function (r) { return r.meat === meatKey; });
+    if (meatKey === 'vegetable' && fallbackPool.length === 0) fallbackPool = allRecipes.filter(function (r) { return r.meat === 'vegetable'; });
+    result = fallbackPool.filter(function (r) {
+      var cookOk = (typeof r.cook_minutes !== 'number') || r.cook_minutes <= 20;
+      var stepsOk = !Array.isArray(r.steps) || r.steps.length <= 6;
+      return cookOk && stepsOk;
+    });
+  }
+  return result;
+}
+
+/**
  * 按口味/共用食材等补位筛选，并走三层：Pre-Filter → Stew 均衡 → Dynamic Scaling
  * @param {Object} filters.userPreference - { allergens/avoidList, dietary_preference/dietStyle }
  * @param {Array} filters.existingMenus - 已选菜单
@@ -1448,22 +1476,37 @@ function generateMenuWithFilters(meat, babyMonth, hasBaby, adultCount, babyTaste
   // ★ isTimeSave 最高优先级硬约束：cook_minutes≤20 且 steps≤6（spec 疲惫模式）
   var isTimeSave = (userPreference && (userPreference.isTimeSave === true || userPreference.is_time_save === true));
   if (isTimeSave && aPool.length > 0) {
-    var beforeTimeSave = aPool.length;
-    aPool = aPool.filter(function (r) {
-      var cookOk = (typeof r.cook_minutes !== 'number') || r.cook_minutes <= 20;
-      var stepsOk = !Array.isArray(r.steps) || r.steps.length <= 6;
-      return cookOk && stepsOk;
-    });
-    if (aPool.length === 0 && beforeTimeSave > 0) {
-      fallbackReason = 'time_save_filter_empty';
-      // 最小回退：仅用同 meat 池再按硬条件筛一次（不破约束）
-      var fallbackPool = currentAdultRecipes.filter(function (r) { return r.meat === meatKey; });
-      if (meatKey === 'vegetable' && fallbackPool.length === 0) fallbackPool = currentAdultRecipes.filter(function (r) { return r.meat === 'vegetable'; });
-      aPool = fallbackPool.filter(function (r) {
-        var cookOk = (typeof r.cook_minutes !== 'number') || r.cook_minutes <= 20;
-        var stepsOk = !Array.isArray(r.steps) || r.steps.length <= 6;
-        return cookOk && stepsOk;
+    // ★★ 2026 疲惫模式：荤槽 → 空气炸锅；素槽 → 凉拌菜，保证 preview 同时出现「空气炸锅菜 + 凉拌菜」
+    if (meatKey === 'vegetable') {
+      // 素菜槽：优先凉拌菜（cold_dress），免开火、极简
+      var coldDressPool = currentAdultRecipes.filter(function (r) {
+        return r.meat === 'vegetable' && (r.cook_type === 'cold_dress' || r.cook_type === 'cold');
       });
+      var filteredCold = coldDressPool.length > 0 ? preFilter(coldDressPool, userPreference) : [];
+      if (filteredCold.length > 0) {
+        aPool = filteredCold;
+      } else {
+        // 无凉拌菜或忌口过滤后为空，再走 timeSave 过滤（可能得到快手素菜或空气炸锅素）
+        aPool = _applyTimeSaveFilter(aPool, currentAdultRecipes, meatKey);
+        if (aPool.length === 0) fallbackReason = 'time_save_filter_empty';
+      }
+    } else {
+      // 荤槽：强制 is_airfryer_alt，优先空气炸锅/烤箱
+      var airfryerPool = currentAdultRecipes.filter(function (r) {
+        return r.meat === meatKey && r.is_airfryer_alt === true;
+      });
+      if (airfryerPool.length > 0) {
+        var filteredAirfryer = preFilter(airfryerPool, userPreference);
+        if (filteredAirfryer.length > 0) {
+          aPool = filteredAirfryer;
+        } else {
+          aPool = _applyTimeSaveFilter(aPool, currentAdultRecipes, meatKey);
+          if (aPool.length === 0) fallbackReason = 'time_save_filter_empty';
+        }
+      } else {
+        aPool = _applyTimeSaveFilter(aPool, currentAdultRecipes, meatKey);
+        if (aPool.length === 0) fallbackReason = 'time_save_filter_empty';
+      }
     }
   }
 
@@ -3057,6 +3100,159 @@ function getIngredientNames(list) {
   return list.map(function (it) { return typeof it === 'string' ? it : (it && (it.name != null ? it.name : it.ingredient != null ? it.ingredient : '')); }).filter(Boolean);
 }
 
+/**
+ * 菜名取极简简称（用于步骤前标识）：取后 2 字
+ */
+function _dishShortName(dishName) {
+  if (!dishName || typeof dishName !== 'string') return '';
+  var s = dishName.trim();
+  return s.length >= 2 ? s.slice(-2) : s;
+}
+
+/**
+ * 「别人做」纸条化交付（v2026）：合并托付语+菜名为一句，合并食材与步骤，多菜时步骤前加 [简称]
+ * @param {Array} menus - 今日菜单 [{ adultRecipe, babyRecipe, ... }]
+ * @param {Object} preference - 用户偏好（adultCount 等）
+ * @param {Array} shoppingList - 合并后的购物清单（可由 menuData.generateShoppingListFromMenus 生成）
+ * @returns {{ mergedTitle: string, combinedPrepItems: Array, combinedActions: Array<{text, dishShortName?}>, heartMessage: string }}
+ */
+function formatForHelper(menus, preference, shoppingList) {
+  var list = Array.isArray(shoppingList) ? shoppingList : [];
+  var warmPrompt = '辛苦啦，今晚想吃：';
+  var dishNames = [];
+  var combinedPrepItems = [];
+  var combinedActions = [];
+  var multiDish = false;
+
+  if (!Array.isArray(menus) || menus.length === 0) {
+    var defaultHeart = '按上面准备和步骤来就行，有问题随时叫我';
+    return {
+      mergedTitle: warmPrompt,
+      combinedPrepItems: [],
+      combinedActions: [],
+      heartMessage: defaultHeart
+    };
+  }
+
+  multiDish = menus.length > 1;
+
+  for (var i = 0; i < menus.length; i++) {
+    var menu = menus[i];
+    var adult = menu && menu.adultRecipe;
+    var baby = menu && menu.babyRecipe;
+    var dishName = (adult && adult.name) || (baby && baby.name) || '一道菜';
+    dishNames.push(dishName);
+    var shortName = _dishShortName(dishName);
+
+    var prepItems = [];
+    function addPrepFromList(ingList) {
+      if (!Array.isArray(ingList)) return;
+      for (var p = 0; p < ingList.length; p++) {
+        var it = ingList[p];
+        if (!it || (it.category || '') === '调料') continue;
+        var name = (it.name != null ? it.name : it.ingredient != null ? it.ingredient : '');
+        if (!name) continue;
+        var amountDisplay = (it.amount != null && it.amount !== '') ? it.amount : (function () {
+          var amt = it.baseAmount != null ? it.baseAmount : it.rawAmount;
+          var unit = (it.unit != null ? it.unit : '');
+          return (typeof amt === 'number' && amt > 0) ? (amt + (unit ? unit : '')) : (unit || '适量');
+        })();
+        prepItems.push({ name: name, amountDisplay: amountDisplay });
+      }
+    }
+    addPrepFromList(adult && adult.ingredients);
+    addPrepFromList(baby && baby.ingredients);
+    for (var pi = 0; pi < prepItems.length; pi++) combinedPrepItems.push(prepItems[pi]);
+
+    var singleSteps = generateSteps(adult || null, baby || null, list) || [];
+    for (var j = 0; j < singleSteps.length; j++) {
+      var t = (singleSteps[j].title || '').toString();
+      if (t) {
+        combinedActions.push({
+          text: t,
+          dishShortName: multiDish ? shortName : undefined
+        });
+      }
+    }
+    if (singleSteps.length === 0) {
+      combinedActions.push({
+        text: '按步骤操作即可',
+        dishShortName: multiDish ? shortName : undefined
+      });
+    }
+  }
+
+  var mergedTitle = warmPrompt + dishNames.join('、');
+
+  var isTired = (preference && (preference.isTimeSave === true || preference.is_time_save === true));
+  var heartMessage = isTired
+    ? '辛苦啦，剩下的交给机器，你去休息吧'
+    : '按上面准备和步骤来就行，有问题随时叫我';
+
+  return {
+    mergedTitle: mergedTitle,
+    combinedPrepItems: combinedPrepItems,
+    combinedActions: combinedActions,
+    heartMessage: heartMessage
+  };
+}
+
+/**
+ * 从 generateStepsFromRecipeIds 的 result 直接构建纸条数据，保证与分享进入的步骤一致（避免 preview 用 deserialize 的 slim 菜谱导致步骤占位）
+ * @param {{ steps: Array, menus: Array }} result - menuData.generateStepsFromRecipeIds 的返回值
+ * @param {Object} preference - 用户偏好
+ * @param {Array} shoppingList - 可选，若不传则用 generateShoppingListFromMenus(result.menus) 生成
+ * @returns {{ mergedTitle: string, combinedPrepItems: Array, combinedActions: Array, heartMessage: string }}
+ */
+function formatForHelperFromResult(result, preference, shoppingList) {
+  var warmPrompt = '辛苦啦，今晚想吃：';
+  var defaultHeart = '按上面准备和步骤来就行，有问题随时叫我';
+  if (!result || !Array.isArray(result.menus) || result.menus.length === 0) {
+    return { mergedTitle: warmPrompt, combinedPrepItems: [], combinedActions: [], heartMessage: defaultHeart };
+  }
+  var menus = result.menus;
+  var steps = Array.isArray(result.steps) ? result.steps : [];
+  var list = Array.isArray(shoppingList) ? shoppingList : [];
+  if (list.length === 0 && typeof require !== 'undefined') {
+    try {
+      var menuData = require('./menuData.js');
+      list = menuData.generateShoppingListFromMenus(preference || {}, menus) || [];
+    } catch (e) {}
+  }
+  var dishNames = menus.map(function (m) { return (m.adultRecipe && m.adultRecipe.name) || ''; }).filter(Boolean);
+  var mergedTitle = warmPrompt + dishNames.join('、');
+  var combinedPrepItems = [];
+  for (var si = 0; si < list.length; si++) {
+    var it = list[si];
+    if (!it || (it.category || '') === '调料') continue;
+    var name = (it.name != null ? it.name : it.ingredient != null ? it.ingredient : '');
+    if (!name) continue;
+    var amountDisplay = (it.amount != null && it.amount !== '') ? it.amount : (it.baseAmount != null ? (it.baseAmount + (it.unit || '')) : (it.unit || '适量'));
+    combinedPrepItems.push({ name: name, amountDisplay: amountDisplay });
+  }
+  var multiDish = menus.length > 1;
+  var combinedActions = [];
+  // 纸条「极简动作」只保留操作文案，去掉步骤页为大人端/宝宝端加上的 emoji 与标签前缀
+  var stripRolePrefix = function (str) {
+    if (!str || typeof str !== 'string') return '';
+    return str.replace(/^[\s\u{1F476}\u{1F468}\u2728]*/u, '').replace(/^(【大人端】|【宝宝端】)\s*[\u{1F525}\u23F3\u2728]?\s*/u, '').trim();
+  };
+  for (var i = 0; i < steps.length; i++) {
+    var s = steps[i];
+    var raw = (s.details && s.details[0] && String(s.details[0]).trim()) || (s.title && String(s.title).trim()) || '';
+    var text = stripRolePrefix(raw) || raw;
+    if (!text) continue;
+    combinedActions.push({
+      text: text,
+      dishShortName: multiDish && s.recipeName ? _dishShortName(s.recipeName) : undefined
+    });
+  }
+  if (combinedActions.length === 0) combinedActions.push({ text: '按步骤操作即可' });
+  var isTired = (preference && (preference.isTimeSave === true || preference.is_time_save === true));
+  var heartMessage = isTired ? '辛苦啦，剩下的交给机器，你去休息吧' : defaultHeart;
+  return { mergedTitle: mergedTitle, combinedPrepItems: combinedPrepItems, combinedActions: combinedActions, heartMessage: heartMessage };
+}
+
 /** 摊平并合并成人/宝宝食材，不按 category 或 meat 过滤，鱼虾等一律进入清单 */
 function generateShoppingListRaw(adultRecipe, babyRecipe) {
   var items = [];
@@ -3330,6 +3526,8 @@ module.exports = {
   generateMenuFromExternalRecipe: generateMenuFromExternalRecipe,
   linearFallback: linearFallback,
   generateMenuWithFilters: generateMenuWithFilters,
+  formatForHelper: formatForHelper,
+  formatForHelperFromResult: formatForHelperFromResult,
   getBabyVariantByAge: getBabyVariantByAge,
   checkFlavorBalance: checkFlavorBalance,
   generateSteps: generateSteps,

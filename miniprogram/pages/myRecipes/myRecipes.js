@@ -1,7 +1,6 @@
 // pages/myRecipes/myRecipes.js
 // 我的菜谱库 —— 导入历史管理，支持「今天继续做」与「加入组餐」
 
-var basket = require('../../data/inspirationBasket.js');
 var CACHE_KEY = 'imported_recipes_cache';
 
 /**
@@ -51,8 +50,7 @@ Page({
     recipeList: [],
     loading: true,
     empty: false,
-    fromMix: false,
-    basketIds: {}  // { recipeId: true } 用于追踪哪些菜谱已在篮子中
+    fromMix: false
   },
 
   onLoad: function (options) {
@@ -63,7 +61,6 @@ Page({
 
   onShow: function () {
     this._loadRecipes();
-    this._refreshBasketIds();
   },
 
   onPullDownRefresh: function () {
@@ -288,66 +285,6 @@ Page({
     } catch (e) {
       console.warn('[myRecipes] _removeFromLocalCache 失败:', e);
     }
-  },
-
-  /** 刷新篮子中的菜谱 ID 集合，用于 UI 心形状态判定 */
-  _refreshBasketIds: function () {
-    var raw = '';
-    try { raw = wx.getStorageSync(basket.STORAGE_KEY) || ''; } catch (e) { /* ignore */ }
-    var list = basket.parseBasket(raw);
-    var ids = {};
-    for (var i = 0; i < list.length; i++) {
-      if (list[i].id) ids[list[i].id] = true;
-    }
-    this.setData({ basketIds: ids });
-  },
-
-  /** 心形按钮：加入/移出灵感篮子 */
-  onToggleBasket: function (e) {
-    var idx = e.currentTarget.dataset.index;
-    var list = this.data.recipeList;
-    var recipe = list[idx];
-    if (!recipe) return;
-
-    var recipeId = recipe.id || recipe._id;
-    if (!recipeId) return;
-
-    var raw = '';
-    try { raw = wx.getStorageSync(basket.STORAGE_KEY) || ''; } catch (e2) { /* ignore */ }
-    var bList = basket.parseBasket(raw);
-
-    var newList;
-    var inBasket = basket.hasItem(bList, recipeId);
-    if (inBasket) {
-      newList = basket.removeItemById(bList, recipeId);
-      wx.showToast({ title: '已从灵感篮移除', icon: 'none' });
-    } else {
-      var item = basket.createItem(
-        { id: recipeId, name: recipe.name || '', sourcePlatform: recipe.sourcePlatform },
-        'imported',
-        {
-          sourceDetail: recipe.sourcePlatform === 'xiaohongshu' ? '小红书导入' : (recipe.sourcePlatform === 'douyin' ? '抖音导入' : '我的菜谱库'),
-          meta: { importPlatform: recipe.sourcePlatform || '' }
-        }
-      );
-      newList = basket.addItem(bList, item);
-      wx.showToast({ title: '已加入灵感篮', icon: 'success' });
-      try {
-        var tracker = require('../../utils/tracker.js');
-        tracker.trackEvent('basket_add', { source: 'myRecipes', recipe_id: recipeId, recipe_name: recipe.name || '' });
-      } catch (e4) { /* ignore */ }
-    }
-
-    try {
-      wx.setStorageSync(basket.STORAGE_KEY, basket.serializeBasket(newList));
-      wx.setStorageSync(basket.BASKET_DATE_KEY, basket.getTodayDateKey());
-    } catch (e3) { /* ignore */ }
-
-    var app = getApp();
-    if (app && app.globalData) app.globalData.inspirationBasket = newList;
-    if (app.onBasketChange) app.onBasketChange(newList.length);
-
-    this._refreshBasketIds();
   },
 
   onGoImport: function () {

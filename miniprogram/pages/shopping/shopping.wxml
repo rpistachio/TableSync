@@ -19,6 +19,10 @@
       </picker>
     </view>
 
+    <view wx:if="{{helperBannerText}}" class="helper-banner">
+      <text class="helper-banner-text">{{helperBannerText}}</text>
+    </view>
+
     <view wx:if="{{todayTips.length > 0}}" class="today-tips">
       <text wx:for="{{todayTips}}" wx:key="*this" class="today-tip-line">{{item}}</text>
     </view>
@@ -42,7 +46,7 @@
             <view class="list-row__body">
               <view class="name-amount-row">
                 <text class="list-row__name">{{row.name}}</text>
-                <text class="list-row__amount">{{row.amount}}</text>
+                <text class="list-row__amount">{{row.displayAmount != null ? row.displayAmount : row.amount}}</text>
               </view>
               <text wx:if="{{row.isShared}}" class="shared-tag">多菜共用</text>
               <text wx:if="{{row.hasExternalSource && !row.isShared}}" class="shared-tag external-tag">外部菜谱</text>
