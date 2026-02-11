@@ -30,14 +30,11 @@
 ```mermaid
 flowchart TD
   Home["home (Zen Mode)"]
-  Spinner["spinner (今日灵感)"]
   Preview["preview (菜单预览)"]
   Shopping["shopping (购物清单)"]
   Steps["steps (做菜步骤)"]
   Collection["collection (烟火集)"]
   Home -->|onZenGo| Preview
-  Home -->|onGoSpinner| Spinner
-  Spinner --> Preview
   Preview -->|自己做| Shopping
   Preview -->|别人做: 分享/发给帮手| Share["分享纸条"]
   Shopping --> Steps

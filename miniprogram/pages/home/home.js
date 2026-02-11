@@ -340,11 +340,6 @@ Page({
     this.setData({ showAdvanced: false });
   },
 
-  /** 跳转到「今天吃什么」Spinner 页 */
-  onGoSpinner: function () {
-    wx.navigateTo({ url: '/pages/spinner/spinner' });
-  },
-
   onGoImport: function () {
     wx.navigateTo({ url: '/pages/import/import' });
   },

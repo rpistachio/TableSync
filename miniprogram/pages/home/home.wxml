@@ -54,19 +54,7 @@
     <text class="zen-advanced-back-icon">‹</text>
     <text class="zen-advanced-back-text">返回禅模式</text>
   </view>
-  <!-- 今日灵感入口 -->
-  <view class="feature-entry today-entry" bindtap="onGoSpinner">
-    <view class="feature-icon-wrap today-icon-wrap">
-      <text class="feature-icon">🎲</text>
-    </view>
-    <view class="feature-text-wrap">
-      <text class="feature-title">今日灵感</text>
-      <text class="feature-desc">天气与时段智能推荐</text>
-    </view>
-    <text class="feature-arrow">›</text>
-  </view>
-
-  <!-- 导入赛博菜谱入口（前置：与今日灵感并列） -->
+  <!-- 导入赛博菜谱入口 -->
   <view class="feature-entry import-entry" bindtap="onGoImport">
     <view class="feature-icon-wrap import-icon-wrap">
       <text class="feature-icon">🔗</text>
