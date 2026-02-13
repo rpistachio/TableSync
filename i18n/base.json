@@ -1,0 +1,11 @@
+{
+	"ios": {
+		"name": "TableSync"
+	},
+	"android": {
+		"name": "TableSync"
+	},
+	"common": {
+		"name": "TableSync"
+	}
+}
