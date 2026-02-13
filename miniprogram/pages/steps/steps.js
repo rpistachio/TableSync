@@ -60,11 +60,8 @@ function segmentsToRichText(segments) {
   for (var i = 0; i < segments.length; i++) {
     var seg = segments[i];
     var escaped = escapeHtml(seg.text || '');
-    if (seg.strong) {
-      parts.push('\x3cspan style="font-weight:600;color:#333;"\x3e' + escaped + '\x3c/span\x3e');
-    } else {
-      parts.push('\x3cspan style="color:#666;"\x3e' + escaped + '\x3c/span\x3e');
-    }
+    // 统一样式，不再区分加粗与普通
+    parts.push('\x3cspan style="color:#5A544F;"\x3e' + escaped + '\x3c/span\x3e');
   }
   return parts.join('');
 }
@@ -458,10 +455,8 @@ function processStepsForView(steps) {
       phrases.forEach(function (phrase, idx) {
         var p = (phrase || '').toString().replace(/^[，、\s]+/, '').trim();
         if (!p) return;
-        var prefix = phrases.length > 1 ? getOrdinalPrefix(idx + 1) + ' ' : '';
-        var fullText = prefix + p;
         detailsWithSegments.push({
-          richText: segmentsToRichText(highlightSegments(fullText)),
+          richText: segmentsToRichText(highlightSegments(p)),
           isBabyPortion: isBaby && idx === 0
         });
       });
@@ -562,7 +557,7 @@ function buildRhythmRings(viewSteps, currentIndex) {
       ringStyle: '--ring-pct:' + pct + '%;'
     });
   }
-  return rings.slice(0, 3);
+  return rings;
 }
 
 function buildPipelineSteps(viewSteps, currentIndex) {
@@ -688,6 +683,10 @@ Page({
     isAyiMode: false,
     // 分享卡片进入（role=helper）：纯净执行页，展示食材清单、隐藏干扰按钮
     isHelperRole: false,
+    helperTitle: '',
+    helperHeaderBgUrl: '',
+    helperIngredientsList: [],
+    helperIngredientsExpanded: true,
     ingredientsList: [],
     ingredientsExpanded: true,
     // Zen Mode 疲惫模式（空气炸锅步骤可标注设备）
@@ -699,11 +698,17 @@ Page({
     stepsSyncError: '',
     // 贴纸掉落（即时奖励）
     showStickerDrop: false,
-    stickerDropQueue: []
+    stickerDropQueue: [],
+    // hero 折叠动画
+    heroCollapsed: false
   },
 
   onLoad: function (options) {
     var that = this;
+    // 重置缓存标记
+    this._staticDataSet = false;
+    this._lastProcessedStepsRef = null;
+    this._cachedViewSteps = null;
     var preference = getStepsPreference();
     var steps;
 
@@ -772,6 +777,14 @@ Page({
         }
         steps = menuData.generateSteps(ayiPref, { forceLinear: true });
         if (that._isHelperRole && result.menus && result.menus.length > 0) {
+          // 构建 helper 模式标题
+          var menuNames = result.menus.map(function (m) {
+            return (m.adultRecipe && m.adultRecipe.name) || '';
+          }).filter(Boolean);
+          that._helperTitle = menuNames.length > 0
+            ? '今晚做：' + menuNames.join('、')
+            : '帮忙做饭，步骤都准备好了';
+          that._helperIngredientsExpanded = true;
           var shopList = menuData.generateShoppingListFromMenus(ayiPref, result.menus) || [];
           that._helperIngredientsList = [];
           for (var si = 0; si < shopList.length; si++) {
@@ -881,6 +894,48 @@ Page({
     this._currentStepIndex = 0;
     this._updateView(steps);
     this._updateHeaderImage(steps, 0);
+
+    // 解析 hero 区背景图 cloud:// → 临时 HTTPS URL
+    if (that._isHelperRole) {
+      var helperBgCloudId = recipeResources.CLOUD_ROOT + '/background_pic/helper_step_background.png';
+      wx.cloud.getTempFileURL({
+        fileList: [helperBgCloudId],
+        success: function (res) {
+          if (res.fileList && res.fileList[0] && res.fileList[0].tempFileURL) {
+            that._helperHeaderBgUrl = res.fileList[0].tempFileURL;
+            that.setData({ helperHeaderBgUrl: that._helperHeaderBgUrl });
+          }
+        },
+        fail: function (err) {
+          console.warn('[steps] helper 背景图解析失败:', err);
+        }
+      });
+    } else if (!that._isAyiMode) {
+      // 自己做模式背景图 + hero 折叠动画
+      var selfBgCloudId = recipeResources.CLOUD_ROOT + '/background_pic/self_step_background.png';
+      wx.cloud.getTempFileURL({
+        fileList: [selfBgCloudId],
+        success: function (res) {
+          if (res.fileList && res.fileList[0] && res.fileList[0].tempFileURL) {
+            that._selfCookBgUrl = res.fileList[0].tempFileURL;
+            that.setData({ selfCookBgUrl: that._selfCookBgUrl });
+            // 背景图加载完成 → 1.8s 后自动折叠 hero
+            that._heroCollapseTimer = setTimeout(function () {
+              that.setData({ heroCollapsed: true });
+            }, 1800);
+          }
+        },
+        fail: function (err) {
+          console.warn('[steps] 自己做背景图解析失败:', err);
+        }
+      });
+      // 即使背景图未加载，也在 2.5s 后折叠（兜底）
+      that._heroCollapseFallbackTimer = setTimeout(function () {
+        if (!that.data.heroCollapsed) {
+          that.setData({ heroCollapsed: true });
+        }
+      }, 2500);
+    }
 
     // 只要出现「需联网获取」就自动触发一次同步并重试（不依赖用户点按钮）
     var isOfflineHint = Array.isArray(steps) && steps.length === 1 && (
@@ -1049,101 +1104,101 @@ Page({
   },
 
   _updateView: function (steps) {
-    // 入参容错：避免传入 null/undefined 时报错导致页面崩溃
-    if (!Array.isArray(steps)) {
-      steps = [];
-    }
-    var completedCount = steps.filter(function (s) { return s.completed; }).length;
-    var total = steps.length;
-    var progress = total === 0 ? 0 : Math.round((completedCount / total) * 100);
-    var currentLabel = total === 0 ? '暂无步骤' : '第 ' + Math.min(completedCount + 1, total) + '/' + total + ' 步';
+    // 入参容错
+    if (!Array.isArray(steps)) steps = [];
 
-    // 生成用于视图渲染的步骤数据（包含阶段信息）
-    var viewSteps = processStepsForView(steps);
+    // ── 缓存 viewSteps：只有步骤数组引用变化时才重跑耗时的 processStepsForView ──
+    var viewSteps;
+    if (steps === this._lastProcessedStepsRef && this._cachedViewSteps) {
+      viewSteps = this._cachedViewSteps;
+    } else {
+      viewSteps = processStepsForView(steps);
+      this._lastProcessedStepsRef = steps;
+      this._cachedViewSteps = viewSteps;
+    }
+
+    // ── 快速遍历一次：completedCount / hasPrepPhase / hasCookPhase / currentIndex ──
+    var total = steps.length;
+    var completedCount = 0;
+    var currentIndex = total > 0 ? total - 1 : 0;
+    var foundFirst = false;
     var hasPrepPhase = false;
     var hasCookPhase = false;
-    for (var i = 0; i < viewSteps.length; i++) {
-      if (viewSteps[i].stepType === 'prep') hasPrepPhase = true;
-      if (viewSteps[i].stepType === 'cook') hasCookPhase = true;
-    }
-
-    // 计算当前高亮步骤下标：优先第一个未完成，否则最后一个
-    var currentIndex = 0;
-    if (total > 0) {
-      currentIndex = -1;
-      for (var j = 0; j < steps.length; j++) {
-        if (!steps[j].completed) {
-          currentIndex = j;
-          break;
-        }
-      }
-      if (currentIndex === -1) {
-        currentIndex = total - 1;
-      }
+    for (var i = 0; i < total; i++) {
+      if (steps[i].completed) completedCount++;
+      else if (!foundFirst) { currentIndex = i; foundFirst = true; }
+      var st = viewSteps[i] ? viewSteps[i].stepType : '';
+      if (st === 'prep') hasPrepPhase = true;
+      if (st === 'cook') hasCookPhase = true;
     }
     this._currentStepIndex = currentIndex;
 
-    // 当前高亮步骤的阶段，用于顶部提示/样式
-    var currentPhase = '';
-    if (Array.isArray(viewSteps) && currentIndex >= 0 && currentIndex < viewSteps.length) {
-      currentPhase = viewSteps[currentIndex].phaseType || viewSteps[currentIndex].stepType || '';
+    var progress = total === 0 ? 0 : Math.round((completedCount / total) * 100);
+
+    // ── 同步 viewSteps 里的 completed 状态（steps 原数组 mutate 了 completed，viewSteps 需跟随） ──
+    for (var u = 0; u < viewSteps.length; u++) {
+      if (steps[u]) viewSteps[u].completed = steps[u].completed;
     }
 
-    // ---------- Cook Mode 聚焦数据 ----------
+    // ── 聚焦步骤 & 阶段 ──
     var currentStep = viewSteps[currentIndex] || {};
     var prevStep = currentIndex > 0 ? viewSteps[currentIndex - 1] : null;
     var nextStep = currentIndex < viewSteps.length - 1 ? viewSteps[currentIndex + 1] : null;
-
-    // 阶段标签
-    var currentPhaseLabel = '';
-    var currentPhaseType = currentPhase;
+    var currentPhase = currentStep.phaseType || currentStep.stepType || '';
     var phaseMap = { prep: '备菜', long_term: '炖煮', gap: '间隙利用', cook: '快炒', finish: '收尾' };
-    if (currentPhaseType && phaseMap[currentPhaseType]) {
-      currentPhaseLabel = phaseMap[currentPhaseType];
-    } else if (currentStep.phaseTitle) {
-      currentPhaseLabel = currentStep.phaseTitle;
-    }
+    var currentPhaseLabel = phaseMap[currentPhase] || currentStep.phaseTitle || '';
 
-    // 提取活跃并行任务（浮动条用），预计算 barWidthStyle 避免 WXML 内联表达式触发 CSS 校验并减少渲染时计算
+    // ── 并行任务 ──
     var activeParallelTasks = [];
+    var parallelTasks = [];
     for (var pt = 0; pt < viewSteps.length; pt++) {
       var vs = viewSteps[pt];
-      if (vs && vs.parallelContext && !vs.completed) {
-        var pct = vs.parallelContext.remainingMinutes != null ? Math.max(10, 100 - (vs.parallelContext.remainingMinutes / 60 * 100)) : 50;
-        activeParallelTasks.push({
-          stepId: vs.id,
-          activeTaskName: vs.parallelContext.activeTaskName || vs.parallelContext.hint || '',
-          remainingMinutes: vs.parallelContext.remainingMinutes,
-          hint: vs.parallelContext.hint,
-          progressPercent: pct,
-          barWidthStyle: 'width:' + pct + '%'
-        });
-      }
+      if (!vs || !vs.parallelContext || vs.completed) continue;
+      var pct = vs.parallelContext.remainingMinutes != null ? Math.max(10, 100 - (vs.parallelContext.remainingMinutes / 60 * 100)) : 50;
+      activeParallelTasks.push({
+        stepId: vs.id,
+        activeTaskName: vs.parallelContext.activeTaskName || vs.parallelContext.hint || '',
+        remainingMinutes: vs.parallelContext.remainingMinutes,
+        hint: vs.parallelContext.hint,
+        progressPercent: pct,
+        barWidthStyle: 'width:' + pct + '%'
+      });
+      parallelTasks.push({
+        stepId: vs.id,
+        activeTaskName: vs.parallelContext.activeTaskName,
+        remainingMinutes: vs.parallelContext.remainingMinutes,
+        hint: vs.parallelContext.hint
+      });
     }
 
-    // 副标题：当前菜名
     var subtitle = currentStep.recipeName || '跟随步骤，轻松完成美味';
-    var rhythmRings = buildRhythmRings(viewSteps, currentIndex);
-    var pipelineSteps = buildPipelineSteps(viewSteps, currentIndex);
     var secondaryHint = '';
     if (activeParallelTasks.length > 0) {
-      var firstTask = activeParallelTasks[0];
-      var hintName = firstTask.activeTaskName || firstTask.hint || '';
-      if (hintName) {
-        secondaryHint = hintName + (firstTask.remainingMinutes != null ? ' · ' + firstTask.remainingMinutes + ' 分钟' : '');
-      }
+      var ft = activeParallelTasks[0];
+      var hn = ft.activeTaskName || ft.hint || '';
+      if (hn) secondaryHint = hn + (ft.remainingMinutes != null ? ' · ' + ft.remainingMinutes + ' 分钟' : '');
     }
 
-    // 是否为「需联网获取步骤」的提示（仅一条且带 _isOfflineHint）
-    var showOfflineHint = steps.length === 1 && steps[0]._isOfflineHint === true;
+    var rhythmRings = buildRhythmRings(viewSteps, currentIndex);
+    var showOfflineHint = total === 1 && steps[0]._isOfflineHint === true;
 
-    this.setData({
+    // ── 时间轴统计（原 updateTimelineProgress 内联） ──
+    var longTermCount = 0, activeCount = 0, idlePrepCount = 0;
+    for (var ti = 0; ti < total; ti++) {
+      var at = steps[ti].actionType;
+      if (at === 'long_term') longTermCount++;
+      if (at === 'active') activeCount++;
+      if (at === 'idle_prep') idlePrepCount++;
+    }
+
+    // ── 合并为一次 setData ──
+    var payload = {
       steps: viewSteps,
       viewSteps: viewSteps,
       allViewSteps: viewSteps,
       progressPercentage: progress,
       progressBarStyle: 'width: ' + progress + '%',
-      currentStepLabel: currentLabel,
+      currentStepLabel: total === 0 ? '暂无步骤' : '第 ' + Math.min(completedCount + 1, total) + '/' + total + ' 步',
       currentStepIndexDisplay: Math.min(currentIndex + 1, total),
       completedCount: completedCount,
       totalSteps: total,
@@ -1152,29 +1207,52 @@ Page({
       showPrepPhase: hasPrepPhase,
       showCookPhase: hasCookPhase,
       currentPhase: currentPhase,
-      // Cook Mode 聚焦
       currentStep: currentStep,
       prevStep: prevStep,
       nextStep: nextStep,
       currentPhaseLabel: currentPhaseLabel,
-      currentPhaseType: currentPhaseType,
+      currentPhaseType: currentPhase,
       activeParallelTasks: activeParallelTasks,
       currentStepSubtitle: subtitle,
       rhythmRings: rhythmRings,
-      pipelineSteps: pipelineSteps,
       secondaryHint: secondaryHint,
-      isAyiMode: !!this._isAyiMode,
-      isTiredMode: (function () {
+      showOfflineHint: showOfflineHint,
+      currentStepDevice: (currentStep && currentStep.device) ? currentStep.device : '',
+      // 时间轴 & 并行（原 updateTimelineProgress + checkParallelCompletion 合并）
+      timelineProgress: {
+        totalSteps: total,
+        completedSteps: completedCount,
+        percentage: progress,
+        longTermCount: longTermCount,
+        activeCount: activeCount,
+        idlePrepCount: idlePrepCount
+      },
+      parallelTasks: parallelTasks
+    };
+
+    // 首次调用或步骤引用变化时才设置静态字段
+    if (!this._staticDataSet) {
+      payload.isAyiMode = !!this._isAyiMode;
+      payload.isHelperRole = !!this._isHelperRole;
+      payload.helperTitle = this._helperTitle || '';
+      payload.helperIngredientsList = this._helperIngredientsList || [];
+      payload.helperIngredientsExpanded = this._helperIngredientsExpanded !== false;
+      payload.helperHeaderBgUrl = this._helperHeaderBgUrl || '';
+      payload.selfCookBgUrl = this._selfCookBgUrl || '';
+      payload.isTiredMode = (function () {
         var p = getApp().globalData.preference || {};
         return p.isTimeSave === true || p.is_time_save === true || wx.getStorageSync('zen_cook_status') === 'tired';
-      })(),
-      currentStepDevice: (currentStep && currentStep.device) ? currentStep.device : '',
-      showOfflineHint: showOfflineHint
-    });
+      })();
+      // 自己做模式 hero 区菜名
+      if (!this._isHelperRole && !this._isAyiMode) {
+        var recipes = this._menuRecipes || [];
+        var names = recipes.map(function (r) { return r.name || ''; }).filter(Boolean);
+        if (names.length > 0) payload.selfCookDishNames = names.join(' · ');
+      }
+      this._staticDataSet = true;
+    }
 
-    // 刷新时间轴统计与并行任务列表
-    this.updateTimelineProgress(steps);
-    this.checkParallelCompletion(steps);
+    this.setData(payload);
   },
 
   /**
@@ -1439,7 +1517,7 @@ Page({
     var step = steps[idx];
     if (!step) return;
 
-    // 模拟 markCompleted 的逻辑
+    // 标记完成并持久化
     step.completed = true;
     var that = this;
     try {
@@ -1449,6 +1527,7 @@ Page({
       console.warn('保存步骤状态失败:', err);
     }
     this._updateView(steps);
+    this._updateHeaderImage(steps, this._currentStepIndex);
 
     // 检测缺料
     var missingResult = this.checkMissingIngredients();
@@ -1461,6 +1540,12 @@ Page({
     if (step.id === lastId) {
       this._onAllStepsCompleted();
     }
+  },
+
+  /** helper 模式食材清单折叠开关 */
+  toggleHelperIngredients: function () {
+    this._helperIngredientsExpanded = !this._helperIngredientsExpanded;
+    this.setData({ helperIngredientsExpanded: this._helperIngredientsExpanded });
   },
 
   /** 步骤列表 Bottom Sheet 开关 */
@@ -1595,10 +1680,9 @@ Page({
     } catch (err) {
       console.warn('保存步骤状态失败:', err);
     }
+    // 只调一次 _updateView（内部已包含时间轴 + 并行任务刷新），再更新头图
     this._updateView(steps);
-
-    // 根据最新进度，自动高亮下一步、滚动并刷新头图/阶段/并行提示
-    this.autoHighlightNextStep();
+    this._updateHeaderImage(steps, this._currentStepIndex);
 
     // 在用户开始执行步骤后检测是否存在缺料情况，必要时触发线性降级
     var missingResult = this.checkMissingIngredients();
@@ -1683,10 +1767,17 @@ Page({
     if (this._isAyiMode) {
       wx.setKeepScreenOn({ keepScreenOn: false });
     }
+    // 清理 hero 折叠定时器
+    if (this._heroCollapseTimer) { clearTimeout(this._heroCollapseTimer); }
+    if (this._heroCollapseFallbackTimer) { clearTimeout(this._heroCollapseFallbackTimer); }
   },
 
   onShareAppMessage: function () {
-    return { title: '今日家庭午餐 - 做菜步骤', path: '/pages/steps/steps' };
+    return {
+      title: '今日家庭午餐 - 做菜步骤',
+      path: '/pages/steps/steps',
+      imageUrl: 'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/background_pic/help_background.png'
+    };
   }
 });
 

@@ -23,9 +23,6 @@
       <text class="helper-banner-text">{{helperBannerText}}</text>
     </view>
 
-    <view wx:if="{{todayTips.length > 0}}" class="today-tips">
-      <text wx:for="{{todayTips}}" wx:key="*this" class="today-tip-line">{{item}}</text>
-    </view>
 
     <block wx:if="{{groupedTodayItems.length > 0}}">
       <view wx:for="{{groupedTodayItems}}" wx:key="category" class="category-card">

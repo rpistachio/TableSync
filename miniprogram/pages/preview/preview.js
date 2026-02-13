@@ -48,6 +48,7 @@ Page({
     previewRhythmRings: [],
     previewNarrativeText: '',
     previewMenuSubtitle: '',
+    professionalTalkBgUrl: '',
     isImageReady: false,
     isEntering: false,
     chefReportText: '',
@@ -58,15 +59,16 @@ Page({
     helperData: { mergedTitle: '', combinedPrepItems: [], combinedActions: [], heartMessage: '' },
     adultCount: 2,
     showPersonPicker: false,
+    shuffleBtnText: '换一换',
     avoidCapsules: [
-      { key: 'spicy', label: '今天不吃辣', active: false },
-      { key: 'seafood', label: '不要海鲜', active: false },
-      { key: 'peanut', label: '去掉花生', active: false },
-      { key: 'egg', label: '无蛋', active: false },
-      { key: 'soy', label: '无豆制品', active: false },
-      { key: 'beef_lamb', label: '无牛羊', active: false },
-      { key: 'lactose', label: '无乳制品', active: false },
-      { key: 'cilantro', label: '无香菜', active: false }
+      { key: 'spicy', label: '忌辣', active: false },
+      { key: 'seafood', label: '忌海鲜', active: false },
+      { key: 'peanut', label: '忌花生', active: false },
+      { key: 'egg', label: '忌蛋', active: false },
+      { key: 'soy', label: '忌豆制品', active: false },
+      { key: 'beef_lamb', label: '忌牛羊', active: false },
+      { key: 'lactose', label: '忌乳制品', active: false },
+      { key: 'cilantro', label: '忌香菜', active: false }
     ]
   },
 
@@ -91,7 +93,8 @@ Page({
     if (!title || title === '辛苦啦，今晚想吃：') title = '帮我做今晚的饭，步骤都准备好了';
     return {
       title: title,
-      path: '/pages/steps/steps?role=helper&recipeIds=' + encodeURIComponent(ids) + '&adultCount=' + adultCount + avoidParam
+      path: '/pages/steps/steps?role=helper&recipeIds=' + encodeURIComponent(ids) + '&adultCount=' + adultCount + avoidParam,
+      imageUrl: CLOUD_ROOT + '/background_pic/help_background.png'
     };
   },
 
@@ -326,6 +329,10 @@ Page({
       }
     }
 
+    // 营养师插图
+    var talkBgCloudId = CLOUD_ROOT + '/background_pic/professional_talk_background.png';
+    fileIds.push(talkBgCloudId);
+
     // 去重，避免重复请求
     var uniq = [];
     var seen = Object.create(null);
@@ -348,9 +355,13 @@ Page({
         return Object.assign({}, r, { coverTempUrl: tmp });
       });
 
+      // 营养师插图 URL
+      var talkUrl = tempMap[talkBgCloudId] || '';
+
       that.setData({
         previewMenuRows: newRows,
-        isImageReady: true
+        isImageReady: true,
+        professionalTalkBgUrl: talkUrl
       });
 
       // 同步回 globalData：确保后续页面/逻辑读到的是可渲染的 URL
@@ -875,8 +886,97 @@ Page({
   onChangeAdultCount: function (e) {
     var val = parseInt(e.currentTarget.dataset.value, 10);
     if (isNaN(val) || val < 1 || val > 4) return;
+    var oldCount = this.data.adultCount;
     this.setData({ adultCount: val, showPersonPicker: false });
-    this._recalcWithPreference();
+
+    // 判断菜品道数是否因人数变化而需要调整
+    var isTired = this.data.isTiredMode;
+    var oldDish = this._computeDishCounts(oldCount, isTired);
+    var newDish = this._computeDishCounts(val, isTired);
+    var needRegenerate = (oldDish.meatCount !== newDish.meatCount || oldDish.vegCount !== newDish.vegCount);
+
+    if (needRegenerate) {
+      // 菜品道数变化 → 重新生成整桌菜单
+      this._regenerateMenuForNewCounts(newDish.meatCount, newDish.vegCount);
+    } else {
+      // 道数不变 → 仅缩放食材份量
+      this._recalcWithPreference();
+    }
+  },
+
+  /** 根据新荤/素道数重新生成菜单 */
+  _regenerateMenuForNewCounts: function (meatCount, vegCount) {
+    var that = this;
+    try {
+      var menuService = require('../../data/menuData.js');
+      var payload = getApp().globalData.menuPreview;
+      var pref = Object.assign(
+        {},
+        payload && payload.preference ? payload.preference : that._defaultPreference(),
+        { adultCount: that.data.adultCount, avoidList: that._getActiveAvoidList(), meatCount: meatCount, vegCount: vegCount }
+      );
+      // 排除当前菜品，尽量保证新鲜感
+      var currentNames = (that.data.previewMenuRows || []).map(function (r) { return r.adultName || ''; }).filter(Boolean);
+      if (currentNames.length > 0) pref.excludeRecipeNames = currentNames;
+      var result = menuService.getTodayMenusByCombo(pref);
+      var rawMenus = result.menus || result;
+      var hasBaby = pref.hasBaby === true;
+      if (!hasBaby) rawMenus.forEach(function (m) { m.babyRecipe = null; });
+      var newMenus = rawMenus.map(function (m) { return Object.assign({}, m, { checked: true }); });
+      var newRows = [];
+      for (var idx = 0; idx < newMenus.length; idx++) {
+        var m = newMenus[idx];
+        var ar = m.adultRecipe;
+        var adultName = (ar && ar.name) ? ar.name : '—';
+        var stage = hasBaby && menuData.getBabyVariantByAge && menuData.getBabyVariantByAge(ar, pref.babyMonth);
+        var babyName = hasBaby ? ((stage && stage.name) || (m.babyRecipe && m.babyRecipe.name) || '') : '';
+        var reason = (ar && ar.recommend_reason) ? ar.recommend_reason : '';
+        newRows.push({
+          adultName: adultName,
+          babyName: babyName,
+          showSharedHint: hasBaby && babyName && idx === 0,
+          checked: true,
+          recommendReason: reason,
+          sameAsAdultHint: (stage && stage.same_as_adult_hint) ? '与大人同款，分装即可' : '',
+          cookType: (ar && ar.cook_type) || '',
+          coverUrl: coverService.getRecipeCoverImageUrl(adultName),
+          coverTempUrl: '',
+          hasCover: !!coverService.RECIPE_NAME_TO_SLUG[adultName]
+        });
+      }
+      var dashboard = that._computePreviewDashboard(newMenus, pref);
+      var hasSharedBase = newRows.some(function (r) { return r.showSharedHint; });
+      var tips = that._buildPreviewTips(dashboard, hasSharedBase, '', that.data.previewFallbackMessage);
+      if (getApp().globalData.menuPreview) {
+        getApp().globalData.menuPreview.menus = newMenus;
+        getApp().globalData.menuPreview.rows = newRows;
+        getApp().globalData.menuPreview.preference = pref;
+        getApp().globalData.menuPreview.dashboard = dashboard;
+        getApp().globalData.menuPreview.hasSharedBase = hasSharedBase;
+        getApp().globalData.menuPreview.comboName = result.comboName || '';
+      }
+      getApp().globalData.preference = pref;
+      getApp().globalData.todayMenus = newMenus;
+      that._fullPreviewMenus = newMenus;
+      that.setData({
+        previewMenuRows: newRows,
+        previewComboName: result.comboName || (meatCount + '荤' + vegCount + '素' + (pref.soupCount ? '1汤' : '')),
+        previewDashboard: dashboard,
+        previewHasSharedBase: hasSharedBase,
+        previewHasBaby: hasBaby,
+        previewRhythmRings: that.data.isHelperMode ? [] : that._buildPreviewRhythmRings(newMenus),
+        previewNarrativeText: that._buildNarrativeText(dashboard, ''),
+        previewMenuSubtitle: that.data.isHelperMode ? '' : that._buildMenuSubtitle(newRows),
+        previewTips: tips,
+        isImageReady: false,
+        chefReportText: ''
+      }, function () { if (that._pageReady) that._resolvePreviewImages(); });
+      wx.showToast({ title: val + '人份，已调整菜品', icon: 'none' });
+    } catch (e) {
+      console.error('_regenerateMenuForNewCounts failed:', e);
+      // 降级：至少做份量缩放
+      that._recalcWithPreference();
+    }
   },
 
   onTogglePersonPicker: function () {

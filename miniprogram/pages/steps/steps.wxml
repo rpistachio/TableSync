@@ -1,18 +1,34 @@
 <view class="steps-container cook-mode {{isAyiMode ? 'ayi-mode' : ''}} {{isHelperRole ? 'helper-role' : ''}}">
   <!-- 执行者模式：顶部唯一标题 + 可折叠食材准备 -->
   <view wx:if="{{isHelperRole && helperTitle}}" class="helper-role-header">
-    <text class="helper-role-title">{{helperTitle}}</text>
-    <view wx:if="{{helperIngredientsList.length > 0}}" class="helper-ingredients-panel">
-      <view class="helper-ingredients-head" bindtap="toggleHelperIngredients">
-        <text class="helper-ingredients-label">食材准备</text>
-        <text class="helper-ingredients-toggle">{{helperIngredientsExpanded ? '收起' : '展开'}}</text>
-      </view>
-      <view wx:if="{{helperIngredientsExpanded}}" class="helper-ingredients-list">
-        <view wx:for="{{helperIngredientsList}}" wx:key="name" class="helper-ingredient-item">
-          <text class="helper-ingredient-name">{{item.name}}</text>
-          <text class="helper-ingredient-amount">{{item.amount}}</text>
+    <!-- 方案5：背景插画 + 渐变遮罩 -->
+    <image wx:if="{{helperHeaderBgUrl}}" class="helper-header-bg" src="{{helperHeaderBgUrl}}" mode="aspectFill" />
+    <view class="helper-header-mask"></view>
+    <view class="helper-header-content">
+      <text class="helper-role-title">{{helperTitle}}</text>
+      <view wx:if="{{helperIngredientsList.length > 0}}" class="helper-ingredients-panel">
+        <view class="helper-ingredients-head" bindtap="toggleHelperIngredients">
+          <text class="helper-ingredients-label">食材准备</text>
+          <text class="helper-ingredients-toggle">{{helperIngredientsExpanded ? '收起' : '展开'}}</text>
+        </view>
+        <view wx:if="{{helperIngredientsExpanded}}" class="helper-ingredients-list">
+          <view wx:for="{{helperIngredientsList}}" wx:key="name" class="helper-ingredient-item">
+            <text class="helper-ingredient-name">{{item.name}}</text>
+            <text class="helper-ingredient-amount">{{item.amount}}</text>
+          </view>
         </view>
       </view>
+    </view>
+  </view>
+
+  <!-- 自己做模式：氛围 hero + 背景插画（展开→折叠动画） -->
+  <view wx:if="{{!isHelperRole && !isAyiMode && selfCookDishNames}}" class="self-cook-hero {{heroCollapsed ? 'is-collapsed' : ''}}">
+    <image wx:if="{{selfCookBgUrl}}" class="self-cook-hero-bg" src="{{selfCookBgUrl}}" mode="aspectFill" />
+    <view class="self-cook-hero-mask"></view>
+    <view class="self-cook-hero-content">
+      <text class="self-cook-greeting">今日菜单</text>
+      <text class="self-cook-dishes">{{selfCookDishNames}}</text>
+      <text class="self-cook-encourage">共 {{totalSteps}} 步，跟着走就好</text>
     </view>
   </view>
 
@@ -128,26 +144,6 @@
       <text class="peek-label">下一步</text>
       <text class="peek-text">{{nextStep.title}}</text>
     </view>
-  </view>
-
-  <!-- 底部流水线预览 -->
-  <view wx:if="{{!isAyiMode && pipelineSteps.length > 0}}" class="pipeline-preview">
-    <view class="pipeline-header">
-      <text class="pipeline-title">流水线预览</text>
-      <text class="pipeline-sub">{{completedCount}}/{{totalSteps}} 已完成</text>
-    </view>
-    <scroll-view scroll-x class="pipeline-scroll" enhanced show-scrollbar="{{false}}">
-      <view class="pipeline-row">
-        <view
-          wx:for="{{pipelineSteps}}"
-          wx:key="id"
-          class="pipeline-block {{item.isCompleted ? 'is-completed' : ''}} {{item.isCurrent ? 'is-current' : ''}}"
-        >
-          <text class="pipeline-label">{{item.shortTitle}}</text>
-          <view wx:if="{{item.isCompleted}}" class="pipeline-sticker">完成</view>
-        </view>
-      </view>
-    </scroll-view>
   </view>
 
   <!-- 底部操作栏 -->

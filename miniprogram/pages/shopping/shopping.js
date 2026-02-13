@@ -66,7 +66,6 @@ Page({
     todayPrepTime: 0,
     todayAllergens: [],
     todayAllergensText: '',
-    todayTips: [],
     heroCoverImage: '',
     isHelperMode: false,
     isTiredMode: false,
@@ -188,11 +187,7 @@ Page({
       } else {
         item.fromRecipesText = '';
       }
-      if (isTiredMode && (item.category || '') === '调料') {
-        item.displayAmount = '按包装说明';
-      } else {
-        item.displayAmount = item.amount;
-      }
+      item.displayAmount = item.amount;
     });
 
     var sortMode = this.data.sortMode;
@@ -207,16 +202,9 @@ Page({
 
     var groupedToday = groupByCategory(todayItems);
 
-    var hasFish = todayItems.some(function (it) { return (it.name || '').indexOf('鱼') !== -1; });
-    var hasShrimp = todayItems.some(function (it) { return (it.name || '').indexOf('虾') !== -1; });
-    var todayTips = [];
-    if (hasFish) todayTips.push('记得让摊主处理好内脏和鱼鳞');
-    if (hasShrimp) todayTips.push('可选冷冻虾仁或鲜虾');
-
     this.setData({
       todayItems: todayItems,
       groupedTodayItems: groupedToday,
-      todayTips: todayTips,
       isHelperMode: isHelperMode,
       isTiredMode: isTiredMode,
       helperBannerText: helperBannerText

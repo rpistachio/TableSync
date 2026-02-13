@@ -3,7 +3,6 @@ var menuData = require('../../data/menuData.js');
 var menuGen = require('../../data/menuGenerator.js');
 var recipeCoverSlugs = require('../../data/recipeCoverSlugs.js');
 var vibeGreeting = require('../../utils/vibeGreeting.js');
-var locationWeather = require('../../utils/locationWeather.js');
 
 function getCurrentDate() {
   var d = new Date();
@@ -30,7 +29,6 @@ Page({
 
     return {
       currentDate: getCurrentDate(),
-      vibeWeather: '',
       vibeGreeting: vibeGreeting.pickGreeting(null),
       showAdvanced: false,
       cookWho: 'self',
@@ -82,17 +80,6 @@ Page({
     });
 
     var that = this;
-    // 延后天气请求，避免阻塞首屏渲染
-    setTimeout(function () {
-      locationWeather.getWeather().then(function (weather) {
-        var greeting = vibeGreeting.pickGreeting(weather);
-        var weatherStr = '';
-        if (weather && (weather.temp || weather.text)) {
-          weatherStr = [weather.temp, weather.text].filter(Boolean).join(' ');
-        }
-        that.setData({ vibeGreeting: greeting, vibeWeather: weatherStr });
-      }).catch(function () {});
-    }, 0);
   },
 
   onShow: function () {

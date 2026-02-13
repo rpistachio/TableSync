@@ -77,11 +77,6 @@
   color: var(--text-soft);
 }
 
-.vibe-weather {
-  font-size: 24rpx;
-  color: var(--text-muted);
-}
-
 .vibe-greeting {
   font-size: 28rpx;
   font-weight: 500;

@@ -78,7 +78,7 @@ flowchart TD
 
 - **移除**：home 页 Zen 面板下原「效率提升 +42%」（心情还好）与「空气炸锅模式 · 极致减负」（疲惫）文案。
 - **实现**：删除 `home.js` 中 `zenBgIndicator` 的 data 与 `_updateZenBackground` 内所有 setData；删除 `home.wxml` 中 `zen-indicator` 节点；删除 `home.wxss` 中 `.zen-indicator` 相关样式。
-- **填补**：首页 vibe 卡片沿用「今日日期 + 问候语」。问候语接入 `utils/vibeGreeting.js` 与 `utils/locationWeather.js`：`onLoad` 中异步调用 `locationWeather.getWeather()`，用 `vibeGreeting.pickGreeting(weather)` 更新 `vibeGreeting`，并将天气摘要写入 `vibeWeather`（如「12°C 小雨」）；无天气时 `pickGreeting(null)` 仍返回时段问候，体验不退化。
+- **填补**：首页 vibe 卡片沿用「今日日期 + 问候语」。问候语仅使用 `utils/vibeGreeting.js` 的 `vibeGreeting.pickGreeting(null)`（时段问候），不再接入天气；已移除 `utils/locationWeather.js` 及首页天气展示，并移除 app.json 中的定位/天气相关权限与 `requiredPrivateInfos`。
 
 ### 5.2 统筹预览公共模块
 
@@ -105,9 +105,9 @@ flowchart TD
 
 | 文件 | 改动摘要 |
 |------|----------|
-| miniprogram/pages/home/home.js | 移除 zenBgIndicator；接入 vibeGreeting + locationWeather，onLoad 异步更新问候与天气。 |
-| miniprogram/pages/home/home.wxml | 删除 zen-indicator 节点。 |
-| miniprogram/pages/home/home.wxss | 删除 .zen-indicator 相关样式。 |
+| miniprogram/pages/home/home.js | 移除 zenBgIndicator；仅使用 vibeGreeting.pickGreeting(null)，已移除 locationWeather 与天气展示。 |
+| miniprogram/pages/home/home.wxml | 删除 zen-indicator 节点；后续移除 vibe-weather 节点（见 §11.5）。 |
+| miniprogram/pages/home/home.wxss | 删除 .zen-indicator 相关样式；后续删除 .vibe-weather（见 §11.5）。 |
 | miniprogram/utils/scheduleEngine.js | 新建；computeSchedulePreview、DEVICE_LABELS；炖/蒸阶段 noWatch。 |
 | miniprogram/pages/mix/mix.js | 引用 scheduleEngine，删除重复常量与函数。 |
 | miniprogram/pages/preview/preview.js | 引用 scheduleEngine；data.schedulePreview；_computePreviewDashboard 内计算并挂 schedulePreview；6 处 setData 追加 schedulePreview。 |
@@ -440,3 +440,47 @@ flowchart TD
 | miniprogram/pages/steps/steps.wxss | 旧色→变量（含 rhythm-ring、focus-card、pipeline 等）。 |
 | miniprogram/pages/myRecipes/myRecipes.wxss | 按钮阴影色值统一。 |
 | miniprogram/pages/helper-view/helper-view.wxss | 主按钮背景改为 var(--accent)。 |
+
+### 11.5 2026-02-13 变更（去天气、预览/步骤/购物体验与性能）
+
+- **首页与权限**
+  - 移除天气能力：删除 `miniprogram/utils/locationWeather.js`、`miniprogram/pages/home/locationWeather.js`；home 不再请求定位与云函数 getWeather，移除 `vibeWeather`、vibe-weather 节点与 `.vibe-weather` 样式；问候仅用 `vibeGreeting.pickGreeting(null)`。
+  - app.json：移除 `permission.scope.userLocation`、`requiredPrivateInfos.getLocation`。
+- **预览页 (preview)**
+  - 营养师区：头部增加营养师插图 `professional_talk_background.png`（云存储），布局为插图 + 文字区 `.preview-header-text-body`。
+  - 忌口胶囊：文案简写（如「今天不吃辣」→「忌辣」）；`.preview-avoid-bar` 改为 `flex-wrap` 非横向滚动；胶囊样式缩小、柔和。
+  - 人数变更逻辑：`onChangeAdultCount` 中按 `_computeDishCounts` 比较新旧荤/素道数；若道数变化则 `_regenerateMenuForNewCounts(meatCount, vegCount)` 重新生成整桌菜单并排除当前菜名，否则仅 `_recalcWithPreference()` 缩放份量。
+  - 分享：`onShareAppMessage` 增加 `imageUrl`（help_background.png）。
+- **步骤页 (steps)**
+  - Helper 模式：顶部区增加背景图 `helper_step_background.png` + 渐变遮罩；`helperTitle` 构建为「今晚做：A、B、C」。
+  - 自己做模式：新增 hero 区（`self_step_background.png` + 今日菜单菜名 + 「共 N 步，跟着走就好」），约 1.8s 后自动折叠（`heroCollapsed`），兜底 2.5s；新增 `toggleHelperIngredients`。
+  - 性能：`_updateView` 内对 `processStepsForView(steps)` 按步骤数组引用做缓存（`_lastProcessedStepsRef` / `_cachedViewSteps`）；静态字段（isHelperRole、helperTitle、helperHeaderBgUrl、selfCookBgUrl 等）仅首次设置（`_staticDataSet`）；时间轴与并行任务合并进单次 setData，移除单独 `updateTimelineProgress` / `checkParallelCompletion`。
+  - 步骤详情：`segmentsToRichText` 统一为单色（#5A544F），不再区分加粗；`processStepsForView` 中短语去掉序号前缀；`buildRhythmRings` 返回全部环（不再 slice(0,3)）。
+  - 完成路径：`markCurrentCompleted` / `markCompleted` 后调用 `_updateHeaderImage`；onUnload 清理 hero 折叠定时器；分享增加 imageUrl。
+- **购物页 (shopping)**
+  - 移除「今日小贴士」：删除 todayTips 数据、鱼/虾等提示逻辑及 `.today-tips` / `.today-tip-line` 样式。
+  - 调料展示：疲惫模式下不再将调料 `displayAmount` 改为「按包装说明」，统一使用 `item.amount`。
+  - 底部栏与按钮：padding、按钮高度与字号略减。
+- **烟火集 (collection)**
+  - 贴纸单元格：padding、火漆容器（120→160rpx）、图标（88→120rpx）、emoji 字号（52→68rpx）微调以增强可读性。
+
+#### 涉及文件一览（§11.5）
+
+| 文件 | 变更摘要 |
+|------|----------|
+| miniprogram/app.json | 移除 permission、requiredPrivateInfos（定位/天气）。 |
+| miniprogram/pages/home/home.js | 移除 locationWeather 引用与 getWeather 调用、vibeWeather。 |
+| miniprogram/pages/home/home.wxml | 移除 vibe-weather。 |
+| miniprogram/pages/home/home.wxss | 移除 .vibe-weather。 |
+| miniprogram/pages/home/locationWeather.js | 已删除。 |
+| miniprogram/utils/locationWeather.js | 已删除。 |
+| miniprogram/pages/preview/preview.js | professionalTalkBgUrl、avoidCapsules 文案、onChangeAdultCount 人数→道数重生成、分享 imageUrl。 |
+| miniprogram/pages/preview/preview.wxml | 营养师插图、忌口区改为 view+flex-wrap。 |
+| miniprogram/pages/preview/preview.wxss | 头部插图与文字区、忌口胶囊样式。 |
+| miniprogram/pages/steps/steps.js | helper/self 背景图、hero 折叠、viewSteps 缓存、静态字段与单次 setData、toggleHelperIngredients、分享 imageUrl、定时器清理。 |
+| miniprogram/pages/steps/steps.wxml | helper 头图+遮罩、self-cook-hero 区与 heroCollapsed。 |
+| miniprogram/pages/steps/steps.wxss | helper 头图、self-cook-hero、折叠动画。 |
+| miniprogram/pages/shopping/shopping.js | 移除 todayTips、调料「按包装说明」逻辑。 |
+| miniprogram/pages/shopping/shopping.wxml | 移除 today-tips 区块。 |
+| miniprogram/pages/shopping/shopping.wxss | 移除 .today-tips/.today-tip-line；底部栏与按钮尺寸。 |
+| miniprogram/pages/collection/collection.wxss | 贴纸单元格与火漆/emoji 尺寸。 |

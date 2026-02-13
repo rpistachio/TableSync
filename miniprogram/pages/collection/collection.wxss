@@ -132,7 +132,7 @@
 .sticker-cell {
   width: calc(50% - 12rpx);
   max-width: 320rpx;
-  padding: 24rpx 16rpx 20rpx;
+  padding: 32rpx 16rpx 24rpx;
   border-radius: 12rpx;
   position: relative;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -187,14 +187,14 @@
 /* ============ 贴纸图标容器（放大 + 去红底） ============ */
 
 .sticker-seal-wrap {
-  width: 120rpx;
-  height: 120rpx;
+  width: 160rpx;
+  height: 160rpx;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-bottom: 4rpx;
+  margin-bottom: 8rpx;
 }
 
 /* 已获得：淡暖底 + 茜红细边框（不遮挡 icon） */
@@ -213,13 +213,13 @@
 }
 
 .sticker-cell-img {
-  width: 88rpx;
-  height: 88rpx;
+  width: 120rpx;
+  height: 120rpx;
   border-radius: 50%;
 }
 
 .sticker-cell-emoji {
-  font-size: 52rpx;
+  font-size: 68rpx;
   line-height: 1;
 }
 

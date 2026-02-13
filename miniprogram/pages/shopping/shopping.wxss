@@ -126,26 +126,6 @@
 }
 
 /* 今日提示 - 家人贴心叮嘱风格 */
-.today-tips {
-  padding: 24rpx 28rpx;
-  margin-bottom: 24rpx;
-  background: var(--accent-soft);
-  border-radius: 24rpx;
-  border-left: 6rpx solid var(--accent);
-}
-
-.today-tip-line {
-  display: block;
-  font-size: 24rpx;
-  color: var(--text-soft);
-  line-height: 1.6;
-  margin-bottom: 8rpx;
-}
-
-.today-tip-line:last-child {
-  margin-bottom: 0;
-}
-
 .category-card {
   margin-bottom: 24rpx;
   background: var(--card-bg-strong);
@@ -290,21 +270,21 @@
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 24rpx 48rpx 48rpx;
-  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
+  padding: 18rpx 24rpx;
+  padding-bottom: calc(18rpx + env(safe-area-inset-bottom));
   background: linear-gradient(to top, var(--bg-soft) 90%, transparent);
 }
 
 .btn-go-steps {
   width: 100%;
-  height: 96rpx;
+  height: 88rpx;
   border-radius: 24rpx;
   font-weight: 600;
-  font-size: 30rpx;
+  font-size: 28rpx;
   color: var(--text-inverse);
   background: var(--accent);
   border: none;
-  line-height: 96rpx;
+  line-height: 88rpx;
   text-align: center;
   box-shadow: 0 8rpx 24rpx rgba(232, 74, 39, 0.25);
   transition: transform 0.2s ease, opacity 0.2s ease;

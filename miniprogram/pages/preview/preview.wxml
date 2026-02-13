@@ -3,8 +3,11 @@
     <view class="preview-scroll-content">
       <view class="preview-header">
         <view class="preview-header-text">
-          <text class="preview-header-title">营养师推荐理由</text>
-          <text class="preview-narrative">{{previewNarrativeText}}</text>
+          <image wx:if="{{professionalTalkBgUrl}}" class="preview-header-avatar" src="{{professionalTalkBgUrl}}" mode="aspectFill" />
+          <view class="preview-header-text-body">
+            <text class="preview-header-title">营养师推荐理由</text>
+            <text class="preview-narrative">{{previewNarrativeText}}</text>
+          </view>
         </view>
         <view class="preview-header-divider"></view>
       </view>
@@ -123,11 +126,11 @@
       <view class="preview-add-dish-placeholder" catchtap="onAddDish">
         <text class="preview-add-dish-text">+ 再加个菜？</text>
       </view>
-      <scroll-view class="preview-avoid-bar" scroll-x enable-flex>
+      <view class="preview-avoid-bar">
         <view wx:for="{{avoidCapsules}}" wx:key="key" class="preview-avoid-chip {{item.active ? 'is-active' : ''}}" data-key="{{item.key}}" catchtap="onToggleAvoid">
           <text class="preview-avoid-label">{{item.label}}</text>
         </view>
-      </scroll-view>
+      </view>
     </view>
   </view>
 

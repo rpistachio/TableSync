@@ -1,6 +1,12 @@
 .steps-container {
+  background: linear-gradient(180deg, rgba(232, 168, 124, 0.08) 0%, var(--bg) 18%);
   background-color: var(--bg);
   min-height: 100vh;
+}
+
+/* helper 模式：暖黄氛围渐变（与 preview-page-helper 呼应） */
+.steps-container.helper-role {
+  background: linear-gradient(180deg, rgba(253, 248, 236, 0.4) 0%, var(--bg) 20%);
 }
 
 .steps-container.cook-mode {
@@ -9,10 +15,65 @@
 
 /* ========== 执行者模式：顶部标题 + 折叠食材 ========== */
 .helper-role-header {
-  background: #fdf8ec;
-  padding: 32rpx 32rpx 24rpx;
-  border-bottom: 1rpx solid var(--accent-soft);
+  position: relative;
+  min-height: 360rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  background: linear-gradient(135deg, #fdf8ec 0%, #faf0d8 100%);
+  padding: 48rpx 32rpx 32rpx;
+  border-bottom: none;
+  overflow: hidden;
 }
+
+/* 右上角装饰光圈（无背景图时的兜底装饰） */
+.helper-role-header::after {
+  content: '';
+  position: absolute;
+  top: -60rpx;
+  right: -40rpx;
+  width: 220rpx;
+  height: 220rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(232, 168, 124, 0.15) 0%, rgba(232, 168, 124, 0.04) 60%, transparent 70%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 方案5：helper 模式 header 背景插画三层结构 */
+.helper-header-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  z-index: 1;
+  object-fit: cover;
+  filter: brightness(0.95);
+}
+
+.helper-header-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  background: linear-gradient(to top,
+    rgba(253, 248, 236, 0.95) 0%,
+    rgba(253, 248, 236, 0.75) 40%,
+    rgba(253, 248, 236, 0.3) 70%,
+    transparent 100%
+  );
+}
+
+.helper-header-content {
+  position: relative;
+  z-index: 3;
+}
+
+/* 有背景图时，让装饰光圈隐去（被遮罩覆盖即可） */
 
 .helper-role-title {
   display: block;
@@ -77,12 +138,97 @@
   color: #8e857e;
 }
 
+/* ========== 自己做模式：氛围 hero + 背景插画 ========== */
+.self-cook-hero {
+  position: relative;
+  height: 45vh;                /* 展开态：固定高度，保证背景图充分展示 */
+  max-height: 45vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  background: linear-gradient(135deg, rgba(232, 168, 124, 0.1) 0%, rgba(232, 74, 39, 0.04) 100%);
+  overflow: hidden;
+  transition: height 0.65s cubic-bezier(0.4, 0, 0.2, 1),
+              max-height 0.65s cubic-bezier(0.4, 0, 0.2, 1);
+}
+/* 折叠态 */
+.self-cook-hero.is-collapsed {
+  height: 160rpx;
+  max-height: 160rpx;
+}
+
+.self-cook-hero-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  z-index: 1;
+  object-fit: cover;
+  filter: brightness(0.95);
+}
+
+.self-cook-hero-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  background: linear-gradient(to top,
+    var(--bg) 0%,
+    rgba(253, 249, 239, 0.85) 35%,
+    rgba(253, 249, 239, 0.3) 65%,
+    transparent 100%
+  );
+}
+
+.self-cook-hero-content {
+  position: relative;
+  z-index: 3;
+  padding: 48rpx 32rpx 36rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+  transition: opacity 0.45s ease;
+}
+
+/* 折叠后内容渐隐 */
+.self-cook-hero.is-collapsed .self-cook-hero-content {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.self-cook-greeting {
+  font-size: 22rpx;
+  font-weight: 600;
+  letter-spacing: 4rpx;
+  color: var(--text-subtle);
+  text-transform: uppercase;
+}
+
+.self-cook-dishes {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.self-cook-encourage {
+  font-size: 24rpx;
+  color: var(--text-muted);
+  margin-top: 4rpx;
+}
+
 /* ========== Layer 1: 极简头部 ========== */
 .cook-header {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: var(--card-bg-strong);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(253, 249, 239, 0.95) 100%);
+  backdrop-filter: blur(16rpx);
+  -webkit-backdrop-filter: blur(16rpx);
   padding: 24rpx 32rpx 20rpx;
   border-bottom: 1rpx solid var(--line);
 }
@@ -130,6 +276,8 @@
   align-items: center;
   gap: 16rpx;
   margin-top: 18rpx;
+  padding-right: 24rpx;
+  white-space: nowrap;
 }
 
 .rhythm-ring {
@@ -259,10 +407,28 @@
   min-height: 60vh;
   display: flex;
   flex-direction: column;
+  position: relative;
+}
+
+/* 淡淡的暖色装饰光晕 */
+.focus-area::before {
+  content: '';
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  height: 320rpx;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(232, 168, 124, 0.06) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* --- 前后步骤 peek --- */
 .step-peek {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 12rpx;
@@ -302,6 +468,8 @@
 
 /* --- 聚焦卡片 --- */
 .focus-card {
+  position: relative;
+  z-index: 1;
   background: linear-gradient(180deg, rgba(255, 252, 247, 0.98) 0%, rgba(249, 243, 236, 0.96) 100%);
   border-radius: 32rpx;
   padding: 40rpx 36rpx;
@@ -376,11 +544,11 @@
 
 .focus-title {
   display: block;
-  font-size: 36rpx;
-  font-weight: 700;
+  font-size: 32rpx;
+  font-weight: 600;
   color: var(--text);
-  margin-bottom: 24rpx;
-  line-height: 1.4;
+  margin-bottom: 20rpx;
+  line-height: 1.45;
 }
 
 /* 次动作提示 */
@@ -434,13 +602,19 @@
   color: var(--accent-strong);
 }
 
-/* 指令正文 - 大字号 */
+/* 指令正文 */
 .focus-body {
   margin-bottom: 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
 }
 
 .focus-line {
-  margin-bottom: 20rpx;
+  padding: 14rpx 0 14rpx 24rpx;
+  border-left: 4rpx solid rgba(232, 168, 124, 0.25);
+  border-radius: 0 8rpx 8rpx 0;
+  background: rgba(0, 0, 0, 0.01);
 }
 
 .focus-line:last-child {
@@ -450,9 +624,10 @@
 .focus-line-text {
   display: inline;
   white-space: pre-wrap;
-  font-size: 32rpx;
-  line-height: 1.85;
+  font-size: 28rpx;
+  line-height: 1.75;
   color: var(--text-soft);
+  letter-spacing: 0.5rpx;
 }
 
 /* 宝宝分拨动作高亮 */

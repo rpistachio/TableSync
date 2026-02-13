@@ -10,7 +10,6 @@
       <!-- 今日氛围卡片（Phase 2 填充天气/问候） -->
       <view class="vibe-card">
         <text class="vibe-date">{{currentDate}}</text>
-        <text class="vibe-weather" wx:if="{{vibeWeather}}">{{vibeWeather}}</text>
         <text class="vibe-greeting">{{vibeGreeting}}</text>
       </view>
 
