@@ -1,7 +1,7 @@
 /** 全局样式 - TableSync 微信小程序（iPhone 安全区 + 滚动优化） */
 page {
-  /* Brand palette: TableSync warm neutrals */
-  --bg: #FDF8F2;
+  /* Brand palette: TableSync 故事感插画色盘 */
+  --bg: #FDF9EF;
   --bg-soft: #FAF9F7;
   --bg-warm: #F5EDE3;
   --bg-contrast: #FFFFFF;
@@ -14,15 +14,19 @@ page {
   --text-subtle: #A09A94;
   --text-inverse: #FFFFFF;
 
-  --accent: #D4956A;
-  --accent-strong: #C1663E;
-  --accent-soft: rgba(212, 149, 106, 0.12);
-  --accent-soft-2: rgba(212, 149, 106, 0.08);
-  --accent-border: rgba(212, 149, 106, 0.35);
-  --accent-border-strong: rgba(193, 102, 62, 0.35);
+  --accent: #E84A27;
+  --accent-strong: #D4421F;
+  --accent-soft: rgba(232, 74, 39, 0.12);
+  --accent-soft-2: rgba(232, 74, 39, 0.08);
+  --accent-border: rgba(232, 74, 39, 0.35);
+  --accent-border-strong: rgba(232, 74, 39, 0.35);
 
-  --line: #EFE9E2;
+  --line: #E5EBE6;
   --line-strong: #E8E4E0;
+
+  --ink-green: #1B3D2F;
+  --mustard: #D9A62E;
+  --warm-glow: #FFF8E8;
 
   --shadow: rgba(45, 45, 45, 0.08);
   --shadow-strong: rgba(45, 45, 45, 0.12);
@@ -46,7 +50,7 @@ view, text, scroll-view, button, input, textarea, image, navigator {
 
 /* 图片视口适配：高度不固定 px，用 vh + 不拉伸 */
 image {
-  max-height: 25vh;
+  max-height: 30vh;
   object-fit: cover;
 }
 

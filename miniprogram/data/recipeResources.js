@@ -21,7 +21,7 @@ const IMAGE_CONFIG = {
 
   // 页面固定头图
   pageCovers: {
-    shopping: `${CLOUD_HTTP_ROOT}/shopping_cover_pic/basic-prep-01.png`,
+    shopping: `${CLOUD_ROOT}/background_pic/home_background.png`,
     prep: `${CLOUD_HTTP_ROOT}/prep_cover_pic/basic-veg-cut-01.jpeg`
   },
 

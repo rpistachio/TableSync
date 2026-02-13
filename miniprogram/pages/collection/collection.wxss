@@ -1,4 +1,4 @@
-/* ============ 烟火集 · Zen Mode 手账视觉 (Phase 1) ============ */
+/* ============ 烟火集 · Zen Mode 手账视觉 (Phase 1.1) ============ */
 
 .collection-page {
   /* 手账配色变量（页面级，不污染全局） */
@@ -9,10 +9,10 @@
   --dust: rgba(0, 0, 0, 0.05);
 
   min-height: 100vh;
-  padding: 56rpx 40rpx 100rpx;
+  padding: 32rpx 32rpx 100rpx;
   box-sizing: border-box;
 
-  /* 纸张肌理：霜白底色 + 微弱颗粒感（径向渐变叠加模拟细纹棉纸） */
+  /* 纸张肌理 */
   background-color: var(--paper);
   background-image:
     radial-gradient(circle at 20% 30%, rgba(0, 0, 0, 0.012) 0%, transparent 50%),
@@ -22,43 +22,48 @@
   background-repeat: repeat;
 }
 
-/* ============ 标题区 ============ */
+/* ============ 封面卡片 ============ */
 
-.collection-header {
+.collection-cover {
+  margin: 0 0 48rpx;
+  padding: 48rpx 40rpx 40rpx;
+  background: linear-gradient(170deg, rgba(255, 253, 250, 0.95) 0%, rgba(248, 244, 238, 0.9) 100%);
+  border: 1rpx solid rgba(166, 148, 130, 0.22);
+  border-radius: 16rpx;
+  box-shadow: 0 6rpx 20rpx rgba(0, 0, 0, 0.04), 0 2rpx 6rpx rgba(0, 0, 0, 0.03);
   text-align: center;
-  margin-bottom: 56rpx;
 }
 
 .collection-title {
   display: block;
-  font-size: 44rpx;
+  font-size: 48rpx;
   font-weight: 600;
   color: var(--ink);
   margin-bottom: 16rpx;
   font-family: "STKaiti", "KaiTi", "楷体", serif;
-  letter-spacing: 12rpx;
-  text-shadow: 0 1rpx 2rpx rgba(58, 61, 64, 0.08);
+  letter-spacing: 14rpx;
+  text-shadow: 0 1rpx 3rpx rgba(58, 61, 64, 0.1);
 }
 
 .collection-divider {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16rpx;
+  gap: 20rpx;
   margin-bottom: 20rpx;
 }
 
 .collection-divider-line {
-  width: 80rpx;
+  width: 100rpx;
   height: 2rpx;
-  background: var(--wood);
-  opacity: 0.5;
+  background: linear-gradient(90deg, transparent 0%, var(--wood) 50%, transparent 100%);
+  opacity: 0.55;
 }
 
 .collection-divider-dot {
-  font-size: 20rpx;
-  color: var(--wood);
-  opacity: 0.7;
+  font-size: 22rpx;
+  color: var(--seal);
+  opacity: 0.65;
 }
 
 .collection-desc {
@@ -66,34 +71,69 @@
   font-size: 24rpx;
   color: var(--wood);
   letter-spacing: 2rpx;
+  margin-bottom: 28rpx;
 }
 
-.collection-progress {
+/* 进度圆点列 */
+.collection-progress-dots {
+  display: flex;
+  justify-content: center;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+
+.progress-dot {
+  width: 20rpx;
+  height: 20rpx;
+  border-radius: 50%;
+  border: 2rpx solid rgba(166, 148, 130, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.progress-dot.is-lit {
+  border-color: var(--seal);
+  background: var(--seal);
+  box-shadow: 0 0 8rpx rgba(158, 62, 50, 0.3);
+}
+
+.progress-dot-inner {
+  width: 8rpx;
+  height: 8rpx;
+  border-radius: 50%;
+}
+
+.progress-dot.is-lit .progress-dot-inner {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.collection-progress-text {
   display: block;
-  margin-top: 20rpx;
   font-size: 22rpx;
   font-weight: 600;
   color: var(--seal);
   letter-spacing: 4rpx;
 }
 
-/* ============ 散落式网格（留白率 35%+） ============ */
+/* ============ 散落式网格 ============ */
 
 .collection-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 40rpx 32rpx;
+  gap: 32rpx 24rpx;
   justify-content: center;
   align-items: flex-start;
 }
 
-/* ============ 贴纸卡片 · 手账化 ============ */
+/* ============ 贴纸卡片 ============ */
 
 .sticker-cell {
-  width: calc(50% - 16rpx);
-  max-width: 300rpx;
-  padding: 28rpx 20rpx;
-  border-radius: 6rpx;
+  width: calc(50% - 12rpx);
+  max-width: 320rpx;
+  padding: 24rpx 16rpx 20rpx;
+  border-radius: 12rpx;
   position: relative;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   box-sizing: border-box;
@@ -102,7 +142,7 @@
 /* 未获得：虚线边框 + 极淡灰底 */
 .sticker-cell:not(.is-earned) {
   background: rgba(246, 245, 243, 0.9);
-  border: 2rpx dashed rgba(166, 148, 130, 0.35);
+  border: 2rpx dashed rgba(166, 148, 130, 0.3);
 }
 
 /* 已获得：和纸质感 + 烟尘投影 */
@@ -117,10 +157,10 @@
   content: '';
   position: absolute;
   top: -6rpx;
-  left: 24rpx;
+  left: 20rpx;
   width: 72rpx;
   height: 24rpx;
-  background: rgba(166, 148, 130, 0.3);
+  background: rgba(166, 148, 130, 0.25);
   transform: rotate(-4deg);
   border-radius: 2rpx;
 }
@@ -129,10 +169,10 @@
   content: '';
   position: absolute;
   top: -6rpx;
-  right: 24rpx;
+  right: 20rpx;
   width: 72rpx;
   height: 24rpx;
-  background: rgba(166, 148, 130, 0.3);
+  background: rgba(166, 148, 130, 0.25);
   transform: rotate(4deg);
   border-radius: 2rpx;
 }
@@ -141,54 +181,55 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14rpx;
+  gap: 10rpx;
 }
 
-/* ============ 火漆印章容器 ============ */
+/* ============ 贴纸图标容器（放大 + 去红底） ============ */
 
 .sticker-seal-wrap {
-  width: 72rpx;
-  height: 72rpx;
+  width: 120rpx;
+  height: 120rpx;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  margin-bottom: 4rpx;
 }
 
-/* 已获得：火漆印章（茜红径向渐变 + 厚度感） */
+/* 已获得：淡暖底 + 茜红细边框（不遮挡 icon） */
 .sticker-cell.is-earned .sticker-seal-wrap {
-  background: radial-gradient(circle at 35% 30%, #B84A3A 0%, var(--seal) 40%, #7E2A20 100%);
+  background: rgba(253, 248, 242, 0.9);
+  border: 2rpx solid rgba(158, 62, 50, 0.25);
   box-shadow:
-    0 2rpx 6rpx rgba(158, 62, 50, 0.4),
-    0 4rpx 12rpx rgba(0, 0, 0, 0.12),
-    inset 0 1rpx 2rpx rgba(255, 200, 180, 0.2),
-    inset 0 -1rpx 2rpx rgba(0, 0, 0, 0.15);
+    0 2rpx 8rpx rgba(158, 62, 50, 0.1),
+    0 4rpx 16rpx rgba(0, 0, 0, 0.05);
 }
 
 /* 未获得：空心圆 + 虚线 */
 .sticker-cell:not(.is-earned) .sticker-seal-wrap {
-  background: transparent;
-  border: 2rpx dashed rgba(166, 148, 130, 0.4);
+  background: rgba(249, 248, 244, 0.6);
+  border: 2rpx dashed rgba(166, 148, 130, 0.35);
 }
 
 .sticker-cell-img {
-  width: 56rpx;
-  height: 56rpx;
+  width: 88rpx;
+  height: 88rpx;
   border-radius: 50%;
 }
 
 .sticker-cell-emoji {
-  font-size: 40rpx;
+  font-size: 52rpx;
   line-height: 1;
 }
 
 .sticker-cell:not(.is-earned) .sticker-cell-emoji {
-  opacity: 0.4;
+  opacity: 0.35;
 }
 
 .sticker-cell:not(.is-earned) .sticker-cell-img {
-  opacity: 0.5;
+  opacity: 0.45;
+  filter: grayscale(0.6);
 }
 
 .sticker-cell-name {

@@ -1,5 +1,6 @@
 <view class="collection-page">
-  <view class="collection-header">
+  <!-- 封面卡片区 -->
+  <view class="collection-cover">
     <text class="collection-title">烟火集</text>
     <view class="collection-divider">
       <view class="collection-divider-line"></view>
@@ -7,8 +8,16 @@
       <view class="collection-divider-line"></view>
     </view>
     <text class="collection-desc">完成烹饪与分享，收集贴纸</text>
-    <text class="collection-progress">{{totalEarned}} / {{totalDefs}}</text>
+    <!-- 进度可视化：圆点列 -->
+    <view class="collection-progress-dots">
+      <view wx:for="{{earnedList}}" wx:key="id"
+            class="progress-dot {{item.earned ? 'is-lit' : ''}}">
+        <view class="progress-dot-inner"></view>
+      </view>
+    </view>
+    <text class="collection-progress-text">{{totalEarned}} / {{totalDefs}}</text>
   </view>
+
   <view class="collection-grid">
     <view
       wx:for="{{earnedList}}"

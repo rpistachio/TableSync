@@ -19,21 +19,6 @@ function getTodayDateKey() {
   return y + '-' + (m.length < 2 ? '0' + m : m) + '-' + (day.length < 2 ? '0' + day : day);
 }
 
-var HOME_BG_CLOUD_PATH = 'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/frontpage_stickers/Rona_Prompt_Ultra-minimalist_flat_layout_for_a_cooking_app_in_7f423079-ed33-4f7e-b466-c9bc4f6d174f_3.png';
-
-// ====== Zen Mode 背景氛围图 (2026 需求：视觉差异化与氛围渲染) ======
-// 键名 = cookStatus + '_' + cookWho, 值 = 云存储 fileID
-var ZEN_BG_CLOUD_PATHS = {
-  // 心情还好 + 自己做 → 暖色调灶台烟火
-  ok_self: HOME_BG_CLOUD_PATH,
-  // 疲惫 + 自己做 → 舒缓冷色调（沙发、毛毯、猫咪景观）
-  tired_self: 'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/frontpage_stickers/Gemini_Generated_Image_rqjsbsrqjsbsrqjs.png',
-  // 心情还好 + 别人做 → 互助感（递出的咖啡、信笺）
-  ok_ayi: HOME_BG_CLOUD_PATH,
-  // 疲惫 + 别人做 → 互助感 + 治愈
-  tired_ayi: 'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/frontpage_stickers/Gemini_Generated_Image_rqjsbsrqjsbsrqjs.png'
-};
-
 Page({
   data: (function () {
     // 书脊时段模式初始值
@@ -50,10 +35,9 @@ Page({
       showAdvanced: false,
       cookWho: 'self',
       cookStatus: 'ok',
-      homeBgUrl: '',
-      // Zen Mode 背景氛围切换
-      zenBgUrl: '',          // 当前 Zen 背景 URL（用于渲染）
-      zenBgFading: false,    // 淡入淡出动画控制
+      illustrationUrl: 'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/background_pic/home_background.png',    
+      okIconUrl: 'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/background_pic/feeling_ok_button.png',
+      tiredIconUrl: 'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/background_pic/feeling_tired_button.png',  
       showStickerDrop: false,
       stickerDropQueue: [],    // [{ stickerId, name, emoji }]
       // ====== 烟火集悬浮书脊 ======
@@ -67,90 +51,58 @@ Page({
   onLoad: function () {
     var todayKey = getTodayDateKey();
     var storedKey = wx.getStorageSync('menu_generated_date') || '';
+    // 过期日清理延后执行，不阻塞首屏
     if (storedKey && storedKey !== todayKey) {
-      wx.removeStorageSync('today_menus');
-      wx.removeStorageSync('menu_generated_date');
-      wx.removeStorageSync('cart_ingredients');
-      wx.removeStorageSync('selected_dish_name');
-      wx.removeStorageSync('today_prep_time');
-      wx.removeStorageSync('today_allergens');
+      setTimeout(function () {
+        wx.removeStorageSync('today_menus');
+        wx.removeStorageSync('menu_generated_date');
+        wx.removeStorageSync('cart_ingredients');
+        wx.removeStorageSync('selected_dish_name');
+        wx.removeStorageSync('today_prep_time');
+        wx.removeStorageSync('today_allergens');
+      }, 0);
     }
     var savedStatus = wx.getStorageSync('zen_cook_status') || 'ok';
-    this.setData({
-      cookStatus: savedStatus
-    });
-    this._zenBgUrlMap = {};  // 初始化，onReady 中批量解析后填充
-    // 书脊：根据已知状态更新模式
-    this._updateSpineMode();
-
-    var that = this;
-    locationWeather.getWeather().then(function (weather) {
-      var greeting = vibeGreeting.pickGreeting(weather);
-      var weatherStr = '';
-      if (weather && (weather.temp || weather.text)) {
-        weatherStr = [weather.temp, weather.text].filter(Boolean).join(' ');
-      }
-      that.setData({ vibeGreeting: greeting, vibeWeather: weatherStr });
-    }).catch(function () {});
-  },
-
-  onReady: function () {
-    var that = this;
-    if (wx.cloud && wx.cloud.getTempFileURL) {
-      // 批量解析所有 Zen 背景云文件 ID → HTTPS 临时链接
-      var pathSet = {};     // 去重
-      var keys = Object.keys(ZEN_BG_CLOUD_PATHS);
-      var fileIds = [];
-      for (var i = 0; i < keys.length; i++) {
-        var fid = ZEN_BG_CLOUD_PATHS[keys[i]];
-        if (fid && !pathSet[fid]) { pathSet[fid] = true; fileIds.push(fid); }
-      }
-      // 同时包含首页默认背景
-      if (!pathSet[HOME_BG_CLOUD_PATH]) fileIds.push(HOME_BG_CLOUD_PATH);
-
-      wx.cloud.getTempFileURL({ fileList: fileIds }).then(function (res) {
-        var urlMap = {};     // cloudPath → tempFileURL
-        var fileList = (res && res.fileList) || [];
-        for (var j = 0; j < fileList.length; j++) {
-          if (fileList[j] && fileList[j].tempFileURL) {
-            urlMap[fileList[j].fileID] = fileList[j].tempFileURL;
-          }
-        }
-        // 缓存解析结果供后续切换使用
-        that._zenBgUrlMap = {};
-        for (var k = 0; k < keys.length; k++) {
-          that._zenBgUrlMap[keys[k]] = urlMap[ZEN_BG_CLOUD_PATHS[keys[k]]] || '';
-        }
-        // 设置首页默认背景
-        var homeUrl = urlMap[HOME_BG_CLOUD_PATH] || '';
-        that.setData({ homeBgUrl: homeUrl });
-        // 立即根据当前 cookStatus / cookWho 设置 Zen 背景
-        that._updateZenBackground();
-      }).catch(function () {});
+    var hour = new Date().getHours();
+    var isTired = savedStatus === 'tired';
+    var spineMode = 'spine-day';
+    var spineSealIcon = '🔖';
+    if ((hour >= 22 || hour < 5) && isTired) {
+      spineMode = 'spine-night-tired';
+      spineSealIcon = '🪔';
+    } else if (hour >= 22 || hour < 5) {
+      spineMode = 'spine-night';
+    } else if (hour >= 5 && hour < 9) {
+      spineMode = 'spine-morning';
     }
+    this.setData({
+      cookStatus: savedStatus,
+      spineMode: spineMode,
+      spineSealIcon: spineSealIcon
+    });
+
+    var that = this;
+    // 延后天气请求，避免阻塞首屏渲染
+    setTimeout(function () {
+      locationWeather.getWeather().then(function (weather) {
+        var greeting = vibeGreeting.pickGreeting(weather);
+        var weatherStr = '';
+        if (weather && (weather.temp || weather.text)) {
+          weatherStr = [weather.temp, weather.text].filter(Boolean).join(' ');
+        }
+        that.setData({ vibeGreeting: greeting, vibeWeather: weatherStr });
+      }).catch(function () {});
+    }, 0);
   },
 
   onShow: function () {
     var that = this;
-    // ====== 烟火集：展示贴纸飘落队列 ======
-    var pending = getApp().globalData.pendingStickerDrop;
-    if (pending) {
-      // 兼容旧格式（单对象）和新格式（数组）
-      var queue = Array.isArray(pending) ? pending : (pending.name ? [pending] : []);
-      if (queue.length > 0) {
-        that.setData({
-          showStickerDrop: true,
-          stickerDropQueue: queue
-        });
-      }
-    }
-    // ====== 犹豫追踪：记录 onShow 时间戳 ======
     this._homeShowTime = Date.now();
     this._toggleCount = 0;
-    // ====== 书脊：检测未查看的烹饪记录（微光呼吸） ======
-    this._checkUnviewedCooks();
-    // ====== 书脊：刷新时段模式 ======
-    this._updateSpineMode();
+    // 延后书脊/未读检测并合并为一次 setData，避免阻塞首屏
+    setTimeout(function () {
+      that._refreshSpineAndUnviewed();
+    }, 0);
   },
 
   /** Zen Mode: 大按钮 -> 自动生成菜谱并进入 preview 页（不跳转今日灵感/spinner） */
@@ -174,7 +126,7 @@ Page({
     var moodText = that.data.cookStatus === 'tired' ? '疲惫' : '随便';
     var source = menuData.getRecipeSource && menuData.getRecipeSource();
     var adultRecipes = (source && source.adultRecipes) || [];
-    var candidates = adultRecipes.slice(0, 100).map(function (r) {
+    var candidates = adultRecipes.slice(0, 50).map(function (r) {
       return {
         id: r.id || r._id,
         _id: r._id || r.id,
@@ -297,24 +249,21 @@ Page({
     }
   },
 
-  /** 写入 Storage 与 globalData，并跳转 preview（与 spinner _prepareAndNavigate 一致） */
+  /** 写入 Storage 与 globalData，并跳转 preview（异步 Storage 不阻塞主线程） */
   _zenNavigateToPreview: function (menus, pref) {
     this._zenGenerating = false;
     wx.hideLoading();
     getApp().globalData.preference = pref;
     getApp().globalData.todayMenus = menus;
     var shoppingList = menuData.generateShoppingListFromMenus(pref, menus);
-    wx.setStorageSync('cart_ingredients', shoppingList || []);
     var slimMenus = menuData.serializeMenusForStorage && menuData.serializeMenusForStorage(menus);
-    wx.setStorageSync('today_menus', JSON.stringify(slimMenus && slimMenus.length > 0 ? slimMenus : menus));
-    wx.setStorageSync('today_menus_preference', JSON.stringify(pref));
-    wx.setStorageSync('menu_generated_date', getTodayDateKey());
+    var todayMenusStr = JSON.stringify(slimMenus && slimMenus.length > 0 ? slimMenus : menus);
     var maxPrepTime = 0;
     menus.forEach(function (m) {
       var p = (m.adultRecipe && m.adultRecipe.prep_time) || 0;
       if (p > maxPrepTime) maxPrepTime = p;
     });
-    wx.setStorageSync('today_prep_time', maxPrepTime);
+    var todayKey = getTodayDateKey();
     var payload = menuData.buildPreviewPayload(menus, pref, {
       comboName: (pref.meatCount || 2) + '荤' + (pref.vegCount || 1) + '素' + (pref.soupCount ? '1汤' : ''),
       countText: menus.length + '道菜'
@@ -329,7 +278,28 @@ Page({
       hasSharedBase: payload.hasSharedBase,
       preference: pref
     };
-    wx.redirectTo({ url: '/pages/preview/preview' });
+    var that = this;
+    var setStorage = function (key, val) {
+      return new Promise(function (resolve, reject) {
+        wx.setStorage({
+          key: key,
+          data: val,
+          success: resolve,
+          fail: reject
+        });
+      });
+    };
+    Promise.all([
+      setStorage('cart_ingredients', shoppingList || []),
+      setStorage('today_menus', todayMenusStr),
+      setStorage('today_menus_preference', JSON.stringify(pref)),
+      setStorage('menu_generated_date', todayKey),
+      setStorage('today_prep_time', maxPrepTime)
+    ]).then(function () {
+      wx.redirectTo({ url: '/pages/preview/preview' });
+    }).catch(function () {
+      wx.redirectTo({ url: '/pages/preview/preview' });
+    });
   },
 
   /** Zen Mode: 切换今日状态 */
@@ -337,38 +307,10 @@ Page({
     var val = e.currentTarget.dataset.value;
     this.setData({ cookStatus: val });
     wx.setStorageSync('zen_cook_status', val);
-    this._updateZenBackground();
     // 犹豫追踪：累计切换次数
     this._toggleCount = (this._toggleCount || 0) + 1;
     // 书脊：状态切换影响深夜油灯模式
     this._updateSpineMode();
-  },
-
-  /**
-   * Zen Mode 背景氛围切换（0.8s 淡入淡出）
-   * 根据 cookStatus（ok/tired）+ cookWho（self/ayi）选择对应背景图
-   */
-  _updateZenBackground: function () {
-    var that = this;
-    var status = this.data.cookStatus || 'ok';
-    var stateKey = status + '_self';  // cookWho 始终为 self
-
-    var urlMap = this._zenBgUrlMap || {};
-    var newUrl = urlMap[stateKey] || urlMap['ok_self'] || this.data.homeBgUrl || '';
-
-    if (newUrl === this.data.zenBgUrl) return;
-
-    this.setData({ zenBgFading: true });
-
-    setTimeout(function () {
-      that.setData({
-        zenBgUrl: newUrl,
-        homeBgUrl: newUrl
-      });
-      setTimeout(function () {
-        that.setData({ zenBgFading: false });
-      }, 50);
-    }, 400);
   },
 
   /** 展开高级功能入口 */
@@ -394,7 +336,6 @@ Page({
   },
 
   onStickerDropClose: function () {
-    getApp().globalData.pendingStickerDrop = null;
     this.setData({ showStickerDrop: false, stickerDropQueue: [] });
     // 书脊：贴纸收下后，火漆印章短暂高亮 → 暗示"已收入烟火集"
     var that = this;
@@ -431,6 +372,42 @@ Page({
     if (mode !== this.data.spineMode || sealIcon !== this.data.spineSealIcon) {
       this.setData({ spineMode: mode, spineSealIcon: sealIcon });
     }
+  },
+
+  /** 书脊 + 未读检测合并为一次异步读 + 一次 setData */
+  _refreshSpineAndUnviewed: function () {
+    var that = this;
+    var keys = ['last_cook_complete_time', 'last_view_collection_time'];
+    Promise.all(keys.map(function (k) {
+      return new Promise(function (resolve) {
+        wx.getStorage({
+          key: k,
+          success: function (res) { resolve(res.data); },
+          fail: function () { resolve(0); }
+        });
+      });
+    })).then(function (vals) {
+      var lastCookTime = vals[0] || 0;
+      var lastViewTime = vals[1] || 0;
+      var hasUnviewed = lastCookTime > 0 && lastCookTime > lastViewTime;
+      var hour = new Date().getHours();
+      var isTired = that.data.cookStatus === 'tired';
+      var mode = 'spine-day';
+      var sealIcon = '🔖';
+      if ((hour >= 22 || hour < 5) && isTired) {
+        mode = 'spine-night-tired';
+        sealIcon = '🪔';
+      } else if (hour >= 22 || hour < 5) {
+        mode = 'spine-night';
+      } else if (hour >= 5 && hour < 9) {
+        mode = 'spine-morning';
+      }
+      var patch = {};
+      if (hasUnviewed !== that.data.hasUnviewedCooks) patch.hasUnviewedCooks = hasUnviewed;
+      if (mode !== that.data.spineMode) patch.spineMode = mode;
+      if (sealIcon !== that.data.spineSealIcon) patch.spineSealIcon = sealIcon;
+      if (Object.keys(patch).length) that.setData(patch);
+    });
   },
 
   // ====== 书脊：检测是否有新烹饪记录未查看（微光呼吸） ======

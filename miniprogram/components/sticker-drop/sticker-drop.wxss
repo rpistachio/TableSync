@@ -19,14 +19,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8rpx;
+  gap: 12rpx;
   pointer-events: auto;
   will-change: transform, opacity;
 }
 
 /* — 飘落阶段 — */
 .sticker-leaf--falling {
-  top: -120rpx;
+  top: -160rpx;
   animation: leafFall 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
 
@@ -53,7 +53,7 @@
 
 /* — 落地停留阶段 — */
 .sticker-leaf--landed {
-  top: -120rpx;
+  top: -160rpx;
   transform: translateY(820rpx) translateX(0) rotate(6deg) scale(1);
   animation: leafSettle 0.4s ease-out forwards;
 }
@@ -72,7 +72,7 @@
 
 /* — 退场阶段 — */
 .sticker-leaf--leaving {
-  top: -120rpx;
+  top: -160rpx;
   transform: translateY(820rpx) translateX(0) rotate(0deg) scale(1);
   animation: leafLeave 0.5s ease-in forwards;
 }
@@ -88,10 +88,31 @@
   }
 }
 
-/* ====== 贴纸内容 ====== */
+/* ====== 贴纸图标容器 ====== */
+
+.sticker-leaf-icon {
+  width: 128rpx;
+  height: 128rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 253, 250, 0.92);
+  border-radius: 50%;
+  border: 2rpx solid rgba(158, 62, 50, 0.18);
+  box-shadow:
+    0 4rpx 16rpx rgba(0, 0, 0, 0.08),
+    0 8rpx 32rpx rgba(158, 62, 50, 0.1);
+}
+
+.sticker-leaf-img {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+}
 
 .sticker-leaf-emoji {
-  font-size: 80rpx;
+  font-size: 72rpx;
+  line-height: 1;
   filter: drop-shadow(0 4rpx 12rpx rgba(0, 0, 0, 0.12));
 }
 

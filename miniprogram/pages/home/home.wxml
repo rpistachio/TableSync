@@ -1,24 +1,11 @@
-<view class="home-container">
+<view class="home-container {{cookStatus === 'tired' ? 'mood-tired' : ''}}">
   <view class="brand-header">
     <view class="header-content">
-      <image
-        class="brand-logo"
-        src="cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/logo/logo-remove-removebg-preview.png"
-        mode="widthFix"
-      />
-      <text class="brand-slogan">Eat. Connect. Automate.</text>
+      <text class="brand-watermark">TableSync</text>
     </view>
   </view>
 
   <view class="home-main">
-    <!-- Zen Mode 全屏氛围背景层 -->
-    <image
-      wx:if="{{zenBgUrl || homeBgUrl}}"
-      class="home-main-bg {{zenBgFading ? 'zen-bg-fading' : ''}}"
-      src="{{zenBgUrl || homeBgUrl}}"
-      mode="aspectFill"
-    />
-    <view class="home-main-overlay {{cookStatus === 'tired' ? 'overlay-tired' : ''}}"></view>
     <view class="home-main-content">
       <!-- 今日氛围卡片（Phase 2 填充天气/问候） -->
       <view class="vibe-card">
@@ -29,20 +16,25 @@
 
       <!-- ===== Zen Mode: 一键定晚饭 ===== -->
       <view class="zen-panel" wx:if="{{!showAdvanced}}">
+        <view class="zen-illustration" wx:if="{{illustrationUrl}}">
+          <image src="{{illustrationUrl}}" mode="widthFix" class="zen-illo-img" />
+        </view>
         <view class="zen-main-btn" bindtap="onZenGo">
           <text class="zen-main-btn-text">想想吃什么</text>
         </view>
 
-        <view class="zen-toggle-group">
-          <view class="zen-toggle-row">
-            <text class="zen-toggle-label">今天状态</text>
-            <view class="zen-toggle-track">
-              <view class="zen-toggle-item {{cookStatus === 'ok' ? 'is-active' : ''}}" data-value="ok" bindtap="onToggleCookStatus">
-                <text class="zen-toggle-text">还行</text>
-              </view>
-              <view class="zen-toggle-item {{cookStatus === 'tired' ? 'is-active' : ''}}" data-value="tired" bindtap="onToggleCookStatus">
-                <text class="zen-toggle-text">疲惫</text>
-              </view>
+        <view class="zen-status-cards">
+          <text class="zen-status-label">今天状态</text>
+          <view class="zen-status-row">
+            <view class="status-card {{cookStatus === 'ok' ? 'is-active is-ok' : ''}}" data-value="ok" bindtap="onToggleCookStatus">
+              <image wx:if="{{okIconUrl}}" class="status-card-icon" src="{{okIconUrl}}" mode="aspectFit" />
+              <view wx:else class="status-card-icon-placeholder">☀️</view>
+              <text class="status-card-label">还行</text>
+            </view>
+            <view class="status-card {{cookStatus === 'tired' ? 'is-active is-tired' : ''}}" data-value="tired" bindtap="onToggleCookStatus">
+              <image wx:if="{{tiredIconUrl}}" class="status-card-icon" src="{{tiredIconUrl}}" mode="aspectFit" />
+              <view wx:else class="status-card-icon-placeholder">🛋</view>
+              <text class="status-card-label">疲惫</text>
             </view>
           </view>
         </view>
@@ -52,7 +44,7 @@
   <block wx:if="{{showAdvanced}}">
   <view class="zen-advanced-back" bindtap="onHideAdvanced">
     <text class="zen-advanced-back-icon">‹</text>
-    <text class="zen-advanced-back-text">返回禅模式</text>
+    <text class="zen-advanced-back-text">返回</text>
   </view>
   <!-- 导入赛博菜谱入口 -->
   <view class="feature-entry import-entry" bindtap="onGoImport">
@@ -60,8 +52,8 @@
       <text class="feature-icon">🔗</text>
     </view>
     <view class="feature-text-wrap">
-      <text class="feature-title">导入赛博菜谱</text>
-      <text class="feature-desc">截图小红书/抖音菜谱，AI 秒变可执行食谱</text>
+      <text class="feature-title">导入菜谱</text>
+      <text class="feature-desc">截图小红书/抖音菜谱，秒变可执行食谱</text>
     </view>
     <text class="feature-arrow">›</text>
   </view>
@@ -72,8 +64,8 @@
       <text class="feature-icon">🍳</text>
     </view>
     <view class="feature-text-wrap">
-      <text class="feature-title">混合组餐</text>
-      <text class="feature-desc">自由搭配原生 + 导入菜谱，一键统筹做饭</text>
+      <text class="feature-title">自选搭配</text>
+      <text class="feature-desc">自由搭配内置 + 外部菜谱，一键统筹做饭</text>
     </view>
     <text class="feature-arrow">›</text>
   </view>
@@ -96,23 +88,17 @@
     <text>更多高级功能（导入）▾</text>
   </view>
 
-  <view class="home-brand" bindlongpress="onDebugSyncCloud">
-    <view class="brand-line"></view>
-    <text class="brand-text">TableSync</text>
-  </view>
+  <!-- 品牌露出已移至顶部水印，底部空间留给烟火集 -->
   </view>
   </view>
 
-  <!-- ===== 烟火集：悬浮书脊入口 (The Floating Spine) ===== -->
+  <!-- ===== 烟火集：底部居中横向书签入口 ===== -->
   <view class="collection-spine {{spineMode}} {{spineHighlight ? 'spine-highlight' : ''}}"
         bindtap="onGoCollection">
-    <!-- 火漆印章 -->
     <view class="spine-seal">
       <view class="spine-seal-icon">{{spineSealIcon}}</view>
-      <!-- 微光层：有新烹饪记录未查看时显示 -->
       <view class="spine-glow-layer" wx:if="{{hasUnviewedCooks}}"></view>
     </view>
-    <!-- 竖排书名 -->
     <text class="spine-text">烟火集</text>
   </view>
 

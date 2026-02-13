@@ -9,7 +9,12 @@
     "es6": true,
     "enhance": true,
     "postcss": true,
-    "minified": true
+    "minified": true,
+    "condition": true
   },
-  "compileType": "miniprogram"
+  "compileType": "miniprogram",
+  "projectArchitecture": "multiPlatform",
+  "simulatorPluginLibVersion": {
+    "wxext14566970e7e9f62": "2.27.3"
+  }
 }

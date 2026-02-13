@@ -5,7 +5,10 @@
   catchtap="onTapMask"
 >
   <view class="sticker-leaf sticker-leaf--{{animPhase}}" catchtap="onTapCollect">
-    <text class="sticker-leaf-emoji">{{currentSticker.emoji || '✨'}}</text>
+    <view class="sticker-leaf-icon">
+      <image wx:if="{{currentSticker.imageUrl}}" class="sticker-leaf-img" src="{{currentSticker.imageUrl}}" mode="aspectFit" />
+      <text wx:else class="sticker-leaf-emoji">{{currentSticker.emoji || '✨'}}</text>
+    </view>
     <view class="sticker-leaf-info" wx:if="{{animPhase === 'landed'}}">
       <text class="sticker-leaf-label">获得贴纸</text>
       <text class="sticker-leaf-name">{{currentSticker.name}}</text>

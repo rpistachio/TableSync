@@ -1,4 +1,6 @@
 {
-  "usingComponents": {},
+  "usingComponents": {
+    "sticker-drop": "/components/sticker-drop/sticker-drop"
+  },
   "navigationBarTitleText": "今日做菜步骤"
 }

@@ -40,7 +40,7 @@
   font-size: 32rpx;
   font-weight: 600;
   color: #fff;
-  background: #c1663e;
+  background: var(--accent);
   border-radius: 48rpx;
   border: none;
 }

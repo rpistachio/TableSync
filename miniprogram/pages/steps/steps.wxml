@@ -217,4 +217,11 @@
       </view>
     </scroll-view>
   </view>
+
+  <!-- 贴纸即时掉落 -->
+  <sticker-drop
+    visible="{{showStickerDrop}}"
+    queue="{{stickerDropQueue}}"
+    bindclose="onStickerDropClose"
+  />
 </view>

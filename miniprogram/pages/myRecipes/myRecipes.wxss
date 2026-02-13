@@ -123,7 +123,7 @@
   font-weight: 500;
   border-radius: 100rpx;
   border: 1rpx solid var(--accent-border-strong);
-  box-shadow: 0 8rpx 24rpx rgba(193, 102, 62, 0.25);
+  box-shadow: 0 8rpx 24rpx rgba(232, 74, 39, 0.25);
 }
 
 .myrecipes-empty-btn:active {
@@ -268,7 +268,7 @@
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
   color: #fff;
   border: 1rpx solid var(--accent-border-strong);
-  box-shadow: 0 8rpx 24rpx rgba(193, 102, 62, 0.25);
+  box-shadow: 0 8rpx 24rpx rgba(232, 74, 39, 0.25);
 }
 
 .myrecipes-btn-primary:active {
