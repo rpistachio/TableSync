@@ -1227,7 +1227,7 @@ Page({
     if (dashboard && dashboard.prepAheadHint) parts.push(dashboard.prepAheadHint);
     if (dashboard && dashboard.prepOrderHint) parts.push(dashboard.prepOrderHint);
     if (parts.length > 0) return parts.join('；');
-    return '本餐营养覆盖：蛋白质、维生素与膳食纤维；备菜建议：可提前约 15 分钟准备葱姜蒜及腌制食材，下锅更从容';
+    return '今天搭了荤素均衡的一桌菜，备好葱姜蒜就能开做，轻松搞定。';
   },
 
   _buildPreviewTips: function (dashboard, hasSharedBase, balanceTip, fallbackMessage) {
@@ -1280,18 +1280,18 @@ Page({
     var cats = Object.keys(catSet).sort(function (a, b) { return (catSet[a] || 99) - (catSet[b] || 99); });
     var categoryLabels = cats.length > 0 ? cats.join('、') : '';
     var nutritionParts = [];
-    if (cats.indexOf('肉类') !== -1 || cats.indexOf('蛋类') !== -1) nutritionParts.push('蛋白质');
-    if (cats.indexOf('蔬菜') !== -1) nutritionParts.push('维生素与膳食纤维');
-    if (cats.indexOf('干货') !== -1) nutritionParts.push('多种营养素');
-    if (cats.indexOf('其他') !== -1 && nutritionParts.length === 0) nutritionParts.push('多种营养素');
-    var nutritionHint = nutritionParts.length > 0 ? '本餐营养覆盖：' + nutritionParts.join('、') : '';
+    if (cats.indexOf('肉类') !== -1) nutritionParts.push('肉');
+    if (cats.indexOf('蔬菜') !== -1) nutritionParts.push('菜');
+    if (cats.indexOf('蛋类') !== -1) nutritionParts.push('蛋');
+    if (cats.indexOf('干货') !== -1) nutritionParts.push('干货');
+    var nutritionHint = nutritionParts.length > 0 ? '有' + nutritionParts.join('有') + '，营养搭着来，吃着放心' : '';
     var orderParts = [];
     if (hasStew) orderParts.push('炖/煲');
     if (hasSteam) orderParts.push('蒸');
     if (hasStirFry) orderParts.push('快炒');
-    var prepOrderHint = orderParts.length >= 2 ? '烹饪顺序建议：' + orderParts.join('→') : '';
+    var prepOrderHint = orderParts.length >= 2 ? '先把' + orderParts[0] + '的放上，再来' + orderParts.slice(1).join('、') + '，时间刚刚好' : '';
     var prepAheadHint = '';
-    if (maxPrep >= 10) prepAheadHint = '备菜建议：可提前约 ' + maxPrep + ' 分钟准备葱姜蒜及腌制食材，下锅更从容';
+    if (maxPrep >= 10) prepAheadHint = '提前 ' + maxPrep + ' 分钟把葱姜蒜备好、肉腌上，到时候下锅就行';
     var sharedIngredientsHint = '';
     var ingCount = {};
     for (var si = 0; si < menus.length; si++) {
@@ -1309,7 +1309,7 @@ Page({
     for (var name in ingCount) { if (ingCount[name] >= 2) shared.push(name); }
     if (shared.length > 0) {
       shared = shared.slice(0, 6);
-      sharedIngredientsHint = '本餐可共用：' + shared.join('、') + '，备菜更省';
+      sharedIngredientsHint = shared.join('、') + '几道菜都用得上，一起备好就行';
     }
     return {
       estimatedTime: estimatedMinutes > 0 ? estimatedMinutes + ' 分钟' : '',

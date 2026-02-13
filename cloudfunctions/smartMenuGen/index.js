@@ -167,9 +167,9 @@ exports.main = async (event, context) => {
     if (reasoning.length < 10) {
       if (hasBasket && basketItems.length > 0) {
         const names = basketItems.map(b => b.name).filter(Boolean).slice(0, 3).join('、');
-        reasoning = names ? `基于你收藏的「${names}」灵感，我为你补全了这顿营养均衡的晚餐。` : '基于你收藏的灵感，我为你补全了这顿营养均衡的晚餐。';
+        reasoning = names ? `看到你收藏了「${names}」，顺手帮你配齐了这一桌，吃着开心就好。` : '看到你收藏的灵感，顺手帮你配齐了这一桌，吃着开心就好。';
       } else {
-        reasoning = '根据今日心情与家常口味，为你搭配了这份套餐。';
+        reasoning = '今天给你搭了一桌家常菜，荤素搭着来，简单又舒服。';
       }
       console.log('[smartMenuGen] reasoning 降级为模板');
     }

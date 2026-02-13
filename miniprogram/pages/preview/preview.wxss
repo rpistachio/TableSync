@@ -36,9 +36,9 @@
 
 /* 营养师插图 */
 .preview-header-avatar {
-  width: 130rpx;
-  height: 130rpx;
-  border-radius: 16rpx;
+  width: 180rpx;
+  height: 180rpx;
+  border-radius: 20rpx;
   flex-shrink: 0;
   margin-top: 4rpx;
   box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.06);
