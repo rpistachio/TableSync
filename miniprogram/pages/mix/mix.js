@@ -465,6 +465,67 @@ Page({
     }
   },
 
+  // ── 让别人做：写入同「直接开始做」后跳转预览页，在预览页可「发给别人」进入 helper 模式
+  onGoHelperMode: function () {
+    var that = this;
+    var selectedRecipes = that.data.selectedRecipes;
+    var adultCount = that.data.adultCount;
+
+    if (selectedRecipes.length === 0) {
+      wx.showToast({ title: '请先添加菜谱', icon: 'none' });
+      return;
+    }
+
+    wx.showLoading({ title: '正在生成...' });
+
+    try {
+      var menus = [];
+      for (var i = 0; i < selectedRecipes.length; i++) {
+        var recipe = selectedRecipes[i];
+        var menu;
+        if (recipe._sourceType === 'external') {
+          menu = menuGen.generateMenuFromExternalRecipe
+            ? menuGen.generateMenuFromExternalRecipe(recipe, adultCount)
+            : { adultRecipe: recipe, babyRecipe: null, meat: recipe.meat || 'vegetable', taste: recipe.taste || 'quick_stir_fry' };
+        } else {
+          menu = menuGen.generateMenuFromRecipe(recipe, 12, false, adultCount, 'soft_porridge');
+          menu.meat = recipe.meat || 'vegetable';
+          menu.taste = recipe.taste || recipe.flavor_profile || 'quick_stir_fry';
+        }
+        menus.push(menu);
+      }
+
+      var preference = { adultCount: adultCount || 2, hasBaby: false, babyMonth: 12 };
+      var shoppingList = menuData.generateShoppingListFromMenus(preference, menus);
+      var app = getApp();
+
+      if (app && app.globalData) {
+        app.globalData.mixMenus = menus;
+        app.globalData.mergedShoppingList = shoppingList;
+        app.globalData.todayMenus = menus;
+        app.globalData.preference = preference;
+        wx.setStorageSync('cart_ingredients', shoppingList || []);
+
+        var canSlim = menuData.canSafelySlimMenus && menuData.canSafelySlimMenus(menus);
+        if (canSlim && menuData.serializeMenusForStorage) {
+          var slimMenus = menuData.serializeMenusForStorage(menus);
+          wx.setStorageSync('today_menus', JSON.stringify(slimMenus));
+        } else {
+          wx.setStorageSync('today_menus', JSON.stringify(menus));
+        }
+        wx.setStorageSync('today_menus_preference', JSON.stringify(preference));
+      }
+
+      try { wx.removeStorageSync(MIX_DRAFT_KEY); } catch (e) {}
+      wx.hideLoading();
+      wx.navigateTo({ url: '/pages/preview/preview' });
+    } catch (err) {
+      wx.hideLoading();
+      console.error('[mix] 让别人做失败:', err);
+      wx.showToast({ title: '生成失败', icon: 'none' });
+    }
+  },
+
   // ── 仅生成购物清单 ──────────────────────────────────────────
 
   onGenerateShoppingOnly: function () {

@@ -43,12 +43,11 @@
         <view class="recipe-card-main">
           <view class="recipe-card-left">
             <text class="recipe-card-name">{{item.name}}</text>
-            <view class="recipe-card-tags">
-              <text class="recipe-card-source recipe-card-source-{{item._sourceType}}">
-                {{item._sourceType === 'external' ? '🔗 外部导入' : '📚 原生'}}
-              </text>
-              <text class="recipe-card-tag" wx:if="{{item._cookTypeLabel}}">{{item._cookTypeLabel}}</text>
-              <text class="recipe-card-tag" wx:if="{{item._meatLabel}}">{{item._meatLabel}}</text>
+            <view class="recipe-card-meta">
+              <text class="recipe-card-source recipe-card-source-{{item._sourceType}}">{{item._sourceType === 'external' ? '导入' : '原生'}}</text>
+              <text class="recipe-card-meta-text" wx:if="{{item._cookTypeLabel}}">{{item._cookTypeLabel}}</text>
+              <text class="recipe-card-meta-dot" wx:if="{{item._cookTypeLabel && item._meatLabel}}">·</text>
+              <text class="recipe-card-meta-text" wx:if="{{item._meatLabel}}">{{item._meatLabel}}</text>
             </view>
           </view>
           <view class="recipe-card-remove" catchtap="onRemoveRecipe" data-index="{{index}}">
@@ -139,11 +138,14 @@
 
   <!-- ═══ 底部操作栏 ═══ -->
   <view class="bottom-actions" wx:if="{{selectedRecipes.length > 0}}">
-    <button class="action-btn action-btn-primary" bindtap="onGenerate">
-      <text class="action-btn-text">直接开始做</text>
-    </button>
     <button class="action-btn action-btn-secondary" bindtap="onGenerateShoppingOnly">
-      <text class="action-btn-secondary-text">生成购物清单</text>
+      <text class="action-btn-secondary-text">购物清单</text>
+    </button>
+    <button class="action-btn action-btn-helper" bindtap="onGoHelperMode">
+      <text class="action-btn-helper-text">让别人做</text>
+    </button>
+    <button class="action-btn action-btn-primary" bindtap="onGenerate">
+      <text class="action-btn-text">开始做</text>
     </button>
   </view>
 

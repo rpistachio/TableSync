@@ -66,6 +66,7 @@ flowchart TD
 | 卖点后置与体验升级 | 已完成 | 首页移除「效率提升 +42%」/「空气炸锅模式」文案，改用天气感知问候；preview 页在菜品列表后展示串行 vs 并行统筹对比与烹饪顺序时间线；统筹逻辑抽至 utils/scheduleEngine.js；疲惫模式统筹区文案与色调差异化。详见 §5。 |
 | 导入页入口与 UI | 已完成 | 导入页新增「加入混搭组餐」「随机配一桌」；英雄卡片、卡片化 section、AI 辅助信息合并、5 按钮布局。详见 §5.6。 |
 | 今日菜单存储与导入菜兼容 | 已完成 | canSafelySlimMenus；含无 id 或 ext- 菜谱时存完整格式，避免 preview/steps 反序列化丢失（未知菜谱/步骤配料缺失）。详见 §5.7。 |
+| 混合组餐页 UI 优化 | 已完成 | 菜名下标签去药丸化（来源微标签 + 纯文字 · 分隔）；底部三按钮改为横排，与 preview 等页风格统一。详见 §5.8。 |
 | stressWeight 评分因子 | 待扩展 | 当前 isTimeSave 已驱动过滤与空气炸锅优先，未单独暴露 stressWeight 数值。 |
 
 ---
@@ -129,8 +130,15 @@ flowchart TD
 - **menuData.canSafelySlimMenus(menus)**：新增函数，遍历 menus，若任一项无 `adultRecipe.id` 或 id 以 `ext-` 开头则返回 false，否则返回 true。供写入 storage 前判断。
 - **调用点**：  
   - **import.js**（onGoPreviewWithMenu）：写 `today_menus` 前 `canSafelySlimMenus(menus)` 为 true 才 `serializeMenusForStorage`，否则 `JSON.stringify(menus)`。  
-  - **preview.js**：① onLoad 首次写回；②「开始做饭」流程写 storage；③ onChangeAdultCount 持久化。三处均先 `canSafelySlimMenus(menus)`，为 true 才写 slim，否则写完整 menus。
+  - **preview.js**：① onLoad 首次写回；②「开始做饭」流程写 storage；③ onChangeAdultCount 持久化（若存在）。三处均先 `canSafelySlimMenus(menus)`，为 true 才写 slim，否则写完整 menus。**实现注意**：「开始做饭」流程中写 `today_menus` 时必须使用上述判断，否则含导入菜的菜单会被存成 slim 导致 steps/preview 反序列化后首道显示「未知菜谱」、步骤与配料丢失。
 - **涉及文件**：menuData.js（canSafelySlimMenus）、import.js、preview.js。
+
+### 5.8 混合组餐页 UI 优化（2026）
+
+- **目标**：减少菜名下方标签视觉凌乱感，底部操作栏与 preview 等页保持风格一致（横排、单行）。
+- **标签**：原 `recipe-card-tags` 内多枚药丸式标签改为 `recipe-card-meta`——来源保留为微标签（「原生」/「导入」、小圆角 8rpx），烹饪方式与荤素改为纯文字，用 `·` 分隔，无边框与背景。
+- **底部操作栏**：`.bottom-actions` 由竖排改为横排（`flex-direction: row`）；三按钮顺序为「购物清单」「让别人做」「开始做」，主操作「开始做」置右且 `flex: 1.3`；按钮高度统一 84rpx，字号 26rpx；容器 `padding-bottom` 由 280rpx 调整为 140rpx。
+- **涉及文件**：mix.wxml（recipe-card-meta 结构、bottom-actions 按钮顺序与文案）、mix.wxss（.recipe-card-meta、.recipe-card-source 小圆角、.recipe-card-meta-text/dot、.bottom-actions 横排与 .action-btn flex/高度）。
 
 ---
 
