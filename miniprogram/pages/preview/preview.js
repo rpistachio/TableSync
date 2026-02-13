@@ -3,6 +3,7 @@ var recipeResources = require('../../data/recipeResources.js');
 var menuHistory = require('../../utils/menuHistory.js');
 var menuData = require('../../data/menuData.js');
 var menuGen = require('../../data/menuGenerator.js');
+var seedUserService = require('../../utils/seedUserService.js');
 
 var ENV_ID = 'cloud1-7g5mdmib90e9f670';
 var CLOUD_ROOT = recipeResources && recipeResources.CLOUD_ROOT ? recipeResources.CLOUD_ROOT : ('cloud://' + ENV_ID);
@@ -91,9 +92,11 @@ Page({
       ? helperData.mergedTitle.trim()
       : '辛苦啦，今晚想吃：' + menus.map(function (m) { return (m.adultRecipe && m.adultRecipe.name) || ''; }).filter(Boolean).join('、');
     if (!title || title === '辛苦啦，今晚想吃：') title = '帮我做今晚的饭，步骤都准备好了';
+    var sharePath = '/pages/steps/steps?role=helper&recipeIds=' + encodeURIComponent(ids) + '&adultCount=' + adultCount + avoidParam;
+    sharePath = seedUserService.appendChannelToPath(sharePath, 'wechat');
     return {
       title: title,
-      path: '/pages/steps/steps?role=helper&recipeIds=' + encodeURIComponent(ids) + '&adultCount=' + adultCount + avoidParam,
+      path: sharePath,
       imageUrl: CLOUD_ROOT + '/background_pic/help_background.png'
     };
   },

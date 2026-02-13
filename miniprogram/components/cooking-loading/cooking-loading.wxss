@@ -1,0 +1,137 @@
+/* ====== 趣味等待动画：食材炒锅 ====== */
+
+.cooking-loading-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10000;
+  background: rgba(253, 249, 239, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cooking-loading-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ====== 中央锅/碗 ====== */
+.pot-wrap {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 320rpx;
+  height: 320rpx;
+  z-index: 2;
+}
+
+.pot-img {
+  width: 100%;
+  height: 100%;
+}
+
+/* ====== 锅铲翻炒（will-change 提升至合成层，减轻主线程压力） ====== */
+.spatula-wrap {
+  position: absolute;
+  left: 50%;
+  top: 36%;
+  transform: translate(-50%, -50%);
+  width: 120rpx;
+  height: 120rpx;
+  z-index: 3;
+  will-change: transform;
+  animation: stirFry 2.8s ease-in-out infinite;
+}
+
+.spatula-img {
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes stirFry {
+  0%, 100% { transform: translate(-50%, -50%) rotate(-15deg); }
+  50% { transform: translate(-50%, -50%) rotate(12deg); }
+}
+
+/* ====== 食材飘落入锅（will-change + 精简关键帧减少重绘） ====== */
+.ingredients-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.ingredient {
+  position: absolute;
+  width: 72rpx;
+  height: 72rpx;
+  left: 50%;
+  top: -80rpx;
+  margin-left: -36rpx;
+  will-change: transform;
+  animation: ingredientDrop 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  opacity: 0;
+}
+
+.ingredient-img {
+  width: 100%;
+  height: 100%;
+}
+
+.ingredient-tomato { margin-left: -100rpx; }
+.ingredient-cucumber { margin-left: 50rpx; animation-duration: 2.2s; }
+.ingredient-egg { margin-left: -140rpx; top: -60rpx; animation-duration: 1.8s; }
+.ingredient-veggie { margin-left: 90rpx; animation-duration: 2.1s; }
+
+/* 精简为 5 个关键帧，降低动画计算开销 */
+@keyframes ingredientDrop {
+  0% {
+    opacity: 0;
+    transform: translateY(0) translateX(0) rotate(-15deg) scale(0.6);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(200rpx) translateX(15rpx) rotate(5deg) scale(0.9);
+  }
+  50% {
+    transform: translateY(400rpx) translateX(-10rpx) rotate(-5deg) scale(1);
+  }
+  85% {
+    transform: translateY(520rpx) translateX(0) rotate(0deg) scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(520rpx) translateX(0) rotate(0deg) scale(1);
+  }
+}
+
+/* ====== 底部趣味文案 ====== */
+.loading-text-wrap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 180rpx;
+  padding: 0 48rpx;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.loading-text {
+  font-size: 28rpx;
+  color: var(--text-soft, #5A544F);
+  text-align: center;
+}

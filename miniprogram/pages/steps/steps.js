@@ -1,6 +1,7 @@
 var menuData = require('../../data/menuData.js');
 var recipeResources = require('../../data/recipeResources.js');
 var imageLib = require('../../utils/imageLib.js');
+var seedUserService = require('../../utils/seedUserService.js');
 
 var IMAGE_CONFIG = recipeResources.IMAGE_CONFIG;
 var STORAGE_PREFIX = 'tablesync_steps_completed_';
@@ -1775,7 +1776,7 @@ Page({
   onShareAppMessage: function () {
     return {
       title: '今日家庭午餐 - 做菜步骤',
-      path: '/pages/steps/steps',
+      path: seedUserService.appendChannelToPath('/pages/steps/steps', 'wechat'),
       imageUrl: 'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/background_pic/help_background.png'
     };
   }

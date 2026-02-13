@@ -317,7 +317,7 @@ Page({
 
     that.setData({
       stage: 'extracting',
-      statusText: '正在抓取链接内容...'
+      statusText: '正在抓取链接内容，识别约需 15～30 秒…'
     });
 
     wx.cloud.callFunction({
@@ -414,34 +414,59 @@ Page({
     var imageList = that.data.imageList;
     var imageCount = imageList.length;
 
-    // Step 1: 上传截图到云存储
+    // Step 0: 压缩图片（减小体积，加快上传与 AI 识别）
     that.setData({
       stage: 'uploading',
-      statusText: '正在上传' + (imageCount > 1 ? ' ' + imageCount + ' 张截图' : '截图') + '...'
+      statusText: '正在压缩图片...'
     });
 
-    var uploadPromises = imageList.map(function (img, idx) {
+    var compressPromises = imageList.map(function (img, idx) {
       return new Promise(function (resolve, reject) {
-        var cloudPath = 'recipe_imports/' + Date.now() + '_' + idx + '_' + Math.random().toString(36).substr(2, 6) + '.jpg';
-        wx.cloud.uploadFile({
-          cloudPath: cloudPath,
-          filePath: img.path,
-          success: function (uploadRes) {
-            if (!uploadRes.fileID) {
-              reject(new Error('上传失败'));
-              return;
-            }
-            resolve({ index: idx, fileID: uploadRes.fileID });
+        wx.compressImage({
+          src: img.path,
+          quality: 80,
+          success: function (res) {
+            resolve({ index: idx, path: res.tempFilePath });
           },
           fail: function (err) {
-            reject(err);
+            resolve({ index: idx, path: img.path });
           }
         });
       });
     });
 
-    Promise.all(uploadPromises).then(function (uploadResults) {
-      // 更新 imageList 中的 fileID
+    Promise.all(compressPromises).then(function (compressed) {
+      var pathsByIndex = {};
+      compressed.forEach(function (r) { pathsByIndex[r.index] = r.path; });
+
+      that.setData({
+        statusText: '正在上传' + (imageCount > 1 ? ' ' + imageCount + ' 张' : '') + '截图...'
+      });
+
+      // Step 1: 上传截图到云存储（使用压缩后的路径）
+      var uploadPromises = imageList.map(function (img, idx) {
+        return new Promise(function (resolve, reject) {
+          var filePath = pathsByIndex[idx] || img.path;
+          var cloudPath = 'recipe_imports/' + Date.now() + '_' + idx + '_' + Math.random().toString(36).substr(2, 6) + '.jpg';
+          wx.cloud.uploadFile({
+            cloudPath: cloudPath,
+            filePath: filePath,
+            success: function (uploadRes) {
+              if (!uploadRes.fileID) {
+                reject(new Error('上传失败'));
+                return;
+              }
+              resolve({ index: idx, fileID: uploadRes.fileID });
+            },
+            fail: function (err) {
+              reject(err);
+            }
+          });
+        });
+      });
+
+      return Promise.all(uploadPromises);
+    }).then(function (uploadResults) {
       var updatedList = that.data.imageList.slice();
       uploadResults.forEach(function (r) {
         updatedList[r.index] = {
@@ -455,7 +480,7 @@ Page({
       that.setData({
         imageList: updatedList,
         stage: 'extracting',
-        statusText: 'AI 正在识别菜谱...'
+        statusText: 'AI 正在识别菜谱，约需 15～30 秒…'
       });
 
       // Step 2: 调用云函数提取菜谱

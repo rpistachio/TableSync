@@ -2,6 +2,7 @@
 var cloudRecipeService = require('./utils/cloudRecipeService.js');
 var cloudInit = require('./utils/cloudInitRecipes.js');
 var tracker = require('./utils/tracker.js');
+var seedUserService = require('./utils/seedUserService.js');
 
 // 兼容小程序环境：提供 fetch 轻量 shim，保证调试日志可发送
 function ensureFetch() {
@@ -35,6 +36,8 @@ App({
   globalData: {
     // 跨页传递的偏好参数，供 menu/steps/shopping 使用
     preference: null,
+    // 种子用户信息 { seq, channel, isNew }
+    seedUser: null,
     // AI 主厨报告文本（reasoning）
     chefReportText: '',
     // AI 返回的每道菜选择理由
@@ -48,25 +51,49 @@ App({
     }
   },
 
-  onLaunch: function() {
+  onLaunch: function(options) {
     var self = this;
     ensureFetch();
 
     // 埋点队列补报（spec 9.4.3）
     try { tracker.flushTrackingQueue(); } catch (e) {}
 
-    // 初始化云开发环境
-    if (typeof wx !== 'undefined' && wx.cloud) {
+    // ====== 种子用户：渠道追踪 & 先锋主厨注册 ======
+    var channel = seedUserService.parseChannel(options);
+    if (channel && channel !== 'organic') {
+      seedUserService.saveChannel(channel);
+    }
+
+    // 初始化云开发环境（延后到下一帧，避免 SDK 未就绪报错）
+    // 若控制台报 access_token missing：多为模拟器未登录，请用「真机预览」扫码或「真机调试」获得登录态
+    function doCloudInit() {
+      if (typeof wx === 'undefined' || !wx.cloud) return;
       try {
         wx.cloud.init({
           env: cloudInit.DEFAULT_ENV,
           traceUser: true
         });
-        // 云开发初始化成功
       } catch (e) {
-        // 云开发初始化失败，静默处理
+        // 同步异常静默处理
       }
     }
+    if (typeof setTimeout !== 'undefined') {
+      setTimeout(doCloudInit, 0);
+    } else {
+      doCloudInit();
+    }
+
+    // 种子用户注册（异步，在云 init 之后执行，避免触发未初始化的 cloud）
+    function runSeedUserRegister() {
+      seedUserService.registerSeedUser(channel).then(function (seedInfo) {
+        self.globalData.seedUser = seedInfo;
+        console.log('[SeedUser]', seedInfo.isNew ? '新注册' : '已注册',
+          '编号:', seedInfo.seq, '渠道:', seedInfo.channel);
+      }).catch(function (err) {
+        console.warn('[SeedUser] 注册失败:', err);
+      });
+    }
+    setTimeout(runSeedUserRegister, 100);
 
     // 初始化云端菜谱服务（异步，不阻塞启动）
     cloudRecipeService.init({

@@ -3,6 +3,14 @@ var menuData = require('../../data/menuData.js');
 var menuGen = require('../../data/menuGenerator.js');
 var recipeCoverSlugs = require('../../data/recipeCoverSlugs.js');
 var vibeGreeting = require('../../utils/vibeGreeting.js');
+var seedUserService = require('../../utils/seedUserService.js');
+
+/** 首页云图 fileID，需通过 getTempFileURL 转成 HTTPS 再显示（避免 simulator 把 cloud:// 当本地路径报 500） */
+var HOME_CLOUD_FILE_IDS = [
+  'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/background_pic/home_background.png',
+  'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/background_pic/feeling_ok_button.png',
+  'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/background_pic/feeling_tired_button.png'
+];
 
 function getCurrentDate() {
   var d = new Date();
@@ -33,11 +41,12 @@ Page({
       showAdvanced: false,
       cookWho: 'self',
       cookStatus: 'ok',
-      illustrationUrl: 'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/background_pic/home_background.png',    
-      okIconUrl: 'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/background_pic/feeling_ok_button.png',
-      tiredIconUrl: 'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/background_pic/feeling_tired_button.png',  
+      illustrationUrl: '',
+      okIconUrl: '',
+      tiredIconUrl: '',
       showStickerDrop: false,
       stickerDropQueue: [],    // [{ stickerId, name, emoji }]
+      showCookingLoading: false,
       // ====== 烟火集悬浮书脊 ======
       spineMode: _initSpineMode,      // spine-day / spine-morning / spine-night / spine-night-tired
       spineSealIcon: _initSealIcon,    // 🔖 常规 / 🪔 深夜疲惫小油灯
@@ -46,7 +55,7 @@ Page({
     };
   })(),
 
-  onLoad: function () {
+  onLoad: function (options) {
     var todayKey = getTodayDateKey();
     var storedKey = wx.getStorageSync('menu_generated_date') || '';
     // 过期日清理延后执行，不阻塞首屏
@@ -79,7 +88,16 @@ Page({
       spineSealIcon: spineSealIcon
     });
 
+    // ====== 种子用户：渠道追踪 + 先锋主厨问候语 ======
     var that = this;
+    // 如果从分享链接进入首页，解析 channel 参数
+    if (options && options.channel) {
+      seedUserService.saveChannel(options.channel);
+    }
+    // 等待种子用户信息就绪后刷新问候语
+    that._refreshPioneerGreeting();
+    // 云图：延后解析，等云 init 后再 getTempFileURL（未登录时静默失败，用占位）
+    setTimeout(function () { that._resolveHomeCloudImages(); }, 500);
   },
 
   onShow: function () {
@@ -107,7 +125,7 @@ Page({
     this._homeShowTime = Date.now();
     this._toggleCount = 0;
 
-    wx.showLoading({ title: '生成中...' });
+    this.setData({ showCookingLoading: true });
     var that = this;
     var pref = that._buildZenPreference();
     var moodText = that.data.cookStatus === 'tired' ? '疲惫' : '随便';
@@ -231,7 +249,7 @@ Page({
       that._zenNavigateToPreview(menus, pref);
     } catch (err) {
       that._zenGenerating = false;
-      wx.hideLoading();
+      that.setData({ showCookingLoading: false });
       wx.showModal({ title: '生成失败', content: err.message || '请稍后重试', showCancel: false });
     }
   },
@@ -239,7 +257,7 @@ Page({
   /** 写入 Storage 与 globalData，并跳转 preview（异步 Storage 不阻塞主线程） */
   _zenNavigateToPreview: function (menus, pref) {
     this._zenGenerating = false;
-    wx.hideLoading();
+    this.setData({ showCookingLoading: false });
     getApp().globalData.preference = pref;
     getApp().globalData.todayMenus = menus;
     var shoppingList = menuData.generateShoppingListFromMenus(pref, menus);
@@ -405,5 +423,70 @@ Page({
     if (hasUnviewed !== this.data.hasUnviewedCooks) {
       this.setData({ hasUnviewedCooks: hasUnviewed });
     }
+  },
+
+  // ====== 首页云图：cloud:// 转 HTTPS 再显示，避免 simulator 当本地路径报 500 ======
+  _resolveHomeCloudImages: function () {
+    var that = this;
+    if (!wx.cloud || typeof wx.cloud.getTempFileURL !== 'function') return;
+    wx.cloud.getTempFileURL({
+      fileList: HOME_CLOUD_FILE_IDS
+    }).then(function (res) {
+      var fileList = res.fileList || [];
+      var illustrationUrl = '';
+      var okIconUrl = '';
+      var tiredIconUrl = '';
+      if (fileList[0] && fileList[0].tempFileURL) illustrationUrl = fileList[0].tempFileURL;
+      if (fileList[1] && fileList[1].tempFileURL) okIconUrl = fileList[1].tempFileURL;
+      if (fileList[2] && fileList[2].tempFileURL) tiredIconUrl = fileList[2].tempFileURL;
+      that.setData({ illustrationUrl: illustrationUrl, okIconUrl: okIconUrl, tiredIconUrl: tiredIconUrl });
+    }).catch(function () {});
+  },
+
+  // ====== 种子用户：先锋主厨问候语刷新 ======
+  _refreshPioneerGreeting: function () {
+    var that = this;
+    // 优先使用本地缓存（秒级响应）
+    var localInfo = seedUserService.getLocalSeedInfo();
+    if (localInfo && localInfo.seq > 0 && localInfo.seq <= 100) {
+      that.setData({
+        vibeGreeting: vibeGreeting.pickGreeting(null, localInfo)
+      });
+      return;
+    }
+    // 等待 app.js 中异步注册完成
+    var app = getApp();
+    var checkInterval = setInterval(function () {
+      var seedUser = app.globalData.seedUser;
+      if (seedUser) {
+        clearInterval(checkInterval);
+        if (seedUser.seq > 0 && seedUser.seq <= 100) {
+          that.setData({
+            vibeGreeting: vibeGreeting.pickGreeting(null, seedUser)
+          });
+        }
+      }
+    }, 500);
+    // 最多等 5 秒，超时则保持默认问候语
+    setTimeout(function () {
+      clearInterval(checkInterval);
+    }, 5000);
+  },
+
+  // ====== 分享到好友：附带 channel 参数 ======
+  onShareAppMessage: function () {
+    return {
+      title: 'TableSync - 想想今晚吃什么',
+      path: seedUserService.getSharePath('wechat'),
+      imageUrl: 'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/background_pic/home_background.png'
+    };
+  },
+
+  // ====== 分享到朋友圈：附带 channel 参数 ======
+  onShareTimeline: function () {
+    return {
+      title: 'TableSync - 每天想想吃什么',
+      query: 'channel=pyq'
+    };
   }
 });

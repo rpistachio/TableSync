@@ -23,6 +23,9 @@ var cloudRecipeService = null;
 var recipeSchema = null;
 var _recipesModule = null;
 
+/** 为 true 时在控制台输出配料/步骤一致性校验提示（默认关闭，避免刷屏） */
+var DEBUG_MENU_VALIDATE = false;
+
 // 延迟加载云端菜谱服务，避免循环依赖
 function getCloudRecipeService() {
   if (!cloudRecipeService) {
@@ -1665,6 +1668,8 @@ function validateIngredientStepConsistency(recipe) {
   var fullText = stepTexts.join(' ');
 
   // 1) 配料表中每一项都应在步骤文案中出现（全名或至少两字子串，如「长茄子」步骤里写「茄子」即视为出现）
+  // 同义词映射：配料名 → 额外可接受的步骤写法
+  var ingredientAliases = { '食用油': ['油'], '白砂糖': ['糖'], '生姜': ['姜'], '大蒜': ['蒜'], '大葱': ['葱'], '香葱': ['葱'], '小葱': ['葱花', '葱'], '食盐': ['盐'] };
   function stepMentionsIngredient(text, ingredientName) {
     if (!text || !ingredientName) return false;
     if (text.indexOf(ingredientName) !== -1) return true;
@@ -1672,6 +1677,13 @@ function validateIngredientStepConsistency(recipe) {
     if (len >= 2) {
       for (var i = 0; i <= len - 2; i++) {
         if (text.indexOf(ingredientName.slice(i, i + 2)) !== -1) return true;
+      }
+    }
+    // 检查同义词
+    var aliases = ingredientAliases[ingredientName];
+    if (aliases) {
+      for (var a = 0; a < aliases.length; a++) {
+        if (text.indexOf(aliases[a]) !== -1) return true;
       }
     }
     return false;
@@ -1729,7 +1741,7 @@ function validateIngredientStepConsistency(recipe) {
     warnings.push('炒菜类调料种类较少，建议至少 3 种（如生抽、料酒、蚝油等）');
   }
 
-  if (missingInSteps.length > 0 || mentionedNotInList.length > 0 || warnings.length > 0) {
+  if (DEBUG_MENU_VALIDATE && (missingInSteps.length > 0 || mentionedNotInList.length > 0 || warnings.length > 0)) {
     if (typeof console !== 'undefined' && console.warn) {
       console.warn('[validateIngredientStepConsistency] ' + (recipe.name || recipe.id || '') + ':',
         missingInSteps.length ? '配料未在步骤中出现: ' + missingInSteps.join('、') : '',

@@ -1,0 +1,22 @@
+<view class="cooking-loading-mask" wx:if="{{visible}}">
+  <view class="cooking-loading-inner">
+    <!-- 中央锅/碗底图 -->
+    <view class="pot-wrap">
+      <image class="pot-img" src="{{potUrl}}" mode="aspectFit" />
+    </view>
+    <!-- 食材飘落入锅（不同 delay） -->
+    <view class="ingredients-layer">
+      <view class="ingredient ingredient-{{item.name}}" wx:for="{{ingredients}}" wx:key="name" style="animation-delay: {{item.delay}}ms">
+        <image class="ingredient-img" src="{{item.url}}" mode="aspectFit" />
+      </view>
+    </view>
+    <!-- 锅铲翻炒 -->
+    <view class="spatula-wrap">
+      <image class="spatula-img" src="{{spatulaUrl}}" mode="aspectFit" />
+    </view>
+    <!-- 底部趣味文案 -->
+    <view class="loading-text-wrap">
+      <text class="loading-text">{{loadingText}}</text>
+    </view>
+  </view>
+</view>

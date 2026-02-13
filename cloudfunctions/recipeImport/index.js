@@ -283,7 +283,7 @@ async function handleLinkImport({ url, apiKey, textModel, timings, startTime }) 
     apiKey,
     model: textModel,
     messages,
-    max_tokens: 4096,
+    max_tokens: 2048,
     temperature: 0.2,
   });
 

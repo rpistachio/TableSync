@@ -12,15 +12,28 @@ var recipeSchema = require('../data/recipeSchema.js');
 /** 云环境 ID（已配置：cloud1-7g5mdmib90e9f670），留空则使用项目默认环境 */
 var DEFAULT_ENV = 'cloud1-7g5mdmib90e9f670';
 
+/** 是否已对当前 env 执行过 init（避免重复 init 触发多次 access_token 报错） */
+var _cloudInited = false;
+
 function getCloudDb(options) {
   var env = (options && options.env) || DEFAULT_ENV;
   if (typeof wx === 'undefined' || !wx.cloud) return { db: null, env: env };
-  if (env && env !== 'your-env-id') {
-    wx.cloud.init({ env: env, traceUser: true });
-    return { db: wx.cloud.database({ env: env }), env: env };
+  try {
+    if (!_cloudInited) {
+      if (env && env !== 'your-env-id') {
+        wx.cloud.init({ env: env, traceUser: true });
+      } else {
+        wx.cloud.init({ traceUser: true });
+      }
+      _cloudInited = true;
+    }
+    var db = (env && env !== 'your-env-id')
+      ? wx.cloud.database({ env: env })
+      : wx.cloud.database();
+    return { db: db, env: env };
+  } catch (e) {
+    return { db: null, env: env };
   }
-  wx.cloud.init({ traceUser: true });
-  return { db: wx.cloud.database(), env: env };
 }
 
 /**

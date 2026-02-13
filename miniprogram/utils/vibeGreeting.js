@@ -61,9 +61,17 @@ function getTimeSlot(hour) {
 /**
  * 选一条问候语
  * @param {Object} weather - { text?: string, temp?: string } 从 getWeather 返回
+ * @param {Object} [seedUser] - 种子用户信息 { seq, channel, isNew }
  * @returns {string}
  */
-function pickGreeting(weather) {
+function pickGreeting(weather, seedUser) {
+  // 先锋主厨彩蛋：前 100 名种子用户显示专属问候
+  if (seedUser && seedUser.seq > 0 && seedUser.seq <= 100) {
+    var seqStr = String(seedUser.seq);
+    while (seqStr.length < 3) seqStr = '0' + seqStr;
+    return '您好，TableSync 的第 ' + seqStr + ' 位先锋主厨';
+  }
+
   var d = new Date();
   var weekDay = d.getDay();
   var hour = d.getHours();

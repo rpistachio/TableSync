@@ -13,7 +13,9 @@ const IMAGE_CONFIG = {
     adults: `${CLOUD_HTTP_ROOT}/adults_recipes/`,
     babies: `${CLOUD_HTTP_ROOT}/babies_recipes/`,
     prep: `${CLOUD_HTTP_ROOT}/prep_cover_pic/`,
-    shopping: `${CLOUD_HTTP_ROOT}/shopping_cover_pic/`
+    shopping: `${CLOUD_HTTP_ROOT}/shopping_cover_pic/`,
+    /** 生成中等待动画素材（水果蔬菜锅铲等 SVG），云端目录：waiting_elements/ */
+    waitingElements: `${CLOUD_HTTP_ROOT}/waiting_elements/`
   },
 
   // 默认兜底图（使用备菜封面图作为兜底）
