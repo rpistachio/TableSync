@@ -320,9 +320,9 @@
   line-height: 1.45;
 }
 
-/* 今日菜单列表 */
+/* 今日菜单列表：左右留白收窄，菜品图框更宽 */
 .preview-dish-list {
-  padding: 0 32rpx 48rpx;
+  padding: 0 16rpx 48rpx;
 }
 
 .dish-card-wrap {
@@ -341,10 +341,10 @@
   }
 }
 
-/* 现代菜谱卡片：封面图 + 半透明渐变遮罩 */
+/* 现代菜谱卡片：封面图 + 半透明渐变遮罩，高度略增便于看清菜品 */
 .dish-card-modern {
   position: relative;
-  height: 260rpx;
+  height: 470rpx;
   border-radius: 24rpx;
   overflow: hidden;
   box-shadow: 0 12rpx 32rpx rgba(0, 0, 0, 0.06);
@@ -359,6 +359,8 @@
   bottom: 0;
   width: 100%;
   object-fit: cover;
+  /* 焦点下移，多露出菜品、少裁掉碗沿，避免菜被顶边裁掉 */
+  object-position: center 30%;
 }
 
 .card-overlay {
