@@ -251,6 +251,35 @@
   line-height: 1;
 }
 
+/* ─── 菜谱缩略图 */
+
+.recipe-card-thumb {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 16rpx;
+  flex-shrink: 0;
+  margin-right: 16rpx;
+  background: var(--line);
+  object-fit: cover;
+}
+
+.recipe-card-thumb-placeholder {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 16rpx;
+  flex-shrink: 0;
+  margin-right: 16rpx;
+  background: var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.recipe-card-thumb-emoji {
+  font-size: 36rpx;
+  opacity: 0.5;
+}
+
 /* ═══════════════════════════════════════ 添加按钮 */
 
 .add-section {
@@ -801,6 +830,35 @@
 
 .recipe-pick-item:active {
   background: var(--accent-soft-2);
+}
+
+/* ─── 面板菜谱缩略图 */
+
+.recipe-pick-thumb {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 12rpx;
+  flex-shrink: 0;
+  margin-right: 14rpx;
+  background: var(--line);
+  object-fit: cover;
+}
+
+.recipe-pick-thumb-placeholder {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 12rpx;
+  flex-shrink: 0;
+  margin-right: 14rpx;
+  background: var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.recipe-pick-thumb-emoji {
+  font-size: 30rpx;
+  opacity: 0.4;
 }
 
 .recipe-pick-info {

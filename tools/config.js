@@ -24,23 +24,30 @@ function loadMinimaxSecret() {
     return {
       key: normalizeApiKey(o.MINIMAX_API_KEY),
       host: (o.MINIMAX_HOST || '').trim(),
+      model: (o.MINIMAX_MODEL || '').trim(),
     };
   } catch {
-    return { key: '', host: '' };
+    return { key: '', host: '', model: '' };
   }
 }
 
 const minimaxSecret = loadMinimaxSecret();
 
 export const CONFIG = {
-  // LLM 相关
+  // LLM 菜谱生成：默认 MiniMax（海外站），可选 LLM_PROVIDER=anthropic 用 Claude
+  llmProvider: (process.env.LLM_PROVIDER || 'minimax').toLowerCase(),
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
   llmModel: process.env.LLM_MODEL || 'claude-3-5-sonnet-latest',
 
-  // MiniMax 文生图（与 MJ 风格 prompt 共用，自动出图）
-  // 优先 .env，否则复用 cloudfunctions/recipeCoverGen/secret-config.json（与云函数同一 key，且 host 一致避免 invalid api key）
+  // MiniMax：文生图 + 文本生成（海外站 api.minimax.io；注意是 minimax.io 不是 minimaxi.io）
   minimaxApiKey: normalizeApiKey(process.env.MINIMAX_API_KEY) || minimaxSecret.key,
-  minimaxHost: (process.env.MINIMAX_HOST || '').trim() || minimaxSecret.host,
+  minimaxHost: (() => {
+    const raw = (process.env.MINIMAX_HOST || '').trim() || minimaxSecret.host || 'api.minimax.io';
+    if (raw === 'api.minimaxi.io') return 'api.minimax.io';
+    return raw;
+  })(),
+  minimaxModel: (process.env.MINIMAX_MODEL || '').trim() || minimaxSecret.model || 'image-01',
+  minimaxLlmModel: (process.env.MINIMAX_LLM_MODEL || '').trim() || 'MiniMax-M2.1',
 
   // 腾讯云开发环境
   tcbEnvId: process.env.TCB_ENV_ID || 'cloud1-7g5mdmib90e9f670',

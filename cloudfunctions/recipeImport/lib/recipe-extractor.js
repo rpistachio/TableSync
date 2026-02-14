@@ -131,20 +131,46 @@ async function extractRecipeFromImages(opts) {
 }
 
 /**
- * 安全解析 JSON（处理 markdown 代码块包裹等情况）
+ * 安全解析 JSON（处理 markdown 代码块、混入文字、截断等情况）
  */
 function safeParseJson(raw) {
   let text = raw.trim();
   // 去除 markdown 代码块
   const fencedMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
   if (fencedMatch) text = fencedMatch[1].trim();
-  // 提取 JSON 对象
+  // 提取 JSON 对象：找第一个 { 到最后一个 }
   if (!text.startsWith('{')) {
     const startIdx = text.indexOf('{');
     const endIdx = text.lastIndexOf('}');
     if (startIdx !== -1 && endIdx > startIdx) text = text.slice(startIdx, endIdx + 1);
   }
-  return JSON.parse(text);
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    // 尝试修复常见问题：模型在字符串内截断导致 "Unexpected token"
+    const repaired = tryRepairMalformedJson(text);
+    if (repaired) return repaired;
+    throw e;
+  }
+}
+
+/**
+ * 尝试修复格式错误的 JSON（如 amount 字段写了中文「适量」）
+ */
+function tryRepairMalformedJson(text) {
+  // 数字字段：模型可能写成 "amount": 适 或 "amount": 适量（未加引号）
+  let repaired = text.replace(/"amount"\s*:\s*适(?:量)?/g, '"amount": 0');
+  repaired = repaired.replace(/"amount"\s*:\s*["']适(?:量)?["']/g, '"amount": 0');
+  repaired = repaired.replace(/"prep_time"\s*:\s*适(?:量)?/g, '"prep_time": 0');
+  repaired = repaired.replace(/"cook_minutes"\s*:\s*适(?:量)?/g, '"cook_minutes": 0');
+  repaired = repaired.replace(/"duration_num"\s*:\s*适(?:量)?/g, '"duration_num": 0');
+  // unit 应为字符串： "unit": 适 -> "unit": "适量"
+  repaired = repaired.replace(/"unit"\s*:\s*适(?:量)?/g, '"unit": "适量"');
+  try {
+    return JSON.parse(repaired);
+  } catch (_) {
+    return null;
+  }
 }
 
 /**
@@ -189,7 +215,11 @@ function isTransientError(err) {
   const status = err.status || err.statusCode;
   if (status === 429 || (status >= 500 && status < 600)) return true;
   const msg = (err.message || '').toLowerCase();
-  return msg.includes('timeout') || msg.includes('econnreset') || msg.includes('econnrefused') || msg.includes('socket hang up');
+  // 网络/超时类
+  if (msg.includes('timeout') || msg.includes('econnreset') || msg.includes('econnrefused') || msg.includes('socket hang up')) return true;
+  // JSON 解析失败（模型返回格式错误）也重试
+  if (err instanceof SyntaxError || msg.includes('unexpected token') || msg.includes('json')) return true;
+  return false;
 }
 
 function sleep(ms) {

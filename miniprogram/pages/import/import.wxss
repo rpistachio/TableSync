@@ -684,6 +684,38 @@
   color: var(--text-subtle);
 }
 
+/* 极速解析：生成步骤按钮 */
+.generate-steps-wrap {
+  padding: 32rpx 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.generate-steps-btn {
+  padding: 20rpx 48rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 100rpx;
+  border: none;
+}
+
+.generate-steps-btn::after {
+  border: none;
+}
+
+.generate-steps-btn[disabled] {
+  opacity: 0.7;
+}
+
+.generate-steps-hint {
+  font-size: 24rpx;
+  color: var(--text-subtle);
+}
+
 /* 置信度 */
 /* ═══════════════════════════════════════ AI 辅助信息行 */
 

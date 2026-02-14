@@ -492,3 +492,52 @@ flowchart TD
 | miniprogram/pages/shopping/shopping.wxml | 移除 today-tips 区块。 |
 | miniprogram/pages/shopping/shopping.wxss | 移除 .today-tips/.today-tip-line；底部栏与按钮尺寸。 |
 | miniprogram/pages/collection/collection.wxss | 贴纸单元格与火漆/emoji 尺寸。 |
+
+### 11.6 2026-02-14 变更（导入极速解析、宝宝占位符、封面直链、统筹空气炸锅）
+
+- **云函数 recipeImport**
+  - 新增 **generateSteps** 模式：根据菜名+食材+rawText 二次请求 Kimi 生成烹饪步骤（供链接极速解析后按需补全）。
+  - 链接导入改为**极速解析**：优先 Gemini（配置 GEMINI_API_KEY 时，国内云函数可能无法访问 Google API），否则 Kimi 仅提取食材，步骤留待二次请求；避免云函数 60 秒超时。
+  - 截图模式仍用 Kimi Vision 一次性完整提取；链接模式支持 Gemini 或 Kimi 其一即可。
+  - Kimi 超时由 60s 调整为 45s。
+- **recipe-extractor 修复**
+  - 新增 **tryRepairMalformedJson**：修复模型返回 amount/prep_time 等字段写「适量」未加引号导致的 JSON 解析失败。
+  - isTransientError 增加 JSON 解析失败（SyntaxError、unexpected token）重试。
+- **宝宝菜谱占位符**
+  - menuGenerator 新增 **processBabyRecipePlaceholders**：将 steps 中 {{process_action}}/{{seasoning_hint}} 按月龄替换为实际文案。
+  - menuData 反序列化与 generateSteps 时调用，保证宝宝菜谱步骤正确显示。
+- **菜单多样性**
+  - 素菜池主料去重：番茄/西红柿不再因主料排除，避免已选番茄牛腩/番茄蛋花汤时总剩番茄炒蛋。
+  - 疲惫模式素槽凉拌池可 skipPrefixDedup，避免总推老醋花生。
+- **封面与图片**
+  - recipeCoverSlugs 新增 **getRecipeCoverHttpUrl**：直接返回 HTTPS 直链，无需 getTempFileURL；新增约 20 个菜名映射。
+  - imageLib 新增 **batchResolveTempUrls**：批量解析 cloud:// 并全局缓存（50 个/批）。
+- **混合组餐 mix**
+  - 原生菜谱封面用 HTTP 直链；外部导入用 getTempFileURL 解析；新增 _resolveCoverImages、_resolvePickerCoverImages、_resolveImportedPickerCovers。
+- **导入页 import**
+  - 支持 fastParsed 后二次步骤生成：新增 onGenerateSteps 按钮，调用云函数 generateSteps 异步补全步骤。
+- **统筹引擎 scheduleEngine**
+  - 支持 air_fryer 菜谱；烹饪顺序：空气炸锅 → 炖煮 → 蒸 → 快炒 → 凉菜；空气炸锅阶段 noWatch: true。
+- **菜谱数据**
+  - 移除番茄炖牛腩（与番茄牛腩合并）；新增西芹炒虾仁、糖醋里脊、凉拌秋葵等约 20+ 道菜。
+- **工具链 tools**
+  - llm-client.js：count >= 6 时拆成两批并行请求；getTextFromContent 处理 MiniMax 格式。
+
+#### 涉及文件一览（§11.6）
+
+| 文件 | 变更摘要 |
+|------|----------|
+| cloudfunctions/recipeImport/index.js | generateSteps 模式；Gemini/Kimi 极速链接导入；API Key 分模式校验。 |
+| cloudfunctions/recipeImport/lib/gemini-fast.js | 新建；Gemini 极速解析（仅食材）。 |
+| cloudfunctions/recipeImport/lib/kimi.js | 超时 60s→45s。 |
+| cloudfunctions/recipeImport/lib/recipe-extractor.js | tryRepairMalformedJson；isTransientError 增加 JSON 重试。 |
+| miniprogram/data/menuData.js | processBabyRecipePlaceholders 调用。 |
+| miniprogram/data/menuGenerator.js | processBabyRecipePlaceholders；diversityFilter 素菜池/疲惫模式优化。 |
+| miniprogram/data/recipeCoverSlugs.js | getRecipeCoverHttpUrl；新增菜名映射。 |
+| miniprogram/data/recipes.js | 移除番茄炖牛腩；新增 20+ 道菜。 |
+| miniprogram/utils/imageLib.js | batchResolveTempUrls、getCachedTempUrl、putCachedTempUrl。 |
+| miniprogram/utils/scheduleEngine.js | air_fryer 支持；烹饪顺序与 noWatch。 |
+| miniprogram/pages/import/import.js | fastParsed、onGenerateSteps。 |
+| miniprogram/pages/mix/mix.js | 封面 HTTP 直链与 getTempFileURL 解析。 |
+| miniprogram/pages/preview/preview.js | 再加个菜、baby picker 等扩展。 |
+| tools/lib/llm-client.js | 批量并行、MiniMax 格式处理。 |

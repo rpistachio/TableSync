@@ -719,6 +719,31 @@ function getBabyConfig(month) {
   return { action: '正常切块', salt: '🥗 过渡饮食：可少量尝试成人餐，但需保持低油低盐，避免重口味。' };
 }
 
+/**
+ * 将原始宝宝菜谱中的 {{process_action}} / {{seasoning_hint}} 按月龄替换为实际文案（供 menuData 反序列化/解析时使用）
+ * @param {Object} rawBabyRecipe - 来自 getBabyRecipeById 的原始宝宝菜谱（steps 可能含占位符）
+ * @param {number} babyMonth - 宝宝月龄 6–36
+ * @returns {Object} 带已替换 steps 的宝宝菜谱副本，无 steps 则返回原对象浅拷贝
+ */
+function processBabyRecipePlaceholders(rawBabyRecipe, babyMonth) {
+  if (!rawBabyRecipe || !Array.isArray(rawBabyRecipe.steps) || rawBabyRecipe.steps.length === 0)
+    return rawBabyRecipe ? Object.assign({}, rawBabyRecipe) : null;
+  var m = Math.min(36, Math.max(6, Number(babyMonth) || 6));
+  var config = getBabyConfig(m);
+  var steps = rawBabyRecipe.steps.map(function (s) {
+    var step = typeof s === 'string' ? { action: 'cook', text: s } : Object.assign({}, s);
+    var t = String(step.text != null ? step.text : '');
+    if (step.action === 'process') t = config.action;
+    if (step.action === 'seasoning') t = config.salt;
+    t = t.replace(/\{\{process_action\}\}/g, config.action).replace(/\{\{seasoning_hint\}\}/g, config.salt);
+    return Object.assign({}, step, { text: t });
+  });
+  var out = {};
+  for (var k in rawBabyRecipe) { if (rawBabyRecipe.hasOwnProperty(k) && k !== 'steps') out[k] = rawBabyRecipe[k]; }
+  out.steps = steps;
+  return out;
+}
+
 /** 根据 babyMonth 返回第一个 month <= max_month 的 stage 对象；无匹配用最后一项 */
 function getBabyVariantByAge(recipe, babyMonth) {
   if (!recipe || !recipe.baby_variant || !Array.isArray(recipe.baby_variant.stages) || recipe.baby_variant.stages.length === 0)
@@ -929,9 +954,10 @@ function inferMainIngredientFromName(name) {
  * 多样性过滤：主料去重、做法限频、命名去重。软性约束，任一层导致池空则跳过该层。
  * @param {Array} pool - 候选菜谱池
  * @param {Array} existingMenus - 已选菜单 [{ adultRecipe }, ...]
+ * @param {Object} [options] - 可选。{ skipPrefixDedup: true } 时跳过命名前缀去重（用于疲惫模式素槽凉拌池，避免总剩「老醋花生」）
  * @returns {Array} 过滤后的池（可能为原池）
  */
-function diversityFilter(pool, existingMenus) {
+function diversityFilter(pool, existingMenus, options) {
   if (!Array.isArray(pool) || pool.length === 0) return pool;
   if (!Array.isArray(existingMenus) || existingMenus.length === 0) return pool;
 
@@ -949,10 +975,13 @@ function diversityFilter(pool, existingMenus) {
     cookTypeCounts[ct] = (cookTypeCounts[ct] || 0) + 1;
   }
 
-  // 1. 主料去重：排除主料与已选重复的
+  var poolIsAllVegetable = pool.length > 0 && pool.every(function (r) { return (r.meat || '') === 'vegetable'; });
+  // 1. 主料去重：排除主料与已选重复的。素菜池中不因「番茄」主料排除，避免已选番茄牛腩/番茄蛋花汤时总剩番茄炒蛋（其第一主料多为鸡蛋）
   var afterMain = pool.filter(function (r) {
     var main = getFirstMainIngredient(r);
-    return !main || !usedMainIngredients[main];
+    if (!main) return true;
+    if (poolIsAllVegetable && (main === '番茄' || main === '西红柿')) return true;
+    return !usedMainIngredients[main];
   });
   if (afterMain.length > 0) pool = afterMain;
 
@@ -965,12 +994,14 @@ function diversityFilter(pool, existingMenus) {
     if (nonStirFry.length > 0) pool = nonStirFry;
   }
 
-  // 3. 命名去重：排除与已选同前缀的
-  var afterPrefix = pool.filter(function (r) {
-    var prefix = getRecipeNamePrefix(r.name);
-    return !prefix || !usedPrefixes[prefix];
-  });
-  if (afterPrefix.length > 0) pool = afterPrefix;
+  // 3. 命名去重：排除与已选同前缀的（疲惫模式素槽凉拌池可跳过，避免仅「老醋花生」无前缀而总被选中）
+  if (!(options && options.skipPrefixDedup === true)) {
+    var afterPrefix = pool.filter(function (r) {
+      var prefix = getRecipeNamePrefix(r.name);
+      return !prefix || !usedPrefixes[prefix];
+    });
+    if (afterPrefix.length > 0) pool = afterPrefix;
+  }
 
   return pool;
 }
@@ -1543,8 +1574,9 @@ function generateMenuWithFilters(meat, babyMonth, hasBaby, adultCount, babyTaste
     });
   }
 
-  // ★ 多样性过滤：主料去重、做法限频、命名前缀去重（软约束）
-  aPool = diversityFilter(aPool, existingMenus);
+  // ★ 多样性过滤：主料去重、做法限频、命名前缀去重（软约束）。疲惫模式素槽凉拌池跳过前缀去重，避免总推老醋花生
+  var diversityOpts = (isTimeSave && meatKey === 'vegetable') ? { skipPrefixDedup: true } : undefined;
+  aPool = diversityFilter(aPool, existingMenus, diversityOpts);
 
   var currentStew = stewCountRef && typeof stewCountRef.stewCount === 'number' ? stewCountRef.stewCount : 0;
   var pickResult = pickOneWithStewBalance(aPool, currentStew, deviceLimits);
@@ -3541,6 +3573,7 @@ module.exports = {
   formatForHelper: formatForHelper,
   formatForHelperFromResult: formatForHelperFromResult,
   getBabyVariantByAge: getBabyVariantByAge,
+  processBabyRecipePlaceholders: processBabyRecipePlaceholders,
   checkFlavorBalance: checkFlavorBalance,
   generateSteps: generateSteps,
   generateUnifiedSteps: generateUnifiedSteps,

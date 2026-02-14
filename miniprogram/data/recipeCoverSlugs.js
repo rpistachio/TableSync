@@ -8,11 +8,19 @@
  * 新增菜谱时：在此表增加一行「菜名 -> slug」，上传对应图片到云存储即可，无需改业务逻辑。
  */
 
+var recipeResources = require('./recipeResources.js');
+
 /** 成人菜封面图所在云目录（英文 slug 图片在此目录下，如 xxx.png） */
 var CLOUD_STORAGE_BASE = 'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes';
 
+/** HTTP 直链根路径（可直接用于 <image> src，无需 getTempFileURL） */
+var HTTP_STORAGE_BASE = (recipeResources.CLOUD_HTTP_ROOT || '') + '/adults_recipes';
+
 /** 兜底图完整 URL（未在 RECIPE_NAME_TO_SLUG 中的菜或异常时使用，避免渲染层 500） */
 var DEFAULT_COVER_URL = 'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/basic_cut_0_3_ar4.5.jpeg';
+
+/** 兜底图 HTTP 直链（与 IMAGE_CONFIG.defaultCover 一致） */
+var DEFAULT_COVER_HTTP_URL = (recipeResources.IMAGE_CONFIG && recipeResources.IMAGE_CONFIG.defaultCover) || (recipeResources.CLOUD_HTTP_ROOT + '/prep_cover_pic/basic-veg-cut-01.jpeg');
 
 /** 菜名(中文) -> 文件名（需包含扩展名），如 kung_pao_chicken_with_peanut.png */
 var RECIPE_NAME_TO_SLUG = {
@@ -48,7 +56,6 @@ var RECIPE_NAME_TO_SLUG = {
   /* 成人菜 - 牛 */
   '杭椒牛柳': 'stir_fried_beef_with_long_green_peppers.png',
   '番茄牛腩': 'stewed_beef_brisket_with_tomatoes.png',
-  '番茄炖牛腩': 'tomato_and_beef_brisket_stew.png',
   '小炒黄牛肉': 'stir_fried_spicy_beef.png',
   '咖喱牛腩': 'beef_brisket_curry.png',
   '蚝油牛肉': 'beef_with_oyster_sauce.png',
@@ -57,6 +64,10 @@ var RECIPE_NAME_TO_SLUG = {
   '凉拌柠檬牛腱子': 'lemon_chilled_beef_shank.png',
   /* 成人菜 - 猪 */
   '蒜香蒸排骨': 'steamed_pork_ribs_with_garlic.png',
+  '蒜香排骨': 'steamed_pork_ribs_with_garlic.png',
+  '豆豉蒸排骨': 'steamed_pork_ribs_with_garlic.png',
+  '椒盐排骨': 'five_spice_air_fried_ribs.png',
+  '话梅排骨': 'steamed_pork_ribs_with_garlic.png',
   '滑溜里脊片': 'sauteed_sliced_pork_loin.png',
   '白菜豆腐炖五花': 'braised_pork_belly_with_cabbage_and_tofu.png',
   '回锅肉': 'twice_cooked_pork_belly.png',
@@ -174,6 +185,24 @@ var RECIPE_NAME_TO_SLUG = {
   '空气炸锅椒盐虾': 'air_fryer_salt_pepper_shrimp.jpg',
   '空气炸锅蒜香杏鲍菇': 'air_fryer_garlic_king_oyster_mushroom.jpg',
   '空气炸锅孜然土豆块': 'air_fryer_cumin_potato_cubes.jpg',
+  '西芹炒虾仁': 'celery_stir_fried_shrimp.png',
+  '糖醋里脊': 'sweet_sour_pork_tenderloin.png',
+  '黑椒牛排': 'black_pepper_beef_stir_fry.png',
+  '凉拌秋葵': 'cold_okra_salad.png',
+  '芦笋虾仁炒蛋': 'asparagus_shrimp_egg_stir_fry.png',
+  '蒜蓉西兰花炒鸡胸': 'garlic_broccoli_chicken_stir_fry.png',
+  '魔芋凉拌荞麦面': 'konjac_buckwheat_cold_noodle.png',
+  '柠檬香茅蒸鱼片': 'lemongrass_steamed_fish.png',
+  '黄瓜木耳炒鸡丁': 'cucumber_wood_ear_chicken_stir_fry.png',
+  '糖醋藕片': 'sweet_sour_lotus_root_slices.png',
+  '蒜蓉木耳': 'garlic_wood_ear_salad.png',
+  '香拌苦菊': 'dressed_chicory_with_peanuts.png',
+  '凉拌海带丝': 'cold_kelp_noodles_salad.png',
+  '糖醋排骨': 'sweet_and_sour_pork_ribs.png',
+  '蒜香排骨': 'garlic_steamed_pork_ribs.png',
+  '豆豉蒸排骨': 'black_bean_steamed_pork_ribs.png',
+  '椒盐排骨': 'szechuan_pepper_pork_ribs.png',
+  '话梅排骨': 'preserved_plum_pork_ribs.png',
   /* 宝宝菜 */
   '板栗鲜鸡泥': 'chestnut_chicken_puree.png',
   '柠檬清蒸鳕鱼': 'lemon_steamed_cod.png',
@@ -257,11 +286,33 @@ function getRecipeCoverImageUrl(dishName) {
   return url;
 }
 
+/**
+ * 根据菜名拼出封面图 HTTPS 直链（可直接用于 <image> src，无需 getTempFileURL）
+ * @param {string} dishName - recipes.js 里的 name
+ * @returns {string} 完整 https://... URL
+ */
+function getRecipeCoverHttpUrl(dishName) {
+  var name = (typeof dishName === 'string') ? dishName.trim() : '';
+  var slug = name ? RECIPE_NAME_TO_SLUG[name] : null;
+  var fileName = slug ? normalizeToFileName(slug) : null;
+  var url = DEFAULT_COVER_HTTP_URL;
+  if (fileName) {
+    url = HTTP_STORAGE_BASE + '/' + fileName;
+  }
+  if (!url || typeof url !== 'string' || url.indexOf('//') === -1 || url.indexOf('undefined') !== -1) {
+    return DEFAULT_COVER_HTTP_URL;
+  }
+  return url;
+}
+
 module.exports = {
   CLOUD_STORAGE_BASE: CLOUD_STORAGE_BASE,
   DEFAULT_COVER_URL: DEFAULT_COVER_URL,
+  HTTP_STORAGE_BASE: HTTP_STORAGE_BASE,
+  DEFAULT_COVER_HTTP_URL: DEFAULT_COVER_HTTP_URL,
   RECIPE_NAME_TO_SLUG: RECIPE_NAME_TO_SLUG,
   DEFAULT_COVER_SLUG: DEFAULT_COVER_SLUG,
   getCoverSlug: getCoverSlug,
-  getRecipeCoverImageUrl: getRecipeCoverImageUrl
+  getRecipeCoverImageUrl: getRecipeCoverImageUrl,
+  getRecipeCoverHttpUrl: getRecipeCoverHttpUrl
 };

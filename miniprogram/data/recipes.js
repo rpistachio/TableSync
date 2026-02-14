@@ -30,17 +30,6 @@ var adultRecipes = [
   ] },
   { id: 'a-shrimp-2', name: '滑蛋虾仁', type: 'adult', meat: 'shrimp', taste: 'quick_stir_fry', flavor_profile: 'salty_umami', cook_type: 'stir_fry', prep_time: 10, cook_minutes: 15, is_baby_friendly: false, can_share_base: false, common_allergens: ['虾', '蛋'], base_serving: 2 },
   { id: 'a-fish-2', name: '孔雀开屏鱼', type: 'adult', meat: 'fish', taste: 'steamed_salad', flavor_profile: 'light', cook_type: 'steam', prep_time: 15, cook_minutes: 15, is_baby_friendly: false, can_share_base: true, common_allergens: ['鱼'], base_serving: 2 },
-  { id: 'a-beef-3', name: '番茄炖牛腩', type: 'adult', meat: 'beef', taste: 'slow_stew', flavor_profile: 'sweet_sour', cook_type: 'stew', prep_time: 15, cook_minutes: 60, is_baby_friendly: false, can_share_base: true, common_allergens: [], base_serving: 2, ingredients: [
-    { name: '牛腩', baseAmount: 400, unit: 'g', category: '肉类' },
-    { name: '番茄', baseAmount: 300, unit: 'g', category: '蔬菜' },
-    { name: '姜片', baseAmount: 3, unit: '片', category: '调料' },
-    { name: '料酒', baseAmount: 0, unit: '适量', category: '调料' },
-    { name: '生抽', baseAmount: 0, unit: '适量', category: '调料' },
-    { name: '老抽', baseAmount: 0, unit: '适量', category: '调料' },
-    { name: '盐', baseAmount: 0, unit: '适量', category: '调料' },
-    { name: '糖', baseAmount: 0, unit: '适量', category: '调料' },
-    { name: '八角', baseAmount: 2, unit: '颗', category: '调料' }
-  ] },
   { id: 'a-pork-2', name: '蒜香蒸排骨', type: 'adult', meat: 'pork', taste: 'steamed_salad', flavor_profile: 'salty_umami', cook_type: 'steam', prep_time: 15, cook_minutes: 15, is_baby_friendly: false, can_share_base: true, common_allergens: [], base_serving: 2 },
   { id: 'a-pork-3', name: '滑溜里脊片', type: 'adult', meat: 'pork', taste: 'quick_stir_fry', flavor_profile: 'salty_umami', cook_type: 'stir_fry', prep_time: 12, cook_minutes: 15, is_baby_friendly: false, can_share_base: false, common_allergens: [], base_serving: 2 },
   { id: 'a-pork-4', name: '白菜豆腐炖五花', type: 'adult', meat: 'pork', taste: 'slow_stew', flavor_profile: 'salty_umami', cook_type: 'stew', prep_time: 15, cook_minutes: 60, is_baby_friendly: false, can_share_base: true, common_allergens: [], base_serving: 2 },
@@ -3774,7 +3763,2101 @@ var adultRecipes = [
     { text: '土豆切块，加孜然、盐、油拌匀。' },
     { text: '放入空气炸锅，200 度 15 分钟。' },
     { text: '中途翻动，表面金黄取出即可。' }
-  ] }
+  ] },
+  {
+    "id": "a-shrimp-8",
+    "name": "西芹炒虾仁",
+    "type": "adult",
+    "taste": "quick_stir_fry",
+    "meat": "shrimp",
+    "prep_time": 10,
+    "is_baby_friendly": true,
+    "common_allergens": [
+      "虾"
+    ],
+    "can_share_base": true,
+    "flavor_profile": "light",
+    "cook_type": "stir_fry",
+    "cook_minutes": 6,
+    "ingredients": [
+      {
+        "name": "虾仁",
+        "baseAmount": 200,
+        "unit": "g",
+        "category": "肉类",
+        "sub_type": "shrimp"
+      },
+      {
+        "name": "西芹",
+        "baseAmount": 150,
+        "unit": "g",
+        "category": "蔬菜",
+        "sub_type": "celery"
+      },
+      {
+        "name": "胡萝卜",
+        "baseAmount": 50,
+        "unit": "g",
+        "category": "蔬菜",
+        "sub_type": "carrot"
+      },
+      {
+        "name": "蒜末",
+        "baseAmount": 10,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "料酒",
+        "baseAmount": 10,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 2,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "白胡椒粉",
+        "baseAmount": 0.5,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "水淀粉",
+        "baseAmount": 15,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "食用油",
+        "baseAmount": 15,
+        "unit": "ml",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "虾仁洗净沥干，用少许料酒和白胡椒粉抓匀腌制5分钟去腥。西芹撕去老筋，斜切成菱形段。胡萝卜去皮切成薄菱形片备用。"
+      },
+      {
+        "action": "cook",
+        "text": "热锅倒入食用油，下蒜末爆香，放入虾仁大火滑炒至变色卷曲，约1分钟，盛出备用。"
+      },
+      {
+        "action": "cook",
+        "text": "锅中留底油，下西芹段和胡萝卜片大火翻炒1分钟至断生，倒回虾仁，加盐调味，淋入水淀粉勾薄芡翻匀即可出锅。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "虾仁西芹泥",
+          "action": "虾仁煮熟去壳去虾线，西芹焯水煮软，两者一同打成细腻泥糊"
+        },
+        {
+          "max_month": 12,
+          "name": "虾仁西芹碎末",
+          "action": "虾仁切碎，西芹切极细末，焯水煮软后混合少许煮虾汤"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝版西芹炒虾仁",
+          "action": "大人版少盐，虾仁切小块，西芹切小段，大火快炒至软烂"
+        }
+      ]
+    },
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/celery_stir_fried_shrimp.png"
+  },
+  {
+    "id": "a-pork-14",
+    "name": "糖醋里脊",
+    "type": "adult",
+    "taste": "quick_stir_fry",
+    "meat": "pork",
+    "prep_time": 8,
+    "is_baby_friendly": true,
+    "common_allergens": [
+      "蛋"
+    ],
+    "can_share_base": true,
+    "flavor_profile": "sweet_sour",
+    "cook_type": "stir_fry",
+    "cook_minutes": 10,
+    "ingredients": [
+      {
+        "name": "猪里脊",
+        "baseAmount": 250,
+        "unit": "g",
+        "category": "肉类",
+        "sub_type": "pork_tenderloin"
+      },
+      {
+        "name": "鸡蛋",
+        "baseAmount": 1,
+        "unit": "个",
+        "category": "蛋类"
+      },
+      {
+        "name": "干淀粉",
+        "baseAmount": 60,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "番茄酱",
+        "baseAmount": 40,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "白糖",
+        "baseAmount": 30,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "白醋",
+        "baseAmount": 20,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 10,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 2,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "料酒",
+        "baseAmount": 10,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "食用油",
+        "baseAmount": 400,
+        "unit": "ml",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "猪里脊切成约1cm粗的条状，加少许料酒和盐抓匀腌制5分钟。鸡蛋打散，将肉条先沾蛋液再裹满干淀粉备用。"
+      },
+      {
+        "action": "cook",
+        "text": "调制糖醋汁：取一小碗，加入番茄酱、白糖、白醋、生抽和少许盐，再加2汤匙清水搅匀备用。"
+      },
+      {
+        "action": "cook",
+        "text": "锅中倒入较多食用油烧至六成热（约160度），下入肉条中火炸至金黄定型，约3分钟，捞出沥油。"
+      },
+      {
+        "action": "cook",
+        "text": "转大火将油温升至七成热，倒入肉条复炸1分钟至表面酥脆捞出。锅中留底油，倒入糖醋汁小火熬至起大泡，放入肉条快速翻匀裹满酱汁即可出锅。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "里脊肉泥",
+          "action": "里脊肉蒸熟打成细腻肉泥，不加糖醋，仅用少许肉汤调稀"
+        },
+        {
+          "max_month": 12,
+          "name": "里脊肉末",
+          "action": "里脊肉切极小块煮软烂，番茄去皮煮软切碎拌入，不加糖醋"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝版糖醋里脊",
+          "action": "大人版少糖少醋少盐，肉条切小段不炸，用少量油煎至熟透，裹少量番茄酱"
+        }
+      ]
+    },
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/sweet_sour_pork_tenderloin.png"
+  },
+  {
+    "id": "a-beef-12",
+    "name": "黑椒牛排",
+    "type": "adult",
+    "taste": "quick_stir_fry",
+    "meat": "beef",
+    "prep_time": 5,
+    "is_baby_friendly": true,
+    "common_allergens": [],
+    "can_share_base": true,
+    "flavor_profile": "salty_umami",
+    "cook_type": "stir_fry",
+    "cook_minutes": 8,
+    "ingredients": [
+      {
+        "name": "牛里脊",
+        "baseAmount": 200,
+        "unit": "g",
+        "category": "肉类",
+        "sub_type": "beef_tenderloin"
+      },
+      {
+        "name": "洋葱",
+        "baseAmount": 80,
+        "unit": "g",
+        "category": "蔬菜",
+        "sub_type": "onion"
+      },
+      {
+        "name": "青椒",
+        "baseAmount": 60,
+        "unit": "g",
+        "category": "蔬菜",
+        "sub_type": "green_pepper"
+      },
+      {
+        "name": "黑胡椒粉",
+        "baseAmount": 3,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "蚝油",
+        "baseAmount": 15,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 10,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "料酒",
+        "baseAmount": 10,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "黄油",
+        "baseAmount": 15,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 2,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "食用油",
+        "baseAmount": 10,
+        "unit": "ml",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "牛里脊逆纹切成约0.5cm厚的薄片，用少许料酒、生抽和黑胡椒粉抓匀腌制5分钟。洋葱切丝，青椒切菱形片备用。"
+      },
+      {
+        "action": "cook",
+        "text": "热锅倒入食用油，下洋葱丝和青椒片大火翻炒1分钟至断生，盛出备用。"
+      },
+      {
+        "action": "cook",
+        "text": "锅中放入黄油融化，下牛肉片大火快炒至变色，约1分钟。倒入炒好的洋葱青椒，加蚝油、盐和适量黑胡椒碎快速翻匀即可出锅。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "牛肉泥",
+          "action": "牛肉煮熟打成细腻肉泥，不加黑胡椒和蚝油，用煮肉汤调稀"
+        },
+        {
+          "max_month": 12,
+          "name": "牛肉碎末",
+          "action": "牛肉切极小丁煮软烂，洋葱青椒切极细末焯水，混合少许无盐肉汤"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝版黑椒牛柳",
+          "action": "大人版去黑胡椒、少盐少蚝油，牛肉切小条，洋葱青椒切小丁，大火快炒至软烂"
+        }
+      ]
+    },
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/black_pepper_beef_stir_fry.png"
+  },
+  {
+    "id": "a-veg-45",
+    "name": "凉拌秋葵",
+    "type": "adult",
+    "taste": "steamed_salad",
+    "meat": "vegetable",
+    "prep_time": 5,
+    "is_baby_friendly": true,
+    "common_allergens": [],
+    "can_share_base": true,
+    "flavor_profile": "light",
+    "cook_type": "steam",
+    "cook_minutes": 5,
+    "ingredients": [
+      {
+        "name": "秋葵",
+        "baseAmount": 250,
+        "unit": "g",
+        "category": "蔬菜",
+        "sub_type": "okra"
+      },
+      {
+        "name": "大蒜",
+        "baseAmount": 15,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 20,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "香醋",
+        "baseAmount": 10,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "香油",
+        "baseAmount": 5,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "小米辣",
+        "baseAmount": 10,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "白芝麻",
+        "baseAmount": 5,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 2,
+        "unit": "g",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "秋葵洗净去蒂，放入沸水中焯烫2分钟至颜色翠绿，捞出立即过凉水保持脆嫩口感，沥干后对半切开摆入盘中。"
+      },
+      {
+        "action": "cook",
+        "text": "调制凉拌汁：大蒜切末，小米辣切圈，放入小碗中，加入生抽、香醋、香油、少许盐和白芝麻混合均匀。"
+      },
+      {
+        "action": "cook",
+        "text": "将调好的凉拌汁均匀淋在秋葵上即可食用，也可放入冰箱冷藏10分钟更入味。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "秋葵泥",
+          "action": "秋葵蒸熟去籽打成细腻泥糊，不加小米辣和醋，仅用少许生抽和香油调味"
+        },
+        {
+          "max_month": 12,
+          "name": "秋葵碎末",
+          "action": "秋葵切极小丁蒸软烂，用上述调料（去辣）拌匀，或切小段与粥同煮"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝版凉拌秋葵",
+          "action": "大人版去小米辣、少盐，秋葵整根或切段焯水后蘸少量生抽香油食用"
+        }
+      ]
+    },
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/cold_okra_salad.png"
+  },
+  {
+    "id": "a-shrimp-9",
+    "name": "芦笋虾仁炒蛋",
+    "type": "adult",
+    "taste": "quick_stir_fry",
+    "meat": "shrimp",
+    "prep_time": 10,
+    "is_baby_friendly": true,
+    "can_share_base": true,
+    "flavor_profile": "light",
+    "cook_type": "stir_fry",
+    "cook_minutes": 8,
+    "ingredients": [
+      {
+        "name": "鲜虾仁",
+        "baseAmount": 150,
+        "unit": "g",
+        "category": "海鲜",
+        "sub_type": "shrimp"
+      },
+      {
+        "name": "芦笋",
+        "baseAmount": 150,
+        "unit": "g",
+        "category": "蔬菜",
+        "sub_type": "asparagus"
+      },
+      {
+        "name": "鸡蛋",
+        "baseAmount": 3,
+        "unit": "个",
+        "category": "蛋类",
+        "sub_type": "egg"
+      },
+      {
+        "name": "蒜末",
+        "baseAmount": 8,
+        "unit": "g",
+        "category": "调料",
+        "sub_type": "garlic"
+      },
+      {
+        "name": "橄榄油",
+        "baseAmount": 15,
+        "unit": "ml",
+        "category": "调料",
+        "sub_type": "oil"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 2,
+        "unit": "g",
+        "category": "调料",
+        "sub_type": "salt"
+      },
+      {
+        "name": "现磨黑胡椒",
+        "baseAmount": 0.5,
+        "unit": "g",
+        "category": "调料",
+        "sub_type": "pepper"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "虾仁去虾线洗净，用厨房纸吸干水分备用。芦笋洗净后削去老根，切成5cm长的斜段。鸡蛋打入碗中，加少许盐打散成蛋液。"
+      },
+      {
+        "action": "cook",
+        "text": "热锅倒入10ml橄榄油，中火将蛋液倒入锅中，待底部凝固后用铲子轻轻划散，炒至七成熟盛出备用。"
+      },
+      {
+        "action": "cook",
+        "text": "锅中再加5ml橄榄油，放入蒜末爆香，加入芦笋大火翻炒2分钟至颜色翠绿微软。"
+      },
+      {
+        "action": "cook",
+        "text": "倒入虾仁大火快炒1分钟至变红弯曲，加入炒蛋、盐和黑胡椒快速翻匀，30秒内出锅即可。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "芦笋虾仁蛋花糊",
+          "action": "芦笋去皮煮软，虾仁煮熟切碎，与蛋黄泥混合加少许温水调成顺滑糊状"
+        },
+        {
+          "max_month": 12,
+          "name": "芦笋虾仁蛋碎末",
+          "action": "芦笋煮软切碎末，虾仁切碎，鸡蛋打散一同炒至全熟软烂，少盐调味"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝芦笋虾仁炒蛋",
+          "action": "同大人版少油少盐，芦笋切小丁，虾仁切小块，确保熟透软烂"
+        }
+      ]
+    },
+    "common_allergens": [],
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/asparagus_shrimp_egg_stir_fry.png"
+  },
+  {
+    "id": "a-chi-15",
+    "name": "蒜蓉西兰花炒鸡胸",
+    "type": "adult",
+    "taste": "quick_stir_fry",
+    "meat": "chicken",
+    "prep_time": 12,
+    "is_baby_friendly": true,
+    "can_share_base": true,
+    "flavor_profile": "light",
+    "cook_type": "stir_fry",
+    "cook_minutes": 12,
+    "ingredients": [
+      {
+        "name": "鸡胸肉",
+        "baseAmount": 200,
+        "unit": "g",
+        "category": "肉类",
+        "sub_type": "chicken_breast"
+      },
+      {
+        "name": "西兰花",
+        "baseAmount": 250,
+        "unit": "g",
+        "category": "蔬菜",
+        "sub_type": "broccoli"
+      },
+      {
+        "name": "蒜末",
+        "baseAmount": 15,
+        "unit": "g",
+        "category": "调料",
+        "sub_type": "garlic"
+      },
+      {
+        "name": "橄榄油",
+        "baseAmount": 20,
+        "unit": "ml",
+        "category": "调料",
+        "sub_type": "oil"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 15,
+        "unit": "ml",
+        "category": "调料",
+        "sub_type": "soy_sauce"
+      },
+      {
+        "name": "料酒",
+        "baseAmount": 10,
+        "unit": "ml",
+        "category": "调料",
+        "sub_type": "cooking_wine"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 2,
+        "unit": "g",
+        "category": "调料",
+        "sub_type": "salt"
+      },
+      {
+        "name": "现磨黑胡椒",
+        "baseAmount": 0.5,
+        "unit": "g",
+        "category": "调料",
+        "sub_type": "pepper"
+      },
+      {
+        "name": "水淀粉",
+        "baseAmount": 15,
+        "unit": "ml",
+        "category": "调料",
+        "sub_type": "starch_slurry"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "鸡胸肉切成2cm见方的丁，加入少许料酒、盐和干淀粉抓匀，腌制5分钟使其更嫩滑。西兰花洗净后掰成小朵，沸水中加少许盐和油焯烫1分钟捞出沥干。"
+      },
+      {
+        "action": "cook",
+        "text": "调制酱汁：生抽、少许盐和黑胡椒加入水淀粉中混合均匀备用。"
+      },
+      {
+        "action": "cook",
+        "text": "热锅倒入橄榄油，中火将鸡丁滑炒至表面变白约八成熟，盛出备用。锅中留底油，小火将蒜末炒至金黄出香。"
+      },
+      {
+        "action": "cook",
+        "text": "转大火倒入西兰花和鸡丁，淋入调好的酱汁快速翻炒1分钟，使酱汁均匀裹住食材，出锅前可再撒少许蒜末增香。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "西兰花鸡胸泥",
+          "action": "鸡胸肉蒸熟撕碎，西兰花煮软打泥，两者混合成细腻糊状"
+        },
+        {
+          "max_month": 12,
+          "name": "西兰花鸡胸碎末",
+          "action": "鸡胸肉切碎，西兰花切小碎末，少量鸡汤煮软烂，不加盐或极少量"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝蒜蓉西兰花鸡胸",
+          "action": "同大人版少盐少油，鸡胸切小丁，西兰花掰小朵，确保软烂易嚼"
+        }
+      ]
+    },
+    "common_allergens": [],
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/garlic_broccoli_chicken_stir_fry.png"
+  },
+  {
+    "id": "a-veg-46",
+    "name": "魔芋凉拌荞麦面",
+    "type": "adult",
+    "taste": "steamed_salad",
+    "meat": "vegetable",
+    "prep_time": 10,
+    "is_baby_friendly": true,
+    "can_share_base": true,
+    "flavor_profile": "sour_fresh",
+    "cook_type": "steam",
+    "cook_minutes": 5,
+    "ingredients": [
+      {
+        "name": "魔芋结",
+        "baseAmount": 200,
+        "unit": "g",
+        "category": "蔬菜",
+        "sub_type": "konjac_noodle"
+      },
+      {
+        "name": "荞麦面",
+        "baseAmount": 80,
+        "unit": "g",
+        "category": "主食",
+        "sub_type": "buckwheat_noodle"
+      },
+      {
+        "name": "黄瓜",
+        "baseAmount": 100,
+        "unit": "g",
+        "category": "蔬菜",
+        "sub_type": "cucumber"
+      },
+      {
+        "name": "胡萝卜",
+        "baseAmount": 50,
+        "unit": "g",
+        "category": "蔬菜",
+        "sub_type": "carrot"
+      },
+      {
+        "name": "香菜",
+        "baseAmount": 10,
+        "unit": "g",
+        "category": "蔬菜",
+        "sub_type": "cilantro"
+      },
+      {
+        "name": "蒜末",
+        "baseAmount": 10,
+        "unit": "g",
+        "category": "调料",
+        "sub_type": "garlic"
+      },
+      {
+        "name": "小米辣",
+        "baseAmount": 5,
+        "unit": "g",
+        "category": "调料",
+        "sub_type": "chili"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 20,
+        "unit": "ml",
+        "category": "调料",
+        "sub_type": "soy_sauce"
+      },
+      {
+        "name": "香醋",
+        "baseAmount": 15,
+        "unit": "ml",
+        "category": "调料",
+        "sub_type": "vinegar"
+      },
+      {
+        "name": "香油",
+        "baseAmount": 5,
+        "unit": "ml",
+        "category": "调料",
+        "sub_type": "sesame_oil"
+      },
+      {
+        "name": "白芝麻",
+        "baseAmount": 5,
+        "unit": "g",
+        "category": "调料",
+        "sub_type": "sesame"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "魔芋结用清水冲洗两遍后沥干。荞麦面按包装说明煮熟，捞出过凉水沥干备用。黄瓜洗净切细丝，胡萝卜去皮切细丝，小米辣切圈，香菜洗净切段。"
+      },
+      {
+        "action": "cook",
+        "text": "调制凉拌汁：蒜末、小米辣圈放入碗中，加入生抽、香醋、香油混合均匀。喜欢更酸的可以增加香醋比例。"
+      },
+      {
+        "action": "cook",
+        "text": "将魔芋结和荞麦面放入大碗中，加入黄瓜丝和胡萝卜丝，淋入调好的凉拌汁，撒上白芝麻和香菜段。"
+      },
+      {
+        "action": "cook",
+        "text": "用筷子从底部向上翻拌均匀，使每根面条都裹满酱汁，静置2分钟入味后即可享用。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "魔芋荞麦面糊",
+          "action": "魔芋煮软切碎，荞麦面煮极烂剪成小段，黄瓜胡萝卜切极细碎末，混合不加醋和辣"
+        },
+        {
+          "max_month": 12,
+          "name": "魔芋荞麦面碎末",
+          "action": "魔芋切小丁，荞麦面剪小段，黄瓜胡萝卜切细丝，用生抽和香油调味不加醋和辣"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝魔芋凉拌面",
+          "action": "同大人版，但去掉小米辣，醋和辣椒酱减量或不加，确保面条软烂易嚼"
+        }
+      ]
+    },
+    "common_allergens": [],
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/konjac_buckwheat_cold_noodle.png"
+  },
+  {
+    "id": "a-fish-12",
+    "name": "柠檬香茅蒸鱼片",
+    "type": "adult",
+    "taste": "steamed_salad",
+    "meat": "fish",
+    "prep_time": 15,
+    "is_baby_friendly": true,
+    "can_share_base": true,
+    "flavor_profile": "sour_fresh",
+    "cook_type": "steam",
+    "cook_minutes": 10,
+    "ingredients": [
+      {
+        "name": "龙利鱼片",
+        "baseAmount": 250,
+        "unit": "g",
+        "category": "海鲜",
+        "sub_type": "fish_solomon"
+      },
+      {
+        "name": "柠檬",
+        "baseAmount": 1,
+        "unit": "个",
+        "category": "水果",
+        "sub_type": "lemon"
+      },
+      {
+        "name": "香茅",
+        "baseAmount": 2,
+        "unit": "根",
+        "category": "蔬菜",
+        "sub_type": "lemongrass"
+      },
+      {
+        "name": "姜丝",
+        "baseAmount": 10,
+        "unit": "g",
+        "category": "调料",
+        "sub_type": "ginger"
+      },
+      {
+        "name": "葱丝",
+        "baseAmount": 10,
+        "unit": "g",
+        "category": "调料",
+        "sub_type": "scallion"
+      },
+      {
+        "name": "料酒",
+        "baseAmount": 10,
+        "unit": "ml",
+        "category": "调料",
+        "sub_type": "cooking_wine"
+      },
+      {
+        "name": "蒸鱼豉油",
+        "baseAmount": 20,
+        "unit": "ml",
+        "category": "调料",
+        "sub_type": "fish_soy_sauce"
+      },
+      {
+        "name": "香油",
+        "baseAmount": 5,
+        "unit": "ml",
+        "category": "调料",
+        "sub_type": "sesame_oil"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "龙利鱼片洗净，用厨房纸吸干水分，在鱼身两面各划两刀便于入味。鱼片放入盘中，加入少许料酒腌制5分钟去腥。柠檬半个切片，另半个挤出汁备用。香茅拍散后切成小段。"
+      },
+      {
+        "action": "cook",
+        "text": "取一深盘，底部铺上一半的姜丝和香茅段，放上鱼片，在鱼身上再摆放几片柠檬和剩余姜丝。"
+      },
+      {
+        "action": "cook",
+        "text": "水开后放入鱼盘，大火蒸8分钟至鱼肉变白断火。取出后倒掉盘中多余汤汁（可留作高汤），拣去柠檬片和香茅。"
+      },
+      {
+        "action": "cook",
+        "text": "在鱼身上铺上葱丝，淋上蒸鱼豉油和香油，最后将柠檬汁均匀淋在鱼身。烧少许热油至冒烟，淋在葱丝上激出香味即可上桌。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "柠檬蒸鱼泥",
+          "action": "龙利鱼蒸熟剔刺压成泥，挤入几滴柠檬汁去腥，混合少许鱼汤调成顺滑糊状"
+        },
+        {
+          "max_month": 12,
+          "name": "柠檬蒸鱼碎末",
+          "action": "龙利鱼蒸熟剔刺后切碎，不加柠檬汁或少许，混入软烂米粥或碎面条中"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝柠檬蒸鱼片",
+          "action": "同大人版完全去刺，柠檬汁和蒸鱼豉油减量，确保鱼肉蒸至完全熟透软烂"
+        }
+      ]
+    },
+    "common_allergens": [],
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/lemongrass_steamed_fish.png"
+  },
+  {
+    "id": "a-chi-16",
+    "name": "黄瓜木耳炒鸡丁",
+    "type": "adult",
+    "taste": "quick_stir_fry",
+    "meat": "chicken",
+    "prep_time": 15,
+    "is_baby_friendly": true,
+    "can_share_base": true,
+    "flavor_profile": "light",
+    "cook_type": "stir_fry",
+    "cook_minutes": 10,
+    "ingredients": [
+      {
+        "name": "鸡胸肉",
+        "baseAmount": 200,
+        "unit": "g",
+        "category": "肉类",
+        "sub_type": "chicken_breast"
+      },
+      {
+        "name": "黄瓜",
+        "baseAmount": 150,
+        "unit": "g",
+        "category": "蔬菜",
+        "sub_type": "cucumber"
+      },
+      {
+        "name": "干木耳",
+        "baseAmount": 30,
+        "unit": "g",
+        "category": "干货",
+        "sub_type": "dried_wood_ear"
+      },
+      {
+        "name": "胡萝卜",
+        "baseAmount": 50,
+        "unit": "g",
+        "category": "蔬菜",
+        "sub_type": "carrot"
+      },
+      {
+        "name": "蒜末",
+        "baseAmount": 10,
+        "unit": "g",
+        "category": "调料",
+        "sub_type": "garlic"
+      },
+      {
+        "name": "姜末",
+        "baseAmount": 5,
+        "unit": "g",
+        "category": "调料",
+        "sub_type": "ginger"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 15,
+        "unit": "ml",
+        "category": "调料",
+        "sub_type": "soy_sauce"
+      },
+      {
+        "name": "料酒",
+        "baseAmount": 10,
+        "unit": "ml",
+        "category": "调料",
+        "sub_type": "cooking_wine"
+      },
+      {
+        "name": "蚝油",
+        "baseAmount": 10,
+        "unit": "ml",
+        "category": "调料",
+        "sub_type": "oyster_sauce"
+      },
+      {
+        "name": "玉米淀粉",
+        "baseAmount": 8,
+        "unit": "g",
+        "category": "调料",
+        "sub_type": "starch"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 2,
+        "unit": "g",
+        "category": "调料",
+        "sub_type": "salt"
+      },
+      {
+        "name": "香油",
+        "baseAmount": 5,
+        "unit": "ml",
+        "category": "调料",
+        "sub_type": "sesame_oil"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "干木耳提前2小时用温水泡发，洗净后撕成小片。鸡胸肉切成1.5cm见方的丁，加入料酒、少许盐和淀粉抓匀腌制10分钟。黄瓜洗净切1cm的小丁，胡萝卜去皮切小丁备用。"
+      },
+      {
+        "action": "cook",
+        "text": "调制碗汁：生抽、蚝油、少许盐和香油混合，再加少许水淀粉调匀备用。"
+      },
+      {
+        "action": "cook",
+        "text": "热锅倒入少许油，中火将鸡丁滑炒至变色约八成熟，盛出备用。锅中再加少许油，放入姜末蒜末爆香。"
+      },
+      {
+        "action": "cook",
+        "text": "倒入胡萝卜丁和木耳大火翻炒2分钟，加入黄瓜丁和鸡丁，淋入调好的碗汁快速翻匀，大火收汁30秒出锅。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "黄瓜木耳鸡胸泥",
+          "action": "鸡胸肉蒸熟打泥，黄瓜煮软去籽，木耳煮软切碎，三者混合成细腻糊状"
+        },
+        {
+          "max_month": 12,
+          "name": "黄瓜木耳鸡碎末",
+          "action": "鸡胸肉切碎，黄瓜去籽切极细碎末，木耳切碎，与软粥或碎面条同煮"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝黄瓜木耳鸡丁",
+          "action": "同大人版少盐少油，鸡胸和蔬菜均切小丁，确保软烂易嚼"
+        }
+      ]
+    },
+    "common_allergens": [],
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/cucumber_wood_ear_chicken_stir_fry.png"
+  },
+  {
+    "id": "a-veg-47",
+    "name": "糖醋藕片",
+    "type": "adult",
+    "taste": "steamed_salad",
+    "meat": "vegetable",
+    "prep_time": 12,
+    "is_baby_friendly": true,
+    "common_allergens": [],
+    "can_share_base": true,
+    "flavor_profile": "sweet_sour",
+    "cook_type": "stir_fry",
+    "cook_minutes": 8,
+    "ingredients": [
+      {
+        "name": "莲藕",
+        "baseAmount": 400,
+        "unit": "g",
+        "category": "蔬菜",
+        "sub_type": "lotus_root"
+      },
+      {
+        "name": "白醋",
+        "baseAmount": 30,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "白糖",
+        "baseAmount": 25,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 3,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "香油",
+        "baseAmount": 5,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "枸杞",
+        "baseAmount": 10,
+        "unit": "g",
+        "category": "干货"
+      },
+      {
+        "name": "葱花",
+        "baseAmount": 10,
+        "unit": "g",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "莲藕去皮切成0.3cm厚的圆形薄片，立即放入清水中浸泡防止氧化，枸杞用温水泡发备用。"
+      },
+      {
+        "action": "cook",
+        "text": "烧一锅开水，加少许白醋，放入藕片焯烫2分钟至断生但保持脆感，捞出过凉水沥干。"
+      },
+      {
+        "action": "cook",
+        "text": "调制糖醋汁：白醋、白糖、盐混合搅匀至糖溶化，将藕片放入大碗，淋入糖醋汁和香油翻拌均匀。"
+      },
+      {
+        "action": "cook",
+        "text": "装盘后撒上泡发的枸杞和葱花，冷藏15分钟后食用风味更佳。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "藕泥糊",
+          "action": "藕片煮熟后去筋，用料理机打成细腻泥状，不加糖醋"
+        },
+        {
+          "max_month": 12,
+          "name": "藕碎末",
+          "action": "藕片煮软后切成极细碎末，加少许泡藕的水调稀"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝糖醋藕片",
+          "action": "同大人版少糖醋，藕片切小丁或薄片，煮软后拌匀"
+        }
+      ]
+    },
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/sweet_sour_lotus_root_slices.png"
+  },
+  {
+    "id": "a-veg-48",
+    "name": "蒜蓉木耳",
+    "type": "adult",
+    "taste": "steamed_salad",
+    "meat": "vegetable",
+    "prep_time": 15,
+    "is_baby_friendly": true,
+    "common_allergens": [],
+    "can_share_base": true,
+    "flavor_profile": "salty_umami",
+    "cook_type": "stir_fry",
+    "cook_minutes": 6,
+    "ingredients": [
+      {
+        "name": "干黑木耳",
+        "baseAmount": 50,
+        "unit": "g",
+        "category": "干货",
+        "sub_type": "wood_ear"
+      },
+      {
+        "name": "大蒜",
+        "baseAmount": 6,
+        "unit": "瓣",
+        "category": "调料"
+      },
+      {
+        "name": "香菜",
+        "baseAmount": 20,
+        "unit": "g",
+        "category": "蔬菜"
+      },
+      {
+        "name": "小米辣",
+        "baseAmount": 3,
+        "unit": "个",
+        "category": "调料"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 20,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "香醋",
+        "baseAmount": 10,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "蚝油",
+        "baseAmount": 10,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "香油",
+        "baseAmount": 8,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "花椒油",
+        "baseAmount": 3,
+        "unit": "ml",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "干木耳提前2小时用温水泡发至完全舒展，撕成小块去硬根，蒜切末，香菜切段，小米辣切圈。"
+      },
+      {
+        "action": "cook",
+        "text": "烧一锅开水，放入木耳焯烫2分钟去除杂质，捞出立即过凉水充分沥干水分备用。"
+      },
+      {
+        "action": "cook",
+        "text": "调制蒜蓉酱汁：蒜末加生抽、香醋、蚝油、香油、花椒油混合搅匀，喜欢辣的可加入小米辣圈。"
+      },
+      {
+        "action": "cook",
+        "text": "将酱汁淋入木耳中拌匀，撒上香菜段，放入冰箱冷藏腌制15分钟后食用更入味。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "木耳泥糊",
+          "action": "木耳煮极软后去筋，用料理机打成细腻泥状，不加调料"
+        },
+        {
+          "max_month": 12,
+          "name": "木耳碎末",
+          "action": "木耳煮软后切成极细碎末，加少许煮木耳的水调稀"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝蒜蓉木耳",
+          "action": "同大人版少盐少辣，木耳切小碎块，用蒜末和香油调味"
+        }
+      ]
+    },
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/garlic_wood_ear_salad.png"
+  },
+  {
+    "id": "a-veg-49",
+    "name": "香拌苦菊",
+    "type": "adult",
+    "taste": "steamed_salad",
+    "meat": "vegetable",
+    "prep_time": 8,
+    "is_baby_friendly": true,
+    "common_allergens": [],
+    "can_share_base": true,
+    "flavor_profile": "sour_fresh",
+    "cook_type": "salad",
+    "cook_minutes": 3,
+    "ingredients": [
+      {
+        "name": "苦菊",
+        "baseAmount": 250,
+        "unit": "g",
+        "category": "蔬菜",
+        "sub_type": "chicory"
+      },
+      {
+        "name": "花生米",
+        "baseAmount": 40,
+        "unit": "g",
+        "category": "坚果"
+      },
+      {
+        "name": "大蒜",
+        "baseAmount": 3,
+        "unit": "瓣",
+        "category": "调料"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 15,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "香醋",
+        "baseAmount": 15,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "香油",
+        "baseAmount": 8,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "白糖",
+        "baseAmount": 5,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 2,
+        "unit": "g",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "苦菊去除老叶和根部，掰成小朵用淡盐水浸泡5分钟后洗净沥干，蒜切末备用。"
+      },
+      {
+        "action": "cook",
+        "text": "冷锅冷油放入花生米，小火慢炒至金黄酥脆，盛出放凉后会更加香脆。"
+      },
+      {
+        "action": "cook",
+        "text": "调制拌汁：蒜末加生抽、香醋、白糖、盐、香油混合搅匀至糖溶化。"
+      },
+      {
+        "action": "cook",
+        "text": "将苦菊放入大碗，淋入拌汁翻拌均匀，撒上花生米即可上桌。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "苦菊菜泥",
+          "action": "苦菊焯水极软后打成细腻泥状，不加调料和花生"
+        },
+        {
+          "max_month": 12,
+          "name": "苦菊碎末",
+          "action": "苦菊焯软后切成极细碎末，加少许香油调味"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝香拌苦菊",
+          "action": "同大人版少盐醋，苦菊撕小朵，花生压碎撒表面"
+        }
+      ]
+    },
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/dressed_chicory_with_peanuts.png"
+  },
+  {
+    "id": "a-veg-50",
+    "name": "凉拌海带丝",
+    "type": "adult",
+    "taste": "steamed_salad",
+    "meat": "vegetable",
+    "prep_time": 12,
+    "is_baby_friendly": true,
+    "common_allergens": [],
+    "can_share_base": true,
+    "flavor_profile": "salty_umami",
+    "cook_type": "salad",
+    "cook_minutes": 5,
+    "ingredients": [
+      {
+        "name": "干海带丝",
+        "baseAmount": 60,
+        "unit": "g",
+        "category": "干货",
+        "sub_type": "kelp"
+      },
+      {
+        "name": "胡萝卜",
+        "baseAmount": 80,
+        "unit": "g",
+        "category": "蔬菜",
+        "sub_type": "carrot"
+      },
+      {
+        "name": "大蒜",
+        "baseAmount": 4,
+        "unit": "瓣",
+        "category": "调料"
+      },
+      {
+        "name": "香菜",
+        "baseAmount": 15,
+        "unit": "g",
+        "category": "蔬菜"
+      },
+      {
+        "name": "小米辣",
+        "baseAmount": 2,
+        "unit": "个",
+        "category": "调料"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 20,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "香醋",
+        "baseAmount": 12,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "香油",
+        "baseAmount": 8,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "白糖",
+        "baseAmount": 5,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "熟芝麻",
+        "baseAmount": 8,
+        "unit": "g",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "干海带丝提前用清水泡发30分钟至完全舒展，搓洗去表面盐分和杂质，胡萝卜切细丝，香菜切段，蒜切末，小米辣切圈。"
+      },
+      {
+        "action": "cook",
+        "text": "烧一锅开水，先放入海带丝焯烫2分钟去腥，再放入胡萝卜丝焯烫30秒至微软，捞出立即过凉水充分沥干。"
+      },
+      {
+        "action": "cook",
+        "text": "调制拌汁：蒜末加生抽、香醋、白糖、香油混合搅匀，喜欢酸辣可加入小米辣圈。"
+      },
+      {
+        "action": "cook",
+        "text": "将海带丝和胡萝卜丝放入大碗，淋入拌汁撒上香菜段和芝麻翻拌均匀，冷藏10分钟后食用风味更佳。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "海带泥糊",
+          "action": "海带煮极软后打成细腻泥状，胡萝卜也煮软打泥混合，不加调料"
+        },
+        {
+          "max_month": 12,
+          "name": "海带碎末",
+          "action": "海带和胡萝卜切极细碎末，加少许香油调味"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝凉拌海带丝",
+          "action": "同大人版少盐醋，海带和胡萝卜切细丝，煮软后拌匀"
+        }
+      ]
+    },
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/cold_kelp_noodles_salad.png"
+  },
+  {
+    "id": "a-soup-19",
+    "name": "糖醋排骨",
+    "type": "adult",
+    "dish_type": "soup",
+    "taste": "sweet_sour",
+    "meat": "pork",
+    "prep_time": 20,
+    "is_baby_friendly": true,
+    "common_allergens": [],
+    "can_share_base": true,
+    "flavor_profile": "sweet_sour",
+    "cook_type": "stew",
+    "cook_minutes": 35,
+    "ingredients": [
+      {
+        "name": "肋排",
+        "baseAmount": 500,
+        "unit": "g",
+        "category": "肉类",
+        "sub_type": "pork_ribs"
+      },
+      {
+        "name": "料酒",
+        "baseAmount": 15,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 20,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "香醋",
+        "baseAmount": 30,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "白糖",
+        "baseAmount": 40,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "番茄酱",
+        "baseAmount": 25,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 3,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "葱",
+        "baseAmount": 20,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "姜",
+        "baseAmount": 15,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "白芝麻",
+        "baseAmount": 5,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "食用油",
+        "baseAmount": 15,
+        "unit": "ml",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "肋排剁成约 5cm 小段，用清水浸泡 30 分钟去血水后沥干。冷水下锅焯水，加入料酒和葱姜，大火煮开后撇去浮沫，捞出用温水冲洗干净，沥干备用。"
+      },
+      {
+        "action": "cook",
+        "text": "调制糖醋汁：取一小碗，加入生抽、香醋、白糖、番茄酱和少许盐，再加入 80ml 清水搅匀备用。"
+      },
+      {
+        "action": "cook",
+        "text": "锅烧热加入食用油，放入排骨中火煎至两面金黄（约 4 分钟），倒入调好的糖醋汁，大火煮开后转小火焖煮 20 分钟。"
+      },
+      {
+        "action": "cook",
+        "text": "待排骨熟透、汤汁浓稠时，转大火快速翻匀，使排骨均匀裹上糖醋汁，撒上白芝麻即可出锅。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "糖醋排骨泥",
+          "action": "排骨煮软烂后剔骨，肉质打泥，加入少量醋调味（宝宝专用），不加糖或极少"
+        },
+        {
+          "max_month": 12,
+          "name": "糖醋排骨碎",
+          "action": "排骨煮至软烂，肉质拆碎，番茄煮软打泥混合，酸甜味减半"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝糖醋排骨",
+          "action": "同大人版，糖醋量减半，焖煮更软烂，确保无骨"
+        }
+      ]
+    },
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/sweet_and_sour_pork_ribs.png"
+  },
+  {
+    "id": "a-pork-15",
+    "name": "蒜香排骨",
+    "type": "adult",
+    "taste": "steamed_salad",
+    "meat": "pork",
+    "prep_time": 25,
+    "is_baby_friendly": false,
+    "common_allergens": [
+      "蒜"
+    ],
+    "can_share_base": true,
+    "flavor_profile": "salty_umami",
+    "cook_type": "steam",
+    "cook_minutes": 25,
+    "ingredients": [
+      {
+        "name": "肋排",
+        "baseAmount": 500,
+        "unit": "g",
+        "category": "肉类",
+        "sub_type": "pork_ribs"
+      },
+      {
+        "name": "大蒜",
+        "baseAmount": 40,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 20,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "蚝油",
+        "baseAmount": 15,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "料酒",
+        "baseAmount": 15,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "蜂蜜",
+        "baseAmount": 15,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 3,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "黑胡椒粉",
+        "baseAmount": 2,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "葱",
+        "baseAmount": 15,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "姜",
+        "baseAmount": 10,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "小米椒",
+        "baseAmount": 10,
+        "unit": "g",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "肋排剁成约 4cm 小段，用清水浸泡 20 分钟去血水后沥干。大蒜剁成蒜蓉，取一半用热油炸至金黄酥脆捞出备用。"
+      },
+      {
+        "action": "prep",
+        "text": "排骨加入生抽、蚝油、料酒、蜂蜜、盐、黑胡椒粉和剩余蒜蓉抓匀腌制 30 分钟，腌制时间越长越入味。"
+      },
+      {
+        "action": "cook",
+        "text": "将腌好的排骨平铺在蒸盘上，撒上葱段和姜片，水开后放入蒸锅，大火蒸 18 分钟至排骨熟透。"
+      },
+      {
+        "action": "cook",
+        "text": "取出排骨，撒上炸好的金蒜蓉和小米椒圈，再次上火蒸 2 分钟让蒜香渗透，取出即可上桌。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "蒜香排骨泥",
+          "action": "排骨蒸软烂后剔骨打泥，不加蒜和小米椒，用少量蚝油调味"
+        },
+        {
+          "max_month": 12,
+          "name": "蒜香排骨碎",
+          "action": "排骨蒸至极软，肉质拆碎，可加少量蒸出的蒜汁"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝版蒸排骨",
+          "action": "同大人版腌法，蒜量减半，不加小米椒，蒸至软烂"
+        }
+      ]
+    },
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/garlic_steamed_pork_ribs.png"
+  },
+  {
+    "id": "a-pork-16",
+    "name": "豆豉蒸排骨",
+    "type": "adult",
+    "taste": "steamed_salad",
+    "meat": "pork",
+    "prep_time": 20,
+    "is_baby_friendly": true,
+    "common_allergens": [
+      "豆类"
+    ],
+    "can_share_base": true,
+    "flavor_profile": "salty_umami",
+    "cook_type": "steam",
+    "cook_minutes": 20,
+    "ingredients": [
+      {
+        "name": "肋排",
+        "baseAmount": 500,
+        "unit": "g",
+        "category": "肉类",
+        "sub_type": "pork_ribs"
+      },
+      {
+        "name": "阳江豆豉",
+        "baseAmount": 30,
+        "unit": "g",
+        "category": "干货"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 15,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "蚝油",
+        "baseAmount": 10,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "料酒",
+        "baseAmount": 10,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "白糖",
+        "baseAmount": 5,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "生粉",
+        "baseAmount": 15,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "葱",
+        "baseAmount": 20,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "姜",
+        "baseAmount": 15,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "蒜",
+        "baseAmount": 15,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "食用油",
+        "baseAmount": 15,
+        "unit": "ml",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "肋排剁成约 3cm 小段，用清水浸泡 15 分钟去血水后沥干，用厨房纸吸干表面水分。"
+      },
+      {
+        "action": "prep",
+        "text": "豆豉用刀剁碎，葱切葱花，姜切姜末，蒜剁蒜末。锅烧热油，将姜末、蒜末、豆豉碎爆香约 1 分钟盛出。"
+      },
+      {
+        "action": "prep",
+        "text": "排骨放入大碗，加入爆香的豆鼓姜蒜蓉，再加入生抽、蚝油、料酒、白糖和生粉抓匀，最后加入少许食用油封面腌制 15 分钟。"
+      },
+      {
+        "action": "cook",
+        "text": "将腌好的排骨平铺在盘中，水开后放入蒸锅，大火蒸 18 分钟至排骨脱骨，撒上葱花即可上桌。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "豆豉排骨泥",
+          "action": "排骨蒸至完全软烂，剔骨打泥，不加豆豉，用少量生抽调味"
+        },
+        {
+          "max_month": 12,
+          "name": "豆豉排骨碎",
+          "action": "排骨蒸软后拆碎，拌入少量蒸出的汤汁，去掉豆豉颗粒"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝豆豉蒸排骨",
+          "action": "同大人版，豆豉量减半，生抽蚝油减量，蒸至软烂脱骨"
+        }
+      ]
+    },
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/black_bean_steamed_pork_ribs.png"
+  },
+  {
+    "id": "a-pork-17",
+    "name": "椒盐排骨",
+    "type": "adult",
+    "taste": "quick_stir_fry",
+    "meat": "pork",
+    "prep_time": 25,
+    "is_baby_friendly": false,
+    "common_allergens": [],
+    "can_share_base": false,
+    "flavor_profile": "salty_umami",
+    "cook_type": "stir_fry",
+    "cook_minutes": 20,
+    "ingredients": [
+      {
+        "name": "肋排",
+        "baseAmount": 500,
+        "unit": "g",
+        "category": "肉类",
+        "sub_type": "pork_ribs"
+      },
+      {
+        "name": "鸡蛋",
+        "baseAmount": 1,
+        "unit": "个",
+        "category": "蛋类"
+      },
+      {
+        "name": "生粉",
+        "baseAmount": 50,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "料酒",
+        "baseAmount": 15,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 10,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 5,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "白胡椒粉",
+        "baseAmount": 3,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "椒盐粉",
+        "baseAmount": 8,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "蒜",
+        "baseAmount": 20,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "葱",
+        "baseAmount": 15,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "红椒",
+        "baseAmount": 15,
+        "unit": "g",
+        "category": "蔬菜"
+      },
+      {
+        "name": "食用油",
+        "baseAmount": 500,
+        "unit": "ml",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "肋排剁成约 4cm 小段，用清水浸泡 20 分钟去血水后沥干，用厨房纸吸干水分，加入料酒、生抽、盐、白胡椒粉腌制 15 分钟。"
+      },
+      {
+        "action": "prep",
+        "text": "腌制好的排骨加入鸡蛋液和生粉抓匀，使每块排骨均匀裹上面糊。蒜剁蒜末，葱切葱花，红椒切小丁备用。"
+      },
+      {
+        "action": "cook",
+        "text": "锅中倒入足量食用油烧至六成热（约 160℃），下入排骨中火炸至定型浮起（约 3 分钟），捞出沥油。"
+      },
+      {
+        "action": "cook",
+        "text": "转大火将油温升至七成热（约 200℃），放入排骨复炸 1 分钟至表面金黄酥脆，捞出沥油。"
+      },
+      {
+        "action": "cook",
+        "text": "锅留底油，下蒜末爆香，倒入排骨撒入椒盐粉快速翻匀，最后撒上葱花和红椒丁即可出锅。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "排骨肉泥",
+          "action": "排骨煮软烂后剔骨，肉质打泥，不加任何调料"
+        },
+        {
+          "max_month": 12,
+          "name": "排骨肉碎",
+          "action": "排骨煮至极软，肉质拆碎，拌入软烂面条或粥中"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝版清蒸排骨",
+          "action": "此道菜不适合宝宝食用，建议用清蒸排骨替代，取未调味部分"
+        }
+      ]
+    },
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/szechuan_pepper_pork_ribs.png"
+  },
+  {
+    "id": "a-pork-18",
+    "name": "话梅排骨",
+    "type": "adult",
+    "taste": "sweet_sour",
+    "meat": "pork",
+    "prep_time": 20,
+    "is_baby_friendly": true,
+    "common_allergens": [
+      "话梅"
+    ],
+    "can_share_base": true,
+    "flavor_profile": "sweet_sour",
+    "cook_type": "stew",
+    "cook_minutes": 45,
+    "ingredients": [
+      {
+        "name": "肋排",
+        "baseAmount": 500,
+        "unit": "g",
+        "category": "肉类",
+        "sub_type": "pork_ribs"
+      },
+      {
+        "name": "九制话梅",
+        "baseAmount": 10,
+        "unit": "颗",
+        "category": "干货"
+      },
+      {
+        "name": "料酒",
+        "baseAmount": 20,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 15,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "香醋",
+        "baseAmount": 20,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "冰糖",
+        "baseAmount": 30,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 2,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "葱",
+        "baseAmount": 20,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "姜",
+        "baseAmount": 15,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "八角",
+        "baseAmount": 2,
+        "unit": "颗",
+        "category": "调料"
+      },
+      {
+        "name": "桂皮",
+        "baseAmount": 5,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "食用油",
+        "baseAmount": 10,
+        "unit": "ml",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "肋排剁成约 5cm 小段，用清水浸泡 30 分钟去血水后沥干。冷水下锅焯水，加入料酒和葱姜，大火煮开后撇去浮沫，捞出用温水冲洗干净沥干。"
+      },
+      {
+        "action": "prep",
+        "text": "话梅用温水浸泡 10 分钟至软化备用。冰糖敲碎，葱打结，姜切片。"
+      },
+      {
+        "action": "cook",
+        "text": "锅烧热加入少许油，放入冰糖小火慢炒至糖色变成琥珀色并起小泡，倒入排骨快速翻炒，使排骨均匀裹上糖色（约 2 分钟）。"
+      },
+      {
+        "action": "cook",
+        "text": "加入葱结、姜片、八角、桂皮和话梅（连同浸泡的水），倒入生抽、香醋和少许盐，大火煮开后转小火焖煮 35 分钟。"
+      },
+      {
+        "action": "cook",
+        "text": "待排骨软烂、汤汁浓稠时，转大火快速收汁，翻匀使排骨裹满酸甜的话梅汁即可出锅。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "话梅排骨泥",
+          "action": "排骨煮软烂后剔骨打泥，话梅去除，只取肉泥，不加糖醋"
+        },
+        {
+          "max_month": 12,
+          "name": "话梅排骨碎",
+          "action": "排骨煮至极软拆碎，拌入少量番茄泥增味，话梅去核后极少量取酸味"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝话梅排骨",
+          "action": "同大人版，话梅量减半，冰糖量减半，醋减量，焖煮至软烂脱骨"
+        }
+      ]
+    },
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/preserved_plum_pork_ribs.png"
+  }
 ];
 
 var babyRecipes = [

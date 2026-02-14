@@ -2,7 +2,7 @@
 
   <!-- ═══ 顶部标题区 ═══ -->
   <view class="import-header">
-    <text class="import-title">导入赛博菜谱</text>
+    <text class="import-title">导入外部菜谱</text>
     <text class="import-subtitle">把刷到的美食变成可执行食谱</text>
   </view>
 
@@ -248,7 +248,14 @@
           </view>
         </view>
       </view>
-      <view class="empty-hint" wx:if="{{stepList.length === 0}}">
+      <!-- 极速解析：食材已就绪，点击生成步骤 -->
+      <view class="generate-steps-wrap" wx:if="{{fastParsed && stepList.length === 0}}">
+        <button class="generate-steps-btn" loading="{{stepsLoading}}" disabled="{{stepsLoading}}" bindtap="onGenerateSteps">
+          {{stepsLoading ? '正在生成步骤…' : '生成详细步骤'}}
+        </button>
+        <text class="generate-steps-hint">食材已就绪，点击补全烹饪步骤</text>
+      </view>
+      <view class="empty-hint" wx:elif="{{stepList.length === 0}}">
         <text class="empty-hint-text">未识别到步骤信息</text>
       </view>
     </view>

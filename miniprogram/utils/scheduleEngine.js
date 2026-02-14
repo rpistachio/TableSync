@@ -5,23 +5,23 @@
 
 var DEVICE_LABELS = {
   'wok': '炒锅', 'stove_long': '炖锅', 'steamer': '蒸锅',
-  'pot': '汤锅', 'none': '无需设备'
+  'pot': '汤锅', 'none': '无需设备', 'air_fryer': '空气炸锅'
 };
 
 var COOK_TYPE_TO_DEVICE = {
   stir_fry: 'wok', quick_stir_fry: 'wok', fry: 'wok', braise: 'wok',
   stew: 'stove_long', steam: 'steamer', cold: 'none',
-  salad: 'none', cold_dress: 'none', boil: 'pot'
+  salad: 'none', cold_dress: 'none', boil: 'pot', air_fryer: 'air_fryer'
 };
 
 /**
  * 计算统筹预览信息（精细版）
  *
  * 算法思路：
- *   1. 按烹饪方式分类：炖煮（无需看管，可并行）、蒸制（可并行）、快炒（需连续关注，串行）、凉菜（不占灶）
- *   2. 并行优化时间 = 备菜(0.6折) + max(炖煮, 蒸制) + sum(快炒) - 备菜与炖煮重叠
- *   3. 峰值灶台 = 同时运行的炖锅数(≤2) + 蒸锅(可叠蒸=1) + 炒锅(串行=1)
- *   4. 生成分阶段烹饪顺序建议 & 效率得分
+ *   1. 按烹饪方式分类：空气炸锅（无需看管，最先做）、炖煮（无需看管，可并行）、蒸制（可并行）、快炒（需连续关注，串行）、凉菜（不占灶）
+ *   2. 并行优化时间 = 备菜(0.6折) + max(空气炸锅, 炖煮, 蒸制) + sum(快炒) - 备菜与长耗时重叠
+ *   3. 峰值灶台 = 炖锅数(≤2) + 蒸锅(1) + 炒锅(串行=1)，空气炸锅不占灶
+ *   4. 烹饪顺序：空气炸锅 → 炖煮 → 蒸 → 快炒 → 凉菜
  *
  * @param {Array} selectedRecipes - 已选菜谱（含 prep_time, cook_minutes, cook_type, name）
  * @returns {Object}
@@ -32,10 +32,11 @@ function computeSchedulePreview(selectedRecipes) {
     stoveCount: 0, devices: [],
     firstDish: '', cookingOrder: [], tips: [],
     prepTime: 0, cookTime: 0, efficiency: 0,
-    hasStew: false, hasSteam: false, hasStirFry: false, hasCold: false
+    hasStew: false, hasSteam: false, hasStirFry: false, hasCold: false, hasAirFry: false
   };
   if (!selectedRecipes || selectedRecipes.length === 0) return empty;
 
+  var airFryDishes = [];
   var stewDishes = [];
   var steamDishes = [];
   var stirFryDishes = [];
@@ -57,7 +58,9 @@ function computeSchedulePreview(selectedRecipes) {
 
     var dish = { name: r.name || '未命名', prep: prep, cook: cook, cookType: cookType, device: device };
 
-    if (cookType === 'stew') {
+    if (cookType === 'air_fryer') {
+      airFryDishes.push(dish);
+    } else if (cookType === 'stew') {
       stewDishes.push(dish);
     } else if (cookType === 'steam') {
       steamDishes.push(dish);
@@ -68,9 +71,13 @@ function computeSchedulePreview(selectedRecipes) {
     }
   }
 
+  var maxAirFryCook = 0;
   var maxStewCook = 0;
   var maxSteamCook = 0;
   var totalStirFryCook = 0;
+  for (i = 0; i < airFryDishes.length; i++) {
+    if (airFryDishes[i].cook > maxAirFryCook) maxAirFryCook = airFryDishes[i].cook;
+  }
   for (i = 0; i < stewDishes.length; i++) {
     if (stewDishes[i].cook > maxStewCook) maxStewCook = stewDishes[i].cook;
   }
@@ -81,9 +88,9 @@ function computeSchedulePreview(selectedRecipes) {
     totalStirFryCook += stirFryDishes[i].cook;
   }
 
-  var parallelCookTime = Math.max(maxStewCook, maxSteamCook) + totalStirFryCook;
+  var parallelCookTime = Math.max(maxAirFryCook, maxStewCook, maxSteamCook) + totalStirFryCook;
   var effectivePrepTime = Math.round(totalPrepTime * 0.6);
-  var overlapWindow = Math.max(maxStewCook, maxSteamCook);
+  var overlapWindow = Math.max(maxAirFryCook, maxStewCook, maxSteamCook);
   var prepOverlapSavings = Math.min(effectivePrepTime, overlapWindow);
   var totalTime = Math.max(effectivePrepTime + parallelCookTime - prepOverlapSavings, 10);
 
@@ -106,6 +113,19 @@ function computeSchedulePreview(selectedRecipes) {
   }
 
   var cookingOrder = [];
+  if (airFryDishes.length > 0) {
+    var airFryNames = [];
+    for (i = 0; i < airFryDishes.length; i++) airFryNames.push(airFryDishes[i].name);
+    cookingOrder.push({
+      phase: '先启动空气炸锅',
+      icon: '🍟',
+      dishes: airFryNames,
+      dishesText: airFryNames.join('、'),
+      note: '空炸期间无需看管',
+      time: maxAirFryCook + ' 分钟',
+      noWatch: true
+    });
+  }
   if (stewDishes.length > 0) {
     var stewNames = [];
     for (i = 0; i < stewDishes.length; i++) stewNames.push(stewDishes[i].name);
@@ -161,6 +181,9 @@ function computeSchedulePreview(selectedRecipes) {
   if (savedTime >= 10) {
     tips.push('统筹并行比逐道做可节省约 ' + savedTime + ' 分钟');
   }
+  if (airFryDishes.length > 0 && (stewDishes.length > 0 || stirFryDishes.length > 0)) {
+    tips.push('先启动空气炸锅，利用空炸时间备菜或做其他菜');
+  }
   if (stewDishes.length > 0 && stirFryDishes.length > 0) {
     tips.push('先启动炖菜，利用炖煮时间备菜和快炒');
   }
@@ -186,7 +209,8 @@ function computeSchedulePreview(selectedRecipes) {
     savedTime: savedTime,
     stoveCount: peakStoves,
     devices: devices,
-    firstDish: stewDishes.length > 0 ? stewDishes[0].name
+    firstDish: airFryDishes.length > 0 ? airFryDishes[0].name
+             : stewDishes.length > 0 ? stewDishes[0].name
              : steamDishes.length > 0 ? steamDishes[0].name : '',
     cookingOrder: cookingOrder,
     tips: tips,
@@ -196,7 +220,8 @@ function computeSchedulePreview(selectedRecipes) {
     hasStew: stewDishes.length > 0,
     hasSteam: steamDishes.length > 0,
     hasStirFry: stirFryDishes.length > 0,
-    hasCold: coldDishes.length > 0
+    hasCold: coldDishes.length > 0,
+    hasAirFry: airFryDishes.length > 0
   };
 }
 

@@ -41,7 +41,7 @@ function chat(opts) {
           Authorization: `Bearer ${cleanKey}`,
           'Content-Length': Buffer.byteLength(body, 'utf8'),
         },
-        timeout: 60000,
+        timeout: 45000,
       },
       (res) => {
         const chunks = [];

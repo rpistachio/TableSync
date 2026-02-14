@@ -4,6 +4,8 @@
 var menuData = require('../../data/menuData.js');
 var menuGen = require('../../data/menuGenerator.js');
 var scheduleEngine = require('../../utils/scheduleEngine.js');
+var coverService = require('../../data/recipeCoverSlugs.js');
+var imageLib = require('../../utils/imageLib.js');
 
 /** 烹饪方式中文映射 */
 var COOK_TYPE_LABELS = {
@@ -134,6 +136,13 @@ Page({
 
     annotateRecipeLabels(nativeRecipes);
 
+    // 为原生菜谱预置封面 HTTP 直链（无需 getTempFileURL）
+    for (var ci = 0; ci < nativeRecipes.length; ci++) {
+      nativeRecipes[ci]._coverHttpUrl = coverService.getRecipeCoverHttpUrl(nativeRecipes[ci].name);
+      nativeRecipes[ci]._coverCloudUrl = '';
+      nativeRecipes[ci]._coverTempUrl = '';
+    }
+
     that.setData({
       nativeRecipes: nativeRecipes,
       filteredNativeRecipes: nativeRecipes,
@@ -161,6 +170,15 @@ Page({
     this._hasTrackedSchedulePreview = false;
     // 刷新已导入菜谱（用户可能从 import 页面添加了新的）
     var importedRecipes = getImportedRecipes();
+    // 为导入菜谱预置封面字段
+    for (var ii = 0; ii < importedRecipes.length; ii++) {
+      if (!importedRecipes[ii]._coverCloudUrl) {
+        importedRecipes[ii]._coverCloudUrl = importedRecipes[ii].coverUrl || '';
+      }
+      if (!importedRecipes[ii]._coverTempUrl) {
+        importedRecipes[ii]._coverTempUrl = '';
+      }
+    }
     this.setData({ importedRecipes: importedRecipes });
 
     // 检查 globalData 中是否有待添加的菜谱
@@ -170,7 +188,13 @@ Page({
       app.globalData._pendingMixRecipe = null;
       if (recipe && recipe.name) {
         this._addRecipeToSelection(recipe, recipe.source === 'external' ? 'external' : 'native');
+        return; // _addRecipeToSelection 内部已调用 _resolveCoverImages
       }
+    }
+
+    // 页面重新可见时刷新封面（外部导入菜的封面可能在后台生成完成了）
+    if (this.data.selectedRecipes.length > 0) {
+      this._resolveCoverImages();
     }
   },
 
@@ -201,8 +225,21 @@ Page({
       if (!raw) return;
       var recipes = JSON.parse(raw);
       if (Array.isArray(recipes) && recipes.length > 0) {
+        // 为草稿中的菜谱补全封面字段（旧草稿可能没有 _coverCloudUrl）
+        for (var i = 0; i < recipes.length; i++) {
+          var r = recipes[i];
+          if (r._sourceType === 'native') {
+            if (!r._coverHttpUrl) r._coverHttpUrl = coverService.getRecipeCoverHttpUrl(r.name);
+            r._coverCloudUrl = r._coverCloudUrl || '';
+            if (!r._coverTempUrl) r._coverTempUrl = '';
+          } else {
+            if (!r._coverCloudUrl) r._coverCloudUrl = r.coverUrl || '';
+            if (!r._coverTempUrl) r._coverTempUrl = '';
+          }
+        }
         this.setData({ selectedRecipes: recipes });
         this._updateSchedulePreview();
+        this._resolveCoverImages();
       }
     } catch (e) {}
   },
@@ -211,6 +248,12 @@ Page({
 
   onShowAddPanel: function () {
     this.setData({ showAddPanel: true });
+    // 懒加载：首次打开面板时解析原生菜谱封面
+    if (!this._pickerCoversResolved) {
+      this._resolvePickerCoverImages();
+    }
+    // 导入菜谱封面也尝试解析
+    this._resolveImportedPickerCovers();
   },
 
   onHideAddPanel: function () {
@@ -303,14 +346,27 @@ Page({
     newRecipe._meatLabel = MEAT_LABELS[recipe.meat] || '其他';
     newRecipe._flavorLabel = FLAVOR_LABELS[recipe.flavor_profile] || '';
 
+    // 封面图：原生用 HTTP 直链；外部导入用云数据库 coverUrl（需 getTempFileURL 解析）
+    if (sourceType === 'native') {
+      newRecipe._coverHttpUrl = coverService.getRecipeCoverHttpUrl(recipe.name);
+      newRecipe._coverCloudUrl = '';
+      newRecipe._coverTempUrl = '';
+    } else {
+      newRecipe._coverHttpUrl = '';
+      newRecipe._coverCloudUrl = recipe.coverUrl || '';
+      newRecipe._coverTempUrl = '';
+    }
+
     selected.push(newRecipe);
 
-    this.setData({
+    var that = this;
+    that.setData({
       selectedRecipes: selected,
       showAddPanel: false
     });
 
-    this._updateSchedulePreview();
+    that._updateSchedulePreview();
+    that._resolveCoverImages();
     wx.showToast({ title: '已添加「' + recipe.name + '」', icon: 'success', duration: 1500 });
   },
 
@@ -365,6 +421,218 @@ Page({
           stove_count: preview.stoveCount
         });
       } catch (e) { /* ignore */ }
+    }
+  },
+
+  // ── 封面图解析 ────────────────────────────────────────────────
+
+  /**
+   * 批量将 cloud:// 封面地址解析为可渲染的临时 HTTPS URL
+   * 同时为没有 coverUrl 的外部导入菜谱尝试从云数据库补全
+   */
+  _resolveCoverImages: function () {
+    var that = this;
+    if (!(wx.cloud && wx.cloud.getTempFileURL)) return;
+
+    var recipes = that.data.selectedRecipes || [];
+    if (recipes.length === 0) return;
+
+    // 1. 先为没有 _coverCloudUrl 的外部导入菜尝试从云数据库补全
+    var needDbQuery = [];
+    for (var n = 0; n < recipes.length; n++) {
+      var r = recipes[n];
+      if (r._sourceType === 'external' && !r._coverCloudUrl && r.id) {
+        needDbQuery.push({ index: n, id: r.id });
+      }
+    }
+
+    if (needDbQuery.length > 0) {
+      that._queryExternalCovers(needDbQuery, function () {
+        that._doResolveTempUrls();
+      });
+    } else {
+      that._doResolveTempUrls();
+    }
+  },
+
+  /**
+   * 从云数据库查询外部导入菜谱的 coverUrl（异步补全后回调）
+   */
+  _queryExternalCovers: function (needDbQuery, done) {
+    var that = this;
+    try {
+      var db = wx.cloud.database();
+      var ids = needDbQuery.map(function (q) { return q.id; });
+      db.collection('imported_recipes').where({
+        id: db.command.in(ids)
+      }).field({ id: true, coverUrl: true }).get({
+        success: function (res) {
+          var docs = (res && res.data) || [];
+          if (docs.length > 0) {
+            var coverMap = {};
+            for (var d = 0; d < docs.length; d++) {
+              if (docs[d].coverUrl) coverMap[docs[d].id] = docs[d].coverUrl;
+            }
+            var recipes = that.data.selectedRecipes.slice();
+            var changed = false;
+            for (var q = 0; q < needDbQuery.length; q++) {
+              var idx = needDbQuery[q].index;
+              var cUrl = coverMap[needDbQuery[q].id];
+              if (cUrl && recipes[idx]) {
+                recipes[idx] = Object.assign({}, recipes[idx], { _coverCloudUrl: cUrl, coverUrl: cUrl });
+                changed = true;
+              }
+            }
+            if (changed) that.setData({ selectedRecipes: recipes });
+          }
+          done();
+        },
+        fail: function () { done(); }
+      });
+    } catch (e) {
+      done();
+    }
+  },
+
+  /**
+   * 将 _coverCloudUrl 中的 cloud:// 地址批量转为临时 HTTPS URL（使用全局缓存）
+   */
+  _doResolveTempUrls: function () {
+    var that = this;
+    var recipes = that.data.selectedRecipes || [];
+    var cloudIds = [];
+    for (var i = 0; i < recipes.length; i++) {
+      var url = recipes[i]._coverCloudUrl;
+      if (url && typeof url === 'string' && url.indexOf('cloud://') === 0) {
+        cloudIds.push(url);
+      }
+    }
+    if (cloudIds.length === 0) return;
+
+    imageLib.batchResolveTempUrls(cloudIds, function (map) {
+      var updated = recipes.map(function (r) {
+        var tmp = (r._coverCloudUrl && map[r._coverCloudUrl]) || '';
+        if (tmp) return Object.assign({}, r, { _coverTempUrl: tmp });
+        return r;
+      });
+      that.setData({ selectedRecipes: updated });
+    });
+  },
+
+  // ── 面板菜谱封面解析 ─────────────────────────────────────────
+
+  /**
+   * 批量解析原生菜谱列表中的封面（首次打开面板时调用一次）
+   * getTempFileURL 一次最多 50 个，原生菜谱库可能超出，需分批
+   */
+  _resolvePickerCoverImages: function () {
+    var that = this;
+
+    var allRecipes = that._nativeRecipes || [];
+    var cloudIds = [];
+    for (var i = 0; i < allRecipes.length; i++) {
+      var url = allRecipes[i]._coverCloudUrl;
+      if (url && typeof url === 'string' && url.indexOf('cloud://') === 0) {
+        cloudIds.push(url);
+      }
+    }
+    if (cloudIds.length === 0) {
+      that._pickerCoversResolved = true;
+      return;
+    }
+
+    imageLib.batchResolveTempUrls(cloudIds, function (urlMap) {
+      if (Object.keys(urlMap).length === 0) return;
+      var allNative = that._nativeRecipes || [];
+      for (var k = 0; k < allNative.length; k++) {
+        var tmp = urlMap[allNative[k]._coverCloudUrl] || '';
+        if (tmp) allNative[k]._coverTempUrl = tmp;
+      }
+      var currentFilter = that.data.nativeFilter || 'all';
+      var filtered = currentFilter === 'all' ? allNative : allNative.filter(function (r) { return r.meat === currentFilter; });
+      that.setData({
+        nativeRecipes: allNative,
+        filteredNativeRecipes: filtered
+      });
+      that._pickerCoversResolved = true;
+    });
+  },
+
+  /**
+   * 解析导入菜谱列表的封面（从云数据库补全 coverUrl 后转临时 URL）
+   */
+  _resolveImportedPickerCovers: function () {
+    var that = this;
+    if (!(wx.cloud && wx.cloud.getTempFileURL)) return;
+
+    var imported = that.data.importedRecipes || [];
+    if (imported.length === 0) return;
+
+    // 1. 收集需要从 DB 补全的 ID
+    var needDb = [];
+    var haveCloud = [];
+    for (var i = 0; i < imported.length; i++) {
+      var r = imported[i];
+      if (r._coverTempUrl) continue; // 已有临时 URL，跳过
+      if (r._coverCloudUrl && r._coverCloudUrl.indexOf('cloud://') === 0) {
+        haveCloud.push(r._coverCloudUrl);
+      } else if (r.id) {
+        needDb.push({ index: i, id: r.id });
+      }
+    }
+
+    function resolveCloudUrls() {
+      var list = that.data.importedRecipes || [];
+      var cloudIds = [];
+      for (var c = 0; c < list.length; c++) {
+        var url = list[c]._coverCloudUrl;
+        if (url && typeof url === 'string' && url.indexOf('cloud://') === 0 && !list[c]._coverTempUrl) {
+          cloudIds.push(url);
+        }
+      }
+      if (cloudIds.length === 0) return;
+
+      imageLib.batchResolveTempUrls(cloudIds, function (map) {
+        var updated = (that.data.importedRecipes || []).map(function (r) {
+          var tmp = r._coverCloudUrl && map[r._coverCloudUrl];
+          if (tmp) return Object.assign({}, r, { _coverTempUrl: tmp });
+          return r;
+        });
+        that.setData({ importedRecipes: updated });
+      });
+    }
+
+    if (needDb.length > 0) {
+      try {
+        var db = wx.cloud.database();
+        var ids = needDb.map(function (q) { return q.id; });
+        db.collection('imported_recipes').where({
+          id: db.command.in(ids)
+        }).field({ id: true, coverUrl: true }).get({
+          success: function (res) {
+            var docs = (res && res.data) || [];
+            if (docs.length > 0) {
+              var coverMap = {};
+              for (var d = 0; d < docs.length; d++) {
+                if (docs[d].coverUrl) coverMap[docs[d].id] = docs[d].coverUrl;
+              }
+              var list = (that.data.importedRecipes || []).slice();
+              for (var q = 0; q < needDb.length; q++) {
+                var idx = needDb[q].index;
+                var cUrl = coverMap[needDb[q].id];
+                if (cUrl && list[idx]) {
+                  list[idx] = Object.assign({}, list[idx], { _coverCloudUrl: cUrl, coverUrl: cUrl });
+                }
+              }
+              that.setData({ importedRecipes: list });
+            }
+            resolveCloudUrls();
+          },
+          fail: function () { resolveCloudUrls(); }
+        });
+      } catch (e) { resolveCloudUrls(); }
+    } else {
+      resolveCloudUrls();
     }
   },
 

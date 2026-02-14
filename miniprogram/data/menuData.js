@@ -200,6 +200,9 @@ exports.deserializeMenusFromStorage = function (slimMenus, options) {
     // 还原宝宝菜谱
     if (slim.babyRecipeId && hasBaby) {
       babyRecipe = getBabyRecipeById(slim.babyRecipeId);
+      if (babyRecipe && generator.processBabyRecipePlaceholders) {
+        babyRecipe = generator.processBabyRecipePlaceholders(babyRecipe, babyMonth);
+      }
       // 如果没有单独的宝宝菜谱 ID，且有大人菜谱，尝试从大人菜谱生成
       if (!babyRecipe && adultRecipe && slim.meat !== 'vegetable' && index === 0) {
         var rawAdult = getAdultRecipeById(slim.adultRecipeId);
@@ -1090,6 +1093,10 @@ exports.generateSteps = function (preference, options) {
       var babyId = m.babyRecipe && m.babyRecipe.id;
       var freshAdult = adultId ? (getAdultRecipeById(adultId) || m.adultRecipe) : m.adultRecipe;
       var freshBaby = babyId ? (getBabyRecipeById(babyId) || m.babyRecipe) : m.babyRecipe;
+      if (freshBaby && generator.processBabyRecipePlaceholders && (effectivePref.hasBaby === true || effectivePref.hasBaby === '1')) {
+        var babyMonthNum = Math.min(36, Math.max(6, Number(effectivePref.babyMonth) || 12));
+        freshBaby = generator.processBabyRecipePlaceholders(freshBaby, babyMonthNum);
+      }
       if (adultId && (!freshAdult || !Array.isArray(freshAdult.steps) || freshAdult.steps.length === 0)) {
         console.warn('[menuData.generateSteps] 缓存条数=' + cacheCount + ', 未找到带步骤的菜谱 id=' + adultId);
       }

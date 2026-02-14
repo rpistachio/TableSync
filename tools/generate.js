@@ -44,25 +44,83 @@ async function main() {
     .option('--count <n>', '生成菜谱数量', (v) => Number(v), CONFIG.defaultGenerateCount)
     .option('--out <file>', '输出草稿文件路径', '')
     .option('--gen-images', '生成草稿后使用 MiniMax 按 MJ prompt 自动出图并写入 drafts/images')
+    .option('--gen-images-only', '仅对已有草稿补图（需配合 --draft 使用，不再调用 LLM）')
+    .option('--draft <file>', '草稿 JSON 路径（与 --gen-images-only 一起用时，只对该草稿出图）', '')
     .parse(process.argv);
 
   const opts = program.opts();
   const mode = opts.mode;
   const input = opts.input;
   const count = opts.count;
-
-  // 读取已有菜名，告知 LLM 不要生成重复菜品
-  const excludeNames = loadExistingRecipeNames();
-  console.log(chalk.cyan(`\n[generate] mode=${mode}, count=${count}, 已有菜谱=${excludeNames.length} 道`));
-
-  const raw = await generateRecipesFromInput({ mode, input, count, excludeNames });
-  const normalized = normalizeGeneratedItems(raw);
-  const withPrompts = ensurePromptsForItems(normalized);
-
   const draftsDir = CONFIG.draftsDir;
   if (!fs.existsSync(draftsDir)) {
     fs.mkdirSync(draftsDir, { recursive: true });
   }
+
+  // ========== 仅对已有草稿补图（不调用 LLM） ==========
+  if (opts.genImagesOnly && opts.draft) {
+    const draftPath = path.isAbsolute(opts.draft) ? opts.draft : path.resolve(process.cwd(), opts.draft);
+    if (!fs.existsSync(draftPath)) {
+      console.error(chalk.red(`草稿不存在: ${draftPath}`));
+      process.exit(1);
+    }
+    const payload = JSON.parse(fs.readFileSync(draftPath, 'utf8'));
+    if (!payload.items || !Array.isArray(payload.items)) {
+      console.error(chalk.red('草稿格式错误：缺少 items 数组'));
+      process.exit(1);
+    }
+    const apiKey = (CONFIG.minimaxApiKey || '').trim();
+    if (!apiKey) {
+      console.error(chalk.red('未配置 MINIMAX_API_KEY，请在 tools/.env 中设置'));
+      process.exit(1);
+    }
+    const resolvedHost = (CONFIG.minimaxHost === 'api.minimax.io' || CONFIG.minimaxHost === 'api.minimaxi.com')
+      ? CONFIG.minimaxHost
+      : 'api.minimax.io';
+    console.log(chalk.cyan(`\n[generate] 仅补图，草稿: ${draftPath}，共 ${payload.items.length} 道`));
+    console.log(chalk.gray(`MiniMax: ${resolvedHost}，模型: ${CONFIG.minimaxModel}`));
+    const imagesDir = path.join(draftsDir, 'images');
+    if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
+    const minimaxOpts = { host: resolvedHost, model: CONFIG.minimaxModel };
+    for (let i = 0; i < payload.items.length; i += 1) {
+      const it = payload.items[i];
+      const slugMap = it.slug || {};
+      const slugFileName = Object.values(slugMap)[0];
+      if (!slugFileName || !it.mj_prompts || it.mj_prompts.length === 0) continue;
+      const promptIndex = it.selected_prompt_index != null ? it.selected_prompt_index : 0;
+      const prompt = it.mj_prompts[promptIndex] || it.mj_prompts[0];
+      const baseName = slugFileName.replace(/\.png$/i, '');
+      const imageFileName = `${baseName}.jpg`;
+      const imagePath = path.join(imagesDir, imageFileName);
+      const relPath = path.relative(__dirname, imagePath);
+      console.log(chalk.cyan(`\n[${i + 1}/${payload.items.length}] ${it.recipe.name} 正在出图（约 20–60 秒）…`));
+      try {
+        const buffer = await generateImage(apiKey, prompt, minimaxOpts);
+        fs.writeFileSync(imagePath, buffer);
+        it.image_file = relPath;
+        it.status = 'has_image';
+        console.log(chalk.green(`  已保存: ${imageFileName}`));
+      } catch (err) {
+        console.error(chalk.red(`  出图失败: ${err.message}`));
+      }
+    }
+    fs.writeFileSync(draftPath, JSON.stringify(payload, null, 2) + '\n', 'utf8');
+    console.log(chalk.green(`\n草稿已更新: ${draftPath}，可运行 sync 上传。`));
+    return;
+  }
+
+  // 读取已有菜名，告知 LLM 不要生成重复菜品
+  const excludeNames = loadExistingRecipeNames();
+  const provider = CONFIG.llmProvider === 'minimax' ? 'MiniMax' : 'Claude';
+  const modelName = CONFIG.llmProvider === 'minimax' ? CONFIG.minimaxLlmModel : CONFIG.llmModel;
+  console.log(chalk.cyan(`\n[generate] mode=${mode}, count=${count}, 已有菜谱=${excludeNames.length} 道，LLM: ${provider} (${modelName})`));
+  if (count >= 6) {
+    console.log(chalk.gray('（count≥6 已启用两批并行请求，总耗时会明显缩短）'));
+  }
+
+  const raw = await generateRecipesFromInput({ mode, input, count, excludeNames });
+  const normalized = normalizeGeneratedItems(raw);
+  const withPrompts = ensurePromptsForItems(normalized);
 
   const filename =
     opts.out ||
@@ -88,6 +146,11 @@ async function main() {
 
   console.log(chalk.green(`\n已生成草稿: ${filename}`));
 
+  if (!opts.genImages) {
+    console.log(chalk.yellow('  提示：未加 --gen-images，草稿中暂无封面图。'));
+    console.log(chalk.gray('  若需自动出图：可对本草稿补图 → node tools/generate.js --gen-images-only --draft ' + path.relative(process.cwd(), filename)));
+  }
+
   // 可选：使用 MiniMax 按 MJ prompt 自动出图
   if (opts.genImages) {
     const apiKey = (CONFIG.minimaxApiKey || '').trim();
@@ -99,10 +162,10 @@ async function main() {
         ? CONFIG.minimaxHost
         : 'api.minimax.io';
       const hostDesc = CONFIG.minimaxHost ? CONFIG.minimaxHost : 'api.minimax.io(未配置 host 时默认国际站)';
-      console.log(chalk.gray(`\nMiniMax 请求地址: ${hostDesc}（Key 优先来自 tools/.env，未配置则用 cloudfunctions/recipeCoverGen/secret-config.json）`));
+      console.log(chalk.gray(`\nMiniMax 请求: ${hostDesc}，模型: ${CONFIG.minimaxModel}（可在 .env 设置 MINIMAX_HOST / MINIMAX_MODEL）`));
       const imagesDir = path.join(draftsDir, 'images');
       if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
-      const minimaxOpts = { host: resolvedHost };
+      const minimaxOpts = { host: resolvedHost, model: CONFIG.minimaxModel };
       for (let i = 0; i < payload.items.length; i += 1) {
         const it = payload.items[i];
         const slugMap = it.slug || {};

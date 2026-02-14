@@ -3,7 +3,9 @@
 ## 一、流程概览
 
 1. **生成草稿**：用 `generate.js` 或 `trend-hunter.js` 生成菜谱草稿，得到 `drafts/YYYY-MM-DD_batch.json`。
-2. **选图**：在本地（如 Downloads）找到心仪的封面图。
+2. **封面图**（二选一）：
+   - **自动出图**：生成时加 `--gen-images`，或对已有草稿补图：`node tools/generate.js --gen-images-only --draft <草稿路径>`（需在 tools/.env 配置 MINIMAX_API_KEY）。
+   - **手动选图**：在本地（如 Downloads）找到心仪的封面图，sync 时用 `--image <路径>` 指定。
 3. **同步**：用 `sync.js` 指定草稿 + 第几道菜 + 图片路径，一键上传图片、写入云数据库、更新本地 `recipes.js` 和 `recipeCoverSlugs.js`。
 
 ---

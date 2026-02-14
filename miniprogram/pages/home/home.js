@@ -2,15 +2,15 @@ var menuHistory = require('../../utils/menuHistory.js');
 var menuData = require('../../data/menuData.js');
 var menuGen = require('../../data/menuGenerator.js');
 var recipeCoverSlugs = require('../../data/recipeCoverSlugs.js');
+var recipeResources = require('../../data/recipeResources.js');
 var vibeGreeting = require('../../utils/vibeGreeting.js');
 var seedUserService = require('../../utils/seedUserService.js');
 
-/** 首页云图 fileID，需通过 getTempFileURL 转成 HTTPS 再显示（避免 simulator 把 cloud:// 当本地路径报 500） */
-var HOME_CLOUD_FILE_IDS = [
-  'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/background_pic/home_background.png',
-  'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/background_pic/feeling_ok_button.png',
-  'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/background_pic/feeling_tired_button.png'
-];
+/** 首页云图 HTTP 直链（可直接用于 <image> src） */
+var HOME_HTTP_ROOT = (recipeResources.CLOUD_HTTP_ROOT || '') + '/background_pic';
+var HOME_ILLUSTRATION_URL = HOME_HTTP_ROOT + '/home_background.png';
+var HOME_OK_ICON_URL = HOME_HTTP_ROOT + '/feeling_ok_button.png';
+var HOME_TIRED_ICON_URL = HOME_HTTP_ROOT + '/feeling_tired_button.png';
 
 function getCurrentDate() {
   var d = new Date();
@@ -96,8 +96,12 @@ Page({
     }
     // 等待种子用户信息就绪后刷新问候语
     that._refreshPioneerGreeting();
-    // 云图：延后解析，等云 init 后再 getTempFileURL（未登录时静默失败，用占位）
-    setTimeout(function () { that._resolveHomeCloudImages(); }, 500);
+    // 首页云图使用 HTTP 直链，直接 setData
+    that.setData({
+      illustrationUrl: HOME_ILLUSTRATION_URL,
+      okIconUrl: HOME_OK_ICON_URL,
+      tiredIconUrl: HOME_TIRED_ICON_URL
+    });
   },
 
   onShow: function () {
@@ -425,24 +429,6 @@ Page({
     }
   },
 
-  // ====== 首页云图：cloud:// 转 HTTPS 再显示，避免 simulator 当本地路径报 500 ======
-  _resolveHomeCloudImages: function () {
-    var that = this;
-    if (!wx.cloud || typeof wx.cloud.getTempFileURL !== 'function') return;
-    wx.cloud.getTempFileURL({
-      fileList: HOME_CLOUD_FILE_IDS
-    }).then(function (res) {
-      var fileList = res.fileList || [];
-      var illustrationUrl = '';
-      var okIconUrl = '';
-      var tiredIconUrl = '';
-      if (fileList[0] && fileList[0].tempFileURL) illustrationUrl = fileList[0].tempFileURL;
-      if (fileList[1] && fileList[1].tempFileURL) okIconUrl = fileList[1].tempFileURL;
-      if (fileList[2] && fileList[2].tempFileURL) tiredIconUrl = fileList[2].tempFileURL;
-      that.setData({ illustrationUrl: illustrationUrl, okIconUrl: okIconUrl, tiredIconUrl: tiredIconUrl });
-    }).catch(function () {});
-  },
-
   // ====== 种子用户：先锋主厨问候语刷新 ======
   _refreshPioneerGreeting: function () {
     var that = this;
@@ -478,7 +464,7 @@ Page({
     return {
       title: 'TableSync - 想想今晚吃什么',
       path: seedUserService.getSharePath('wechat'),
-      imageUrl: 'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/background_pic/home_background.png'
+      imageUrl: HOME_ILLUSTRATION_URL
     };
   },
 

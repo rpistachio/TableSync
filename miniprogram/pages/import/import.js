@@ -161,7 +161,11 @@ Page({
     editingSteps: [],       // 编辑中的步骤列表
 
     // 性能
-    totalMs: 0
+    totalMs: 0,
+
+    // 极速解析：食材先显，步骤待生成
+    fastParsed: false,
+    stepsLoading: false
   },
 
   onLoad: function () {
@@ -338,6 +342,7 @@ Page({
 
         var recipe = result.data && result.data.recipe;
         var confidence = result.data && result.data.confidence || 0;
+        var fastParsed = !!(result.data && result.data.fastParsed);
 
         if (!recipe || !recipe.name) {
           that.setData({
@@ -348,7 +353,7 @@ Page({
           return;
         }
 
-        that._setPreviewData(recipe, confidence, totalMs);
+        that._setPreviewData(recipe, confidence, totalMs, fastParsed);
       },
       fail: function (err) {
         console.error('[import] 链接导入出错:', err);
@@ -510,6 +515,7 @@ Page({
 
       var recipe = result.data && result.data.recipe;
       var confidence = result.data && result.data.confidence || 0;
+      var fastParsed = !!(result.data && result.data.fastParsed);
 
       if (!recipe || !recipe.name) {
         that.setData({
@@ -520,7 +526,7 @@ Page({
         return;
       }
 
-      that._setPreviewData(recipe, confidence, totalMs);
+      that._setPreviewData(recipe, confidence, totalMs, fastParsed);
     }).catch(function (err) {
       console.error('[import] 导入流程出错:', err);
       that.setData({
@@ -533,7 +539,7 @@ Page({
 
   // ── 设置预览数据（截图/链接共用）─────────────────────────────────
 
-  _setPreviewData: function (recipe, confidence, totalMs) {
+  _setPreviewData: function (recipe, confidence, totalMs, fastParsed) {
     var ingredientList = (recipe.ingredients || []).map(function (ing) {
       return {
         name: ing.name,
@@ -570,7 +576,49 @@ Page({
       isEditing: false,
       editingIngredients: [],
       editingSteps: [],
-      totalMs: totalMs
+      totalMs: totalMs,
+      fastParsed: !!fastParsed,
+      stepsLoading: false
+    });
+  },
+
+  // ── 生成详细步骤（二次异步请求）───────────────────────────────────
+
+  onGenerateSteps: function () {
+    var that = this;
+    var recipe = that.data.recipe;
+    if (!recipe || that.data.stepsLoading) return;
+
+    that.setData({ stepsLoading: true });
+
+    wx.cloud.callFunction({
+      name: 'recipeImport',
+      data: {
+        mode: 'generateSteps',
+        recipeName: recipe.name,
+        ingredients: recipe.ingredients || [],
+        rawText: recipe.rawText || ''
+      },
+      success: function (callRes) {
+        var result = callRes.result || {};
+        if (result.code === 200 && result.data) {
+          var d = result.data;
+          recipe.steps = d.steps || [];
+          recipe.cook_type = d.cook_type || recipe.cook_type;
+          recipe.prep_time = d.prep_time != null ? d.prep_time : recipe.prep_time;
+          recipe.cook_minutes = d.cook_minutes != null ? d.cook_minutes : recipe.cook_minutes;
+          recipe._fastParsed = false;
+          that._setPreviewData(recipe, that.data.confidence, that.data.totalMs, false);
+          wx.showToast({ title: '步骤已生成', icon: 'success' });
+        } else {
+          wx.showToast({ title: result.message || '步骤生成失败', icon: 'none' });
+        }
+        that.setData({ stepsLoading: false });
+      },
+      fail: function () {
+        that.setData({ stepsLoading: false });
+        wx.showToast({ title: '步骤生成失败', icon: 'none' });
+      }
     });
   },
 
@@ -597,7 +645,9 @@ Page({
       isEditing: false,
       editingIngredients: [],
       editingSteps: [],
-      totalMs: 0
+      totalMs: 0,
+      fastParsed: false,
+      stepsLoading: false
     });
   },
 

@@ -34,10 +34,26 @@
       <view class="preview-menu-header">
         <view class="preview-menu-titles">
           <text class="preview-menu-label">{{previewPageTitle}}</text>
-          <view class="preview-person-picker-wrap" catchtap="onTogglePersonPicker">
-            <text class="preview-person-picker-label">{{adultCount}}人份 ▾</text>
-            <view class="preview-person-bubble" wx:if="{{showPersonPicker}}">
-              <view wx:for="{{[1,2,3,4]}}" wx:key="*this" class="preview-person-option" data-value="{{item}}" catchtap="onChangeAdultCount">{{item}}人</view>
+          <view class="preview-header-pickers">
+            <view class="preview-person-picker-wrap" catchtap="onTogglePersonPicker">
+              <text class="preview-person-picker-label">{{adultCount}}人份 ▾</text>
+              <view class="preview-person-bubble" wx:if="{{showPersonPicker}}">
+                <view wx:for="{{[1,2,3,4]}}" wx:key="*this" class="preview-person-option" data-value="{{item}}" catchtap="onChangeAdultCount">{{item}}人</view>
+              </view>
+            </view>
+            <view wx:if="{{!isHelperMode}}" class="preview-baby-toggle-wrap {{previewHasBaby ? 'preview-baby-toggle-active' : ''}}" catchtap="onToggleBabyPicker">
+              <text class="preview-baby-toggle-label" wx:if="{{!previewHasBaby}}">+ 宝宝</text>
+              <view wx:else class="preview-baby-toggle-active-inner">
+                <text class="preview-baby-toggle-label">宝宝 {{babyMonthLabel}}</text>
+                <text class="preview-baby-remove" catchtap="onRemoveBaby" data-stop="1">✕</text>
+              </view>
+              <view class="preview-baby-bubble" wx:if="{{showBabyPicker && !previewHasBaby}}">
+                <view class="preview-baby-option" data-month="8" catchtap="onSelectBabyMonth">6-8月</view>
+                <view class="preview-baby-option" data-month="12" catchtap="onSelectBabyMonth">9-12月</view>
+                <view class="preview-baby-option" data-month="18" catchtap="onSelectBabyMonth">13-18月</view>
+                <view class="preview-baby-option" data-month="24" catchtap="onSelectBabyMonth">19-24月</view>
+                <view class="preview-baby-option" data-month="36" catchtap="onSelectBabyMonth">25-36月</view>
+              </view>
             </view>
           </view>
         </view>
@@ -58,18 +74,21 @@
       <view wx:if="{{!isHelperMode}}" class="preview-dish-list">
         <view wx:for="{{previewMenuRows}}" wx:key="index" class="dish-card-wrap" data-index="{{index}}" bindtap="onCheckRow">
           <view class="dish-card-modern {{item.checked ? '' : 'is-unchecked'}} {{item.hasCover ? '' : 'no-cover'}}" style="animation-delay: {{index * 120}}ms">
-            <image wx:if="{{item.hasCover && isImageReady && item.coverTempUrl}}" class="card-bg" src="{{item.coverTempUrl}}" mode="aspectFill" />
+            <image wx:if="{{item.hasCover && isImageReady && (item.coverTempUrl || item.coverUrl)}}" class="card-bg" src="{{item.coverTempUrl || item.coverUrl}}" mode="aspectFill" />
             <view class="card-overlay"></view>
             <view class="airfryer-tag" wx:if="{{isTiredMode && item.cookType === 'air_fryer'}}">空气炸锅</view>
             <view class="card-info">
               <view class="card-header">
                 <text class="dish-name">{{item.adultName}}</text>
                 <view class="check-badge" wx:if="{{item.checked}}">✓</view>
-                <view class="replace-badge" wx:else catchtap="onReplaceSingle" data-index="{{index}}">换这道</view>
+                <view class="card-action-group" wx:else>
+                  <view class="replace-badge" catchtap="onReplaceSingle" data-index="{{index}}">换这道</view>
+                  <view class="remove-badge" catchtap="onRemoveDish" data-index="{{index}}">删掉</view>
+                </view>
               </view>
               <view class="card-footer">
                 <text class="dish-reason">{{item.recommendReason}}</text>
-                <view class="baby-tag-floating" wx:if="{{item.babyName}}">宝宝吃：{{item.babyName}}</view>
+                <view class="baby-tag-floating" wx:if="{{previewHasBaby && item.babyName}}">宝宝吃：{{item.babyName}}</view>
               </view>
             </view>
           </view>
@@ -138,5 +157,89 @@
     <button class="preview-btn preview-btn-secondary" catchtap="handleShuffle">{{shuffleBtnText}}</button>
     <button class="preview-btn preview-btn-ghost" open-type="share">发给别人</button>
     <button wx:if="{{!isHelperMode}}" class="preview-btn preview-btn-primary" catchtap="confirmAndGo">{{previewPrimaryCta}}</button>
+  </view>
+
+  <!-- 自选菜谱弹出面板 -->
+  <view class="pp-panel-mask {{showPickerPanel ? 'pp-panel-mask-visible' : ''}}" catchtap="_closePickerPanel"></view>
+  <view class="pp-add-panel {{showPickerPanel ? 'pp-add-panel-visible' : ''}}">
+    <view class="pp-panel-header">
+      <text class="pp-panel-title">自选菜谱</text>
+      <view class="pp-panel-close" catchtap="_closePickerPanel">
+        <text class="pp-panel-close-icon">×</text>
+      </view>
+    </view>
+    <view class="pp-panel-tabs">
+      <view class="pp-panel-tab {{pickerTab === 'native' ? 'pp-panel-tab-active' : ''}}" data-tab="native" bindtap="onPickerSwitchTab">
+        <text class="pp-panel-tab-icon">📚</text>
+        <text class="pp-panel-tab-text">原生菜谱库</text>
+      </view>
+      <view class="pp-panel-tab {{pickerTab === 'imported' ? 'pp-panel-tab-active' : ''}}" data-tab="imported" bindtap="onPickerSwitchTab">
+        <text class="pp-panel-tab-icon">🔗</text>
+        <text class="pp-panel-tab-text">最近导入</text>
+      </view>
+    </view>
+    <view class="pp-panel-content" wx:if="{{pickerTab === 'native'}}">
+      <scroll-view class="pp-filter-bar" scroll-x enhanced show-scrollbar="{{false}}">
+        <view class="pp-filter-bar-inner">
+          <view
+            wx:for="{{pickerFilterOptions}}"
+            wx:key="value"
+            class="pp-filter-tag {{pickerNativeFilter === item.value ? 'pp-filter-tag-active' : ''}}"
+            data-filter="{{item.value}}"
+            bindtap="onPickerNativeFilter"
+          >
+            <text class="pp-filter-tag-text">{{item.label}}</text>
+          </view>
+        </view>
+      </scroll-view>
+      <scroll-view class="pp-recipe-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+        <view class="pp-recipe-pick-list">
+          <view
+            class="pp-recipe-pick-item"
+            wx:for="{{pickerFilteredNativeRecipes}}"
+            wx:key="id"
+            data-index="{{index}}"
+            bindtap="onPickerSelectNative"
+          >
+            <view class="pp-recipe-pick-info">
+              <text class="pp-recipe-pick-name">{{item.name}}</text>
+              <view class="pp-recipe-pick-meta">
+                <text class="pp-recipe-pick-meta-tag">{{item._meatLabel || item.meat}}</text>
+                <text class="pp-recipe-pick-meta-tag" wx:if="{{item._cookTypeLabel || item.cook_type}}">{{item._cookTypeLabel || item.cook_type}}</text>
+              </view>
+            </view>
+            <text class="pp-recipe-pick-add">+</text>
+          </view>
+        </view>
+        <view class="pp-recipe-pick-empty" wx:if="{{pickerFilteredNativeRecipes.length === 0}}">
+          <text class="pp-recipe-pick-empty-text">暂无菜谱</text>
+        </view>
+      </scroll-view>
+    </view>
+    <view class="pp-panel-content" wx:if="{{pickerTab === 'imported'}}">
+      <scroll-view class="pp-recipe-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+        <view class="pp-recipe-pick-list">
+          <view
+            class="pp-recipe-pick-item"
+            wx:for="{{pickerImportedRecipes}}"
+            wx:key="id"
+            data-index="{{index}}"
+            bindtap="onPickerSelectImported"
+          >
+            <view class="pp-recipe-pick-info">
+              <text class="pp-recipe-pick-name">{{item.name}}</text>
+              <view class="pp-recipe-pick-meta">
+                <text class="pp-recipe-pick-meta-tag pp-recipe-pick-meta-external">外部导入</text>
+                <text class="pp-recipe-pick-meta-tag" wx:if="{{item.sourcePlatform}}">{{item.sourcePlatform}}</text>
+              </view>
+            </view>
+            <text class="pp-recipe-pick-add">+</text>
+          </view>
+        </view>
+        <view class="pp-recipe-pick-empty" wx:if="{{pickerImportedRecipes.length === 0}}">
+          <text class="pp-recipe-pick-empty-text">还没有导入过菜谱</text>
+        </view>
+      </scroll-view>
+    </view>
   </view>
 </view>

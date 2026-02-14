@@ -74,9 +74,50 @@ function loadSystemPrompt(excludeNames) {
   return text;
 }
 
+/** 单次请求的 count 上限，超过则拆成多批并行（每批耗时更短） */
+const BATCH_SIZE = 5;
+
+/** 从 Anthropic 格式的 content 数组中取出全部 text（MiniMax 会先返回 thinking 再返回 text） */
+function getTextFromContent(content) {
+  if (!Array.isArray(content) || content.length === 0) return '';
+  const parts = [];
+  for (let i = 0; i < content.length; i++) {
+    const block = content[i];
+    if (block && block.type === 'text' && block.text) {
+      parts.push(block.text);
+    }
+  }
+  return parts.join('\n').trim() || (content[0] && content[0].text) || '';
+}
+
+/**
+ * 单次调用 LLM 生成 n 道菜
+ */
+async function generateOneBatch({ mode, input, count, excludeNames, client, systemPrompt, baseURL, model }) {
+  const userInstruction = buildUserInstruction(mode, input, count);
+  const msg = await withRetry(() =>
+    client.messages.create({
+      model: model || CONFIG.llmModel,
+      max_tokens: 8192,
+      temperature: 0.6,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userInstruction }]
+    })
+  );
+  const text = getTextFromContent(msg.content);
+  if (!text || text.length < 10) {
+    const rawPreview = msg.content && msg.content.length
+      ? `content 共 ${msg.content.length} 个 block，首个 type=${msg.content[0] && msg.content[0].type}`
+      : 'content 为空';
+    throw new Error(`LLM 返回内容过短或为空（${rawPreview}）。若使用 MiniMax，请确认模型返回了 text 而非仅 thinking。`);
+  }
+  return safeParseJson(text);
+}
+
 /**
  * 调用 LLM，将原始输入（文本 / URL 描述 / 关键词）转换为结构化菜谱 JSON
  * 返回值严格为 JS 对象，而非字符串。
+ * count >= 6 时自动拆成两批并行请求，总耗时约减半。
  * @param {Object} params
  * @param {string} params.mode - trending | url | text
  * @param {string} params.input - 用户输入
@@ -84,37 +125,99 @@ function loadSystemPrompt(excludeNames) {
  * @param {string[]} [params.excludeNames] - 已有菜名列表，LLM 应避免生成
  */
 export async function generateRecipesFromInput({ mode, input, count, excludeNames }) {
-  if (!CONFIG.anthropicApiKey) {
-    throw new Error('ANTHROPIC_API_KEY 未配置，请在 tools/.env 中设置');
+  const useMiniMax = CONFIG.llmProvider === 'minimax';
+
+  if (useMiniMax) {
+    if (!CONFIG.minimaxApiKey) {
+      throw new Error('MiniMax 为默认 LLM 但 MINIMAX_API_KEY 未配置，请在 tools/.env 中设置（海外站用同一 Key）');
+    }
+  } else {
+    if (!CONFIG.anthropicApiKey) {
+      throw new Error('ANTHROPIC_API_KEY 未配置，请在 tools/.env 中设置（或改用 MiniMax：不设 LLM_PROVIDER 时默认 minimax）');
+    }
   }
 
-  const opts = { apiKey: CONFIG.anthropicApiKey };
-  // 支持第三方中转站：在 .env 中设置 ANTHROPIC_BASE_URL（不带 /v1）
-  if (process.env.ANTHROPIC_BASE_URL) {
-    opts.baseURL = process.env.ANTHROPIC_BASE_URL;
-  }
+  const opts = useMiniMax
+    ? {
+        apiKey: CONFIG.minimaxApiKey,
+        baseURL: `https://${CONFIG.minimaxHost}/anthropic`
+      }
+    : {
+        apiKey: CONFIG.anthropicApiKey,
+        baseURL: process.env.ANTHROPIC_BASE_URL
+      };
   const client = new Anthropic(opts);
+  const model = useMiniMax ? CONFIG.minimaxLlmModel : CONFIG.llmModel;
   const systemPrompt = loadSystemPrompt(excludeNames);
-  const userInstruction = buildUserInstruction(mode, input, count);
-  const baseURL = opts.baseURL || process.env.ANTHROPIC_BASE_URL;
+  const baseURL = opts.baseURL;
 
-  let msg;
+  const providerName = useMiniMax ? 'MiniMax' : 'Claude';
+  const n = Math.max(1, Number(count) || CONFIG.defaultGenerateCount);
+
+  if (n <= BATCH_SIZE) {
+    console.log(`正在请求 ${providerName}（${model}，约 30 秒–1 分钟）…`);
+    try {
+      return await generateOneBatch({
+        mode,
+        input,
+        count: n,
+        excludeNames,
+        client,
+        systemPrompt,
+        baseURL,
+        model
+      });
+    } catch (err) {
+      throw wrapConnectionError(err, baseURL);
+    }
+  }
+
+  const n1 = Math.ceil(n / 2);
+  const n2 = n - n1;
+  console.log(`正在并行请求 ${providerName}（两批 ${n1}+${n2} 道，约 30 秒–1 分钟）…`);
+  let res1;
+  let res2;
   try {
-    msg = await withRetry(() =>
-      client.messages.create({
-        model: CONFIG.llmModel,
-        max_tokens: 8192,
-        temperature: 0.6,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userInstruction }]
+    [res1, res2] = await Promise.all([
+      generateOneBatch({
+        mode,
+        input,
+        count: n1,
+        excludeNames,
+        client,
+        systemPrompt,
+        baseURL,
+        model
+      }),
+      generateOneBatch({
+        mode,
+        input,
+        count: n2,
+        excludeNames,
+        client,
+        systemPrompt,
+        baseURL,
+        model
       })
-    );
+    ]);
   } catch (err) {
     throw wrapConnectionError(err, baseURL);
   }
 
-  const text = (msg.content && msg.content[0] && msg.content[0].text) || '';
-  return safeParseJson(text);
+  const items1 = (res1 && res1.items) || [];
+  const items2 = (res2 && res2.items) || [];
+  const seen = new Set(items1.map((it) => (it.recipe && it.recipe.name) || '').filter(Boolean));
+  const merged = [...items1];
+  for (const it of items2) {
+    const name = it.recipe && it.recipe.name;
+    if (name && !seen.has(name)) {
+      seen.add(name);
+      merged.push(it);
+    } else if (!name) {
+      merged.push(it);
+    }
+  }
+  return { items: merged };
 }
 
 function buildUserInstruction(mode, input, count) {
@@ -132,19 +235,33 @@ function buildUserInstruction(mode, input, count) {
 
 function safeParseJson(raw) {
   let text = raw.trim();
-  // 兼容 ```json ... ``` 包裹的情况
-  if (text.startsWith('```')) {
+  // 兼容 ```json ... ``` 或 ```\n...\n``` 包裹
+  const codeBlockMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
+  if (codeBlockMatch) {
+    text = codeBlockMatch[1].trim();
+  } else if (text.startsWith('```')) {
     const lines = text.split('\n');
     lines.shift();
-    if (lines[lines.length - 1].startsWith('```')) {
+    if (lines[lines.length - 1].trim().startsWith('```')) {
       lines.pop();
     }
-    text = lines.join('\n');
+    text = lines.join('\n').trim();
   }
+  // 取第一个 { 到最后一个 } 之间的内容（兼容前面有说明文字）
+  const firstBrace = text.indexOf('{');
+  const lastBrace = text.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    text = text.slice(firstBrace, lastBrace + 1);
+  }
+  // 去掉 JSON 中常见的尾逗号（LLM 常多打逗号）
+  text = text.replace(/,(\s*[}\]])/g, '$1');
   try {
     return JSON.parse(text);
   } catch (e) {
-    throw new Error(`解析 LLM JSON 失败，请检查 system prompt 约束是否足够严格。\n原始内容片段：\n${text.slice(0, 300)}...`);
+    const snippet = text.slice(0, 600);
+    throw new Error(
+      `解析 LLM JSON 失败（${e.message}）。\n原始内容片段：\n${snippet}${text.length > 600 ? '...' : ''}`
+    );
   }
 }
 
@@ -165,24 +282,28 @@ function loadOptimizeSystemPrompt() {
  * @returns {Promise<{ items: Array<{ id, ingredients, steps, baby_variant }> }>}
  */
 export async function optimizeRecipesWithLlm(recipes) {
-  if (!CONFIG.anthropicApiKey) {
+  const useMiniMax = CONFIG.llmProvider === 'minimax';
+  if (useMiniMax && !CONFIG.minimaxApiKey) {
+    throw new Error('MiniMax 为默认 LLM 但 MINIMAX_API_KEY 未配置，请在 tools/.env 中设置');
+  }
+  if (!useMiniMax && !CONFIG.anthropicApiKey) {
     throw new Error('ANTHROPIC_API_KEY 未配置，请在 tools/.env 中设置');
   }
 
-  const opts = { apiKey: CONFIG.anthropicApiKey };
-  if (process.env.ANTHROPIC_BASE_URL) {
-    opts.baseURL = process.env.ANTHROPIC_BASE_URL;
-  }
+  const opts = useMiniMax
+    ? { apiKey: CONFIG.minimaxApiKey, baseURL: `https://${CONFIG.minimaxHost}/anthropic` }
+    : { apiKey: CONFIG.anthropicApiKey, baseURL: process.env.ANTHROPIC_BASE_URL };
   const client = new Anthropic(opts);
+  const model = useMiniMax ? CONFIG.minimaxLlmModel : CONFIG.llmModel;
   const systemPrompt = loadOptimizeSystemPrompt();
   const userMessage = `请对以下 ${recipes.length} 道菜谱分别进行优化，严格按模板只返回每道菜的 id、ingredients、steps、baby_variant（若原无则补充）。\n\n输入菜谱 JSON：\n${JSON.stringify(recipes, null, 2)}`;
-  const baseURL = opts.baseURL || process.env.ANTHROPIC_BASE_URL;
+  const baseURL = opts.baseURL;
 
   let msg;
   try {
     msg = await withRetry(() =>
       client.messages.create({
-        model: CONFIG.llmModel,
+        model,
         max_tokens: 8192,
         temperature: 0.3,
         system: systemPrompt,
@@ -193,6 +314,6 @@ export async function optimizeRecipesWithLlm(recipes) {
     throw wrapConnectionError(err, baseURL);
   }
 
-  const text = (msg.content && msg.content[0] && msg.content[0].text) || '';
+  const text = getTextFromContent(msg.content);
   return safeParseJson(text);
 }

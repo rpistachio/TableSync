@@ -15,7 +15,7 @@ const __dirname = path.dirname(__filename);
 function loadDraft(draftPath) {
   const full = path.isAbsolute(draftPath)
     ? draftPath
-    : path.join(__dirname, draftPath);
+    : path.resolve(process.cwd(), draftPath);
   const raw = fs.readFileSync(full, 'utf8');
   return { full, data: JSON.parse(raw) };
 }

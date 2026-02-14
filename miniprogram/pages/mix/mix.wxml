@@ -41,6 +41,15 @@
     <view class="selected-list" wx:if="{{selectedRecipes.length > 0}}">
       <view class="recipe-card" wx:for="{{selectedRecipes}}" wx:key="id">
         <view class="recipe-card-main">
+          <image
+            wx:if="{{item._coverHttpUrl || item._coverTempUrl}}"
+            class="recipe-card-thumb"
+            src="{{item._coverHttpUrl || item._coverTempUrl}}"
+            mode="aspectFill"
+          />
+          <view class="recipe-card-thumb-placeholder" wx:else>
+            <text class="recipe-card-thumb-emoji">🍳</text>
+          </view>
           <view class="recipe-card-left">
             <text class="recipe-card-name">{{item.name}}</text>
             <view class="recipe-card-meta">
@@ -198,6 +207,15 @@
             data-index="{{index}}"
             bindtap="onSelectNativeRecipe"
           >
+            <image
+              wx:if="{{item._coverHttpUrl || item._coverTempUrl}}"
+              class="recipe-pick-thumb"
+              src="{{item._coverHttpUrl || item._coverTempUrl}}"
+              mode="aspectFill"
+            />
+            <view class="recipe-pick-thumb-placeholder" wx:else>
+              <text class="recipe-pick-thumb-emoji">🍳</text>
+            </view>
             <view class="recipe-pick-info">
               <text class="recipe-pick-name">{{item.name}}</text>
               <view class="recipe-pick-meta">
@@ -225,6 +243,15 @@
             data-index="{{index}}"
             bindtap="onSelectImportedRecipe"
           >
+            <image
+              wx:if="{{item._coverHttpUrl || item._coverTempUrl}}"
+              class="recipe-pick-thumb"
+              src="{{item._coverHttpUrl || item._coverTempUrl}}"
+              mode="aspectFill"
+            />
+            <view class="recipe-pick-thumb-placeholder" wx:else>
+              <text class="recipe-pick-thumb-emoji">🍳</text>
+            </view>
             <view class="recipe-pick-info">
               <text class="recipe-pick-name">{{item.name}}</text>
               <view class="recipe-pick-meta">

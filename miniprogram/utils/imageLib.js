@@ -148,9 +148,102 @@ function resolveImageUrls(urls, cb) {
   });
 }
 
+/**
+ * 查询全局缓存中某个 cloud:// fileID 对应的临时 URL
+ * @param {string} cloudId
+ * @returns {string} 临时 URL，未缓存则返回 ''
+ */
+function getCachedTempUrl(cloudId) {
+  return (cloudId && _tempUrlCache[cloudId]) || '';
+}
+
+/**
+ * 向全局缓存写入 cloud:// fileID -> 临时 URL 映射
+ * @param {string} cloudId
+ * @param {string} tempUrl
+ */
+function putCachedTempUrl(cloudId, tempUrl) {
+  if (cloudId && tempUrl) _tempUrlCache[cloudId] = tempUrl;
+}
+
+/**
+ * 批量向全局缓存写入映射（用于外部页面解析完后回写）
+ * @param {Record<string, string>} map  { cloudId: tempUrl }
+ */
+function putCachedTempUrls(map) {
+  if (!map || typeof map !== 'object') return;
+  for (var key in map) {
+    if (map.hasOwnProperty(key) && map[key]) {
+      _tempUrlCache[key] = map[key];
+    }
+  }
+}
+
+/**
+ * 批量解析 cloud:// fileID（自动查缓存 + 去重 + 分批 50 个 + 回写缓存）
+ * @param {string[]} cloudIds - cloud:// fileID 数组
+ * @param {(resultMap: Record<string, string>) => void} cb - 返回全部（含缓存命中的）映射
+ */
+function batchResolveTempUrls(cloudIds, cb) {
+  if (typeof cb !== 'function') return;
+  if (!Array.isArray(cloudIds) || cloudIds.length === 0) return cb({});
+
+  var resultMap = {};
+  var needResolve = [];
+  var seen = Object.create(null);
+
+  for (var i = 0; i < cloudIds.length; i++) {
+    var id = cloudIds[i];
+    if (!id || typeof id !== 'string' || id.indexOf('cloud://') !== 0) continue;
+    if (seen[id]) continue;
+    seen[id] = true;
+    if (_tempUrlCache[id]) {
+      resultMap[id] = _tempUrlCache[id];
+    } else {
+      needResolve.push(id);
+    }
+  }
+
+  if (needResolve.length === 0) return cb(resultMap);
+  if (!wx || !wx.cloud || typeof wx.cloud.getTempFileURL !== 'function') return cb(resultMap);
+
+  var BATCH = 50;
+  var batches = [];
+  for (var b = 0; b < needResolve.length; b += BATCH) {
+    batches.push(needResolve.slice(b, b + BATCH));
+  }
+
+  var pending = batches.length;
+  function onBatchDone() {
+    pending--;
+    if (pending === 0) cb(resultMap);
+  }
+
+  for (var idx = 0; idx < batches.length; idx++) {
+    wx.cloud.getTempFileURL({
+      fileList: batches[idx],
+      success: function (res) {
+        var list = (res && res.fileList) || [];
+        for (var k = 0; k < list.length; k++) {
+          var it = list[k] || {};
+          if (it.fileID && it.tempFileURL) {
+            _tempUrlCache[it.fileID] = it.tempFileURL;
+            resultMap[it.fileID] = it.tempFileURL;
+          }
+        }
+      },
+      complete: onBatchDone
+    });
+  }
+}
+
 module.exports = {
   getRecipeImage: getRecipeImage,
   getPageCover: getPageCover,
   resolveImageUrl: resolveImageUrl,
-  resolveImageUrls: resolveImageUrls
+  resolveImageUrls: resolveImageUrls,
+  getCachedTempUrl: getCachedTempUrl,
+  putCachedTempUrl: putCachedTempUrl,
+  putCachedTempUrls: putCachedTempUrls,
+  batchResolveTempUrls: batchResolveTempUrls
 };
