@@ -25,6 +25,7 @@ const __dirname = path.dirname(__filename);
 const require = createRequire(__filename);
 
 const BATCH_DELAY_MS = 2000;
+const BATCH_RETRIES = 2;
 
 function loadAdultRecipesFromBackup() {
   const backupPath = path.join(CONFIG.projectRoot, 'miniprogram', 'data', 'recipes.js.bak');
@@ -96,18 +97,46 @@ async function main() {
 
   for (let b = 0; b < batches.length; b++) {
     const batch = batches[b];
-    console.log(chalk.cyan(`[batch ${b + 1}/${batches.length}] 正在优化: ${batch.map((r) => r.name).join('、')}`));
-    try {
-      const result = await optimizeRecipesWithLlm(batch);
-      const items = result && result.items ? result.items : [];
-      for (const item of items) {
-        if (item.id && idToOriginal.has(item.id)) {
-          allOptimizedItems.push({ original: idToOriginal.get(item.id), optimized: item });
+    let lastErr;
+    for (let attempt = 1; attempt <= BATCH_RETRIES + 1; attempt++) {
+      console.log(chalk.cyan(`[batch ${b + 1}/${batches.length}] 正在优化: ${batch.map((r) => r.name).join('、')}${attempt > 1 ? ` (重试 ${attempt - 1}/${BATCH_RETRIES})` : ''}`));
+      try {
+        const result = await optimizeRecipesWithLlm(batch);
+        const items = result && result.items ? result.items : [];
+        for (const item of items) {
+          if (item.id && idToOriginal.has(item.id)) {
+            allOptimizedItems.push({ original: idToOriginal.get(item.id), optimized: item });
+          }
+        }
+        lastErr = null;
+        break;
+      } catch (err) {
+        lastErr = err;
+        console.error(chalk.red(`[batch ${b + 1}] 调用 LLM 失败: ${err.message}`));
+        if (attempt <= BATCH_RETRIES) {
+          await new Promise((r) => setTimeout(r, BATCH_DELAY_MS * attempt));
         }
       }
-    } catch (err) {
-      console.error(chalk.red(`[batch ${b + 1}] 调用 LLM 失败: ${err.message}`));
-      throw err;
+    }
+    if (lastErr) {
+      const outDir = CONFIG.draftsDir;
+      if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const partialPath = path.join(outDir, `optimized_${dateStr}_partial.json`);
+      const mergedSoFar = allOptimizedItems.map(({ original, optimized }) => mergeOptimizedIntoRecipe(original, optimized));
+      fs.writeFileSync(
+        partialPath,
+        JSON.stringify({
+          generated_at: new Date().toISOString(),
+          source: 'optimize-recipes',
+          partial: true,
+          failed_batch: b + 1,
+          items: mergedSoFar.map((r) => ({ recipe: r, status: 'pending' }))
+        }, null, 2),
+        'utf8'
+      );
+      console.error(chalk.yellow(`\n已保存已完成的 ${mergedSoFar.length} 道至 ${partialPath}，可先 apply-optimized 写回后，用 --ids 单独优化剩余菜谱。`));
+      throw lastErr;
     }
     if (b < batches.length - 1) {
       await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));

@@ -31,6 +31,18 @@ function loadMinimaxSecret() {
   }
 }
 
+/** 从云函数 recipeImport secret-config 读取 Moonshot/Kimi API Key（封面审核 Vision 用） */
+function loadMoonshotSecret() {
+  const p = path.join(__dirname, '..', 'cloudfunctions', 'recipeImport', 'secret-config.json');
+  try {
+    const raw = fs.readFileSync(p, 'utf8').replace(/^\uFEFF/, '');
+    const o = JSON.parse(raw);
+    return normalizeApiKey(o.MOONSHOT_API_KEY || '');
+  } catch {
+    return '';
+  }
+}
+
 const minimaxSecret = loadMinimaxSecret();
 
 export const CONFIG = {
@@ -48,6 +60,10 @@ export const CONFIG = {
   })(),
   minimaxModel: (process.env.MINIMAX_MODEL || '').trim() || minimaxSecret.model || 'image-01',
   minimaxLlmModel: (process.env.MINIMAX_LLM_MODEL || '').trim() || 'MiniMax-M2.1',
+
+  // Kimi/Moonshot Vision（封面审核 audit-covers.js）
+  moonshotApiKey: normalizeApiKey(process.env.MOONSHOT_API_KEY || '') || loadMoonshotSecret(),
+  moonshotVisionModel: (process.env.MOONSHOT_VISION_MODEL || '').trim() || 'moonshot-v1-8k-vision-preview',
 
   // 腾讯云开发环境
   tcbEnvId: process.env.TCB_ENV_ID || 'cloud1-7g5mdmib90e9f670',

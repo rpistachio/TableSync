@@ -1,10 +1,12 @@
 var stickerCollection = require('../../data/stickerCollection.js');
+var tasteProfile = require('../../data/tasteProfile.js');
 
 Page({
   data: {
     earnedList: [],
     totalEarned: 0,
-    totalDefs: 0
+    totalDefs: 0,
+    tastePortrait: null
   },
 
   onLoad: function () {
@@ -13,8 +15,13 @@ Page({
 
   onShow: function () {
     this._refreshList();
-    // 记录查看时间 → 回到首页时书脊微光消解
+    this._refreshTastePortrait();
     wx.setStorageSync('last_view_collection_time', Date.now());
+  },
+
+  _refreshTastePortrait: function () {
+    var portrait = tasteProfile.getTastePortrait();
+    this.setData({ tastePortrait: portrait.hasData ? portrait : null });
   },
 
   _refreshList: function () {

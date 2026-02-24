@@ -70,6 +70,80 @@ export function validateIngredientStepConsistency(recipe) {
     warnings.push('炒菜类调料种类较少，建议至少 3 种（如生抽、料酒、蚝油等）');
   }
 
+  // --- 烹饪逻辑校验 ---
+  const prepSteps = steps.filter((s) => (s && s.action === 'prep') || (s && s.step_type === 'prep'));
+  const cookSteps = steps.filter((s) => (s && s.action === 'cook') || (s && (s.step_type === 'cook' || (!s.step_type && s.action !== 'prep'))));
+  const prepText = prepSteps.map((s) => (s && s.text) || '').join(' ');
+  const cookTexts = cookSteps.map((s) => (s && s.text) || '');
+
+  // 6) 步骤顺序：含肉类时 prep 应有焯水或腌制
+  const BLANCH_KEYWORDS = ['焯水', '飞水', '汆水', '焯烫', '过水'];
+  const MARINATE_KEYWORDS = ['腌', '抓匀', '上浆', '码味'];
+  const meatCategories = ['肉类', '海鲜'];
+  const hasMeat = ingredients.some((it) => it && meatCategories.includes(it.category));
+  const hasBlanch = BLANCH_KEYWORDS.some((k) => prepText.includes(k));
+  const hasMarinate = MARINATE_KEYWORDS.some((k) => prepText.includes(k));
+  if (hasMeat && !hasBlanch && !hasMarinate && cookSteps.some((s) => (s.text || '').match(/炒|煎|烧|焖|炖|煮/))) {
+    warnings.push('含肉类且为炒/烧等做法时，prep 中应包含焯水或腌制步骤');
+  }
+
+  // 7) 必焯水食材：若配料含此类食材，prep 或 cook 应出现焯水
+  const MUST_BLANCH = ['西兰花', '菠菜', '豆角', '四季豆', '扁豆', '秋葵', '笋', '春笋', '冬笋'];
+  const hasMustBlanchIngredient = ingredientNames.some((n) => MUST_BLANCH.some((b) => n.includes(b) || b.includes(n)));
+  if (hasMustBlanchIngredient && !BLANCH_KEYWORDS.some((k) => fullText.includes(k))) {
+    warnings.push('配料含需焯水食材（如豆角、笋、西兰花等），步骤中应体现焯水');
+  }
+
+  // 8) 火候矛盾：小火+爆炒、大火+炖煮 等
+  const heatContradictions = [
+    { heat: '小火', wrong: ['爆炒', '滑炒', '大火快炒'], msg: '爆炒/滑炒应为大火，不宜写小火' },
+    { heat: '大火', wrong: ['炖', '煲', '慢炖', '焖煮'], msg: '炖/煲/焖应为先大火烧开再转小火，不宜全程大火' }
+  ];
+  for (const text of cookTexts) {
+    for (const { heat, wrong, msg } of heatContradictions) {
+      if (text.includes(heat) && wrong.some((w) => text.includes(w))) {
+        const w = `火候逻辑：${msg}`;
+        if (!warnings.includes(w)) warnings.push(w);
+        break;
+      }
+    }
+  }
+
+  // 9) 调料时序：料酒不宜仅在出锅时加；香油/葱花不宜与大火爆炒同句
+  if (fullText.includes('料酒') && fullText.includes('出锅') && !fullText.match(/料酒[^，。]*?(先|首先|先加|淋入|下锅|加热)/)) {
+    const hasEarlyBajiu = cookTexts.some((t) => t.includes('料酒') && (t.includes('淋入') || t.includes('下锅') || t.includes('加热')));
+    if (!hasEarlyBajiu && cookTexts.some((t) => t.includes('出锅') && t.includes('料酒'))) {
+      warnings.push('料酒建议加热后尽早淋入去腥，不宜仅在出锅时加');
+    }
+  }
+  cookTexts.forEach((text) => {
+    if ((text.includes('香油') || text.includes('葱花')) && (text.includes('大火') || text.includes('爆炒') || text.includes('滑炒'))) {
+      warnings.push('香油/葱花建议最后出锅时加，不宜与大火爆炒同步');
+    }
+  });
+
+  // 10) 时间一致性：cook 步骤 duration_num 之和 vs cook_minutes
+  const getStepDuration = (s) => {
+    if (s && typeof s.duration_num === 'number' && s.duration_num > 0) return s.duration_num;
+    return 0;
+  };
+  const prepSum = prepSteps.reduce((sum, s) => sum + getStepDuration(s), 0);
+  const cookSum = cookSteps.reduce((sum, s) => sum + getStepDuration(s), 0);
+  const prepTime = typeof recipe.prep_time === 'number' ? recipe.prep_time : 0;
+  const cookMinutes = typeof recipe.cook_minutes === 'number' ? recipe.cook_minutes : 0;
+  if (cookMinutes > 0 && cookSum > 0) {
+    const ratio = cookSum / cookMinutes;
+    if (ratio < 0.7 || ratio > 1.3) {
+      warnings.push(`烹饪时间不一致：cook 步骤时长之和 ${cookSum} 分钟与 cook_minutes ${cookMinutes} 偏差超过 30%`);
+    }
+  }
+  if (prepTime > 0 && prepSum > 0) {
+    const ratio = prepSum / prepTime;
+    if (ratio < 0.7 || ratio > 1.3) {
+      warnings.push(`备菜时间不一致：prep 步骤时长之和 ${prepSum} 分钟与 prep_time ${prepTime} 偏差超过 30%`);
+    }
+  }
+
   const ok = missingInSteps.length === 0 && mentionedNotInList.length === 0;
   return {
     ok,

@@ -701,7 +701,10 @@ Page({
     showStickerDrop: false,
     stickerDropQueue: [],
     // hero 折叠动画
-    heroCollapsed: false
+    heroCollapsed: false,
+    // 做完饭后隐式反馈
+    showPostCookFeedback: false,
+    postCookFeedbackFade: false
   },
 
   onLoad: function (options) {
@@ -1717,6 +1720,8 @@ Page({
         }
       }
     }
+    // 记录最近做过的菜名（供 Vibe Card 问候语引用）
+    try { wx.setStorageSync('last_cook_dishes', recipeNames.slice(0, 3)); } catch (e) {}
 
     // 批量检测贴纸掉落
     var stickerMod = require('../../data/stickerCollection.js');
@@ -1736,15 +1741,65 @@ Page({
         showStickerDrop: true
       });
     } else {
-      // 无贴纸 → 直接弹 Modal
-      that._showCompletionModal();
+      // 无贴纸 → 展示反馈卡片
+      that._showPostCookFeedback();
     }
   },
 
   /** 贴纸掉落动画播放完毕回调 */
   onStickerDropClose: function () {
     this.setData({ showStickerDrop: false, stickerDropQueue: [] });
-    this._showCompletionModal();
+    this._showPostCookFeedback();
+  },
+
+  /** 展示做完饭后的轻量反馈卡片 + 冰箱食材自动扣减 */
+  _showPostCookFeedback: function () {
+    var tasteProfile = require('../../data/tasteProfile.js');
+    tasteProfile.recordCookComplete();
+
+    // 按菜谱 meat 类型自动扣减冰箱食材
+    try {
+      var fridgeStore = require('../../data/fridgeStore.js');
+      var recipes = this._menuRecipes || [];
+      var deducted = {};
+      for (var i = 0; i < recipes.length; i++) {
+        var meatType = recipes[i] && recipes[i].meat;
+        if (!meatType || deducted[meatType]) continue;
+        var MEAT_TO_CATEGORY = {
+          '猪肉': 'pork', '牛肉': 'beef', '羊肉': 'beef',
+          '鸡肉': 'chicken', '鱼': 'fish', '虾': 'shrimp',
+          '海鲜': 'shrimp', '蔬菜': 'vegetable', '豆腐': 'tofu'
+        };
+        var cat = MEAT_TO_CATEGORY[meatType] || null;
+        if (cat) {
+          fridgeStore.consumeByCategory(cat);
+          deducted[meatType] = true;
+        }
+      }
+    } catch (e) {}
+
+    var that = this;
+    that.setData({ showPostCookFeedback: true });
+    setTimeout(function () {
+      that.setData({ postCookFeedbackFade: true });
+    }, 50);
+  },
+
+  /** 反馈选项点击 */
+  onPostCookFeedback: function (e) {
+    var feedback = (e.currentTarget.dataset || {}).feedback || 'ok';
+    var tasteProfile = require('../../data/tasteProfile.js');
+    var recipes = this._menuRecipes || [];
+    tasteProfile.applyPostCookFeedback(feedback, recipes);
+
+    try { wx.vibrateShort({ type: 'light' }); } catch (err) {}
+
+    var that = this;
+    that.setData({ postCookFeedbackFade: false });
+    setTimeout(function () {
+      that.setData({ showPostCookFeedback: false });
+      that._showCompletionModal();
+    }, 300);
   },
 
   /** 完成弹窗 */

@@ -1,0 +1,5 @@
+# 待优化菜谱 ID 列表（调料全部为「适量」的早期菜谱）
+a-soup-1,a-soup-2,a-soup-3,a-chi-1,a-chi-2,a-fish-1,a-shrimp-1,a-beef-1,a-pork-1,a-beef-2,a-shrimp-2,a-fish-2,a-beef-3,a-pork-3,a-pork-4,a-chi-3,a-chi-4,a-beef-4,a-shrimp-3,a-fish-3,a-pork-6,a-veg-1,a-veg-2,a-veg-3,a-veg-4,a-veg-5,a-veg-6,a-soup-4,a-soup-5,m001,m002,v001,v002,s001,m003,m004,v003,v004,s002,m005,v005,v006,s003,m007,m008,v007,v008,s004,m009,m010,v010,s005,a-chi-6,a-soup-6,a-soup-7,a-soup-8,a-soup-9,a-soup-10,a-soup-11,a-soup-12,a-soup-13
+# 用法（跨平台）：node tools/run-optimize-from-list.js
+# 预览：node tools/run-optimize-from-list.js --dry-run
+# 流程：run-optimize-from-list.js -> 人工审核 drafts/optimized_*.json -> apply-optimized.js -> batch-sync-recipes.js --force

@@ -1,5 +1,5 @@
 // cloudfunctions/recipeImport/lib/kimi.js
-// Kimi（月之暗面）OpenAI 兼容接口封装（复用自 fridgeScan）
+// Kimi（月之暗面）OpenAI 兼容接口封装
 
 const https = require('https');
 

@@ -15,8 +15,8 @@ var adultRecipes = [
   { id: 'a-chi-2', name: '宫保鸡丁', type: 'adult', meat: 'chicken', taste: 'quick_stir_fry', flavor_profile: 'spicy', cook_type: 'stir_fry', prep_time: 15, cook_minutes: 15, is_baby_friendly: true, can_share_base: false, common_allergens: ['花生'], base_serving: 2 },
   { id: 'a-fish-1', name: '清蒸鳕鱼配葱丝', type: 'adult', meat: 'fish', taste: 'steamed_salad', flavor_profile: 'light', cook_type: 'steam', prep_time: 10, cook_minutes: 15, is_baby_friendly: true, can_share_base: true, common_allergens: ['鱼'], base_serving: 2 },
   { id: 'a-shrimp-1', name: '蒜蓉粉丝蒸虾', type: 'adult', meat: 'shrimp', taste: 'steamed_salad', flavor_profile: 'salty_umami', cook_type: 'steam', prep_time: 15, cook_minutes: 15, is_baby_friendly: true, can_share_base: true, common_allergens: ['虾'], base_serving: 2 },
-  { id: 'a-beef-1', name: '杭椒牛柳', type: 'adult', meat: 'beef', taste: 'quick_stir_fry', flavor_profile: 'salty_umami', cook_type: 'stir_fry', prep_time: 15, cook_minutes: 15, is_baby_friendly: false, can_share_base: false, common_allergens: [], base_serving: 2 },
-  { id: 'a-pork-1', name: '玉米排骨汤', type: 'adult', meat: 'pork', taste: 'slow_stew', flavor_profile: 'salty_umami', cook_type: 'stew', dish_type: 'soup', prep_time: 15, cook_minutes: 60, is_baby_friendly: false, can_share_base: false, common_allergens: [], base_serving: 2 },
+  { id: 'a-beef-1', name: '杭椒牛柳', type: 'adult', meat: 'beef', taste: 'quick_stir_fry', flavor_profile: 'spicy', cook_type: 'stir_fry', prep_time: 15, cook_minutes: 15, is_baby_friendly: false, can_share_base: false, common_allergens: [], base_serving: 2 },
+  { id: 'a-pork-1', name: '玉米排骨汤', type: 'adult', meat: 'pork', taste: 'slow_stew', flavor_profile: 'light', cook_type: 'stew', dish_type: 'soup', prep_time: 15, cook_minutes: 60, is_baby_friendly: false, can_share_base: false, common_allergens: [], base_serving: 2 },
   { id: 'a-beef-2', name: '番茄牛腩', type: 'adult', meat: 'beef', taste: 'slow_stew', flavor_profile: 'sweet_sour', cook_type: 'stew', prep_time: 15, cook_minutes: 60, is_baby_friendly: false, can_share_base: true, common_allergens: [], base_serving: 2, ingredients: [
     { name: '牛腩', baseAmount: 400, unit: 'g', category: '肉类' },
     { name: '番茄', baseAmount: 300, unit: 'g', category: '蔬菜' },
@@ -39,11 +39,11 @@ var adultRecipes = [
   { id: 'a-beef-5', name: '咖喱牛腩', type: 'adult', meat: 'beef', taste: 'slow_stew', flavor_profile: 'salty_umami', cook_type: 'stew', prep_time: 15, cook_minutes: 60, is_baby_friendly: true, can_share_base: true, common_allergens: [], base_serving: 2 },
   { id: 'a-shrimp-3', name: '避风塘炒虾', type: 'adult', meat: 'shrimp', taste: 'quick_stir_fry', flavor_profile: 'salty_umami', cook_type: 'stir_fry', prep_time: 15, cook_minutes: 15, is_baby_friendly: true, can_share_base: false, common_allergens: ['虾'], base_serving: 2 },
   { id: 'a-fish-3', name: '红烧鱼块', type: 'adult', meat: 'fish', taste: 'quick_stir_fry', flavor_profile: 'salty_umami', cook_type: 'stir_fry', prep_time: 12, cook_minutes: 15, is_baby_friendly: true, can_share_base: false, common_allergens: ['鱼'], base_serving: 2 },
-  { id: 'a-pork-5', name: '回锅肉', type: 'adult', meat: 'pork', taste: 'quick_stir_fry', flavor_profile: 'salty_umami', cook_type: 'stir_fry', prep_time: 15, cook_minutes: 15, is_baby_friendly: true, can_share_base: true, common_allergens: [], base_serving: 2 },
-  { id: 'a-pork-6', name: '鱼香肉丝', type: 'adult', meat: 'pork', taste: 'quick_stir_fry', flavor_profile: 'salty_umami', cook_type: 'stir_fry', prep_time: 12, cook_minutes: 15, is_baby_friendly: true, can_share_base: false, common_allergens: [], base_serving: 2 },
+  { id: 'a-pork-5', name: '回锅肉', type: 'adult', meat: 'pork', taste: 'quick_stir_fry', flavor_profile: 'spicy', cook_type: 'stir_fry', prep_time: 15, cook_minutes: 15, is_baby_friendly: true, can_share_base: true, common_allergens: [], base_serving: 2 },
+  { id: 'a-pork-6', name: '鱼香肉丝', type: 'adult', meat: 'pork', taste: 'quick_stir_fry', flavor_profile: 'sweet_sour', cook_type: 'stir_fry', prep_time: 12, cook_minutes: 15, is_baby_friendly: true, can_share_base: false, common_allergens: [], base_serving: 2 },
   { id: 'a-veg-1', name: '手撕包菜', type: 'adult', meat: 'vegetable', taste: 'quick_stir_fry', flavor_profile: 'salty_umami', cook_type: 'stir_fry', prep_time: 8, cook_minutes: 15, is_baby_friendly: false, can_share_base: true, common_allergens: [], base_serving: 2 },
-  { id: 'a-veg-2', name: '蒜蓉西兰花', type: 'adult', meat: 'vegetable', taste: 'quick_stir_fry', flavor_profile: 'salty_umami', cook_type: 'stir_fry', prep_time: 10, cook_minutes: 15, is_baby_friendly: true, can_share_base: true, common_allergens: [], base_serving: 2 },
-  { id: 'a-veg-3', name: '清炒时蔬', type: 'adult', meat: 'vegetable', taste: 'quick_stir_fry', flavor_profile: 'salty_umami', cook_type: 'stir_fry', prep_time: 8, cook_minutes: 15, is_baby_friendly: false, can_share_base: true, common_allergens: [], base_serving: 2 },
+  { id: 'a-veg-2', name: '蒜蓉西兰花', type: 'adult', meat: 'vegetable', taste: 'quick_stir_fry', flavor_profile: 'light', cook_type: 'stir_fry', prep_time: 10, cook_minutes: 15, is_baby_friendly: true, can_share_base: true, common_allergens: [], base_serving: 2 },
+  { id: 'a-veg-3', name: '清炒时蔬', type: 'adult', meat: 'vegetable', taste: 'quick_stir_fry', flavor_profile: 'light', cook_type: 'stir_fry', prep_time: 8, cook_minutes: 15, is_baby_friendly: false, can_share_base: true, common_allergens: [], base_serving: 2 },
   { id: 'a-veg-4', name: '拍黄瓜', type: 'adult', meat: 'vegetable', taste: 'steamed_salad', flavor_profile: 'sour_fresh', cook_type: 'steam', prep_time: 5, cook_minutes: 15, is_baby_friendly: false, can_share_base: true, common_allergens: [], base_serving: 2 },
   { id: 'a-pork-7', name: '红烧肉', type: 'adult', meat: 'pork', taste: 'slow_stew', flavor_profile: 'salty_umami', cook_type: 'stew', prep_time: 15, cook_minutes: 60, is_baby_friendly: false, can_share_base: false, common_allergens: [], base_serving: 2 },
   { id: 'a-veg-6', name: '地三鲜', type: 'adult', meat: 'vegetable', taste: 'quick_stir_fry', flavor_profile: 'salty_umami', cook_type: 'stir_fry', prep_time: 12, cook_minutes: 15, is_baby_friendly: false, can_share_base: false, common_allergens: [], base_serving: 2 },
@@ -54,7 +54,7 @@ var adultRecipes = [
   { id: 'v001', name: '清炒上海青', type: 'adult', meat: 'vegetable', taste: 'quick_stir_fry', flavor_profile: 'light', cook_type: 'stir_fry', prep_time: 5, cook_minutes: 15, is_baby_friendly: true, can_share_base: true, common_allergens: [], base_serving: 2 },
   { id: 'v002', name: '凉拌黄瓜', type: 'adult', meat: 'vegetable', taste: 'quick_stir_fry', flavor_profile: 'light', cook_type: 'stir_fry', prep_time: 10, cook_minutes: 15, is_baby_friendly: true, can_share_base: true, common_allergens: [], base_serving: 2 },
   { id: 'm003', name: '可乐鸡翅', type: 'adult', meat: 'chicken', taste: 'slow_stew', flavor_profile: 'sweet_sour', cook_type: 'stew', prep_time: 10, cook_minutes: 60, is_baby_friendly: true, can_share_base: true, common_allergens: [], base_serving: 2 },
-  { id: 'm004', name: '清蒸鲈鱼', type: 'adult', meat: 'fish', taste: 'steamed_salad', flavor_profile: 'salty_umami', cook_type: 'steam', prep_time: 15, cook_minutes: 15, is_baby_friendly: true, can_share_base: true, common_allergens: ['鱼'], base_serving: 2 },
+  { id: 'm004', name: '清蒸鲈鱼', type: 'adult', meat: 'fish', taste: 'steamed_salad', flavor_profile: 'light', cook_type: 'steam', prep_time: 15, cook_minutes: 15, is_baby_friendly: true, can_share_base: true, common_allergens: ['鱼'], base_serving: 2 },
   { id: 'v003', name: '蒜蓉油麦菜', type: 'adult', meat: 'vegetable', taste: 'quick_stir_fry', flavor_profile: 'light', cook_type: 'stir_fry', prep_time: 5, cook_minutes: 15, is_baby_friendly: true, can_share_base: true, common_allergens: [], base_serving: 2 },
   { id: 'v004', name: '清炒山药', type: 'adult', meat: 'vegetable', taste: 'quick_stir_fry', flavor_profile: 'light', cook_type: 'stir_fry', prep_time: 10, cook_minutes: 15, is_baby_friendly: true, can_share_base: true, common_allergens: [], base_serving: 2 },
   { id: 's002', name: '冬瓜海带排骨汤', type: 'adult', meat: 'pork', taste: 'slow_stew', flavor_profile: 'salty_umami', cook_type: 'stew', dish_type: 'soup', prep_time: 15, cook_minutes: 60, is_baby_friendly: true, can_share_base: true, common_allergens: [], base_serving: 2 },
@@ -66,11 +66,11 @@ var adultRecipes = [
   { id: 'v007', name: '清炒荷兰豆', type: 'adult', meat: 'vegetable', taste: 'quick_stir_fry', flavor_profile: 'light', cook_type: 'stir_fry', prep_time: 5, cook_minutes: 15, is_baby_friendly: true, can_share_base: true, common_allergens: [], base_serving: 2 },
   { id: 'v008', name: '蒸水蛋', type: 'adult', meat: 'vegetable', taste: 'steamed_salad', flavor_profile: 'light', cook_type: 'steam', prep_time: 5, cook_minutes: 15, is_baby_friendly: true, can_share_base: true, common_allergens: ['蛋'], base_serving: 2 },
   { id: 'm009', name: '土豆炖牛肉', type: 'adult', meat: 'beef', taste: 'slow_stew', flavor_profile: 'salty_umami', cook_type: 'stew', prep_time: 15, cook_minutes: 60, is_baby_friendly: true, can_share_base: true, common_allergens: [], base_serving: 2 },
-  { id: 'm010', name: '葱爆羊肉', type: 'adult', meat: 'pork', taste: 'quick_stir_fry', flavor_profile: 'salty_umami', cook_type: 'stir_fry', prep_time: 10, cook_minutes: 15, is_baby_friendly: true, can_share_base: true, common_allergens: [], base_serving: 2 },
+  { id: 'm010', name: '葱爆羊肉', type: 'adult', meat: 'lamb', taste: 'quick_stir_fry', flavor_profile: 'salty_umami', cook_type: 'stir_fry', prep_time: 10, cook_minutes: 15, is_baby_friendly: true, can_share_base: true, common_allergens: [], base_serving: 2 },
   { id: 'v009', name: '酸辣土豆丝', type: 'adult', meat: 'vegetable', taste: 'quick_stir_fry', flavor_profile: 'sour_fresh', cook_type: 'stir_fry', prep_time: 10, cook_minutes: 15, is_baby_friendly: true, can_share_base: true, common_allergens: [], base_serving: 2 },
   { id: 'v010', name: '清炒娃娃菜', type: 'adult', meat: 'vegetable', taste: 'quick_stir_fry', flavor_profile: 'light', cook_type: 'stir_fry', prep_time: 5, cook_minutes: 15, is_baby_friendly: true, can_share_base: true, common_allergens: [], base_serving: 2 },
   { id: 's005', name: '番茄金针菇蛋花汤', type: 'adult', meat: 'vegetable', taste: 'quick_stir_fry', flavor_profile: 'sweet_sour', cook_type: 'stir_fry', dish_type: 'soup', prep_time: 8, cook_minutes: 15, is_baby_friendly: true, can_share_base: true, common_allergens: ['蛋'], base_serving: 2 },
-  { id: 'a-beef-6', name: '苹果白切牛腱', type: 'adult', meat: 'beef', taste: 'steamed_salad', flavor_profile: 'light', cook_type: 'stew', prep_time: 20, cook_minutes: 15, is_baby_friendly: true, can_share_base: false, common_allergens: [], base_serving: 2 },
+  { id: 'a-beef-6', name: '苹果白切牛腱', type: 'adult', meat: 'beef', taste: 'steamed_salad', flavor_profile: 'light', cook_type: 'stew', prep_time: 20, cook_minutes: 30, is_baby_friendly: true, can_share_base: false, common_allergens: [], base_serving: 2 },
   { id: 'a-beef-7', name: '凉拌柠檬牛腱子', type: 'adult', meat: 'beef', taste: 'steamed_salad', flavor_profile: 'sour_fresh', cook_type: 'cold_dress', prep_time: 15, cook_minutes: 15, is_baby_friendly: false, can_share_base: false, common_allergens: [], base_serving: 2 },
   { id: 'a-fish-4', name: '番茄酸汤鱼头', type: 'adult', meat: 'fish', taste: 'slow_stew', flavor_profile: 'sweet_sour', cook_type: 'stew', dish_type: 'soup', prep_time: 15, cook_minutes: 60, is_baby_friendly: false, can_share_base: false, common_allergens: ['鱼'], base_serving: 2 },
   { id: 'a-fish-5', name: '菌菇豆腐炖鲈鱼', type: 'adult', meat: 'fish', taste: 'slow_stew', flavor_profile: 'light', cook_type: 'stew', dish_type: 'soup', prep_time: 15, cook_minutes: 60, is_baby_friendly: true, can_share_base: true, common_allergens: ['鱼'], base_serving: 2 },
@@ -155,7 +155,7 @@ var adultRecipes = [
   { id: 'a-veg-16', name: '酸辣炒笋', type: 'adult', meat: 'vegetable', taste: 'quick_stir_fry', flavor_profile: 'spicy', cook_type: 'stir_fry', dish_type: null, prep_time: 10, cook_minutes: 8, is_baby_friendly: false, can_share_base: false, common_allergens: [], base_serving: 2 },
   { id: 'a-veg-17', name: '柠檬酱油手撕生菜', type: 'adult', meat: 'vegetable', taste: 'steamed_salad', flavor_profile: 'sour_fresh', cook_type: 'stir_fry', prep_time: 10, cook_minutes: 5, is_baby_friendly: true, can_share_base: true, common_allergens: [], base_serving: 2 },
   { id: 'a-shrimp-7', name: '柠檬椒盐虾', type: 'adult', meat: 'shrimp', taste: 'quick_stir_fry', flavor_profile: 'sour_fresh', cook_type: 'stir_fry', prep_time: 15, cook_minutes: 8, is_baby_friendly: false, can_share_base: false, common_allergens: ['虾'], base_serving: 2 },
-  { id: 'a-soup-14', name: '酸萝卜老鸭汤', type: 'adult', meat: 'chicken', taste: 'slow_stew', flavor_profile: 'sour_fresh', cook_type: 'stew', dish_type: 'soup', prep_time: 20, cook_minutes: 90, is_baby_friendly: false, can_share_base: false, common_allergens: [], base_serving: 2, ingredients: [
+  { id: 'a-soup-14', name: '酸萝卜老鸭汤', type: 'adult', meat: 'duck', taste: 'slow_stew', flavor_profile: 'sour_fresh', cook_type: 'stew', dish_type: 'soup', prep_time: 20, cook_minutes: 90, is_baby_friendly: false, can_share_base: false, common_allergens: [], base_serving: 2, ingredients: [
     { name: '鸭肉', baseAmount: 500, unit: 'g', category: '肉类' },
     { name: '酸萝卜', baseAmount: 200, unit: 'g', category: '蔬菜' },
     { name: '生姜', baseAmount: 3, unit: '片', category: '调料' },
@@ -1803,7 +1803,7 @@ var adultRecipes = [
     "can_share_base": true,
     "flavor_profile": "light",
     "cook_type": "steam",
-    "cook_minutes": 8,
+    "cook_minutes": 10,
     "ingredients": [
       {
         "name": "龙利鱼片",
@@ -5857,6 +5857,878 @@ var adultRecipes = [
       ]
     },
     "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/preserved_plum_pork_ribs.png"
+  },
+  {
+    "id": "a-veg-51",
+    "name": "香椿煎蛋",
+    "type": "adult",
+    "taste": "steamed_salad",
+    "meat": "vegetable",
+    "prep_time": 10,
+    "is_baby_friendly": true,
+    "common_allergens": [
+      "蛋"
+    ],
+    "can_share_base": true,
+    "flavor_profile": "salty_umami",
+    "cook_type": "stir_fry",
+    "cook_minutes": 5,
+    "ingredients": [
+      {
+        "name": "香椿",
+        "baseAmount": 150,
+        "unit": "g",
+        "category": "蔬菜",
+        "sub_type": "vegetable"
+      },
+      {
+        "name": "鸡蛋",
+        "baseAmount": 3,
+        "unit": "个",
+        "category": "蛋类"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "食用油",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "香椿洗净，沸水焯烫1分钟至颜色变深绿，捞出沥干水分，切成0.5cm小段。鸡蛋打散成蛋液，加入少许盐调匀。"
+      },
+      {
+        "action": "cook",
+        "text": "平底锅烧热后倒入适量油，转中火。将香椿段倒入蛋液中轻轻拌匀，待锅热后将混合蛋液倒入，摊成圆形蛋饼。底面煎至金黄（约1分钟）后翻面，继续煎约1分钟至两面金黄熟透，出锅装盘。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "香椿蛋黄泥",
+          "action": "只取熟蛋黄压泥，香椿焯水后取嫩叶切碎，两者混合加少量温水调成泥状"
+        },
+        {
+          "max_month": 12,
+          "name": "香椿碎蛋羹",
+          "action": "香椿焯水切碎，鸡蛋打散加温水1:1.5蒸成蛋羹，出锅后撒上香椿碎"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝香椿煎蛋",
+          "action": "同大人版，香椿切细碎，鸡蛋少放，煎时少油不加盐或极少量盐"
+        }
+      ]
+    },
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/toon_煎蛋.png"
+  },
+  {
+    "id": "a-pork-19",
+    "name": "蚕豆炒火腿",
+    "type": "adult",
+    "taste": "quick_stir_fry",
+    "meat": "pork",
+    "prep_time": 10,
+    "is_baby_friendly": true,
+    "common_allergens": [],
+    "can_share_base": true,
+    "flavor_profile": "salty_umami",
+    "cook_type": "stir_fry",
+    "cook_minutes": 8,
+    "ingredients": [
+      {
+        "name": "新鲜蚕豆",
+        "baseAmount": 300,
+        "unit": "g",
+        "category": "蔬菜",
+        "sub_type": "vegetable"
+      },
+      {
+        "name": "云南火腿",
+        "baseAmount": 80,
+        "unit": "g",
+        "category": "肉类",
+        "sub_type": "pork_ham"
+      },
+      {
+        "name": "蒜",
+        "baseAmount": 2,
+        "unit": "瓣",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "食用油",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "蚕豆剥去外壳及内皮，只取嫩豆瓣，洗净沥干水分。云南火腿切成0.5cm见方的小丁，蒜瓣拍碎切末。"
+      },
+      {
+        "action": "cook",
+        "text": "炒锅烧热后倒入适量油，下火腿丁小火煸炒至出油且边缘微焦（约2分钟），放入蒜末爆香。转大火，下蚕豆快速翻炒约3分钟，沿锅边淋入少许清水，盖锅盖焖2分钟至蚕豆完全熟透但仍保持翠绿。加适量盐调味，翻匀出锅。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "蚕豆瓣泥",
+          "action": "蚕豆煮熟后去皮取豆瓣，用料理机打成细腻泥状，火腿取少量切碎蒸软后混入"
+        },
+        {
+          "max_month": 12,
+          "name": "蚕豆碎末",
+          "action": "蚕豆煮熟去皮切碎，火腿切细碎，锅中少油翻炒至软烂，可拌入粥或软面条"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝蚕豆火腿",
+          "action": "同大人版，火腿切小丁，蚕豆煮软，盐减量"
+        }
+      ]
+    },
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/fava_bean_火腿_stir_fry.png"
+  },
+  {
+    "id": "a-veg-52",
+    "name": "凉拌折耳根",
+    "type": "adult",
+    "taste": "steamed_salad",
+    "meat": "vegetable",
+    "prep_time": 15,
+    "is_baby_friendly": false,
+    "common_allergens": [],
+    "can_share_base": false,
+    "flavor_profile": "sour_fresh",
+    "cook_type": "steam",
+    "cook_minutes": 15,
+    "ingredients": [
+      {
+        "name": "折耳根",
+        "baseAmount": 200,
+        "unit": "g",
+        "category": "蔬菜",
+        "sub_type": "vegetable"
+      },
+      {
+        "name": "蒜",
+        "baseAmount": 3,
+        "unit": "瓣",
+        "category": "调料"
+      },
+      {
+        "name": "小米辣",
+        "baseAmount": 2,
+        "unit": "个",
+        "category": "调料"
+      },
+      {
+        "name": "香菜",
+        "baseAmount": 20,
+        "unit": "g",
+        "category": "蔬菜",
+        "sub_type": "vegetable"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 15,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "醋",
+        "baseAmount": 10,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "辣椒油",
+        "baseAmount": 10,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "花椒油",
+        "baseAmount": 3,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "白糖",
+        "baseAmount": 3,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "折耳根去掉老根及须须，洗净后切成3-4cm长段，放入淡盐水中浸泡10分钟后捞出沥干（去腥）。蒜切末，小米辣切圈，香菜切段。"
+      },
+      {
+        "action": "cook",
+        "text": "取一小碗，放入蒜末、小米辣圈，淋入烧热的辣椒油和花椒油激出香味。加入生抽、醋、白糖、盐调匀成料汁。将折耳根放入大碗中，浇上料汁，撒入香菜段，拌匀即可装盘。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "不建议食用",
+          "action": "折耳根味道辛香浓烈，不适合8月龄以下宝宝，建议用其他蔬菜替代"
+        },
+        {
+          "max_month": 12,
+          "name": "淡味折耳根泥",
+          "action": "折耳根取嫩叶少量，沸水焯烫2分钟去腥，切碎后加少量温水打成泥，可少量加入宝宝粥中尝试"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝凉拌折耳根",
+          "action": "折耳根焯水后切小段，少量蒜泥、少许酱油醋调味，不加辣椒油和花椒油"
+        }
+      ]
+    },
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/cold_折耳根.png"
+  },
+  {
+    "id": "a-lamb-1",
+    "name": "葱爆羊肉片",
+    "type": "adult",
+    "taste": "quick_stir_fry",
+    "meat": "lamb",
+    "prep_time": 10,
+    "is_baby_friendly": false,
+    "common_allergens": [],
+    "can_share_base": false,
+    "flavor_profile": "salty_umami",
+    "cook_type": "stir_fry",
+    "cook_minutes": 8,
+    "ingredients": [
+      {
+        "name": "羊腿肉",
+        "baseAmount": 300,
+        "unit": "g",
+        "category": "肉类",
+        "sub_type": "lamb_leg"
+      },
+      {
+        "name": "大葱",
+        "baseAmount": 150,
+        "unit": "g",
+        "category": "蔬菜",
+        "sub_type": "scallion"
+      },
+      {
+        "name": "姜",
+        "baseAmount": 10,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "蒜",
+        "baseAmount": 10,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 15,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "料酒",
+        "baseAmount": 10,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "蚝油",
+        "baseAmount": 10,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "胡椒粉",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "食用油",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "羊腿肉去筋膜，逆纹切成约0.3cm厚的薄片，加入料酒、少许盐、胡椒粉抓匀腌制5分钟。大葱斜切成马耳朵形，姜切丝，蒜切片备用。"
+      },
+      {
+        "action": "cook",
+        "text": "热锅凉油，油温七成热时下羊肉片大火快速滑炒，待肉片变色后迅速盛出备用。"
+      },
+      {
+        "action": "cook",
+        "text": "利用锅中底油，小火爆香姜丝、蒜片，放入大葱翻炒至出香味，倒入羊肉片，沿锅边淋入生抽，加入蚝油，大火快速翻匀，整个过程约1分钟，出锅装盘。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "羊肉葱泥",
+          "action": "取炖软的羊肉去筋剁泥，大葱煮软后切碎，两者混合成泥状"
+        },
+        {
+          "max_month": 12,
+          "name": "羊肉葱碎末",
+          "action": "羊肉切极细小碎丁，大葱切碎，小火少油炒软，加少量汤汁煮软烂"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝葱爆羊肉",
+          "action": "同大人版制作，羊肉切薄片，大葱切丝，少盐少油，大火快炒至熟"
+        }
+      ]
+    },
+    "tags": [
+      "quick",
+      "high_protein",
+      "stir_fry"
+    ],
+    "base_serving": 2
+  },
+  {
+    "id": "a-soup-20",
+    "name": "清炖羊肉萝卜汤",
+    "type": "adult",
+    "dish_type": "soup",
+    "taste": "slow_stew",
+    "meat": "lamb",
+    "prep_time": 10,
+    "is_baby_friendly": true,
+    "common_allergens": [],
+    "can_share_base": true,
+    "flavor_profile": "light",
+    "cook_type": "stew",
+    "cook_minutes": 90,
+    "ingredients": [
+      {
+        "name": "羊腿肉",
+        "baseAmount": 400,
+        "unit": "g",
+        "category": "肉类",
+        "sub_type": "lamb_leg"
+      },
+      {
+        "name": "白萝卜",
+        "baseAmount": 300,
+        "unit": "g",
+        "category": "蔬菜",
+        "sub_type": "radish"
+      },
+      {
+        "name": "姜",
+        "baseAmount": 15,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "料酒",
+        "baseAmount": 20,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "白胡椒粉",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "香菜",
+        "baseAmount": 10,
+        "unit": "g",
+        "category": "蔬菜"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "羊腿肉切3cm见方的块，冷水下锅，加料酒、姜片焯水去腥，水开后撇去浮沫，捞出洗净备用。白萝卜去皮切2cm见方的块，香菜切碎备用。"
+      },
+      {
+        "action": "cook",
+        "text": "砂锅内放入羊肉块、姜片，加入足量清水（没过羊肉约3cm），大火烧开后转小火慢炖1小时。"
+      },
+      {
+        "action": "cook",
+        "text": "加入白萝卜块，继续小火炖煮30分钟至萝卜透明软烂，加入适量盐、白胡椒粉调味，撒上香菜即可出锅。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "羊肉萝卜泥汤",
+          "action": "取炖好的羊肉去筋剁泥，白萝卜压泥，过滤部分清汤，两者混合成稠泥状"
+        },
+        {
+          "max_month": 12,
+          "name": "羊肉萝卜碎末汤",
+          "action": "羊肉切小碎丁，白萝卜切小碎丁，小火煮成软烂的稠汤"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝羊肉萝卜汤",
+          "action": "同大人版少盐，羊肉切小块，白萝卜切小块，煮至软烂"
+        }
+      ]
+    },
+    "tags": [
+      "soup",
+      "comfort",
+      "high_protein",
+      "hearty"
+    ],
+    "ingredient_group": "lamb_leg",
+    "base_serving": 2
+  },
+  {
+    "id": "a-lamb-2",
+    "name": "孜然羊肉串（平底锅版）",
+    "type": "adult",
+    "taste": "quick_stir_fry",
+    "meat": "lamb",
+    "prep_time": 10,
+    "is_baby_friendly": false,
+    "common_allergens": [],
+    "can_share_base": false,
+    "flavor_profile": "spicy",
+    "spicy_sub": "xiangla",
+    "cook_type": "stir_fry",
+    "cook_minutes": 10,
+    "ingredients": [
+      {
+        "name": "羊腿肉",
+        "baseAmount": 350,
+        "unit": "g",
+        "category": "肉类",
+        "sub_type": "lamb_leg"
+      },
+      {
+        "name": "孜然粒",
+        "baseAmount": 8,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "孜然粉",
+        "baseAmount": 5,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "辣椒粉",
+        "baseAmount": 5,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 20,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "料酒",
+        "baseAmount": 10,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "白芝麻",
+        "baseAmount": 5,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "食用油",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "葱",
+        "baseAmount": 15,
+        "unit": "g",
+        "category": "蔬菜"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "羊腿肉去筋膜，切成约1.5cm见方的小丁，加入料酒、生抽、盐抓匀腌制10分钟。孜然粒用小火干炒出香味后捣碎，葱切碎备用。"
+      },
+      {
+        "action": "cook",
+        "text": "平底锅烧热，加入适量油，油温六成热时放入羊肉丁，中火快速翻炒至表面变色。"
+      },
+      {
+        "action": "cook",
+        "text": "加入孜然粒碎、孜然粉、辣椒粉，大火快速翻炒均匀，让调料充分裹在羊肉表面，撒入白芝麻和葱花翻匀出锅。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "羊肉孜然泥",
+          "action": "取炖软的羊肉去筋打泥，加少量孜然粉（去辣椒）调味，与米糊混合"
+        },
+        {
+          "max_month": 12,
+          "name": "宝宝孜然羊肉丁",
+          "action": "羊肉切极小丁，少孜然粉不加辣椒粉，小火炒软，与粥或面条同食"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝版孜然羊肉",
+          "action": "同大人版制作，去辣椒粉，少盐少油，孜然粉减量"
+        }
+      ]
+    },
+    "tags": [
+      "quick",
+      "spicy",
+      "high_protein",
+      "late_night",
+      "party"
+    ],
+    "base_serving": 2
+  },
+  {
+    "id": "a-duck-1",
+    "name": "啤酒鸭",
+    "type": "adult",
+    "taste": "slow_stew",
+    "meat": "duck",
+    "prep_time": 15,
+    "is_baby_friendly": false,
+    "common_allergens": [],
+    "can_share_base": false,
+    "flavor_profile": "salty_umami",
+    "cook_type": "stew",
+    "cook_minutes": 60,
+    "ingredients": [
+      {
+        "name": "鸭腿",
+        "baseAmount": 500,
+        "unit": "g",
+        "category": "肉类",
+        "sub_type": "duck_leg"
+      },
+      {
+        "name": "啤酒",
+        "baseAmount": 330,
+        "unit": "ml",
+        "category": "其他"
+      },
+      {
+        "name": "姜",
+        "baseAmount": 15,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "蒜",
+        "baseAmount": 10,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "八角",
+        "baseAmount": 2,
+        "unit": "个",
+        "category": "调料"
+      },
+      {
+        "name": "桂皮",
+        "baseAmount": 5,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "干辣椒",
+        "baseAmount": 5,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 30,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "老抽",
+        "baseAmount": 10,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "冰糖",
+        "baseAmount": 15,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "食用油",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "鸭腿斩成3cm见方的块，冷水下锅加姜片、料酒焯水，水开后撇去浮沫，捞出洗净备用。姜切片，蒜整颗拍破，干辣椒剪成段。"
+      },
+      {
+        "action": "cook",
+        "text": "锅烧热加底油，放入冰糖小火炒至融化呈琥珀色，下鸭块快速翻炒至表面裹上糖色，加入姜片、蒜、八角、桂皮、干辣椒段炒出香味。"
+      },
+      {
+        "action": "cook",
+        "text": "沿锅边淋入生抽、老抽翻炒上色，倒入啤酒没过鸭块，大火烧开后转小火加盖焖煮45分钟，期间翻动一次。"
+      },
+      {
+        "action": "cook",
+        "text": "待汤汁浓稠至剩1/3时，大火收汁，加适量盐调味，翻匀出锅装盘。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "鸭肉土豆泥",
+          "action": "取炖软的鸭肉去皮去骨剁泥，搭配蒸熟的土豆泥混合"
+        },
+        {
+          "max_month": 12,
+          "name": "鸭肉碎末粥",
+          "action": "鸭肉切碎煮粥，去啤酒只用少量酱油调味，煮至软烂"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝版啤酒鸭",
+          "action": "鸭肉切小块，用少量酱油、糖、葱姜水代替啤酒炖煮至软烂"
+        }
+      ]
+    },
+    "tags": [
+      "hearty",
+      "high_protein",
+      "comfort",
+      "party"
+    ],
+    "base_serving": 2
+  },
+  {
+    "id": "a-duck-2",
+    "name": "姜母鸭（闽南风味）",
+    "type": "adult",
+    "taste": "slow_stew",
+    "meat": "duck",
+    "prep_time": 15,
+    "is_baby_friendly": false,
+    "common_allergens": [],
+    "can_share_base": false,
+    "flavor_profile": "salty_umami",
+    "cook_type": "stew",
+    "cook_minutes": 75,
+    "ingredients": [
+      {
+        "name": "鸭肉",
+        "baseAmount": 600,
+        "unit": "g",
+        "category": "肉类",
+        "sub_type": "duck"
+      },
+      {
+        "name": "老姜",
+        "baseAmount": 200,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "麻油",
+        "baseAmount": 50,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "八角",
+        "baseAmount": 2,
+        "unit": "个",
+        "category": "调料"
+      },
+      {
+        "name": "桂皮",
+        "baseAmount": 5,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "香叶",
+        "baseAmount": 2,
+        "unit": "片",
+        "category": "调料"
+      },
+      {
+        "name": "当归",
+        "baseAmount": 5,
+        "unit": "g",
+        "category": "干货"
+      },
+      {
+        "name": "枸杞",
+        "baseAmount": 10,
+        "unit": "g",
+        "category": "干货"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 30,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "老抽",
+        "baseAmount": 10,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "冰糖",
+        "baseAmount": 20,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "料酒",
+        "baseAmount": 20,
+        "unit": "ml",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "鸭肉斩成3cm见方的块，冷水下锅加料酒、姜片焯水去腥，捞出洗净备用。老姜洗净，带皮切成0.3cm厚的片。当归、枸杞用温水泡软备用。"
+      },
+      {
+        "action": "cook",
+        "text": "砂锅烧热，放入麻油，小火将姜片煎至两面金黄起皱，充分释放姜香。"
+      },
+      {
+        "action": "cook",
+        "text": "放入鸭块翻炒至表面微黄，加入八角、桂皮、香叶、当归继续翻炒2分钟，沿锅边淋入生抽、老抽，加冰糖翻炒上色。"
+      },
+      {
+        "action": "cook",
+        "text": "加入足量开水（没过鸭块约2cm），大火烧开后转小火加盖焖煮60分钟，期间翻动一次。"
+      },
+      {
+        "action": "cook",
+        "text": "加入泡软的枸杞再煮5分钟，加适量盐调味，大火收汁至汤汁浓稠即可出锅。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "鸭肉姜泥",
+          "action": "取炖软的鸭肉去皮去骨剁泥，老姜煮软取汁，与鸭泥混合"
+        },
+        {
+          "max_month": 12,
+          "name": "宝宝姜汁鸭肉",
+          "action": "鸭肉切碎，老姜煮水（去辣），用姜水煮粥或煮烂"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝版姜母鸭",
+          "action": "鸭肉切小块，少姜片不加药材，用少量酱油、冰糖炖煮至软烂"
+        }
+      ]
+    },
+    "tags": [
+      "hearty",
+      "high_protein",
+      "comfort"
+    ],
+    "base_serving": 2
   }
 ];
 

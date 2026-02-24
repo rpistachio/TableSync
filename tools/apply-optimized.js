@@ -28,9 +28,10 @@ function loadBackupFile(backupPath) {
   if (idxAdult === -1 || idxBaby === -1) {
     throw new Error('recipes.js.bak 格式异常：未找到 var adultRecipes = [ 或 var babyRecipes = [');
   }
+  // beforeAdult 只保留 "var adultRecipes = "，不包含 "["，因 newAdultJson 已以 "[" 开头
   return {
     content,
-    beforeAdult: content.slice(0, idxAdult + 'var adultRecipes = ['.length),
+    beforeAdult: content.slice(0, idxAdult + 'var adultRecipes = '.length),
     afterAdult: content.slice(idxBaby)
   };
 }
@@ -112,7 +113,8 @@ function main() {
   const newContent = beforeAdult + '\n' + newAdultJson + ';\n\n' + afterAdult;
 
   fs.writeFileSync(backupPath, newContent, 'utf8');
-  console.log(chalk.green('\n已写回 ' + backupPath + '。可运行 batch-sync-recipes.js --force 同步到云端。'));
+  console.log(chalk.green('\n已写回 ' + backupPath + '。'));
+  console.log(chalk.cyan('同步到云端：node tools/batch-sync-recipes.js --force（会以 recipes.js.bak 为源覆盖云端同 id 记录）'));
 }
 
 main();

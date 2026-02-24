@@ -60,46 +60,57 @@ function getRecipesModule() {
 
 /**
  * 获取大人菜谱列表（优先云端，降级本地）
+ * 返回的每条菜谱均经 ensureRecipeTags 补全 tags（缺失时自动推断）
  * @returns {Array}
  */
 function getAdultRecipesList() {
+  var list = [];
   var service = getCloudRecipeService();
   if (service) {
     var cloudData = service.getAdultRecipes();
     if (cloudData && cloudData.length > 0) {
-      return cloudData;
+      list = cloudData;
     }
   }
-  return getRecipesModule().adultRecipes || [];
+  if (list.length === 0) {
+    list = getRecipesModule().adultRecipes || [];
+  }
+  return list.map(ensureRecipeTags);
 }
 
 /**
  * 获取宝宝菜谱列表（优先云端，降级本地）
+ * 返回的每条菜谱均经 ensureRecipeTags 补全 tags
  * @returns {Array}
  */
 function getBabyRecipesList() {
+  var list = [];
   var service = getCloudRecipeService();
   if (service) {
     var cloudData = service.getBabyRecipes();
     if (cloudData && cloudData.length > 0) {
-      return cloudData;
+      list = cloudData;
     }
   }
-  return getRecipesModule().babyRecipes || [];
+  if (list.length === 0) {
+    list = getRecipesModule().babyRecipes || [];
+  }
+  return list.map(ensureRecipeTags);
 }
 
-var MEAT_LABEL = { chicken: '鸡肉', pork: '猪肉', beef: '牛肉', fish: '鳕鱼', shrimp: '虾仁', vegetable: '素菜' };
-var MEAT_KEY_MAP = { 鸡肉: 'chicken', 猪肉: 'pork', 牛肉: 'beef', 鱼肉: 'fish', 虾仁: 'shrimp', 素菜: 'vegetable', chicken: 'chicken', pork: 'pork', beef: 'beef', fish: 'fish', shrimp: 'shrimp', vegetable: 'vegetable' };
+var MEAT_LABEL = { chicken: '鸡肉', pork: '猪肉', beef: '牛肉', fish: '鳕鱼', shrimp: '虾仁', lamb: '羊肉', duck: '鸭肉', shellfish: '贝类', vegetable: '素菜' };
+var MEAT_KEY_MAP = { 鸡肉: 'chicken', 猪肉: 'pork', 牛肉: 'beef', 鱼肉: 'fish', 虾仁: 'shrimp', 羊肉: 'lamb', 鸭肉: 'duck', 贝类: 'shellfish', 素菜: 'vegetable', chicken: 'chicken', pork: 'pork', beef: 'beef', fish: 'fish', shrimp: 'shrimp', lamb: 'lamb', duck: 'duck', shellfish: 'shellfish', vegetable: 'vegetable' };
 
 /** 离线兜底：按 cook_type 生成基础调料清单（当 recipe 无 ingredients 时使用） */
 var COOK_TYPE_SEASONINGS = {
   stir_fry:   [{ name: '姜', unit: '适量' }, { name: '蒜', unit: '适量' }, { name: '生抽', unit: '适量' }, { name: '料酒', unit: '适量' }, { name: '盐', unit: '适量' }],
   stew:       [{ name: '姜片', unit: '适量' }, { name: '料酒', unit: '适量' }, { name: '生抽', unit: '适量' }, { name: '老抽', unit: '适量' }, { name: '盐', unit: '适量' }, { name: '糖', unit: '适量' }],
   steam:      [{ name: '姜丝', unit: '适量' }, { name: '葱', unit: '适量' }, { name: '盐', unit: '适量' }],
-  cold_dress: [{ name: '蒜', unit: '适量' }, { name: '生抽', unit: '适量' }, { name: '醋', unit: '适量' }, { name: '盐', unit: '适量' }, { name: '糖', unit: '适量' }]
+  cold_dress: [{ name: '蒜', unit: '适量' }, { name: '生抽', unit: '适量' }, { name: '醋', unit: '适量' }, { name: '盐', unit: '适量' }, { name: '糖', unit: '适量' }],
+  bake:       [{ name: '油', unit: '适量' }, { name: '盐', unit: '适量' }, { name: '黑胡椒', unit: '适量' }]
 };
 /** 主料默认用量：按 meat 类型区分 */
-var FALLBACK_MAIN_AMOUNT = { chicken: 300, pork: 300, beef: 300, fish: 200, shrimp: 200, vegetable: 250 };
+var FALLBACK_MAIN_AMOUNT = { chicken: 300, pork: 300, beef: 300, fish: 200, shrimp: 200, lamb: 300, duck: 400, shellfish: 250, vegetable: 250 };
 
 /** 忌口/过敏原 key → 对应 main_ingredients 中可能出现的名称（用于前置过滤） */
 /**
@@ -114,14 +125,17 @@ var FALLBACK_MAIN_AMOUNT = { chicken: 300, pork: 300, beef: 300, fish: 200, shri
  */
 var ALLERGEN_TO_MAIN_NAMES = {
   seafood: ['鳕鱼', '鲈鱼', '虾', '虾仁', '鲜虾', '海鲜', '鱼', '蟹', '贝', '扇贝', '蛤蜊', '鱿鱼', '墨鱼'],
-  spicy: [],  // 辣味通过 flavor_profile === 'spicy' 过滤，非主料匹配
+  spicy: ['辣椒', '干辣椒', '小米辣', '指天椒', '朝天椒', '豆瓣酱', '辣椒酱', '辣椒粉', '辣椒油', '辣酱', '花椒', '花椒粉', '泡椒', '剁椒', '辣油'],
   peanut: ['花生', '花生米', '花生碎', '花生酱'],
   lactose: ['牛奶', '鲜奶', '奶油', '黄油', '奶酪', '芝士', '乳酪'],
   gluten: ['面粉', '小麦', '面条', '馒头', '面包', '饺子皮', '馄饨皮'],
   beef_lamb: ['牛肉', '牛腩', '牛柳', '牛里脊', '羊肉', '羊排'],
   egg: ['鸡蛋', '蛋', '蛋黄', '蛋白'],
-  soy: ['豆腐', '嫩豆腐', '大豆', '豆浆', '豆皮', '腐竹']
+  soy: ['豆腐', '嫩豆腐', '大豆', '豆浆', '豆皮', '腐竹'],
+  cilantro: ['香菜', '芫荽']
 };
+
+var SPICY_NAME_KEYWORDS = ['辣', '麻婆', '泡椒', '剁椒'];
 
 /**
  * dietOptions value → 菜品需具备的 tags 之一
@@ -138,6 +152,73 @@ var DIETARY_PREFERENCE_TAGS = {
   quick: ['quick', 'stir_fry'],
   hearty: ['high_protein', 'spicy', 'soup']  // 保留原有映射以兼容
 };
+
+/**
+ * 菜谱标签词汇表（场景 + 属性，与 DIETARY_PREFERENCE_TAGS 对齐）
+ * 场景: late_night(深夜食堂), ultra_quick(极致快手≤8分钟), comfort(暖心治愈), party(聚会硬菜)
+ * 属性: quick, light, high_protein, spicy, vegetarian, no_oil, steamed, salty_umami, hearty, soup, stir_fry, baby_friendly
+ */
+var RECIPE_TAGS_VOCABULARY = ['late_night', 'ultra_quick', 'comfort', 'party', 'quick', 'light', 'high_protein', 'spicy', 'vegetarian', 'no_oil', 'steamed', 'salty_umami', 'hearty', 'soup', 'stir_fry', 'baby_friendly'];
+
+/**
+ * 根据菜谱特征生成默认 tags（无 tags 时用于回填，与 .bak defaultTags 逻辑一致）
+ * @param {Object} r - 菜谱对象
+ * @returns {Array<string>}
+ */
+function defaultTagsForRecipe(r) {
+  var tags = [];
+  var n = (r.name || '');
+  var prepTime = r.prep_time || 15;
+  var cookMins = r.cook_minutes != null ? r.cook_minutes : (r.taste === 'slow_stew' ? 60 : 15);
+
+  if (prepTime + cookMins <= 8) tags.push('ultra_quick');
+  if (prepTime + cookMins <= 25) tags.push('quick');
+
+  if (r.taste === 'steamed_salad' || n.indexOf('清蒸') !== -1 || n.indexOf('凉拌') !== -1 || n.indexOf('白切') !== -1 || n.indexOf('白灼') !== -1) {
+    tags.push('no_oil');
+  }
+  if (r.flavor_profile === 'spicy' || n.indexOf('辣') !== -1 || n.indexOf('宫保') !== -1 || n.indexOf('麻婆') !== -1) {
+    tags.push('spicy');
+  }
+  if (r.dish_type === 'soup' || n.indexOf('汤') !== -1 || (r.id && r.id.indexOf('soup') !== -1)) {
+    tags.push('soup');
+  }
+  if (r.meat && r.meat !== 'vegetable') {
+    tags.push('high_protein');
+  }
+  if (r.meat === 'vegetable') {
+    tags.push('vegetarian');
+  }
+  if (r.is_baby_friendly) {
+    tags.push('baby_friendly');
+  }
+  if (r.flavor_profile === 'light' || r.taste === 'steamed_salad' || n.indexOf('清蒸') !== -1 || n.indexOf('白灼') !== -1) {
+    tags.push('light');
+  }
+  if (r.flavor_profile === 'salty_umami' || n.indexOf('炖') !== -1 || n.indexOf('煲') !== -1) {
+    tags.push('salty_umami');
+  }
+  if (r.cook_type === 'stir_fry') tags.push('stir_fry');
+  if (r.taste === 'slow_stew' || (r.dish_type === 'soup' && r.meat !== 'vegetable')) tags.push('hearty');
+  if (r.taste === 'steamed_salad' || n.indexOf('蒸') !== -1) tags.push('steamed');
+
+  return tags;
+}
+
+/**
+ * 确保菜谱带有 tags（缺失时用 defaultTagsForRecipe 回填），不修改原对象
+ * @param {Object} recipe - 菜谱对象
+ * @returns {Object} 带 tags 的菜谱（浅拷贝）
+ */
+function ensureRecipeTags(recipe) {
+  if (!recipe) return recipe;
+  if (Array.isArray(recipe.tags) && recipe.tags.length > 0) return recipe;
+  var tags = defaultTagsForRecipe(recipe);
+  var out = {};
+  for (var k in recipe) { if (recipe.hasOwnProperty(k)) out[k] = recipe[k]; }
+  out.tags = tags;
+  return out;
+}
 
 // ============ 数据协议：统一 userPreference 格式（纯函数，不依赖 wx/this） ============
 /**
@@ -200,48 +281,20 @@ function preFilter(allRecipes, userPreference) {
   var dietaryPreference = userPreference.dietary_preference || userPreference.dietStyle || '';
 
   return allRecipes.filter(function (recipe) {
-    var mainIng = recipe.main_ingredients || [];
-    if (!Array.isArray(mainIng)) mainIng = [];
+    // 统一走 recipeContainsAvoid（单一真相源），覆盖 meat/name/flavor/ingredients 四层检测
+    if (allergens.length > 0 && recipeContainsAvoid(recipe, allergens)) return false;
 
-    // 过敏原/忌口处理
-    for (var a = 0; a < allergens.length; a++) {
-      var key = allergens[a];
-
-      // 特殊处理：spicy（不吃辣）按 flavor_profile 过滤
-      if (key === 'spicy') {
-        if ((recipe.flavor_profile || '') === 'spicy') return false;
-        continue;
-      }
-
-      // 常规主料匹配：展开后的主料名出现在 main_ingredients 则剔除
-      var names = ALLERGEN_TO_MAIN_NAMES[key];
-      if (names && names.length > 0) {
-        for (var n = 0; n < mainIng.length; n++) {
-          var m = String(mainIng[n] || '').trim();
-          for (var j = 0; j < names.length; j++) {
-            if (m.indexOf(names[j]) !== -1 || names[j].indexOf(m) !== -1) return false;
-          }
-        }
-      }
-      // 若 allergen 直接为主料名（如「鸡蛋」）
-      for (var k = 0; k < mainIng.length; k++) {
-        if (String(mainIng[k] || '').indexOf(key) !== -1) return false;
-      }
-    }
-
-    // dietary_preference：有要求且标签列表非空时，菜品 tags 需包含对应偏好之一
-    // 注意：home（家常）对应空数组，表示无特殊要求，不过滤
+    // dietary_preference：有要求且标签列表非空时，菜品 tags 需包含对应偏好之一（缺 tags 时用 defaultTagsForRecipe 推断）
     if (dietaryPreference && DIETARY_PREFERENCE_TAGS[dietaryPreference]) {
       var requiredTags = DIETARY_PREFERENCE_TAGS[dietaryPreference];
       if (requiredTags.length > 0) {
-        var recipeTags = recipe.tags || [];
+        var recipeTags = (Array.isArray(recipe.tags) && recipe.tags.length > 0) ? recipe.tags : defaultTagsForRecipe(recipe);
         var match = false;
         for (var t = 0; t < requiredTags.length; t++) {
           if (recipeTags.indexOf(requiredTags[t]) !== -1) { match = true; break; }
         }
         if (!match) return false;
       }
-      // requiredTags 为空数组时（如 home），不过滤任何菜谱
     }
 
     return true;
@@ -283,6 +336,7 @@ var COOK_TYPE_TO_DEVICE = {
   braise: 'wok',             // 红烧 → 炒锅
   stew: 'stove_long',        // 炖菜 → 长时间占灶（炖锅/砂锅）
   steam: 'steamer',          // 蒸菜 → 蒸锅
+  bake: 'oven',              // 焗/烤 → 烤箱
   cold: 'none',              // 凉菜 → 无需设备
   cold_dress: 'none',        // 凉拌 → 无需设备 (与 mix.js 一致)
   salad: 'none',             // 拌菜 → 无需设备
@@ -615,17 +669,62 @@ function calculateScaling(recipe, totalCount) {
 }
 
 // ---------- 兼容旧调用：过滤/均衡/缩放工具函数（供 menuData 等使用） ----------
+var AVOID_TO_MEAT = {
+  seafood: ['fish', 'shrimp', 'shellfish'],
+  beef_lamb: ['beef', 'lamb'],
+  egg: ['egg']
+};
+
 function recipeContainsAvoid(recipe, avoidList) {
   if (!recipe || !Array.isArray(avoidList) || avoidList.length === 0) return false;
-  var mainIng = recipe.main_ingredients || [];
-  if (!Array.isArray(mainIng)) mainIng = [];
+
+  var meat = recipe.meat || '';
+  var recipeName = recipe.name || '';
+
   for (var a = 0; a < avoidList.length; a++) {
-    var names = ALLERGEN_TO_MAIN_NAMES[avoidList[a]];
-    if (names) {
-      for (var n = 0; n < mainIng.length; n++) {
-        var m = String(mainIng[n] || '');
+    var avoidKey = avoidList[a];
+
+    // 1. 通过 meat 字段快速判断
+    var meatTargets = AVOID_TO_MEAT[avoidKey];
+    if (meatTargets) {
+      for (var mt = 0; mt < meatTargets.length; mt++) {
+        if (meat === meatTargets[mt]) return true;
+      }
+    }
+
+    // 2. 辣味多维检测
+    if (avoidKey === 'spicy') {
+      if (recipe.flavor_profile === 'spicy') return true;
+      for (var sk = 0; sk < SPICY_NAME_KEYWORDS.length; sk++) {
+        if (recipeName.indexOf(SPICY_NAME_KEYWORDS[sk]) !== -1) return true;
+      }
+    }
+
+    // 3. 通过 common_allergens 判断
+    if (Array.isArray(recipe.common_allergens)) {
+      for (var ca = 0; ca < recipe.common_allergens.length; ca++) {
+        var allergen = String(recipe.common_allergens[ca] || '');
+        var allergenNames = ALLERGEN_TO_MAIN_NAMES[avoidKey];
+        if (allergenNames) {
+          for (var an = 0; an < allergenNames.length; an++) {
+            if (allergen.indexOf(allergenNames[an]) !== -1) return true;
+          }
+        }
+      }
+    }
+
+    // 4. 通过 main_ingredients / ingredients 食材名匹配（兼容对象和字符串格式）
+    var names = ALLERGEN_TO_MAIN_NAMES[avoidKey];
+    if (names && names.length > 0) {
+      var allIng = [].concat(recipe.main_ingredients || [], recipe.ingredients || []);
+      for (var n = 0; n < allIng.length; n++) {
+        var ingName = '';
+        var item = allIng[n];
+        if (typeof item === 'string') ingName = item;
+        else if (item && typeof item === 'object') ingName = item.name || '';
+        if (!ingName) continue;
         for (var j = 0; j < names.length; j++) {
-          if (m.indexOf(names[j]) !== -1) return true;
+          if (ingName.indexOf(names[j]) !== -1) return true;
         }
       }
     }
@@ -1850,10 +1949,10 @@ function getStepsByAction(recipe) {
  * @returns {string}
  */
 var INGREDIENT_ALIAS_MAP = {
-  '蒜': '大蒜', '蒜头': '大蒜', '蒜瓣': '大蒜',
-  '姜': '生姜', '老姜': '生姜', '姜片': '生姜',
-  '葱': '小葱', '香葱': '小葱', '青葱': '小葱',
-  '大葱段': '大葱', '葱段': '大葱',
+  '蒜': '大蒜', '蒜头': '大蒜', '蒜瓣': '大蒜', '蒜末': '大蒜', '蒜蓉': '大蒜', '蒜粒': '大蒜',
+  '姜': '生姜', '老姜': '生姜', '姜片': '生姜', '姜丝': '生姜', '姜末': '生姜',
+  '葱': '小葱', '香葱': '小葱', '青葱': '小葱', '葱花': '小葱', '葱末': '小葱',
+  '大葱段': '大葱', '葱段': '大葱', '葱白': '大葱',
   '芫荽': '香菜',
   '辣椒': '小米辣', '小米椒': '小米辣',
   '酱油': '生抽', '薄盐酱油': '生抽',
@@ -1864,6 +1963,18 @@ var INGREDIENT_ALIAS_MAP = {
   '味精': '鸡精',
   '番茄': '西红柿',
   '土豆': '马铃薯', '洋芋': '马铃薯'
+};
+
+var COMPOUND_INGREDIENT_MAP = {
+  '葱姜蒜': ['小葱', '生姜', '大蒜'],
+  '葱姜':   ['小葱', '生姜'],
+  '姜蒜':   ['生姜', '大蒜'],
+  '葱蒜':   ['小葱', '大蒜'],
+  '姜葱':   ['生姜', '小葱'],
+  '油盐':   ['食用油', '盐'],
+  '盐糖':   ['盐', '糖'],
+  '葱姜蒜末': ['小葱', '生姜', '大蒜'],
+  '葱姜水': ['小葱', '生姜']
 };
 
 function normalizeIngredientName(name) {
@@ -3305,19 +3416,33 @@ function generateShoppingListRaw(adultRecipe, babyRecipe) {
     var rName = (recipe && recipe.name) || '';
     var rSource = (recipe && recipe.source) || 'native';
     list.forEach(function (it) {
-      var name = typeof it === 'string' ? it : (it && (it.name != null ? it.name : it.ingredient != null ? it.ingredient : ''));
-      if (!name) return;
-      // 规范化食材名（合并常见别名，如「蒜」→「大蒜」）
-      name = normalizeIngredientName(name);
+      var rawName = typeof it === 'string' ? it : (it && (it.name != null ? it.name : it.ingredient != null ? it.ingredient : ''));
+      if (!rawName) return;
+      var trimmedName = rawName.trim();
       var category = (typeof it === 'object' && it != null && it.category != null) ? String(it.category).trim() : '其他';
       if (category === '海鲜' || category === '鱼类' || category === 'seafood') category = '肉类';
       var subType = (category === '肉类' && typeof it === 'object' && it != null && it.sub_type != null) ? it.sub_type : undefined;
-      // 优先使用缩放后的用量（scaledAmount），否则使用原始 baseAmount
       var baseAmount = getScaledAmount(it);
       if (baseAmount === 0 && typeof it === 'object' && it != null && typeof it.baseAmount === 'number') {
         baseAmount = it.baseAmount;
       }
       var unit = (typeof it === 'object' && it != null && it.unit != null) ? String(it.unit) : '份';
+
+      // 组合食材拆解（如"葱姜蒜"→ 3 条独立项，每条均分用量）
+      var decomposed = COMPOUND_INGREDIENT_MAP[trimmedName];
+      if (decomposed) {
+        var splitAmount = decomposed.length > 0 ? baseAmount / decomposed.length : baseAmount;
+        for (var di = 0; di < decomposed.length; di++) {
+          items.push({
+            name: decomposed[di], sub_type: undefined, category: category || '调料',
+            baseAmount: splitAmount, unit: unit, isFromBaby: !!isFromBaby,
+            recipeName: rName, sourceType: rSource
+          });
+        }
+        return;
+      }
+
+      var name = normalizeIngredientName(trimmedName);
       items.push({
         name: name, sub_type: subType, category: category,
         baseAmount: baseAmount, unit: unit, isFromBaby: !!isFromBaby,
@@ -3557,9 +3682,52 @@ function generateMenuFromExternalRecipe(recipe, adultCount) {
   };
 }
 
+// ============ 智能候选池排序（Layer 1: Smart Anchoring） ============
+
+var MEAT_TO_INGREDIENT_KEY = {
+  fish: 'seafood', shrimp: 'seafood', shellfish: 'seafood',
+  beef: 'beef', chicken: 'chicken', pork: 'pork', lamb: 'beef', duck: 'chicken',
+  vegetable: 'vegetable'
+};
+
+/**
+ * 按用户口味/食材亲和度给菜谱打分排序。
+ * 高分菜排前面，AI 更容易"看见"；低分不删除，只是排后面。
+ * @param {Array} recipes - 已过滤的菜谱数组
+ * @param {Object} profile - tasteProfile.get() 返回的档案
+ * @returns {Array} 排序后的菜谱数组（不改变原数组）
+ */
+function rankByAffinity(recipes, profile) {
+  if (!Array.isArray(recipes) || recipes.length === 0) return recipes;
+  if (!profile) return recipes.slice();
+
+  var flavorAff = profile.flavorAffinity || {};
+  var ingredientAff = profile.ingredientAffinity || {};
+  var preferredMeats = {};
+  if (Array.isArray(profile._preferredMeats)) {
+    for (var i = 0; i < profile._preferredMeats.length; i++) {
+      preferredMeats[profile._preferredMeats[i]] = true;
+    }
+  }
+
+  var scored = recipes.map(function (r) {
+    var s = 0;
+    s += (flavorAff[r.flavor_profile] || 0) * 2;
+    var ingKey = MEAT_TO_INGREDIENT_KEY[r.meat] || null;
+    if (ingKey) s += (ingredientAff[ingKey] || 0) * 2;
+    if (r.meat && preferredMeats[r.meat]) s += 3;
+    s += Math.random();
+    return { recipe: r, score: s };
+  });
+
+  scored.sort(function (a, b) { return b.score - a.score; });
+  return scored.map(function (item) { return item.recipe; });
+}
+
 module.exports = {
   // ---------- 接口人（页面必须通过 require 引入并使用） ----------
   filterByPreference: filterByPreference,
+  rankByAffinity: rankByAffinity,
   calculateScaling: calculateScaling,
   computeDashboard: computeDashboard,
   normalizeUserPreference: normalizeUserPreference,
@@ -3606,5 +3774,9 @@ module.exports = {
   getFlavorAndCookCounts: getFlavorAndCookCounts,
   getFlavorProfileCounts: getFlavorProfileCounts,
   // ---------- 混合来源食材辅助 ----------
-  normalizeIngredientName: normalizeIngredientName
+  normalizeIngredientName: normalizeIngredientName,
+  // ---------- 标签与一物多吃 ----------
+  ensureRecipeTags: ensureRecipeTags,
+  defaultTagsForRecipe: defaultTagsForRecipe,
+  RECIPE_TAGS_VOCABULARY: RECIPE_TAGS_VOCABULARY
 };

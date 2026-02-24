@@ -67,6 +67,17 @@ flowchart TD
 | 导入页入口与 UI | 已完成 | 导入页新增「加入混搭组餐」「随机配一桌」；英雄卡片、卡片化 section、AI 辅助信息合并、5 按钮布局。详见 §5.6。 |
 | 今日菜单存储与导入菜兼容 | 已完成 | canSafelySlimMenus；含无 id 或 ext- 菜谱时存完整格式，避免 preview/steps 反序列化丢失（未知菜谱/步骤配料缺失）。详见 §5.7。 |
 | 混合组餐页 UI 优化 | 已完成 | 菜名下标签去药丸化（来源微标签 + 纯文字 · 分隔）；底部三按钮改为横排，与 preview 等页风格统一。详见 §5.8。 |
+| 需求探针与口味档案 | 已完成 | 首页 Vibe Card 内嵌需求探针（场景/口味，单选自动提交、多选含确认键）；跳过探针时降级到持久化 Taste Profile；口味模糊匹配（前二名差距≤30% 时双口味灵活搭配）。详见 §5.9。 |
+| 口味画像卡片 | 已完成 | 烟火集页新增口味画像区：偏好口味进度条、偏好食材标签、忌口标签、累计做饭次数。详见 §5.13。 |
+| 冰箱入口与 Store | 已完成 | 首页「我的冰箱」入口（🧊 + 动态提示：临期食材名 / 食材数量 / 空冰箱引导）；fridgeStore 管理本地库存；临期食材参与 AI 菜单推荐。详见 §5.11。 |
+| 一句话微调（Tweak Bar） | 已完成 | 预览页底部输入栏「给主厨提要求」；提交后重新调用 smartMenuGen（userTweak 最高优先级）；智能关键词提取。详见 §5.10。 |
+| 换菜不喜欢反馈 | 已完成 | 替换菜品时 ActionSheet 收集原因（太复杂/不喜欢食材/最近吃过/直接换）；持久化到 tasteProfile 并传入 smartMenuGen 做严格回避。详见 §5.10。 |
+| 做完饭反馈卡 | 已完成 | 步骤页完成后「这桌菜怎么样？」卡片（三选项反馈）；反馈写入 tasteProfile；自动冰箱扣减。详见 §5.12。 |
+| 肉类/烹饪方式/标签扩展 | 已完成 | 新增羊肉/鸭肉/贝类三种肉类 + 焗/烤(bake) 烹饪方式；辣度细分(spicy_sub)；16 种自动标签 + rankByAffinity 亲和度排序。详见 §5.14。 |
+| 封面图链路重构 | 已完成 | HTTP 直链 → cloud:// FileID + getTempFileURL 运行时解析；顺序批次避免竞态。详见 §5.15。 |
+| smartMenuGen 大升级 | 已完成 | 口味档案/冰箱临期/用户微调/不喜欢列表全面注入 AI prompt；候选池 500 + 按肉类均匀截断；dishHighlights 必填因果推理。详见 §5.10。 |
+| 问候引擎升级 | 已完成 | 三层优先级（上下文感知 > 天气 > 通用）；支持深夜陪伴、冰箱临期、连续做饭等状态问候。详见 §5.16。 |
+| 封面风格转变 | 已完成 | 暗调极简 → 暖光诱人丰富色彩；容器从深色陶瓷改为木/石面暖色餐具。 |
 | stressWeight 评分因子 | 待扩展 | 当前 isTimeSave 已驱动过滤与空气炸锅优先，未单独暴露 stressWeight 数值。 |
 
 ---
@@ -140,6 +151,157 @@ flowchart TD
 - **底部操作栏**：`.bottom-actions` 由竖排改为横排（`flex-direction: row`）；三按钮顺序为「购物清单」「让别人做」「开始做」，主操作「开始做」置右且 `flex: 1.3`；按钮高度统一 84rpx，字号 26rpx；容器 `padding-bottom` 由 280rpx 调整为 140rpx。
 - **涉及文件**：mix.wxml（recipe-card-meta 结构、bottom-actions 按钮顺序与文案）、mix.wxss（.recipe-card-meta、.recipe-card-source 小圆角、.recipe-card-meta-text/dot、.bottom-actions 横排与 .action-btn flex/高度）。
 
+### 5.9 需求探针与 Zen 偏好降级（含口味模糊匹配）
+
+- **背景**：首页需求探针（场景/口味等）内嵌在 Vibe Card 中；用户可直接点「想想吃什么」不回答探针。为保证仪式感不变成强迫感，未回答时降级到持久化 Taste Profile，且当口味档案中前两名分数接近时采用「双口味灵活搭配」的人情味策略。
+- **跳过探针时的降级顺序**：Session 本次选择 &gt; 本地持久化（`tasteProfile.get()` 的 scene / flavorAffinity）&gt; 默认配置（如 `getSceneConfig()` 的 couple）。`onZenGo` 中若 `!isSessionAnswered('taste')` 仍从 `profile.flavorAffinity` 通过 `getTopFlavors` / `getFlavorHint` 构建偏好并传给 `smartMenuGen`。
+- **口味模糊匹配**：当 `flavorAffinity` 中**第二名得分 ≥ 第一名的 70%** 时视为模糊（如辣 7、清淡 5 → 5/7≥0.7）。
+  - **tasteProfile.getTopFlavors(affinity)**：返回 `{ top, second, ambiguous }`，阈值 0.7；用于 `_buildZenPreference` 与 `buildSessionSummary`。
+  - **preference 新增字段**：`topFlavorKey`、`secondFlavorKey`（仅 ambiguous 时非空）、`flavorAmbiguous`。
+  - **AI Prompt（prompt-builder.js）**：当 `flavorAmbiguous` 且两个口味均有语义时，注入「用户平时爱吃 X 和 Y，两种方向都可以，请在套餐中灵活搭配」，并分别列出两方向的烹饪语义；否则沿用单口味语义。
+  - **确认文案（probeEngine.buildSessionSummary）**：模糊态展示「偏好辣味或清淡」；非模糊态展示「偏好辣味」。
+- **涉及文件**：`miniprogram/data/tasteProfile.js`（getTopFlavors）、`miniprogram/pages/home/home.js`（_buildZenPreference 传 secondFlavorKey / flavorAmbiguous）、`cloudfunctions/smartMenuGen/lib/prompt-builder.js`（ambiguous 双口味分支）、`miniprogram/logic/probeEngine.js`（buildSessionSummary 用 getTopFlavors 展示「偏好X或Y」）。
+
+### 5.10 预览页增强：一句话微调、换菜反馈与 smartMenuGen 大升级
+
+#### 一句话微调（Tweak Bar）
+
+- **交互**：预览页底部新增输入栏「给主厨提要求（如：别放葱 / 想吃鱼）」；输入后出现「重新推荐」按钮（animated reveal）。
+- **提交**：触发 `smartMenuGen` 云函数调用，`userTweak` 参数为最高优先级，AI prompt 中以「用户特别要求」置顶。
+- **智能关键词**：检测肉类关键词，匹配到的肉类候选 boost 至候选池顶部。
+
+#### 换菜不喜欢反馈
+
+- **交互**：替换菜品时弹出 ActionSheet，四项理由：「太复杂了」「不喜欢这食材」「最近吃过了」「直接换」。
+- **持久化**：非跳过理由通过 `tasteProfile.addDislikedRecipe(id, reason)` 持久化；disliked recipe IDs 和菜名作为 `dislikedDishNames` 传入 `smartMenuGen`，prompt 中标记「严格回避」。
+
+#### smartMenuGen 云函数大升级
+
+| 维度 | 变更 |
+|------|------|
+| 新参数 | `dislikedDishNames`、`fridgeExpiring`、`heroIngredient`、`userTweak` |
+| 口味档案注入 | flavorHint、preferredMeats、urgentIngredient、ambiguous 双口味灵活搭配 |
+| 新 prompt 段落 | 「用户特别要求」「冰箱临期食材」「今日主角食材」「近期不想吃的菜」「口味语义对齐」「P3.5 口味档案适配」 |
+| 候选池 | 上限从 80 → 500；超过 500 时按肉类均匀截断 |
+| 候选数据 | 新增「主料」标签、cook_minutes、tags |
+| dishHighlights | 从可选改为 **必填**；须提供因果推理（关联主角食材/口味/天气），禁止泛泛的「好吃」「推荐」 |
+| 口味语义对齐 | 抽象口味标签翻译为烹饪指令（如 `light` → 偏好清蒸、白灼、水煮） |
+
+#### 推荐理由兜底
+
+- 新增 `buildReasonFallback(recipe)`：当 AI 未返回 dishHighlight 时，从 cook_type hint + cook_minutes 生成兜底推荐理由（如「大火快炒，锅气十足」「仅需12分钟」）。
+
+#### 忌口同步
+
+- 用户在预览页切换忌口胶囊时，变更同步持久化到 `tasteProfile.setAvoidList()`。
+
+#### 涉及文件
+
+| 文件 | 改动摘要 |
+|------|----------|
+| miniprogram/pages/preview/preview.js | tweak 输入与提交、ActionSheet 换菜反馈、buildReasonFallback、忌口同步 tasteProfile |
+| miniprogram/pages/preview/preview.wxml | 底部 tweak 输入栏与重新推荐按钮 |
+| miniprogram/pages/preview/preview.wxss | tweak-bar、send-btn 动画样式 |
+| cloudfunctions/smartMenuGen/index.js | 新参数接收、口味档案传递 |
+| cloudfunctions/smartMenuGen/lib/prompt-builder.js | 新 prompt 段落、口味语义对齐、双口味分支、dishHighlights 规则 |
+
+### 5.11 冰箱入口与 fridgeStore
+
+- **首页入口**：「我的冰箱」🧊 图标 + 动态提示文案：
+  - 空冰箱：「记录食材，AI 帮你优先消耗临期的」
+  - 有临期食材：「XX、YY 快过期了，该吃掉了」
+  - 其他：「冰箱里有 N 种食材」
+- **fridgeStore.js**：管理本地冰箱库存，API 包括 `getCount()`、`getExpiringSoon(days)`、`getExpiringNames(days)`、`consumeByCategory(cat)`。
+- **AI 联动**：临期食材作为 `fridgeExpiring` 传入 smartMenuGen prompt；影响 `heroIngredient` 选取。
+- **做饭后自动扣减**：步骤页完成烹饪后，自动按已用食材类别从冰箱 store 中扣减。
+- **涉及文件**：`miniprogram/pages/home/home.wxml`（冰箱入口）、`home.js`（动态提示文案）、`miniprogram/data/fridgeStore.js`（新建）、`miniprogram/pages/fridge/`（新建冰箱管理页）、`miniprogram/app.json`（注册冰箱页）。
+
+### 5.12 做完饭反馈卡与口味学习
+
+- **交互**：步骤页完成烹饪后，反馈卡片 slide-up 动画：「这桌菜怎么样？」+ 三选项 😋 很喜欢 / 🙂 还不错 / 😐 不太对。
+- **数据写入**：通过 `tasteProfile.applyPostCookFeedback(feedback, recipes)` 将反馈应用到口味档案（正反馈增强口味/食材亲和度，负反馈不会直接降低但影响后续排序）。
+- **额外行为**：
+  - 记录 `last_cook_dishes` 到 storage，供问候引擎回顾参考。
+  - 调用 `tasteProfile.recordCookComplete()` 更新 `totalCooks` 计数。
+  - 自动冰箱扣减：`fridgeStore.consumeByCategory()` 扣除已用食材类别。
+- **涉及文件**：`steps.js`（反馈卡逻辑、扣减调用）、`steps.wxml`（反馈卡 UI）、`steps.wxss`（fade-in 动画样式）。
+
+### 5.13 口味画像卡片（烟火集页）
+
+- **展示内容**：
+  - 口味偏好进度条（视觉条形图，取 top N 口味及其得分占比）
+  - 偏好食材标签（如鸡肉、猪肉、鱼类…）
+  - 忌口标签（红色调）
+  - 累计做饭次数徽章
+- **数据来源**：`tasteProfile.getTastePortrait()` 返回 `{ topFlavors, preferredMeats, avoidList, totalCooks }`。
+- **涉及文件**：`collection.js`（调用 getTastePortrait）、`collection.wxml`（画像卡片 UI）、`collection.wxss`（偏好条、标签样式）。
+
+### 5.14 数据模型扩展：肉类、烹饪方式与标签系统
+
+#### 新增肉类与烹饪方式
+
+| 类型 | 新增 | 说明 |
+|------|------|------|
+| 肉类 | `lamb`（羊肉）、`duck`（鸭肉）、`shellfish`（贝类） | constant.js 全局映射、normalizer、recipe-extractor 均已适配 |
+| 烹饪方式 | `bake`（焗/烤） | 加入 COOK_TYPE、normalizer、cloud 验证 |
+| 辣度细分 | `spicy_sub`: `mala`（麻辣）/ `xianla`（鲜辣）/ `xiangla`（香辣，默认） | 新 enum |
+| 过敏原 | `cilantro`（香菜/芫荽） | ALLERGEN_TO_MAIN_NAMES 新增 |
+
+- 辣味过敏原过滤升级：除 `flavor_profile` 外，还检测食材名（辣椒、花椒、豆瓣酱等）。
+- **recipe schema 新增字段**：`tags[]`、`ingredient_group`、`spicy_sub`。
+
+#### 菜谱标签系统
+
+- **16 种标签词汇**：`late_night` / `ultra_quick` / `comfort` / `party` / `quick` / `light` / `high_protein` / `spicy` / `vegetarian` / `no_oil` / `steamed` / `salty_umami` / `hearty` / `soup` / `stir_fry` / `baby_friendly`。
+- **defaultTagsForRecipe(r)**：根据烹饪时间、口味、肉类、菜型等自动生成标签。
+- **ensureRecipeTags(recipe)**：为缺失标签的菜谱补上自动生成标签；所有 `getAdultRecipesList()` / `getBabyRecipesList()` 结果经此包装。
+- **rankByAffinity(recipes, profile)**：基于 tasteProfile 的口味与食材亲和度对候选菜谱排序，用于 _buildZenPreference 中的智能候选池。
+
+#### 涉及文件
+
+| 文件 | 改动摘要 |
+|------|----------|
+| miniprogram/config/constant.js | SPICY_SUB enum；MEAT_TYPE/VALID_MEATS/MEAT_LABEL_MAP/MEAT_KEY_MAP 扩展 lamb/duck/shellfish；COOK_TYPE.BAKE；cilantro 过敏原 |
+| miniprogram/data/menuGenerator.js | 16 种标签词汇；defaultTagsForRecipe；ensureRecipeTags；rankByAffinity |
+| miniprogram/data/recipeSchema.js | tags/ingredient_group/spicy_sub 字段 |
+| miniprogram/pages/mix/mix.js | 筛选项新增 lamb/duck/shellfish |
+| cloudfunctions/recipeImport/index.js | bake cook_type 验证；lamb/duck/shellfish 肉类 |
+| cloudfunctions/recipeImport/lib/normalizer.js | bake 归一化映射（焗、烤）；lamb/duck/shellfish 关键词检测 |
+| cloudfunctions/recipeImport/lib/recipe-extractor.js | 系统 prompt 扩展新肉类与烹饪方式 |
+
+### 5.15 封面图链路重构（HTTP → Cloud FileID）
+
+- **移除**：`getRecipeCoverHttpUrl`、`HTTP_STORAGE_BASE`、`DEFAULT_COVER_HTTP_URL` 全部移除。
+- **新方案**：使用 `cloud://` FileID，运行时通过 `getTempFileURL` 解析为临时链接。
+- **首页**：cloud images 使用 `cloud://` FileID，onLoad 后 500ms 延迟批量解析。
+- **预览页**：移除 imageLib 缓存层，简化为直接 `getTempFileURL` 调用。
+- **混合组餐页**：从 `_coverHttpUrl` 改为 `_coverCloudUrl` + 懒解析 `_coverTempUrl`；WXML 仅展示 `_coverTempUrl`。
+- **imageLib.batchResolveTempUrls**：从并行批次改为**顺序批次**，避免竞态条件。
+- **涉及文件**：`recipeCoverSlugs.js`、`home.js`、`preview.js`、`mix.js`、`imageLib.js`。
+
+### 5.16 问候引擎升级（vibeGreeting）
+
+- **三层优先级**：Context-aware > Weather template > Generic fallback。
+- **新增 `_contextGreeting(ctx)` 函数**：
+  - 深夜（22:00-5:00）：「辛苦了，忙到现在…」
+  - 冰箱临期食材：「冰箱里的XX该用掉了…」
+  - 首次访问：「你好呀，告诉我今晚几个人吃…」
+  - 连续做饭（3+ 天）：「连续第N天下厨…」
+  - 上次菜品回顾：「上次的XX还满意吗？」
+- **`pickGreeting()` 新增 `context` 可选参数**，由首页传入上下文信息（fridgeExpiringNames、visitCount、lastCookDishes 等）。
+- **涉及文件**：`miniprogram/utils/vibeGreeting.js`。
+
+### 5.17 Zen 偏好构建重写（_buildZenPreference）
+
+- **完全重写**：不再使用硬编码 2 人默认，改为从 Taste Profile 动态构建。
+- **场景配置**：`tasteProfile.getSceneConfig()` 返回成人数/荤素汤道数。
+- **饮食风格**：从 flavorAffinity 推断（`inferDietStyle()`）。
+- **偏好肉类**：从 ingredientAffinity 推断（`inferPreferredMeats()`）。
+- **厨房设备**：从持久化 profile 读取；疲惫模式自动覆盖为空气炸锅。
+- **新增 preference 字段**：`preferredMeats`、`flavorHint`、`topFlavorKey`、`secondFlavorKey`、`flavorAmbiguous`、`urgentIngredient`、`fridgeExpiring`、`heroIngredient`。
+- **智能候选池**：按偏好过滤 → 移除已 disliked → 按亲和度排序 → 截断至 500。
+- **涉及文件**：`miniprogram/pages/home/home.js`。
+
 ---
 
 ## 6. 组件清单
@@ -182,6 +344,44 @@ flowchart TD
 - **menuData.canSafelySlimMenus(menus)**  
   - 位置：`miniprogram/data/menuData.js`  
   - 用途：写 `today_menus` 前判断是否可安全存为 slim。任一道菜 `adultRecipe` 无 id 或 id 以 `ext-` 开头则返回 false，否则返回 true。为 false 时应存完整菜单，避免反序列化时导入菜丢失。
+
+- **tasteProfile.getTopFlavors(affinity)**  
+  - 位置：`miniprogram/data/tasteProfile.js`  
+  - 返回：`{ top: string|null, second: string|null, ambiguous: boolean }`。当第二名得分 ≥ 第一名 70% 时 `ambiguous` 为 true，用于 Zen 偏好与 AI 双口味灵活搭配（见 §5.9）。
+
+- **tasteProfile.get() / save() / update()**  
+  - 位置：`miniprogram/data/tasteProfile.js`  
+  - 持久化 Storage Key：`taste_profile`  
+  - 字段分类：volatile（session-only：scene/headcount/urgentIngredient）+ persistent（flavorAffinity/ingredientAffinity/avoidList/kitchenConfig/visitCount/totalCooks 等）。  
+  - 详细字段定义见 `miniprogram/logic/DATA_PROTOCOL.md`。
+
+- **tasteProfile.getTastePortrait()**  
+  - 位置：`miniprogram/data/tasteProfile.js`  
+  - 返回：`{ topFlavors, preferredMeats, avoidList, totalCooks }`，供烟火集口味画像卡片使用。
+
+- **tasteProfile.applyPostCookFeedback(feedback, recipes)**  
+  - 位置：`miniprogram/data/tasteProfile.js`  
+  - 根据用户反馈（great/ok/meh）调整 flavorAffinity 和 ingredientAffinity 权重。
+
+- **tasteProfile.addDislikedRecipe(id, reason) / getDislikedRecipeIds() / getDislikedRecipeNames()**  
+  - 位置：`miniprogram/data/tasteProfile.js`  
+  - 管理用户不喜欢的菜品列表，传入 smartMenuGen 做严格回避。
+
+- **probeEngine.resetSession() / isSessionAnswered(probeId) / buildSessionSummary()**  
+  - 位置：`miniprogram/logic/probeEngine.js`  
+  - 管理探针的 session 生命周期和回答状态；构建确认文案（含口味模糊态「偏好X或Y」）。
+
+- **fridgeStore.getCount() / getExpiringSoon(days) / getExpiringNames(days) / consumeByCategory(cat)**  
+  - 位置：`miniprogram/data/fridgeStore.js`  
+  - 管理本地冰箱库存；临期食材供首页提示与 AI 菜单推荐。
+
+- **menuGenerator.defaultTagsForRecipe(r) / ensureRecipeTags(recipe) / rankByAffinity(recipes, profile)**  
+  - 位置：`miniprogram/data/menuGenerator.js`  
+  - 自动标签生成与基于口味档案的候选排序。
+
+- **vibeGreeting.pickGreeting(weather, context)**  
+  - 位置：`miniprogram/utils/vibeGreeting.js`  
+  - 三层优先级问候：上下文感知（深夜/冰箱/连续做饭/首访/上次菜品） > 天气 > 通用。
 
 ---
 
@@ -492,6 +692,97 @@ flowchart TD
 | miniprogram/pages/shopping/shopping.wxml | 移除 today-tips 区块。 |
 | miniprogram/pages/shopping/shopping.wxss | 移除 .today-tips/.today-tip-line；底部栏与按钮尺寸。 |
 | miniprogram/pages/collection/collection.wxss | 贴纸单元格与火漆/emoji 尺寸。 |
+
+### 11.7 2026-02-24 变更（口味档案全链路、冰箱入口、AI 推荐大升级、数据模型扩展）
+
+> **本次为 v4.8 大版本更新**，涵盖口味档案系统、需求探针、冰箱功能、预览页微调与换菜反馈、做完饭反馈、肉类/烹饪方式/标签扩展、封面图链路重构、smartMenuGen 全面升级、问候引擎等十余项改动。
+
+#### 新增功能
+
+| 功能 | 说明 |
+|------|------|
+| 需求探针系统 | 首页 Vibe Card 内嵌场景/口味探针，支持单选自动提交和多选确认；dismiss 动画；上次选择金色呼吸光晕 |
+| Taste Profile 口味档案 | 持久化用户档案（flavorAffinity/ingredientAffinity/avoidList/kitchenConfig/scene 等）；完整 API 见 §7 |
+| 冰箱入口与 fridgeStore | 首页「我的冰箱」入口 + 动态提示；fridgeStore 管理本地库存；临期食材影响 AI 推荐 |
+| 一句话微调 Tweak Bar | 预览页底部输入栏，userTweak 最高优先级参数 |
+| 换菜不喜欢反馈 | ActionSheet 四项理由 → tasteProfile → smartMenuGen 严格回避 |
+| 做完饭反馈卡 | 三选项评价 → tasteProfile 正/负反馈 → 自动冰箱扣减 |
+| 口味画像卡片 | 烟火集页展示口味条形图、偏好食材标签、忌口标签、做饭计数 |
+
+#### 数据模型扩展
+
+| 变更 | 说明 |
+|------|------|
+| 新增肉类 | lamb（羊肉）、duck（鸭肉）、shellfish（贝类） |
+| 新增烹饪方式 | bake（焗/烤） |
+| 新增辣度细分 | spicy_sub：mala/xianla/xiangla |
+| 新增过敏原 | cilantro（香菜/芫荽） |
+| Recipe 新字段 | tags[]、ingredient_group、spicy_sub |
+| 标签系统 | 16 种自动标签 + rankByAffinity 亲和度排序 |
+
+#### 重大重构
+
+| 模块 | 变更 |
+|------|------|
+| smartMenuGen | 4 新参数 + 口味档案注入 + 候选池 80→500 + dishHighlights 必填因果推理 |
+| _buildZenPreference | 硬编码 → Taste Profile 动态构建 |
+| 封面图链路 | HTTP 直链 → cloud:// + getTempFileURL；imageLib 顺序批次 |
+| 问候引擎 | 三层优先级（上下文 > 天气 > 通用）；5 种状态感知问候 |
+| 封面风格 | Krautkopf 暗调极简 → 暖光诱人丰富色彩 |
+| MJ Prompt Builder | 完全重写：100+ 中英食材翻译、菜型容器推断、烹饪氛围注入 |
+
+#### 工具链
+
+| 工具 | 变更 |
+|------|------|
+| mj-prompt-builder.js | +298 行：COOK_VISUAL/FLAVOR_VISUAL/INGREDIENT_EN 映射 + 智能容器/氛围推断 |
+| recipe-system-prompt.md | 新增 lamb/duck/shellfish/bake；cooking logic rules 8A-8E |
+| validate-recipe-consistency.js | +74 行：焯水/火候/调味时序/时间一致性校验 |
+| recipe-formatter.js | 新肉类/烹饪方式推断；tags/base_serving/ingredient_group/spicy_sub 字段 |
+| optimize-recipes.js | 重试逻辑（2 次/批）；失败时保存已完成批次 |
+
+#### 涉及文件一览（§11.7）
+
+| 文件 | 变更摘要 |
+|------|----------|
+| miniprogram/pages/home/home.js | 探针 UI 逻辑、_buildZenPreference 重写、冰箱入口、问候 context |
+| miniprogram/pages/home/home.wxml | 探针区、冰箱入口、Vibe Card 呼吸伪元素 |
+| miniprogram/pages/home/home.wxss | 探针选项样式、金色光晕动画、冰箱入口样式 |
+| miniprogram/pages/preview/preview.js | tweak bar、ActionSheet 反馈、buildReasonFallback、忌口同步 |
+| miniprogram/pages/preview/preview.wxml | tweak 输入栏、重新推荐按钮 |
+| miniprogram/pages/preview/preview.wxss | tweak-bar、send-btn 动画 |
+| miniprogram/pages/steps/steps.js | 反馈卡逻辑、冰箱扣减、last_cook_dishes |
+| miniprogram/pages/steps/steps.wxml | 反馈卡 UI |
+| miniprogram/pages/steps/steps.wxss | 反馈卡 fade-in 动画 |
+| miniprogram/pages/collection/collection.js | 口味画像数据 |
+| miniprogram/pages/collection/collection.wxml | 口味画像卡片 |
+| miniprogram/pages/collection/collection.wxss | 偏好条、标签、画像样式 |
+| miniprogram/pages/mix/mix.js | 筛选项扩展、封面 cloud 链路 |
+| miniprogram/pages/mix/mix.wxml | 封面 coverTempUrl |
+| miniprogram/config/constant.js | SPICY_SUB/肉类/烹饪方式/过敏原扩展 |
+| miniprogram/data/menuGenerator.js | 标签系统、rankByAffinity |
+| miniprogram/data/recipeSchema.js | tags/ingredient_group/spicy_sub |
+| miniprogram/data/recipeCoverSlugs.js | +39 封面映射、移除 HTTP 导出 |
+| miniprogram/data/tasteProfile.js | 新建：完整口味档案系统 |
+| miniprogram/data/fridgeStore.js | 新建：冰箱库存管理 |
+| miniprogram/logic/probeEngine.js | 新建：需求探针引擎 |
+| miniprogram/logic/DATA_PROTOCOL.md | +109 行：口味档案数据协议 |
+| miniprogram/utils/vibeGreeting.js | 三层优先级 + 状态感知问候 |
+| miniprogram/utils/imageLib.js | 顺序批次解析 |
+| miniprogram/app.json | 注册冰箱页 |
+| cloudfunctions/smartMenuGen/index.js | 新参数接收 |
+| cloudfunctions/smartMenuGen/lib/prompt-builder.js | 口味档案 prompt + 语义对齐 + dishHighlights 因果推理 |
+| cloudfunctions/recipeCoverGen/lib/cover-prompt.js | 暖光风格 |
+| cloudfunctions/recipeImport/index.js | bake + 新肉类 |
+| cloudfunctions/recipeImport/lib/normalizer.js | bake/lamb/duck/shellfish 映射 |
+| cloudfunctions/recipeImport/lib/recipe-extractor.js | 系统 prompt 扩展 |
+| tools/lib/mj-prompt-builder.js | 完全重写 |
+| tools/templates/mj-style-template.md | 暖光风格 + atmosphere 变量 |
+| tools/templates/recipe-system-prompt.md | 新肉类/烹饪方式/cooking logic |
+| tools/templates/recipe-optimize-prompt.md | cooking logic 8A-8E |
+| tools/lib/validate-recipe-consistency.js | cooking logic 校验 |
+| tools/lib/recipe-formatter.js | 新字段 |
+| tools/optimize-recipes.js | 重试 + partial save |
 
 ### 11.6 2026-02-14 变更（导入极速解析、宝宝占位符、封面直链、统筹空气炸锅）
 

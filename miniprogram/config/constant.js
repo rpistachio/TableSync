@@ -65,13 +65,16 @@ var MEAT_TYPE = {
   BEEF: 'beef',
   FISH: 'fish',
   SHRIMP: 'shrimp',
+  LAMB: 'lamb',
+  DUCK: 'duck',
+  SHELLFISH: 'shellfish',
   VEGETABLE: 'vegetable'
 };
 
 /**
  * 肉类有效值列表（不含素菜）
  */
-var VALID_MEATS = [MEAT_TYPE.CHICKEN, MEAT_TYPE.PORK, MEAT_TYPE.BEEF, MEAT_TYPE.FISH, MEAT_TYPE.SHRIMP];
+var VALID_MEATS = [MEAT_TYPE.CHICKEN, MEAT_TYPE.PORK, MEAT_TYPE.BEEF, MEAT_TYPE.FISH, MEAT_TYPE.SHRIMP, MEAT_TYPE.LAMB, MEAT_TYPE.DUCK, MEAT_TYPE.SHELLFISH];
 
 /**
  * 肉类中文标签映射
@@ -82,6 +85,9 @@ var MEAT_LABEL_MAP = {
   beef: '牛肉',
   fish: '鱼肉',
   shrimp: '虾仁',
+  lamb: '羊肉',
+  duck: '鸭肉',
+  shellfish: '贝类',
   vegetable: '素菜'
 };
 
@@ -94,12 +100,18 @@ var MEAT_KEY_MAP = {
   '牛肉': 'beef',
   '鱼肉': 'fish',
   '虾仁': 'shrimp',
+  '羊肉': 'lamb',
+  '鸭肉': 'duck',
+  '贝类': 'shellfish',
   '素菜': 'vegetable',
   chicken: 'chicken',
   pork: 'pork',
   beef: 'beef',
   fish: 'fish',
   shrimp: 'shrimp',
+  lamb: 'lamb',
+  duck: 'duck',
+  shellfish: 'shellfish',
   vegetable: 'vegetable'
 };
 
@@ -143,7 +155,17 @@ var FLAVOR_PROFILE = {
 var COOK_TYPE = {
   STIR_FRY: 'stir_fry',  // 炒
   STEW: 'stew',          // 炖
-  STEAM: 'steam'         // 蒸
+  STEAM: 'steam',        // 蒸
+  BAKE: 'bake'           // 焗/烤
+};
+
+/**
+ * 辣味细分（仅当 flavor_profile 为 spicy 时使用）
+ */
+var SPICY_SUB = {
+  MALA: 'mala',       // 麻辣 — 花椒主导
+  XIANLA: 'xianla',   // 鲜辣 — 辣椒+酸鲜
+  XIANGLA: 'xiangla'  // 香辣 — 酱香复合，默认
 };
 
 // ==================== 业务索引 ====================
@@ -219,6 +241,7 @@ module.exports = {
   // 口味风味
   FLAVOR_PROFILE: FLAVOR_PROFILE,
   COOK_TYPE: COOK_TYPE,
+  SPICY_SUB: SPICY_SUB,
   
   // 业务索引
   BABY_PORTION_FIRST_IDX: BABY_PORTION_FIRST_IDX,

@@ -4,7 +4,7 @@ var menuHistory = require('../../utils/menuHistory.js');
 var menuData = require('../../data/menuData.js');
 var menuGen = require('../../data/menuGenerator.js');
 var seedUserService = require('../../utils/seedUserService.js');
-var imageLib = require('../../utils/imageLib.js');
+var tasteProfile = require('../../data/tasteProfile.js');
 
 var ENV_ID = 'cloud1-7g5mdmib90e9f670';
 var CLOUD_ROOT = recipeResources && recipeResources.CLOUD_ROOT ? recipeResources.CLOUD_ROOT : ('cloud://' + ENV_ID);
@@ -34,6 +34,43 @@ function getTodayDateKey() {
   var m = String(d.getMonth() + 1);
   var day = String(d.getDate());
   return y + '-' + (m.length < 2 ? '0' + m : m) + '-' + (day.length < 2 ? '0' + day : day);
+}
+
+var COOK_TYPE_HINTS = {
+  steam: '清蒸锁鲜，简单不费事',
+  stir_fry: '大火快炒，锅气十足',
+  cold_dress: '凉拌开胃，清爽解腻',
+  stew: '慢火炖煮，越炖越香',
+  braise: '酱香浓郁，下饭一绝',
+  boil: '一锅煮好，轻松省心',
+  fry: '外酥里嫩，香气四溢'
+};
+var FLAVOR_HINTS = {
+  light: '清淡适口',
+  spicy: '微辣开胃',
+  sour_fresh: '酸爽开胃',
+  salty_umami: '咸鲜下饭',
+  sweet_sour: '酸甜可口'
+};
+
+function buildReasonFallback(recipe) {
+  if (!recipe) return '';
+  var parts = [];
+  var ct = recipe.cook_type;
+  var fp = recipe.flavor_profile;
+  var mins = recipe.cook_minutes || 0;
+  if (ct && COOK_TYPE_HINTS[ct]) {
+    parts.push(COOK_TYPE_HINTS[ct]);
+  }
+  if (mins > 0 && mins <= 15) {
+    parts.push('仅需' + mins + '分钟');
+  } else if (mins > 0) {
+    parts.push(mins + '分钟搞定');
+  }
+  if (parts.length === 0 && fp && FLAVOR_HINTS[fp]) {
+    parts.push(FLAVOR_HINTS[fp]);
+  }
+  return parts.length > 0 ? parts[0] : '';
 }
 
 Page({
@@ -88,7 +125,8 @@ Page({
     ],
     pickerNativeRecipes: [],
     pickerFilteredNativeRecipes: [],
-    pickerImportedRecipes: []
+    pickerImportedRecipes: [],
+    tweakText: ''
   },
 
   onShareAppMessage: function () {
@@ -186,10 +224,10 @@ Page({
           adultName: recipeName || '未知菜谱',
           babyName: babyName,
           showSharedHint: hasBaby && !!babyName && idx === 0,
-          recommendReason: highlight || (m.adultRecipe ? (m.adultRecipe.recommend_reason || '营养均衡，口味适宜') : ''),
+          recommendReason: highlight || (m.adultRecipe ? (m.adultRecipe.recommend_reason || buildReasonFallback(m.adultRecipe)) : ''),
           checked: true,
           cookType: cookType,
-          coverUrl: coverService.getRecipeCoverHttpUrl(recipeName),
+          coverUrl: coverService.getRecipeCoverImageUrl(recipeName),
           coverTempUrl: '',
           hasCover: true
         };
@@ -368,23 +406,7 @@ Page({
 
     that.setData({ isImageReady: false });
 
-    // 从全局缓存中预取已解析的 URL，减少网络请求
-    var preCached = Object.create(null);
-    var needFetch = [];
-    for (var p = 0; p < uniq.length; p++) {
-      var cached = imageLib.getCachedTempUrl(uniq[p]);
-      if (cached) {
-        preCached[uniq[p]] = cached;
-        // 同步 env 简写 key
-        preCached[toEnvOnlyFileId(uniq[p])] = cached;
-      } else {
-        needFetch.push(uniq[p]);
-      }
-    }
-
     function applyTempUrls(tempMap) {
-      // 将解析结果写入全局缓存，供其他页面复用
-      imageLib.putCachedTempUrls(tempMap);
       var newRows = rows.map(function (r) {
         if (!r || !r.hasCover) return r;
         var cloudId = (typeof r.coverUrl === 'string' && r.coverUrl.indexOf('cloud://') === 0) ? r.coverUrl : '';
@@ -412,19 +434,11 @@ Page({
       } catch (e) {}
     }
 
-    // 所有 fileID 都已在缓存中，直接应用
-    if (needFetch.length === 0) {
-      applyTempUrls(preCached);
-      return;
-    }
-
     wx.cloud.getTempFileURL({
-      fileList: needFetch,
+      fileList: uniq,
       success: function (res) {
         var list = (res && res.fileList) ? res.fileList : [];
-        // 合并预缓存结果
         var tempMap = Object.create(null);
-        for (var pc in preCached) { if (preCached.hasOwnProperty(pc)) tempMap[pc] = preCached[pc]; }
         var failed = [];
 
         for (var i = 0; i < list.length; i++) {
@@ -475,12 +489,7 @@ Page({
         });
       },
       fail: function () {
-        // 即便网络请求失败，也尝试用预缓存结果显示
-        if (Object.keys(preCached).length > 0) {
-          applyTempUrls(preCached);
-        } else {
-          that.setData({ isImageReady: false });
-        }
+        that.setData({ isImageReady: false });
       }
     });
   },
@@ -507,14 +516,26 @@ Page({
     var menus = payload && payload.menus ? payload.menus : [];
     var rows = (this.data.previewMenuRows || []).slice();
     if (!menus[index] || !rows[index]) return;
-    // 先将目标菜品标为未勾选
-    menus[index].checked = false;
-    rows[index] = Object.assign({}, rows[index], { checked: false });
-    if (payload) { payload.menus = menus; payload.rows = rows; }
-    this.setData({ previewMenuRows: rows }, function () {
-      // 然后调用已有的替换未勾选逻辑
-      this.handleReplaceUnchecked();
-    }.bind(this));
+
+    var recipeId = (menus[index].adultRecipe && menus[index].adultRecipe.id) || '';
+    var that = this;
+
+    wx.showActionSheet({
+      itemList: ['太复杂了', '不喜欢这食材', '最近吃过了', '直接换'],
+      success: function (res) {
+        var reasons = ['complex', 'ingredient', 'eaten', 'skip'];
+        var reason = reasons[res.tapIndex];
+        if (reason !== 'skip' && recipeId) {
+          tasteProfile.addDislikedRecipe(recipeId, reason);
+        }
+        menus[index].checked = false;
+        rows[index] = Object.assign({}, rows[index], { checked: false });
+        if (payload) { payload.menus = menus; payload.rows = rows; }
+        that.setData({ previewMenuRows: rows }, function () {
+          that.handleReplaceUnchecked();
+        });
+      }
+    });
   },
 
   onRemoveDish: function (e) {
@@ -567,6 +588,101 @@ Page({
     wx.showToast({ title: '已删掉一道菜', icon: 'none' });
   },
 
+  onTweakInput: function (e) {
+    this.setData({ tweakText: (e.detail.value || '').slice(0, 50) });
+  },
+
+  onTweakSubmit: function () {
+    var text = (this.data.tweakText || '').trim();
+    if (!text) return;
+    var that = this;
+    getApp().globalData._userTweak = text;
+    wx.showLoading({ title: '主厨重新搭配中…' });
+
+    var pref = getApp().globalData.preference || {};
+    var source = menuData.getRecipeSource ? menuData.getRecipeSource() : null;
+    var adultRecipes = (source && source.adultRecipes) || [];
+
+    // 从 tweak 文本中提取食材关键词，提升匹配候选的权重
+    var TWEAK_MEAT_KEYWORDS = {
+      '猪肉': 'pork', '排骨': 'pork', '五花': 'pork', '里脊': 'pork',
+      '牛肉': 'beef', '牛腩': 'beef', '牛柳': 'beef',
+      '鸡肉': 'chicken', '鸡腿': 'chicken', '鸡翅': 'chicken', '鸡胸': 'chicken',
+      '鱼': 'fish', '鲈鱼': 'fish', '鳕鱼': 'fish', '三文鱼': 'fish',
+      '虾': 'shrimp', '虾仁': 'shrimp', '海鲜': 'shrimp',
+      '蔬菜': 'vegetable', '素菜': 'vegetable'
+    };
+    var tweakMeatTypes = {};
+    for (var kw in TWEAK_MEAT_KEYWORDS) {
+      if (TWEAK_MEAT_KEYWORDS.hasOwnProperty(kw) && text.indexOf(kw) !== -1) {
+        tweakMeatTypes[TWEAK_MEAT_KEYWORDS[kw]] = true;
+      }
+    }
+    var hasTweakMeatHint = Object.keys(tweakMeatTypes).length > 0;
+
+    // 优先匹配 tweak 食材的候选排在前面，确保 AI 有足够的相关选项
+    var boosted = [];
+    var rest = [];
+    for (var ri = 0; ri < adultRecipes.length; ri++) {
+      var r = adultRecipes[ri];
+      if (hasTweakMeatHint && r.meat && tweakMeatTypes[r.meat]) {
+        boosted.push(r);
+      } else {
+        rest.push(r);
+      }
+    }
+    var sorted = boosted.concat(rest);
+    var candidatePool = sorted.length > 500 ? sorted.slice(0, 500) : sorted;
+    var candidates = candidatePool.map(function (r) {
+      return { id: r.id || r._id, _id: r._id || r.id, name: r.name, meat: r.meat, cook_type: r.cook_type, flavor_profile: r.flavor_profile, dish_type: r.dish_type, cook_minutes: r.cook_minutes || 0, tags: r.tags || [] };
+    });
+
+    wx.cloud.callFunction({
+      name: 'smartMenuGen',
+      data: {
+        preference: pref,
+        mood: '随便',
+        weather: {},
+        recentDishNames: '',
+        candidates: candidates,
+        userTweak: text
+      }
+    }).then(function (res) {
+      wx.hideLoading();
+      var out = res.result;
+      if (out && out.code === 0 && out.data && Array.isArray(out.data.recipeIds) && out.data.recipeIds.length > 0) {
+        getApp().globalData.chefReportText = out.data.reasoning || '';
+        getApp().globalData.dishHighlights = out.data.dishHighlights || {};
+        var allRecipes = (source && source.adultRecipes) || [];
+        var recipeMap = {};
+        for (var i = 0; i < allRecipes.length; i++) {
+          var rid = allRecipes[i].id || allRecipes[i]._id;
+          if (rid) recipeMap[rid] = allRecipes[i];
+        }
+        var newMenus = out.data.recipeIds.map(function (id) {
+          var r = recipeMap[id];
+          if (!r) return null;
+          return { adultRecipe: r, babyRecipe: null, checked: true, meat: r.meat, taste: r.taste || r.flavor_profile };
+        }).filter(Boolean);
+
+        if (newMenus.length > 0) {
+          try {
+            wx.setStorageSync('today_menus', JSON.stringify(newMenus));
+          } catch (e) {}
+          getApp().globalData._userTweak = '';
+          that.setData({ tweakText: '' });
+          that.onLoad();
+          wx.showToast({ title: '已按你的要求重新搭配', icon: 'none' });
+          return;
+        }
+      }
+      wx.showToast({ title: '推荐失败，请稍后再试', icon: 'none' });
+    }).catch(function () {
+      wx.hideLoading();
+      wx.showToast({ title: '网络出问题了', icon: 'none' });
+    });
+  },
+
   handleShuffle: function () {
     var that = this;
     var rows = that.data.previewMenuRows || [];
@@ -598,7 +714,7 @@ Page({
         var adultName = (ar && ar.name) ? ar.name : '—';
         var stage = hasBaby && menuService.getBabyVariantByAge && menuService.getBabyVariantByAge(ar, pref.babyMonth);
         var babyName = hasBaby ? ((stage && stage.name) || (m.babyRecipe && m.babyRecipe.name) || '') : '';
-        var reason = (ar && ar.recommend_reason) ? ar.recommend_reason : '';
+        var reason = (ar && ar.recommend_reason) ? ar.recommend_reason : buildReasonFallback(ar);
         var sameAsAdultHint = (stage && stage.same_as_adult_hint) ? '与大人同款，分装即可' : '';
         newRows.push({
           adultName: adultName,
@@ -608,7 +724,7 @@ Page({
           recommendReason: reason,
           sameAsAdultHint: sameAsAdultHint,
           cookType: (ar && ar.cook_type) || '',
-          coverUrl: coverService.getRecipeCoverHttpUrl(adultName),
+          coverUrl: coverService.getRecipeCoverImageUrl(adultName),
           coverTempUrl: '',
           hasCover: true
         });
@@ -758,10 +874,10 @@ Page({
             babyName: hasBaby ? ((st && st.name) || (newSlot.babyRecipe && newSlot.babyRecipe.name) || '') : '',
             showSharedHint: hasBaby && newSlot.babyRecipe && i === firstMeatIndex,
             checked: true,
-            recommendReason: (ar && ar.recommend_reason) ? ar.recommend_reason : '',
+            recommendReason: (ar && ar.recommend_reason) ? ar.recommend_reason : buildReasonFallback(ar),
             sameAsAdultHint: (st && st.same_as_adult_hint) ? '与大人同款，分装即可' : '',
             cookType: (ar && ar.cook_type) || '',
-            coverUrl: coverService.getRecipeCoverHttpUrl(adultNameNew),
+            coverUrl: coverService.getRecipeCoverImageUrl(adultNameNew),
             coverTempUrl: '',
             hasCover: true
           });
@@ -945,10 +1061,10 @@ Page({
           babyName: babyName,
           showSharedHint: hasBaby && babyName && idx === 0,
           checked: true,
-          recommendReason: (ar && ar.recommend_reason) ? ar.recommend_reason : '',
+          recommendReason: (ar && ar.recommend_reason) ? ar.recommend_reason : buildReasonFallback(ar),
           sameAsAdultHint: (stage && stage.same_as_adult_hint) ? '与大人同款，分装即可' : '',
           cookType: (ar && ar.cook_type) || '',
-          coverUrl: coverService.getRecipeCoverHttpUrl(adultName),
+          coverUrl: coverService.getRecipeCoverImageUrl(adultName),
           coverTempUrl: (that.data.previewMenuRows[idx] && that.data.previewMenuRows[idx].coverTempUrl) || '',
           hasCover: true
         });
@@ -1038,7 +1154,7 @@ Page({
         var adultName = (ar && ar.name) ? ar.name : '—';
         var stage = hasBaby && menuData.getBabyVariantByAge && menuData.getBabyVariantByAge(ar, pref.babyMonth);
         var babyName = hasBaby ? ((stage && stage.name) || (m.babyRecipe && m.babyRecipe.name) || '') : '';
-        var reason = (ar && ar.recommend_reason) ? ar.recommend_reason : '';
+        var reason = (ar && ar.recommend_reason) ? ar.recommend_reason : buildReasonFallback(ar);
         newRows.push({
           adultName: adultName,
           babyName: babyName,
@@ -1047,7 +1163,7 @@ Page({
           recommendReason: reason,
           sameAsAdultHint: (stage && stage.same_as_adult_hint) ? '与大人同款，分装即可' : '',
           cookType: (ar && ar.cook_type) || '',
-          coverUrl: coverService.getRecipeCoverHttpUrl(adultName),
+          coverUrl: coverService.getRecipeCoverImageUrl(adultName),
           coverTempUrl: '',
           hasCover: true
         });
@@ -1138,10 +1254,10 @@ Page({
         babyName: babyName,
         showSharedHint: !!babyName && idx === 0,
         checked: true,
-        recommendReason: (ar && ar.recommend_reason) ? ar.recommend_reason : '',
+        recommendReason: (ar && ar.recommend_reason) ? ar.recommend_reason : buildReasonFallback(ar),
         sameAsAdultHint: (stage && stage.same_as_adult_hint) ? '与大人同款，分装即可' : '',
         cookType: (ar && ar.cook_type) || '',
-        coverUrl: coverService.getRecipeCoverHttpUrl(adultName),
+        coverUrl: coverService.getRecipeCoverImageUrl(adultName),
         coverTempUrl: '',
         hasCover: true
       });
@@ -1198,10 +1314,10 @@ Page({
         babyName: '',
         showSharedHint: false,
         checked: true,
-        recommendReason: (ar && ar.recommend_reason) ? ar.recommend_reason : '',
+        recommendReason: (ar && ar.recommend_reason) ? ar.recommend_reason : buildReasonFallback(ar),
         sameAsAdultHint: '',
         cookType: (ar && ar.cook_type) || '',
-        coverUrl: coverService.getRecipeCoverHttpUrl(adultName),
+        coverUrl: coverService.getRecipeCoverImageUrl(adultName),
         coverTempUrl: '',
         hasCover: true
       });
@@ -1349,10 +1465,10 @@ Page({
         babyName: hasBaby ? ((res.babyRecipe && res.babyRecipe.name) || '') : '',
         showSharedHint: false,
         checked: true,
-        recommendReason: (ar && ar.recommend_reason) ? ar.recommend_reason : '',
+        recommendReason: (ar && ar.recommend_reason) ? ar.recommend_reason : buildReasonFallback(ar),
         sameAsAdultHint: '',
         cookType: (ar && ar.cook_type) || '',
-        coverUrl: coverService.getRecipeCoverHttpUrl(ar.name),
+        coverUrl: coverService.getRecipeCoverImageUrl(ar.name),
         coverTempUrl: '',
         hasCover: !!coverService.RECIPE_NAME_TO_SLUG[ar.name]
       };
@@ -1441,10 +1557,10 @@ Page({
         babyName: '',
         showSharedHint: false,
         checked: true,
-        recommendReason: (ar && ar.recommend_reason) ? ar.recommend_reason : '',
+        recommendReason: (ar && ar.recommend_reason) ? ar.recommend_reason : buildReasonFallback(ar),
         sameAsAdultHint: '',
         cookType: (ar && ar.cook_type) || '',
-        coverUrl: coverService.getRecipeCoverHttpUrl(ar.name),
+        coverUrl: coverService.getRecipeCoverImageUrl(ar.name),
         coverTempUrl: '',
         hasCover: true
       };
@@ -1491,6 +1607,13 @@ Page({
       }
     }
     this.setData({ avoidCapsules: caps });
+
+    // 同步持久化到 tasteProfile
+    try {
+      var tasteProfile = require('../../data/tasteProfile.js');
+      tasteProfile.setAvoidList(this._getActiveAvoidList());
+    } catch (err) {}
+
     this._checkAndReplaceAvoidConflicts();
     this._recalcWithPreference();
   },
@@ -1515,17 +1638,7 @@ Page({
     for (var idx = 0; idx < menus.length; idx++) {
       var r = menus[idx].adultRecipe;
       if (!r) continue;
-      var mainIng = r.main_ingredients || [];
-      if (!Array.isArray(mainIng)) mainIng = [];
-      var hit = false;
-      if ((r.flavor_profile || '') === 'spicy' && avoidList.indexOf('spicy') !== -1) hit = true;
-      if (!hit && avoidList.indexOf('cilantro') !== -1) {
-        for (var ci = 0; ci < mainIng.length; ci++) {
-          var mn = String(mainIng[ci] || '');
-          if (mn.indexOf('香菜') !== -1 || mn.indexOf('芫荽') !== -1) { hit = true; break; }
-        }
-      }
-      if (!hit && menuGen.recipeContainsAvoid) hit = menuGen.recipeContainsAvoid(r, avoidList);
+      var hit = generator.recipeContainsAvoid ? generator.recipeContainsAvoid(r, avoidList) : false;
       if (!hit) continue;
       var hasBabyThis = hasBaby && menus[idx].meat !== 'vegetable' && idx === firstMeatIndex;
       var filters = { userPreference: pref, existingMenus: menus, stewCountRef: { stewCount: 0 } };
@@ -1552,10 +1665,10 @@ Page({
         babyName: (st && st.name) || (m.babyRecipe && m.babyRecipe.name) || '',
         showSharedHint: hasBaby && j === firstMeatIndex && (m.babyRecipe || st),
         checked: true,
-        recommendReason: (ar && ar.recommend_reason) ? ar.recommend_reason : '',
+        recommendReason: (ar && ar.recommend_reason) ? ar.recommend_reason : buildReasonFallback(ar),
         sameAsAdultHint: (st && st.same_as_adult_hint) ? '与大人同款，分装即可' : '',
         cookType: (ar && ar.cook_type) || '',
-        coverUrl: coverService.getRecipeCoverHttpUrl(adultName),
+        coverUrl: coverService.getRecipeCoverImageUrl(adultName),
           coverTempUrl: (that.data.previewMenuRows[j] && that.data.previewMenuRows[j].coverTempUrl) || '',
           hasCover: true
       });

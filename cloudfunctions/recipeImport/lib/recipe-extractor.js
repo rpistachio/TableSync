@@ -16,7 +16,7 @@ const SYSTEM_PROMPT = `从菜谱截图中提取结构化信息，输出 JSON。�
 
 食材 ingredients：name(中文), amount(数值), unit(g/个/适量等), category(肉类|蔬菜|调料|蛋类|豆制品|菌菇|海鲜|主食|乳制品|水果|干货|其他)。
 步骤 steps：action 仅 "prep" 或 "cook"，text 操作描述，duration_num 分钟数。
-其他：name 菜名；cook_type 仅 stir_fry|stew|steam|cold_dress；meat 仅 chicken|pork|beef|fish|shrimp|vegetable；flavor_profile 仅 spicy|salty_umami|light|sweet_sour|sour_fresh；prep_time/cook_minutes 分钟；source_author 博主名；base_serving 默认 2。
+其他：name 菜名；cook_type 仅 stir_fry|stew|steam|cold_dress|bake；meat 仅 chicken|pork|beef|fish|shrimp|lamb|duck|shellfish|vegetable；flavor_profile 仅 spicy|salty_umami|light|sweet_sour|sour_fresh；prep_time/cook_minutes 分钟；source_author 博主名；base_serving 默认 2。
 
 只输出以下 JSON，无 markdown 无多余文字：
 {

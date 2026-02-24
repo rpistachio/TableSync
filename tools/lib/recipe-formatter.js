@@ -23,12 +23,14 @@ function buildIdCounters(existing) {
     'a-beef': 0,
     'a-fish': 0,
     'a-shrimp': 0,
+    'a-lamb': 0,
+    'a-duck': 0,
+    'a-shell': 0,
     'a-veg': 0
   };
   existing.forEach((r) => {
     if (!r.id || typeof r.id !== 'string') return;
-    // 只统计标准格式 a-xxx-N，忽略 a-veg-test-1 等非数字后缀，删除测试数据后不会产生 ID 冲突
-    const m = r.id.match(/^(a\-(soup|chi|pork|beef|fish|shrimp|veg))\-(\d+)$/);
+    const m = r.id.match(/^(a\-(soup|chi|pork|beef|fish|shrimp|lamb|duck|shell|veg))\-(\d+)$/);
     if (!m) return;
     const prefix = m[1];
     const n = Number(m[3]) || 0;
@@ -45,6 +47,9 @@ function pickPrefix(recipe) {
     case 'beef': return 'a-beef';
     case 'fish': return 'a-fish';
     case 'shrimp': return 'a-shrimp';
+    case 'lamb': return 'a-lamb';
+    case 'duck': return 'a-duck';
+    case 'shellfish': return 'a-shell';
     default: return 'a-veg';
   }
 }
@@ -137,8 +142,12 @@ export function normalizeGeneratedItems(raw) {
       cook_type: recipe.cook_type || inferCookType(recipe),
       cook_minutes: recipe.cook_minutes || (recipe.taste === 'slow_stew' ? 90 : 15),
       ingredients: recipe.ingredients || [],
-      steps: recipe.steps || []
+      steps: recipe.steps || [],
+      tags: Array.isArray(recipe.tags) ? recipe.tags : [],
+      base_serving: recipe.base_serving || 2
     };
+    if (recipe.ingredient_group) fixed.ingredient_group = recipe.ingredient_group;
+    if (recipe.spicy_sub && fixed.flavor_profile === 'spicy') fixed.spicy_sub = recipe.spicy_sub;
     if (validatedBabyVariant) {
       fixed.baby_variant = validatedBabyVariant;
     }
@@ -172,6 +181,9 @@ function inferTaste(recipe) {
 
 function inferMeat(recipe) {
   const name = recipe.name || '';
+  if (name.includes('羊')) return 'lamb';
+  if (name.includes('鸭')) return 'duck';
+  if (name.includes('蛤蜊') || name.includes('扇贝') || name.includes('鲍鱼') || name.includes('鱿鱼') || name.includes('墨鱼') || name.includes('小卷') || name.includes('蛏子') || name.includes('生蚝')) return 'shellfish';
   if (name.includes('乌鸡') || name.includes('鸡')) return 'chicken';
   if (name.includes('排骨') || name.includes('猪') || name.includes('猪蹄')) return 'pork';
   if (name.includes('牛')) return 'beef';
@@ -190,7 +202,10 @@ function inferFlavorProfile(recipe) {
 }
 
 function inferCookType(recipe) {
+  const name = recipe.name || '';
   if (recipe.taste === 'slow_stew' || recipe.dish_type === 'soup') return 'stew';
+  if (name.includes('凉拌') || name.includes('拌') || name.includes('白切')) return 'cold_dress';
+  if (name.includes('烤') || name.includes('焗')) return 'bake';
   if (recipe.taste === 'steamed_salad') return 'steam';
   return 'stir_fry';
 }

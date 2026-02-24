@@ -5,19 +5,19 @@ var menuData = require('../../data/menuData.js');
 var menuGen = require('../../data/menuGenerator.js');
 var scheduleEngine = require('../../utils/scheduleEngine.js');
 var coverService = require('../../data/recipeCoverSlugs.js');
-var imageLib = require('../../utils/imageLib.js');
 
 /** 烹饪方式中文映射 */
 var COOK_TYPE_LABELS = {
   'stir_fry': '炒/煎', 'stew': '炖煮', 'steam': '蒸/白灼',
-  'cold_dress': '凉拌', 'quick_stir_fry': '快炒', 'braise': '红烧',
+  'cold_dress': '凉拌', 'bake': '焗/烤', 'quick_stir_fry': '快炒', 'braise': '红烧',
   'fry': '煎炸', 'boil': '煮'
 };
 
 /** 肉类中文映射 */
 var MEAT_LABELS = {
   'chicken': '鸡肉', 'pork': '猪肉', 'beef': '牛肉',
-  'fish': '鱼类', 'shrimp': '虾类', 'vegetable': '素菜'
+  'fish': '鱼类', 'shrimp': '虾类', 'lamb': '羊肉', 'duck': '鸭肉', 'shellfish': '贝类',
+  'vegetable': '素菜'
 };
 
 /** 口味中文映射 */
@@ -97,7 +97,7 @@ Page({
     // 原生菜谱列表（用于选择）
     nativeRecipes: [],
     // 原生菜谱按分类过滤
-    nativeFilter: 'all', // 'all'|'chicken'|'pork'|'beef'|'fish'|'shrimp'|'vegetable'
+    nativeFilter: 'all', // 'all'|'chicken'|'pork'|'beef'|'fish'|'shrimp'|'lamb'|'duck'|'shellfish'|'vegetable'
     nativeFilterOptions: [
       { value: 'all', label: '全部' },
       { value: 'chicken', label: '鸡肉' },
@@ -105,6 +105,9 @@ Page({
       { value: 'beef', label: '牛肉' },
       { value: 'fish', label: '鱼类' },
       { value: 'shrimp', label: '虾类' },
+      { value: 'lamb', label: '羊肉' },
+      { value: 'duck', label: '鸭肉' },
+      { value: 'shellfish', label: '贝类' },
       { value: 'vegetable', label: '素菜' }
     ],
     filteredNativeRecipes: [],
@@ -136,10 +139,9 @@ Page({
 
     annotateRecipeLabels(nativeRecipes);
 
-    // 为原生菜谱预置封面 HTTP 直链（无需 getTempFileURL）
+    // 为原生菜谱预置封面 cloud:// 地址（临时 URL 在面板打开时懒解析）
     for (var ci = 0; ci < nativeRecipes.length; ci++) {
-      nativeRecipes[ci]._coverHttpUrl = coverService.getRecipeCoverHttpUrl(nativeRecipes[ci].name);
-      nativeRecipes[ci]._coverCloudUrl = '';
+      nativeRecipes[ci]._coverCloudUrl = coverService.getRecipeCoverImageUrl(nativeRecipes[ci].name);
       nativeRecipes[ci]._coverTempUrl = '';
     }
 
@@ -228,14 +230,14 @@ Page({
         // 为草稿中的菜谱补全封面字段（旧草稿可能没有 _coverCloudUrl）
         for (var i = 0; i < recipes.length; i++) {
           var r = recipes[i];
-          if (r._sourceType === 'native') {
-            if (!r._coverHttpUrl) r._coverHttpUrl = coverService.getRecipeCoverHttpUrl(r.name);
-            r._coverCloudUrl = r._coverCloudUrl || '';
-            if (!r._coverTempUrl) r._coverTempUrl = '';
-          } else {
-            if (!r._coverCloudUrl) r._coverCloudUrl = r.coverUrl || '';
-            if (!r._coverTempUrl) r._coverTempUrl = '';
+          if (!r._coverCloudUrl) {
+            if (r._sourceType === 'native') {
+              r._coverCloudUrl = coverService.getRecipeCoverImageUrl(r.name);
+            } else {
+              r._coverCloudUrl = r.coverUrl || '';
+            }
           }
+          if (!r._coverTempUrl) r._coverTempUrl = '';
         }
         this.setData({ selectedRecipes: recipes });
         this._updateSchedulePreview();
@@ -346,16 +348,13 @@ Page({
     newRecipe._meatLabel = MEAT_LABELS[recipe.meat] || '其他';
     newRecipe._flavorLabel = FLAVOR_LABELS[recipe.flavor_profile] || '';
 
-    // 封面图：原生用 HTTP 直链；外部导入用云数据库 coverUrl（需 getTempFileURL 解析）
+    // 封面图：原生菜谱通过 slug 映射；外部导入菜谱用云数据库中的 coverUrl
     if (sourceType === 'native') {
-      newRecipe._coverHttpUrl = coverService.getRecipeCoverHttpUrl(recipe.name);
-      newRecipe._coverCloudUrl = '';
-      newRecipe._coverTempUrl = '';
+      newRecipe._coverCloudUrl = coverService.getRecipeCoverImageUrl(recipe.name);
     } else {
-      newRecipe._coverHttpUrl = '';
       newRecipe._coverCloudUrl = recipe.coverUrl || '';
-      newRecipe._coverTempUrl = '';
     }
+    newRecipe._coverTempUrl = '';
 
     selected.push(newRecipe);
 
@@ -495,7 +494,7 @@ Page({
   },
 
   /**
-   * 将 _coverCloudUrl 中的 cloud:// 地址批量转为临时 HTTPS URL（使用全局缓存）
+   * 将 _coverCloudUrl 中的 cloud:// 地址批量转为临时 HTTPS URL
    */
   _doResolveTempUrls: function () {
     var that = this;
@@ -509,13 +508,34 @@ Page({
     }
     if (cloudIds.length === 0) return;
 
-    imageLib.batchResolveTempUrls(cloudIds, function (map) {
-      var updated = recipes.map(function (r) {
-        var tmp = (r._coverCloudUrl && map[r._coverCloudUrl]) || '';
-        if (tmp) return Object.assign({}, r, { _coverTempUrl: tmp });
-        return r;
-      });
-      that.setData({ selectedRecipes: updated });
+    var uniq = [];
+    var seen = {};
+    for (var u = 0; u < cloudIds.length; u++) {
+      if (!seen[cloudIds[u]]) {
+        seen[cloudIds[u]] = true;
+        uniq.push(cloudIds[u]);
+      }
+    }
+
+    wx.cloud.getTempFileURL({
+      fileList: uniq,
+      success: function (res) {
+        var list = (res && res.fileList) || [];
+        var map = {};
+        for (var j = 0; j < list.length; j++) {
+          var it = list[j] || {};
+          if (it.fileID && it.tempFileURL) {
+            map[it.fileID] = it.tempFileURL;
+          }
+        }
+        var updated = recipes.map(function (r) {
+          var tmp = (r._coverCloudUrl && map[r._coverCloudUrl]) || '';
+          if (tmp) return Object.assign({}, r, { _coverTempUrl: tmp });
+          return r;
+        });
+        that.setData({ selectedRecipes: updated });
+      },
+      fail: function () {}
     });
   },
 
@@ -527,6 +547,7 @@ Page({
    */
   _resolvePickerCoverImages: function () {
     var that = this;
+    if (!(wx.cloud && wx.cloud.getTempFileURL)) return;
 
     var allRecipes = that._nativeRecipes || [];
     var cloudIds = [];
@@ -536,26 +557,59 @@ Page({
         cloudIds.push(url);
       }
     }
-    if (cloudIds.length === 0) {
-      that._pickerCoversResolved = true;
-      return;
+    if (cloudIds.length === 0) return;
+
+    var uniq = [];
+    var seen = {};
+    for (var u = 0; u < cloudIds.length; u++) {
+      if (!seen[cloudIds[u]]) {
+        seen[cloudIds[u]] = true;
+        uniq.push(cloudIds[u]);
+      }
     }
 
-    imageLib.batchResolveTempUrls(cloudIds, function (urlMap) {
-      if (Object.keys(urlMap).length === 0) return;
-      var allNative = that._nativeRecipes || [];
-      for (var k = 0; k < allNative.length; k++) {
-        var tmp = urlMap[allNative[k]._coverCloudUrl] || '';
-        if (tmp) allNative[k]._coverTempUrl = tmp;
+    var BATCH_SIZE = 50;
+    var batches = [];
+    for (var b = 0; b < uniq.length; b += BATCH_SIZE) {
+      batches.push(uniq.slice(b, b + BATCH_SIZE));
+    }
+
+    var urlMap = {};
+
+    function processBatch(batchIndex) {
+      if (batchIndex >= batches.length) {
+        var allNative = that._nativeRecipes || [];
+        for (var k = 0; k < allNative.length; k++) {
+          var tmp = urlMap[allNative[k]._coverCloudUrl] || '';
+          if (tmp) allNative[k]._coverTempUrl = tmp;
+        }
+        var currentFilter = that.data.nativeFilter || 'all';
+        var filtered = currentFilter === 'all' ? allNative : allNative.filter(function (r) { return r.meat === currentFilter; });
+        that.setData({
+          nativeRecipes: allNative,
+          filteredNativeRecipes: filtered
+        });
+        that._pickerCoversResolved = true;
+        return;
       }
-      var currentFilter = that.data.nativeFilter || 'all';
-      var filtered = currentFilter === 'all' ? allNative : allNative.filter(function (r) { return r.meat === currentFilter; });
-      that.setData({
-        nativeRecipes: allNative,
-        filteredNativeRecipes: filtered
+      wx.cloud.getTempFileURL({
+        fileList: batches[batchIndex],
+        success: function (res) {
+          var list = (res && res.fileList) || [];
+          for (var j = 0; j < list.length; j++) {
+            var it = list[j] || {};
+            if (it.fileID && it.tempFileURL) {
+              urlMap[it.fileID] = it.tempFileURL;
+            }
+          }
+        },
+        complete: function () {
+          processBatch(batchIndex + 1);
+        }
       });
-      that._pickerCoversResolved = true;
-    });
+    }
+
+    processBatch(0);
   },
 
   /**
@@ -592,13 +646,27 @@ Page({
       }
       if (cloudIds.length === 0) return;
 
-      imageLib.batchResolveTempUrls(cloudIds, function (map) {
-        var updated = (that.data.importedRecipes || []).map(function (r) {
-          var tmp = r._coverCloudUrl && map[r._coverCloudUrl];
-          if (tmp) return Object.assign({}, r, { _coverTempUrl: tmp });
-          return r;
-        });
-        that.setData({ importedRecipes: updated });
+      var uniq = [];
+      var seen = {};
+      for (var u = 0; u < cloudIds.length; u++) {
+        if (!seen[cloudIds[u]]) { seen[cloudIds[u]] = true; uniq.push(cloudIds[u]); }
+      }
+      wx.cloud.getTempFileURL({
+        fileList: uniq,
+        success: function (res) {
+          var items = (res && res.fileList) || [];
+          var map = {};
+          for (var j = 0; j < items.length; j++) {
+            var it = items[j] || {};
+            if (it.fileID && it.tempFileURL) map[it.fileID] = it.tempFileURL;
+          }
+          var updated = (that.data.importedRecipes || []).map(function (r) {
+            var tmp = r._coverCloudUrl && map[r._coverCloudUrl];
+            if (tmp) return Object.assign({}, r, { _coverTempUrl: tmp });
+            return r;
+          });
+          that.setData({ importedRecipes: updated });
+        }
       });
     }
 

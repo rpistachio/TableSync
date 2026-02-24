@@ -1,0 +1,53 @@
+<view class="fridge-page">
+  <!-- 输入区 -->
+  <view class="fridge-input-bar">
+    <input
+      class="fridge-input"
+      placeholder="输入食材（如：牛肉 鸡腿 虾）"
+      placeholder-class="fridge-input-placeholder"
+      value="{{inputText}}"
+      bindinput="onInputChange"
+      confirm-type="send"
+      bindconfirm="onInputConfirm"
+    />
+    <view class="fridge-storage-toggle" bindtap="onStorageToggle">
+      <text class="fridge-storage-label {{storageType === 'fridge' ? 'is-active' : ''}}">冷藏</text>
+      <text class="fridge-storage-divider">|</text>
+      <text class="fridge-storage-label {{storageType === 'freezer' ? 'is-active' : ''}}">冷冻</text>
+    </view>
+    <view class="fridge-add-btn" bindtap="onAddItems">
+      <text class="fridge-add-btn-text">入库</text>
+    </view>
+  </view>
+
+  <!-- 食材列表 -->
+  <view class="fridge-list" wx:if="{{!isEmpty}}">
+    <view
+      class="fridge-item urgency-{{item.urgency}}"
+      wx:for="{{items}}"
+      wx:key="id"
+    >
+      <view class="fridge-item-main" bindtap="onToggleItemStorage" data-id="{{item.id}}">
+        <text class="fridge-item-icon">{{item.icon}}</text>
+        <text class="fridge-item-name">{{item.name}}</text>
+        <text class="fridge-item-storage">{{item.storageLabel}}</text>
+        <text class="fridge-item-status">{{item.statusText}}</text>
+      </view>
+      <view class="fridge-item-delete" catchtap="onRemoveItem" data-id="{{item.id}}">
+        <text class="fridge-item-delete-icon">×</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="fridge-empty" wx:if="{{isEmpty}}">
+    <text class="fridge-empty-icon">🧊</text>
+    <text class="fridge-empty-text">冰箱空空的</text>
+    <text class="fridge-empty-hint">添加点食材，让我帮你安排</text>
+  </view>
+
+  <!-- 底部提示 -->
+  <view class="fridge-footer" wx:if="{{!isEmpty}}">
+    <text class="fridge-footer-text">点击食材可切换冷藏/冷冻 · 左边临期的优先排列</text>
+  </view>
+</view>

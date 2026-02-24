@@ -106,6 +106,26 @@ const FLAVOR_LABELS = {
   sour_fresh: '酸爽',
 };
 
+const MEAT_LABELS = {
+  pork: '猪肉',
+  beef: '牛肉',
+  chicken: '鸡肉',
+  fish: '鱼',
+  shrimp: '虾/海鲜',
+  vegetable: '蔬菜',
+  egg: '蛋',
+  tofu: '豆腐',
+};
+
+/** 口味语义对齐：将抽象口味标签翻译为具体烹饪指令（Layer 3: Semantic Alignment） */
+const FLAVOR_SEMANTICS = {
+  light:       '偏好清蒸、白灼、水煮等方式，减少勾芡和重油，突出食材本味',
+  spicy:       '偏好川湘风格，适当使用干辣椒、花椒或豆瓣酱提味',
+  sour_fresh:  '偏好酸汤、柠檬汁、番茄等带酸味的菜式，开胃爽口',
+  salty_umami: '偏好酱香浓郁、咸鲜下饭的家常菜，如红烧、酱炒',
+  sweet_sour:  '偏好糖醋、蜜汁等甜酸交融的菜式，色彩鲜艳',
+};
+
 /* ═══════════════════════════════════════════
    辅助函数
    ═══════════════════════════════════════════ */
@@ -209,6 +229,11 @@ function buildSystemPrompt() {
 - 同套餐中 meat（主料类型）尽量不重复（如不要两道都用鸡肉）
 - 荤菜提供蛋白质，素菜提供膳食纤维+维生素，汤品补充水分
 
+### P3.5 — 口味档案适配
+- 如果用户提供了口味档案（偏好口味、偏好食材），在满足以上约束的前提下，优先选择用户历史偏好的口味和食材类型
+- 如果用户有"库存急用"标记，该食材类型的优先级高于口味偏好（类似灵感篮子 high priority）
+- 口味档案是软约束（best effort），不是硬红线
+
 ### P4 — 灵感篮子优先
 - 如果用户提供了"灵感篮子"（用户主动收藏或冰箱匹配的菜谱），在满足套餐结构和红线约束的前提下，优先从篮子中选择
 - 篮子中 priority 为 "high" 的菜谱（冰箱即将过期食材），应最优先使用
@@ -234,7 +259,7 @@ function buildSystemPrompt() {
   "dishHighlights": { "id1": "这道菜的亮点或选择理由（≤20字）", "id2": "..." }
 }
 
-dishHighlights 为可选字段，为每道菜给出一句简短的选择理由（如"来自灵感篮，冰箱有现成食材"、"疲惫时快手蒸菜最省力"）。
+dishHighlights 为必填字段，为每道菜给出一句因果关联的推荐理由（≤20字）。理由必须与"今日主角食材"、"用户口味偏好"或"天气/季节"挂钩，如"及时享用，冰箱里的牛肉正鲜嫩"、"快手12分钟，适合今天的节奏"、"鲈鱼正当季，清蒸最鲜"。禁止"好吃"、"推荐"等空泛词。
 recipeIds 顺序必须严格遵循：先所有荤菜 → 再所有素菜 → 最后汤（若有）。`;
 }
 
@@ -249,7 +274,7 @@ recipeIds 顺序必须严格遵循：先所有荤菜 → 再所有素菜 → 最
  * @returns {string}
  */
 function buildUserMessage(opts) {
-  const { preference, mood, weather, recentDishNames, candidates, basketItems } = opts;
+  const { preference, mood, weather, recentDishNames, dislikedDishNames, fridgeExpiring, heroIngredient, candidates, basketItems, userTweak } = opts;
   const meatCount = preference.meatCount || 1;
   const vegCount = preference.vegCount || 1;
   const soupCount = preference.soupCount || 0;
@@ -261,6 +286,27 @@ function buildUserMessage(opts) {
   const seasonalHint = getSeasonalHint();
 
   const parts = [];
+
+  // ── Section 0: 用户特别要求（最高优先级自然语言约束） ──
+  if (userTweak && typeof userTweak === 'string' && userTweak.trim()) {
+    parts.push('## ⚡ 用户特别要求（最高优先级，务必遵守）');
+    parts.push(userTweak.trim());
+    parts.push('');
+  }
+
+  // ── Section 0.5: 冰箱临期食材（高优先级消耗） ──
+  if (Array.isArray(fridgeExpiring) && fridgeExpiring.length > 0) {
+    parts.push('## 🧊 冰箱临期食材（请务必优先使用）');
+    parts.push(`以下食材即将过期，请在本次菜单中尽量安排使用：${fridgeExpiring.join('、')}`);
+    parts.push('');
+  }
+
+  // ── Section 0.6: 今日主角食材（锚点） ──
+  if (heroIngredient) {
+    parts.push('## 🌟 今日主角食材');
+    parts.push(`今天重点围绕【${heroIngredient}】来组菜单。请确保至少有一道菜使用该食材。`);
+    parts.push('');
+  }
 
   // ── Section 1: 家庭画像 ──
   parts.push('## 家庭画像');
@@ -285,6 +331,39 @@ function buildUserMessage(opts) {
 
   if (preference.isTimeSave) {
     parts.push('- ⏱ 省时模式已开启：优先选择 cook_minutes 低的菜品');
+  }
+
+  // 口味档案注入（语义对齐：将抽象偏好翻译为具体烹饪指令）
+  if (preference.flavorHint) {
+    const topFlavorKey = preference.topFlavorKey;
+    const secondFlavorKey = preference.secondFlavorKey;
+    const topSemantic = topFlavorKey && FLAVOR_SEMANTICS[topFlavorKey];
+    const secondSemantic = secondFlavorKey && FLAVOR_SEMANTICS[secondFlavorKey];
+
+    if (preference.flavorAmbiguous && topSemantic && secondSemantic) {
+      const LABELS = { light: '清淡', spicy: '辣味', sour_fresh: '酸爽', salty_umami: '咸鲜', sweet_sour: '酸甜' };
+      const topLabel = LABELS[topFlavorKey] || topFlavorKey;
+      const secondLabel = LABELS[secondFlavorKey] || secondFlavorKey;
+      parts.push(`- 🎯 口味偏好：用户平时爱吃${topLabel}和${secondLabel}（${preference.flavorHint}），两种方向都可以，请在套餐中灵活搭配`);
+      parts.push(`  - ${topLabel}方向：${topSemantic}`);
+      parts.push(`  - ${secondLabel}方向：${secondSemantic}`);
+    } else if (topSemantic) {
+      parts.push(`- 🎯 口味偏好：${topSemantic}（${preference.flavorHint}）`);
+    } else {
+      parts.push(`- 🎯 口味档案：${preference.flavorHint}`);
+    }
+  }
+  if (Array.isArray(preference.preferredMeats) && preference.preferredMeats.length > 0) {
+    const meatLabels = { chicken: '鸡肉', pork: '猪肉', beef: '牛肉', fish: '鱼肉', shrimp: '虾仁', vegetable: '素菜' };
+    const names = preference.preferredMeats.map(m => meatLabels[m] || m).join('、');
+    parts.push(`- 🎯 偏好食材：${names}（在满足套餐结构和多样性前提下，适当偏向这些食材）`);
+  }
+
+  // 库存急用注入（单次高优约束，类似灵感篮子 high priority）
+  if (preference.urgentIngredient) {
+    const urgentLabels = { meat: '肉类', vegetable: '蔬菜', seafood: '海鲜' };
+    const urgentName = urgentLabels[preference.urgentIngredient] || preference.urgentIngredient;
+    parts.push(`- ⚡ 库存急用：用户冰箱有【${urgentName}】需要尽快消耗，请优先选择含${urgentName}的菜品（优先级高于口味偏好）`);
   }
 
   // ── Section 2: 天气上下文 ──
@@ -328,11 +407,18 @@ function buildUserMessage(opts) {
     parts.push('【必达】reasoning 话术中必须体现「我看到了你的灵感」并点名具体来源（如：来自冰箱匹配、小红书导入、菜谱库收藏等），与上述来源说明一致。');
   }
 
-  // ── Section 4: 去重 ──
+  // ── Section 4: 去重 + 负面约束 ──
   if (recentDishNames) {
     parts.push('');
     parts.push('## 最近做过的菜（请避免重复或相似主料）');
     parts.push(recentDishNames);
+  }
+
+  if (Array.isArray(dislikedDishNames) && dislikedDishNames.length > 0) {
+    parts.push('');
+    parts.push('## 用户近期不想吃的菜（严格回避！）');
+    parts.push(dislikedDishNames.join('、'));
+    parts.push('这些菜品曾被用户明确换掉，必须排除，不要推荐同名或高度相似的菜。');
   }
 
   // ── Section 5: 候选菜谱 ──
@@ -340,14 +426,41 @@ function buildUserMessage(opts) {
   const candidateCount = (candidates || []).length;
   parts.push(`## 候选菜谱（共 ${candidateCount} 道，请严格只从中选择）`);
 
-  // 精简候选列表，最多 80 条，节省 token
-  const simplified = (candidates || []).slice(0, 80).map((r) => {
+  // 动态候选策略：≤500 全量发送，>500 按主料均衡截断
+  const CANDIDATE_CAP = 500;
+  const rawCandidates = candidates || [];
+  let pool = rawCandidates;
+  if (rawCandidates.length > CANDIDATE_CAP) {
+    const buckets = {};
+    rawCandidates.forEach(r => {
+      const m = r.meat || 'other';
+      if (!buckets[m]) buckets[m] = [];
+      buckets[m].push(r);
+    });
+    const meatTypes = Object.keys(buckets);
+    const perBucket = Math.max(Math.floor(CANDIDATE_CAP / meatTypes.length), 20);
+    pool = [];
+    meatTypes.forEach(m => {
+      pool = pool.concat(buckets[m].slice(0, perBucket));
+    });
+    if (pool.length < CANDIDATE_CAP) {
+      const picked = new Set(pool.map(r => r.id || r._id));
+      for (let i = 0; i < rawCandidates.length && pool.length < CANDIDATE_CAP; i++) {
+        const rid = rawCandidates[i].id || rawCandidates[i]._id;
+        if (!picked.has(rid)) { pool.push(rawCandidates[i]); picked.add(rid); }
+      }
+    }
+  }
+
+  const simplified = pool.map((r) => {
     const isSoup = r.dish_type === 'soup' || (r.name && r.name.includes('汤'));
     const isVeg = r.meat === 'vegetable';
+    const meatLabel = MEAT_LABELS[r.meat] || r.meat || '';
     const obj = {
       id: r.id || r._id,
       name: r.name,
       类型: isVeg ? '素' : (isSoup ? '汤' : '荤'),
+      主料: meatLabel || (isVeg ? '蔬菜' : '-'),
       烹饪: COOK_LABELS[r.cook_type] || r.cook_type || '-',
       风味: FLAVOR_LABELS[r.flavor_profile] || r.flavor_profile || '-',
     };
@@ -362,7 +475,19 @@ function buildUserMessage(opts) {
   parts.push('## 请输出');
   parts.push(`综合以上天气、心情、家庭画像，从候选列表中选出恰好 ${total} 道菜，组成一份完美的「${strategy.label}心情套餐」。`);
   parts.push(`顺序：${meatCount} 个荤菜 id → ${vegCount} 个素菜 id${soupCount ? ' → 1 个汤 id' : ''}。`);
-  parts.push('返回纯 JSON：{ "reasoning": "用朋友聊天的语气，亲切告诉用户今天为什么选了这几道菜（2-3句，≤100字，自然温暖，不用术语。如选了灵感篮子中的菜，自然地提一句为什么选了它）", "recipeIds": ["id1", ...], "dishHighlights": { "id1": "选择理由（≤20字）", ... } }');
+
+  // dishHighlights 因果理由要求
+  const highlightRules = [];
+  highlightRules.push('dishHighlights 是每道菜的推荐理由（≤20字），必须让用户感到"AI 懂我"：');
+  highlightRules.push('- 理由必须与"今日主角食材"、"用户口味偏好"或"天气/季节"产生因果关联');
+  if (heroIngredient) {
+    highlightRules.push(`- 使用了【${heroIngredient}】的菜：理由应点明食材来源，如"冰箱里的${heroIngredient}正新鲜"或"${heroIngredient}正当季，清蒸最鲜"`);
+  }
+  highlightRules.push('- 其他菜：结合烹饪方式或耗时给出实用理由，如"快手12分钟，下班不用等"、"蒸一蒸就好，清爽不腻"');
+  highlightRules.push('- 禁止空泛理由如"好吃"、"推荐"、"经典菜"');
+
+  parts.push(highlightRules.join('\n'));
+  parts.push('返回纯 JSON：{ "reasoning": "用朋友聊天的语气，亲切告诉用户今天为什么选了这几道菜（2-3句，≤100字，自然温暖，不用术语）", "recipeIds": ["id1", ...], "dishHighlights": { "id1": "因果理由（≤20字）", ... } }');
 
   return parts.join('\n');
 }

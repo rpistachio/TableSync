@@ -100,4 +100,21 @@ cd tools && node generate-covers-for-airfryer.js
 
 ---
 
+## 八、封面图管理网页（预览 + 勾选重生成并上传）
+
+在浏览器中预览所有成人菜封面，勾选后一键重生成并自动上传到云端：
+
+```bash
+node tools/cover-manager-server.js
+```
+
+浏览器打开 **http://localhost:3847**：
+
+- 列表展示所有成人菜封面（来自云存储）
+- 点击卡片勾选/取消，支持「全选」「取消全选」
+- 点击「重生成并上传选中」：先调用 MiniMax 重生成选中图片，完成后自动上传到云存储（覆盖原图）
+- 依赖与 sync 相同：`MINIMAX_API_KEY`、`TCB_ENV_ID` / `TCB_SECRET_ID` / `TCB_SECRET_KEY`
+
+---
+
 **查看 sync 帮助**：`node tools/sync.js --help`

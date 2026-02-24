@@ -449,7 +449,7 @@ action 只能是 prep（备菜）或 cook（烹饪）。`;
   }
 
   const steps = Array.isArray(parsed.steps) ? parsed.steps : [];
-  const cook_type = ['stir_fry', 'stew', 'steam', 'cold_dress'].includes(parsed.cook_type) ? parsed.cook_type : 'stir_fry';
+  const cook_type = ['stir_fry', 'stew', 'steam', 'cold_dress', 'bake'].includes(parsed.cook_type) ? parsed.cook_type : 'stir_fry';
   const prep_time = parseInt(parsed.prep_time, 10) || 0;
   const cook_minutes = parseInt(parsed.cook_minutes, 10) || 0;
 
@@ -516,8 +516,8 @@ async function handleLinkImport({ url, apiKey, textModel, timings, startTime }) 
 
 ### 其他字段
 - name：菜名
-- cook_type：推断烹饪方式，必须是 stir_fry | stew | steam | cold_dress 之一
-- meat：推断主料类型，必须是 chicken | pork | beef | fish | shrimp | vegetable 之一
+- cook_type：推断烹饪方式，必须是 stir_fry | stew | steam | cold_dress | bake 之一
+- meat：推断主料类型，必须是 chicken | pork | beef | fish | shrimp | lamb | duck | shellfish | vegetable 之一
 - flavor_profile：推断风味，必须是 spicy | salty_umami | light | sweet_sour | sour_fresh 之一
 - prep_time：备菜总时间（分钟），从 prep 步骤累加
 - cook_minutes：烹饪总时间（分钟），从 cook 步骤累加

@@ -74,7 +74,7 @@
       <view wx:if="{{!isHelperMode}}" class="preview-dish-list">
         <view wx:for="{{previewMenuRows}}" wx:key="index" class="dish-card-wrap" data-index="{{index}}" bindtap="onCheckRow">
           <view class="dish-card-modern {{item.checked ? '' : 'is-unchecked'}} {{item.hasCover ? '' : 'no-cover'}}" style="animation-delay: {{index * 120}}ms">
-            <image wx:if="{{item.hasCover && isImageReady && (item.coverTempUrl || item.coverUrl)}}" class="card-bg" src="{{item.coverTempUrl || item.coverUrl}}" mode="aspectFill" />
+            <image wx:if="{{item.hasCover && isImageReady && item.coverTempUrl}}" class="card-bg" src="{{item.coverTempUrl}}" mode="aspectFill" />
             <view class="card-overlay"></view>
             <view class="airfryer-tag" wx:if="{{isTiredMode && item.cookType === 'air_fryer'}}">空气炸锅</view>
             <view class="card-info">
@@ -145,6 +145,23 @@
       <view class="preview-add-dish-placeholder" catchtap="onAddDish">
         <text class="preview-add-dish-text">+ 再加个菜？</text>
       </view>
+
+      <!-- 一句话微调 -->
+      <view class="tweak-bar" wx:if="{{!isHelperMode}}">
+        <input
+          class="tweak-input"
+          placeholder="给主厨提要求（如：别放葱 / 想吃鱼）"
+          placeholder-class="tweak-placeholder"
+          value="{{tweakText}}"
+          bindinput="onTweakInput"
+          confirm-type="send"
+          bindconfirm="onTweakSubmit"
+        />
+        <view class="tweak-send {{tweakText ? 'tweak-send-active' : ''}}" catchtap="onTweakSubmit" wx:if="{{tweakText}}">
+          <text class="tweak-send-text">重新推荐</text>
+        </view>
+      </view>
+
       <view class="preview-avoid-bar">
         <view wx:for="{{avoidCapsules}}" wx:key="key" class="preview-avoid-chip {{item.active ? 'is-active' : ''}}" data-key="{{item.key}}" catchtap="onToggleAvoid">
           <text class="preview-avoid-label">{{item.label}}</text>

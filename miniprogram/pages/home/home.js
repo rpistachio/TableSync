@@ -2,15 +2,17 @@ var menuHistory = require('../../utils/menuHistory.js');
 var menuData = require('../../data/menuData.js');
 var menuGen = require('../../data/menuGenerator.js');
 var recipeCoverSlugs = require('../../data/recipeCoverSlugs.js');
-var recipeResources = require('../../data/recipeResources.js');
 var vibeGreeting = require('../../utils/vibeGreeting.js');
 var seedUserService = require('../../utils/seedUserService.js');
+var tasteProfile = require('../../data/tasteProfile.js');
+var probeEngine = require('../../logic/probeEngine.js');
 
-/** 首页云图 HTTP 直链（可直接用于 <image> src） */
-var HOME_HTTP_ROOT = (recipeResources.CLOUD_HTTP_ROOT || '') + '/background_pic';
-var HOME_ILLUSTRATION_URL = HOME_HTTP_ROOT + '/home_background.png';
-var HOME_OK_ICON_URL = HOME_HTTP_ROOT + '/feeling_ok_button.png';
-var HOME_TIRED_ICON_URL = HOME_HTTP_ROOT + '/feeling_tired_button.png';
+/** 首页云图 fileID，需通过 getTempFileURL 转成 HTTPS 再显示（避免 simulator 把 cloud:// 当本地路径报 500） */
+var HOME_CLOUD_FILE_IDS = [
+  'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/background_pic/home_background.png',
+  'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/background_pic/feeling_ok_button.png',
+  'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/background_pic/feeling_tired_button.png'
+];
 
 function getCurrentDate() {
   var d = new Date();
@@ -47,6 +49,17 @@ Page({
       showStickerDrop: false,
       stickerDropQueue: [],    // [{ stickerId, name, emoji }]
       showCookingLoading: false,
+      // ====== 需求探针（Demand Probes） ======
+      currentProbe: null,            // 当前探针对象 { type, question, options, ... }
+      probeVisible: false,           // 控制 probe-enter 动画
+      probeDismissed: false,         // 控制 probe-exit 动画
+      probeFullyHidden: true,        // 退场动画结束后真正移除 DOM
+      probeSelected: null,           // 单选已选 key
+      probeMultiSelected: {},        // 多选已选 map { key: true }
+      probeMultiHasSelection: false, // 多选是否有勾选项
+      probeLastChoice: null,         // 上次选择 key（智能默认高亮）
+      probeConfirmText: '',          // 即时确认文案
+      probeConfirmVisible: false,    // 控制确认文字 fade-in
       // ====== 烟火集悬浮书脊 ======
       spineMode: _initSpineMode,      // spine-day / spine-morning / spine-night / spine-night-tired
       spineSealIcon: _initSealIcon,    // 🔖 常规 / 🪔 深夜疲惫小油灯
@@ -88,6 +101,11 @@ Page({
       spineSealIcon: spineSealIcon
     });
 
+    // ====== 需求探针：重置 session 追踪 + 递增访问 + 亲和度衰减 ======
+    probeEngine.resetSession();
+    tasteProfile.incrementVisit();
+    tasteProfile.maybeDecay();
+
     // ====== 种子用户：渠道追踪 + 先锋主厨问候语 ======
     var that = this;
     // 如果从分享链接进入首页，解析 channel 参数
@@ -96,12 +114,8 @@ Page({
     }
     // 等待种子用户信息就绪后刷新问候语
     that._refreshPioneerGreeting();
-    // 首页云图使用 HTTP 直链，直接 setData
-    that.setData({
-      illustrationUrl: HOME_ILLUSTRATION_URL,
-      okIconUrl: HOME_OK_ICON_URL,
-      tiredIconUrl: HOME_TIRED_ICON_URL
-    });
+    // 云图：延后解析，等云 init 后再 getTempFileURL（未登录时静默失败，用占位）
+    setTimeout(function () { that._resolveHomeCloudImages(); }, 500);
   },
 
   onShow: function () {
@@ -112,6 +126,11 @@ Page({
     setTimeout(function () {
       that._refreshSpineAndUnviewed();
     }, 0);
+    // 需求探针：延迟展示，制造纸质浮现感
+    that._showNextProbe();
+
+    // 冰箱提示：高级功能入口动态文案
+    that._refreshFridgeHint();
   },
 
   /** Zen Mode: 大按钮 -> 自动生成菜谱并进入 preview 页（不跳转今日灵感/spinner） */
@@ -129,13 +148,48 @@ Page({
     this._homeShowTime = Date.now();
     this._toggleCount = 0;
 
+    // 处理未回答的 volatile 探针：降级到持久化记录
+    var skippedVolatile = false;
+    if (!probeEngine.isSessionAnswered('scene')) {
+      skippedVolatile = true;
+      var lastScene = probeEngine.getLastChoice('scene');
+      if (lastScene) {
+        tasteProfile.setScene(lastScene);
+      }
+    }
+    if (!probeEngine.isSessionAnswered('taste')) {
+      skippedVolatile = true;
+    }
+
     this.setData({ showCookingLoading: true });
     var that = this;
     var pref = that._buildZenPreference();
+
+    // 跳过态确认文案
+    if (skippedVolatile) {
+      var skipSummary = probeEngine.buildSessionSummary(true);
+      if (skipSummary) {
+        that.setData({ probeConfirmText: skipSummary, probeConfirmVisible: true });
+        that._scheduleConfirmFade();
+      }
+    }
     var moodText = that.data.cookStatus === 'tired' ? '疲惫' : '随便';
     var source = menuData.getRecipeSource && menuData.getRecipeSource();
     var adultRecipes = (source && source.adultRecipes) || [];
-    var candidates = adultRecipes.slice(0, 50).map(function (r) {
+
+    // Layer 1: 智能候选池 — 过滤忌口 → 按亲和度排序 → ≤500 全量，>500 智能截断
+    var profile = tasteProfile.get();
+    var filtered = menuGen.filterByPreference(adultRecipes, pref);
+    var dislikedIds = tasteProfile.getDislikedRecipeIds ? tasteProfile.getDislikedRecipeIds() : [];
+    if (dislikedIds.length > 0) {
+      var dislikedSet = {};
+      for (var di = 0; di < dislikedIds.length; di++) dislikedSet[dislikedIds[di]] = true;
+      filtered = filtered.filter(function (r) { return !dislikedSet[r.id || r._id]; });
+    }
+    profile._preferredMeats = pref.preferredMeats || [];
+    var ranked = menuGen.rankByAffinity(filtered, profile);
+    var candidatePool = ranked.length > 500 ? ranked.slice(0, 500) : ranked;
+    var candidates = candidatePool.map(function (r) {
       return {
         id: r.id || r._id,
         _id: r._id || r.id,
@@ -143,9 +197,12 @@ Page({
         meat: r.meat,
         cook_type: r.cook_type,
         flavor_profile: r.flavor_profile,
-        dish_type: r.dish_type
+        dish_type: r.dish_type,
+        cook_minutes: r.cook_minutes || 0,
+        tags: r.tags || []
       };
     });
+    var dislikedNames = tasteProfile.getDislikedRecipeNames(adultRecipes);
     wx.cloud.callFunction({
       name: 'smartMenuGen',
       data: {
@@ -153,6 +210,9 @@ Page({
         mood: moodText,
         weather: {},
         recentDishNames: '',
+        dislikedDishNames: dislikedNames,
+        fridgeExpiring: pref.fridgeExpiring || [],
+        heroIngredient: pref.heroIngredient || null,
         candidates: candidates
       }
     }).then(function (res) {
@@ -176,30 +236,50 @@ Page({
     });
   },
 
-  /** Zen 默认偏好：2 人、1 荤 1 素、无汤、无宝宝；很累时省时模式 + 空气炸锅强制 */
+  /** Zen 偏好：从 Taste Profile 动态构建，疲惫模式叠加省时 + 空气炸锅 */
   _buildZenPreference: function () {
-    var status = this.data.cookStatus;
-    var who = this.data.cookWho;
-    var isTired = status === 'tired';
+    var profile = tasteProfile.get();
+    var isTired = this.data.cookStatus === 'tired';
+    var sceneConfig = tasteProfile.getSceneConfig();
+    var dietStyle = tasteProfile.inferDietStyle(profile.flavorAffinity);
+    var preferredMeats = tasteProfile.inferPreferredMeats(profile.ingredientAffinity);
+    var urgentIngredient = tasteProfile.consumeUrgent();
+    var flavorResult = tasteProfile.getTopFlavors(profile.flavorAffinity);
+
+    var kc = profile.kitchenConfig || {};
     return {
-      adultCount: 2,
-      hasBaby: false,
+      adultCount: sceneConfig.adultCount,
+      hasBaby: sceneConfig.hasBaby || false,
       babyMonth: 12,
-      meatCount: 1,
-      vegCount: 1,
-      soupCount: 0,
+      meatCount: sceneConfig.meatCount,
+      vegCount: sceneConfig.vegCount,
+      soupCount: sceneConfig.soupCount,
       soupType: null,
-      avoidList: [],
-      dietStyle: 'home',
+      avoidList: profile.avoidList || [],
+      dietStyle: isTired ? 'quick' : dietStyle,
       isTimeSave: isTired,
-      // 疲惫模式：强制开启空气炸锅（即使用户未在厨房配置中勾选）
       kitchenConfig: {
-        burners: 2,
-        hasSteamer: false,
-        hasAirFryer: isTired,   // 疲惫时强制启用空气炸锅
-        hasOven: false
+        burners: kc.burners || 2,
+        hasSteamer: kc.hasSteamer || false,
+        hasAirFryer: isTired ? true : (kc.hasAirFryer || false),
+        hasOven: kc.hasOven || false
       },
-      // 2026 扩展：执行者角色（cookWho 始终为 self，不传 caregiver）
+      preferredMeats: preferredMeats,
+      flavorHint: tasteProfile.getFlavorHint(profile.flavorAffinity),
+      topFlavorKey: flavorResult.top,
+      secondFlavorKey: flavorResult.ambiguous ? flavorResult.second : null,
+      flavorAmbiguous: flavorResult.ambiguous,
+      urgentIngredient: urgentIngredient,
+      fridgeExpiring: (function () {
+        try { return require('../../data/fridgeStore.js').getExpiringNames(2); }
+        catch (e) { return []; }
+      })(),
+      heroIngredient: tasteProfile.pickHeroIngredient(
+        (function () {
+          try { return require('../../data/fridgeStore.js').getExpiringNames(2); }
+          catch (e) { return []; }
+        })()
+      ),
       who: undefined
     };
   },
@@ -344,6 +424,28 @@ Page({
     wx.navigateTo({ url: '/pages/myRecipes/myRecipes' });
   },
 
+  onGoFridge: function () {
+    wx.navigateTo({ url: '/pages/fridge/fridge' });
+  },
+
+  _refreshFridgeHint: function () {
+    try {
+      var fridgeStore = require('../../data/fridgeStore.js');
+      var count = fridgeStore.getCount();
+      var expiring = fridgeStore.getExpiringSoon(2);
+      var hint = '';
+      if (count === 0) {
+        hint = '记录食材，AI 帮你优先消耗临期的';
+      } else if (expiring.length > 0) {
+        var names = expiring.slice(0, 2).map(function (it) { return it.name; }).join('、');
+        hint = names + ' 快过期了，该吃掉了';
+      } else {
+        hint = '冰箱里有 ' + count + ' 种食材';
+      }
+      this.setData({ fridgeHint: hint });
+    } catch (e) {}
+  },
+
   onStickerDropClose: function () {
     this.setData({ showStickerDrop: false, stickerDropQueue: [] });
     // 书脊：贴纸收下后，火漆印章短暂高亮 → 暗示"已收入烟火集"
@@ -419,6 +521,24 @@ Page({
     });
   },
 
+  // ====== 首页云图：cloud:// 转 HTTPS 再显示，避免 simulator 当本地路径报 500 ======
+  _resolveHomeCloudImages: function () {
+    var that = this;
+    if (!wx.cloud || typeof wx.cloud.getTempFileURL !== 'function') return;
+    wx.cloud.getTempFileURL({
+      fileList: HOME_CLOUD_FILE_IDS
+    }).then(function (res) {
+      var fileList = res.fileList || [];
+      var illustrationUrl = '';
+      var okIconUrl = '';
+      var tiredIconUrl = '';
+      if (fileList[0] && fileList[0].tempFileURL) illustrationUrl = fileList[0].tempFileURL;
+      if (fileList[1] && fileList[1].tempFileURL) okIconUrl = fileList[1].tempFileURL;
+      if (fileList[2] && fileList[2].tempFileURL) tiredIconUrl = fileList[2].tempFileURL;
+      that.setData({ illustrationUrl: illustrationUrl, okIconUrl: okIconUrl, tiredIconUrl: tiredIconUrl });
+    }).catch(function () {});
+  },
+
   // ====== 书脊：检测是否有新烹饪记录未查看（微光呼吸） ======
   _checkUnviewedCooks: function () {
     var lastCookTime = wx.getStorageSync('last_cook_complete_time') || 0;
@@ -432,15 +552,37 @@ Page({
   // ====== 种子用户：先锋主厨问候语刷新 ======
   _refreshPioneerGreeting: function () {
     var that = this;
+
+    // 构建用户状态上下文
+    var profile = tasteProfile.get();
+    var fridgeExpiringNames = [];
+    try {
+      var fridgeStore = require('../../data/fridgeStore.js');
+      var expItems = fridgeStore.getExpiringSoon(2);
+      fridgeExpiringNames = expItems.map(function (it) { return it.name; });
+    } catch (e) {}
+    var lastDishes = wx.getStorageSync('last_cook_dishes') || [];
+    var ctx = {
+      totalCooks: profile.totalCooks || 0,
+      visitCount: profile.visitCount || 0,
+      lastDishName: lastDishes.length > 0 ? lastDishes[0] : '',
+      fridgeExpiringNames: fridgeExpiringNames,
+      hour: new Date().getHours()
+    };
+
     // 优先使用本地缓存（秒级响应）
     var localInfo = seedUserService.getLocalSeedInfo();
     if (localInfo && localInfo.seq > 0 && localInfo.seq <= 100) {
       that.setData({
-        vibeGreeting: vibeGreeting.pickGreeting(null, localInfo)
+        vibeGreeting: vibeGreeting.pickGreeting(null, localInfo, ctx)
       });
       return;
     }
-    // 等待 app.js 中异步注册完成
+    // 非种子用户 → 直接使用状态感知 + 天气文案
+    that.setData({
+      vibeGreeting: vibeGreeting.pickGreeting(null, null, ctx)
+    });
+    // 等待 app.js 中异步注册完成（种子用户可能尚未就绪）
     var app = getApp();
     var checkInterval = setInterval(function () {
       var seedUser = app.globalData.seedUser;
@@ -448,12 +590,11 @@ Page({
         clearInterval(checkInterval);
         if (seedUser.seq > 0 && seedUser.seq <= 100) {
           that.setData({
-            vibeGreeting: vibeGreeting.pickGreeting(null, seedUser)
+            vibeGreeting: vibeGreeting.pickGreeting(null, seedUser, ctx)
           });
         }
       }
     }, 500);
-    // 最多等 5 秒，超时则保持默认问候语
     setTimeout(function () {
       clearInterval(checkInterval);
     }, 5000);
@@ -464,7 +605,7 @@ Page({
     return {
       title: 'TableSync - 想想今晚吃什么',
       path: seedUserService.getSharePath('wechat'),
-      imageUrl: HOME_ILLUSTRATION_URL
+      imageUrl: 'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/background_pic/home_background.png'
     };
   },
 
@@ -474,5 +615,149 @@ Page({
       title: 'TableSync - 每天想想吃什么',
       query: 'channel=pyq'
     };
+  },
+
+  // ====== 需求探针（Demand Probes）交互 ======
+
+  /** 展示下一个探针（延迟 0.4s 制造浮现感） */
+  _showNextProbe: function () {
+    var that = this;
+    var probe = probeEngine.selectNextProbe();
+    if (!probe) {
+      // 无探针 → 展示综合确认文案
+      var summary = probeEngine.buildSessionSummary();
+      if (summary) {
+        that.setData({
+          probeConfirmText: summary,
+          probeConfirmVisible: true
+        });
+        that._scheduleConfirmFade();
+      }
+      return;
+    }
+    // 获取 volatile 探针的"上次选择"用于智能高亮
+    var lastChoice = probeEngine.getLastChoice(probe.type);
+    that.setData({
+      currentProbe: probe,
+      probeLastChoice: lastChoice,
+      probeVisible: false,
+      probeDismissed: false,
+      probeFullyHidden: false,
+      probeSelected: null,
+      probeMultiSelected: {},
+      probeMultiHasSelection: false
+    });
+    setTimeout(function () {
+      that.setData({ probeVisible: true });
+    }, 400);
+  },
+
+  /** 探针选项点击 */
+  onProbeSelect: function (e) {
+    var key = e.currentTarget.dataset.key;
+    var type = e.currentTarget.dataset.type;
+    var probe = this.data.currentProbe;
+    if (!probe) return;
+
+    // 触觉反馈
+    if (wx.vibrateShort) {
+      wx.vibrateShort({ type: 'light' });
+    }
+
+    if (probe.multiSelect) {
+      // 多选模式（约束探针）
+      var selected = this.data.probeMultiSelected || {};
+      if (key === null || key === 'null' || key === '') {
+        // "都能吃" → 清空所有选择并立即提交
+        var confirmText = probeEngine.handleProbeAnswer(type, []);
+        this._dismissProbe(confirmText);
+        return;
+      }
+      // 处理 key 可能是字符串 "null" 的情况
+      var realKey = (key === 'null') ? null : key;
+      if (realKey === null) {
+        var confirmText2 = probeEngine.handleProbeAnswer(type, []);
+        this._dismissProbe(confirmText2);
+        return;
+      }
+      if (selected[realKey]) {
+        delete selected[realKey];
+      } else {
+        selected[realKey] = true;
+      }
+      var hasAny = false;
+      for (var k in selected) {
+        if (selected.hasOwnProperty(k) && selected[k]) { hasAny = true; break; }
+      }
+      this.setData({
+        probeMultiSelected: selected,
+        probeMultiHasSelection: hasAny
+      });
+    } else {
+      // 单选模式 → 选中后自动提交
+      this.setData({ probeSelected: key });
+      var that = this;
+      var confirmText3 = probeEngine.handleProbeAnswer(type, key);
+      setTimeout(function () {
+        that._dismissProbe(confirmText3);
+        // 单选场景探针提交后，检查是否有下一个探针要展示
+        setTimeout(function () {
+          that._showNextProbe();
+        }, 600);
+      }, 300);
+    }
+  },
+
+  /** 多选确定按钮 */
+  onProbeConfirmMulti: function () {
+    var probe = this.data.currentProbe;
+    if (!probe) return;
+    var selected = this.data.probeMultiSelected || {};
+    var keys = [];
+    for (var k in selected) {
+      if (selected.hasOwnProperty(k) && selected[k]) keys.push(k);
+    }
+    var confirmText = probeEngine.handleProbeAnswer(probe.type, keys);
+    this._dismissProbe(confirmText);
+    var that = this;
+    setTimeout(function () {
+      that._showNextProbe();
+    }, 600);
+  },
+
+  /** 收起探针卡片 + 展示确认文字 */
+  _dismissProbe: function (confirmText) {
+    var that = this;
+    that.setData({
+      probeDismissed: true,
+      probeVisible: false
+    });
+    // 退场动画完成后移除 DOM
+    setTimeout(function () {
+      that.setData({
+        probeFullyHidden: true,
+        currentProbe: null
+      });
+    }, 400);
+    // 展示即时确认文字
+    if (confirmText) {
+      that.setData({
+        probeConfirmText: confirmText,
+        probeConfirmVisible: true
+      });
+      that._scheduleConfirmFade();
+    }
+  },
+
+  /** 确认文字停留 3s 后 fade-out */
+  _scheduleConfirmFade: function () {
+    var that = this;
+    if (that._confirmFadeTimer) clearTimeout(that._confirmFadeTimer);
+    that._confirmFadeTimer = setTimeout(function () {
+      that.setData({ probeConfirmVisible: false });
+      setTimeout(function () {
+        that.setData({ probeConfirmText: '' });
+      }, 1000);
+    }, 3000);
   }
 });

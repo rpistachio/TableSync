@@ -220,4 +220,26 @@
     queue="{{stickerDropQueue}}"
     bindclose="onStickerDropClose"
   />
+
+  <!-- 做完饭后隐式反馈 -->
+  <view class="postcook-overlay" wx:if="{{showPostCookFeedback}}">
+    <view class="postcook-card {{postCookFeedbackFade ? 'postcook-fade-in' : ''}}">
+      <text class="postcook-title">这桌菜怎么样？</text>
+      <text class="postcook-subtitle">你的反馈帮我更懂你的胃</text>
+      <view class="postcook-options">
+        <view class="postcook-option" data-feedback="like" bindtap="onPostCookFeedback">
+          <text class="postcook-option-icon">😋</text>
+          <text class="postcook-option-label">很喜欢</text>
+        </view>
+        <view class="postcook-option" data-feedback="ok" bindtap="onPostCookFeedback">
+          <text class="postcook-option-icon">🙂</text>
+          <text class="postcook-option-label">还不错</text>
+        </view>
+        <view class="postcook-option" data-feedback="dislike" bindtap="onPostCookFeedback">
+          <text class="postcook-option-icon">😐</text>
+          <text class="postcook-option-label">不太对</text>
+        </view>
+      </view>
+    </view>
+  </view>
 </view>

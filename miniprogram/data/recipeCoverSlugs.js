@@ -8,19 +8,11 @@
  * 新增菜谱时：在此表增加一行「菜名 -> slug」，上传对应图片到云存储即可，无需改业务逻辑。
  */
 
-var recipeResources = require('./recipeResources.js');
-
 /** 成人菜封面图所在云目录（英文 slug 图片在此目录下，如 xxx.png） */
 var CLOUD_STORAGE_BASE = 'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes';
 
-/** HTTP 直链根路径（可直接用于 <image> src，无需 getTempFileURL） */
-var HTTP_STORAGE_BASE = (recipeResources.CLOUD_HTTP_ROOT || '') + '/adults_recipes';
-
 /** 兜底图完整 URL（未在 RECIPE_NAME_TO_SLUG 中的菜或异常时使用，避免渲染层 500） */
 var DEFAULT_COVER_URL = 'cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/basic_cut_0_3_ar4.5.jpeg';
-
-/** 兜底图 HTTP 直链（与 IMAGE_CONFIG.defaultCover 一致） */
-var DEFAULT_COVER_HTTP_URL = (recipeResources.IMAGE_CONFIG && recipeResources.IMAGE_CONFIG.defaultCover) || (recipeResources.CLOUD_HTTP_ROOT + '/prep_cover_pic/basic-veg-cut-01.jpeg');
 
 /** 菜名(中文) -> 文件名（需包含扩展名），如 kung_pao_chicken_with_peanut.png */
 var RECIPE_NAME_TO_SLUG = {
@@ -203,6 +195,45 @@ var RECIPE_NAME_TO_SLUG = {
   '豆豉蒸排骨': 'black_bean_steamed_pork_ribs.png',
   '椒盐排骨': 'szechuan_pepper_pork_ribs.png',
   '话梅排骨': 'preserved_plum_pork_ribs.png',
+  '香椿煎蛋': 'toon_煎蛋.png',
+  '蚕豆炒火腿': 'fava_bean_火腿_stir_fry.png',
+  '凉拌折耳根': 'cold_折耳根.png',
+  /* Batch 1: 羊肉 + 鸭肉 */
+  '孜然炒羊肉': 'cumin_stir_fried_lamb.png',
+  '萝卜炖羊肉汤': 'lamb_radish_clear_stew.png',
+  '当归羊肉煲': 'angelica_lamb_stew.png',
+  '啤酒鸭': 'beer_duck.png',
+  '姜母鸭': 'ginger_duck_fujian_style.png',
+  /* Batch 2: 贝类 */
+  '辣炒蛤蜊': 'garlic_chili_clams.png',
+  '白灼鱿鱼须': 'poached_squid_tentacles.png',
+  '蚝油鲍鱼片': 'oyster_sauce_abalone_slices.png',
+  '葱姜炒花甲': 'scallion_ginger_clams.png',
+  '蒜蓉粉丝蒸扇贝': 'garlic_steamed_scallops.png',
+  /* Batch 3: 酸爽解腻 */
+  '金汤酸菜鱼': 'sour_mustard_fish_golden_soup.png',
+  '酸辣鸡丝凉拌': 'sour_spicy_chicken_cold_salad.png',
+  '泰式酸辣虾': 'thai_sour_spicy_shrimp.png',
+  '糟辣脆藕片': 'guizhou_style_zhao_la_crispy_lotus_root.png',
+  '酸汤肥牛': 'sour_soup_beef.png',
+  /* Batch 4: 辣味层次 */
+  '水煮肉片': 'sichuan_boiled_pork_slices.png',
+  '剁椒鱼头': 'chopped_chili_fish_head.png',
+  '麻辣卤鸭脖': 'mala_braised_duck_neck.png',
+  '干锅香辣蟹': 'dry_pot_spicy_crab.png',
+  '酸辣蕨根粉': 'sour_spicy_fern_root_noodles.png',
+  /* Batch 5: 深夜 + 快手 */
+  '麻辣冷吃鸡丁': 'mala_cold_chicken_bites.png',
+  '盐水毛豆': 'salt_boiled_edamame.png',
+  '香卤牛腱': 'braised_beef_tendon_slices.png',
+  '荷兰豆炒腊肉': 'stir_fried_snow_peas_with_ham.png',
+  '咸蛋黄焗南瓜': 'salt_egg_yolk_baked_pumpkin.png',
+  /* Batch 6: 宝宝共享 */
+  '清蒸狮子头': 'steamed_lion_head_meatballs.png',
+  '番茄滑肉片': 'tomato_pork_slices.png',
+  '山药排骨煲': 'yam_pork_ribs_stew.png',
+  '生炒鸡块': 'stir_fried_chicken_chunks.png',
+  '豆腐蒸鲈鱼': 'steamed_sea_bass_with_tofu.png',
   /* 宝宝菜 */
   '板栗鲜鸡泥': 'chestnut_chicken_puree.png',
   '柠檬清蒸鳕鱼': 'lemon_steamed_cod.png',
@@ -286,33 +317,11 @@ function getRecipeCoverImageUrl(dishName) {
   return url;
 }
 
-/**
- * 根据菜名拼出封面图 HTTPS 直链（可直接用于 <image> src，无需 getTempFileURL）
- * @param {string} dishName - recipes.js 里的 name
- * @returns {string} 完整 https://... URL
- */
-function getRecipeCoverHttpUrl(dishName) {
-  var name = (typeof dishName === 'string') ? dishName.trim() : '';
-  var slug = name ? RECIPE_NAME_TO_SLUG[name] : null;
-  var fileName = slug ? normalizeToFileName(slug) : null;
-  var url = DEFAULT_COVER_HTTP_URL;
-  if (fileName) {
-    url = HTTP_STORAGE_BASE + '/' + fileName;
-  }
-  if (!url || typeof url !== 'string' || url.indexOf('//') === -1 || url.indexOf('undefined') !== -1) {
-    return DEFAULT_COVER_HTTP_URL;
-  }
-  return url;
-}
-
 module.exports = {
   CLOUD_STORAGE_BASE: CLOUD_STORAGE_BASE,
   DEFAULT_COVER_URL: DEFAULT_COVER_URL,
-  HTTP_STORAGE_BASE: HTTP_STORAGE_BASE,
-  DEFAULT_COVER_HTTP_URL: DEFAULT_COVER_HTTP_URL,
   RECIPE_NAME_TO_SLUG: RECIPE_NAME_TO_SLUG,
   DEFAULT_COVER_SLUG: DEFAULT_COVER_SLUG,
   getCoverSlug: getCoverSlug,
-  getRecipeCoverImageUrl: getRecipeCoverImageUrl,
-  getRecipeCoverHttpUrl: getRecipeCoverHttpUrl
+  getRecipeCoverImageUrl: getRecipeCoverImageUrl
 };

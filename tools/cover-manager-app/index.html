@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>封面图管理</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, "PingFang SC", sans-serif; margin: 0; padding: 12px; background: #111; color: #e0e0e0; min-height: 100vh; }
+    h1 { font-size: 1.1rem; margin: 0 0 12px 0; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+    .toolbar button { padding: 8px 14px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; }
+    .toolbar .primary { background: #2563eb; color: #fff; }
+    .toolbar .primary:disabled { background: #555; color: #999; cursor: not-allowed; }
+    .toolbar .secondary { background: #333; color: #e0e0e0; }
+    .toolbar .danger { background: #b91c1c; color: #fff; }
+    .status { margin-bottom: 12px; padding: 8px 12px; border-radius: 8px; background: #222; font-size: 13px; min-height: 20px; }
+    .status.loading { color: #93c5fd; }
+    .status.ok { color: #86efac; }
+    .status.err { color: #fca5a5; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+    .card { border-radius: 12px; overflow: hidden; background: #1e1e1e; border: 2px solid #333; cursor: pointer; transition: border-color 0.15s; }
+    .card.selected { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.3); }
+    .card .thumb { aspect-ratio: 1; background: #2a2a2a; position: relative; }
+    .card .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .card .thumb input { position: absolute; top: 6px; left: 6px; width: 18px; height: 18px; accent-color: #2563eb; pointer-events: none; }
+    .card .thumb .ref-badge { position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; border-radius: 4px; background: #2563eb; color: #fff; font-size: 10px; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+    .card .thumb .ref-btn { position: absolute; bottom: 6px; right: 6px; width: 24px; height: 24px; border-radius: 6px; background: rgba(0,0,0,0.6); color: #fff; border: none; cursor: pointer; font-size: 12px; padding: 0; display: flex; align-items: center; justify-content: center; }
+    .card .thumb .ref-btn:hover { background: #2563eb; }
+    .card .thumb .history-btn { position: absolute; bottom: 6px; left: 6px; padding: 2px 6px; border-radius: 4px; background: rgba(0,0,0,0.6); color: #fff; border: none; cursor: pointer; font-size: 10px; }
+    .card .thumb .history-btn:hover { background: #333; }
+    .card .thumb .prompt-btn { position: absolute; top: 6px; right: 28px; width: 20px; height: 20px; border-radius: 4px; background: rgba(0,0,0,0.6); color: #fff; border: none; cursor: pointer; font-size: 11px; padding: 0; display: flex; align-items: center; justify-content: center; }
+    .card .thumb .prompt-btn:hover { background: #333; }
+    .card .name { padding: 8px; font-size: 12px; line-height: 1.3; text-align: center; }
+    .card .audit-badge { position: absolute; bottom: 6px; left: 6px; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; pointer-events: none; }
+    .card .audit-badge.pass { background: #166534; color: #bbf7d0; }
+    .card .audit-badge.warn { background: #854d0e; color: #fef08a; }
+    .card .audit-badge.fail { background: #991b1b; color: #fecaca; }
+    .toolbar .filter-group { display: flex; align-items: center; gap: 6px; }
+    .toolbar select { padding: 6px 10px; border-radius: 6px; border: 1px solid #444; background: #222; color: #e0e0e0; font-size: 12px; }
+    #refModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; align-items: center; justify-content: center; }
+    #refModal.show { display: flex; }
+    #refModal .panel { background: #1e1e1e; padding: 20px; border-radius: 12px; min-width: 320px; max-width: 90vw; }
+    #refModal .panel h3 { margin: 0 0 12px 0; font-size: 14px; }
+    #refModal .panel input { width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid #444; background: #222; color: #e0e0e0; font-size: 13px; margin-bottom: 12px; }
+    #refModal .panel .btns { display: flex; gap: 8px; justify-content: flex-end; }
+    #refModal .panel button { padding: 8px 14px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; }
+    #refModal .panel .primary { background: #2563eb; color: #fff; }
+    #refModal .panel .secondary { background: #333; color: #e0e0e0; }
+    #lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 100; align-items: center; justify-content: center; cursor: pointer; }
+    #lightbox.show { display: flex; }
+    #lightbox img { max-width: 92vw; max-height: 92vh; object-fit: contain; }
+    .compare-panel { margin-bottom: 16px; padding: 12px; background: #1a1a1a; border-radius: 12px; }
+    .compare-panel h3 { margin: 0 0 12px 0; font-size: 14px; }
+    .compare-list { display: flex; flex-wrap: wrap; gap: 16px; }
+    .compare-item { background: #222; border-radius: 8px; padding: 12px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .compare-item .imgs { display: flex; gap: 12px; }
+    .compare-item .imgs img { width: 100px; height: 100px; object-fit: cover; border-radius: 6px; }
+    .compare-item .name { font-weight: 600; min-width: 100px; }
+    .compare-item .btns { display: flex; gap: 8px; }
+    .compare-item .btns button { padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 12px; }
+    .compare-item .btns .keep { background: #333; color: #e0e0e0; }
+    .compare-item .btns .adopt { background: #166534; color: #bbf7d0; }
+    #historyModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 210; align-items: center; justify-content: center; }
+    #historyModal.show { display: flex; }
+    #historyModal .panel { background: #1e1e1e; padding: 20px; border-radius: 12px; max-width: 90vw; max-height: 80vh; overflow: auto; }
+    #historyModal .panel h3 { margin: 0 0 12px 0; font-size: 14px; }
+    #historyModal .history-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
+    #historyModal .history-item { text-align: center; }
+    #historyModal .history-item img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; }
+    #historyModal .history-item button { margin-top: 6px; padding: 4px 10px; font-size: 11px; border-radius: 6px; border: none; cursor: pointer; background: #2563eb; color: #fff; }
+    #promptModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 220; align-items: center; justify-content: center; }
+    #promptModal.show { display: flex; }
+    #promptModal .panel { background: #1e1e1e; padding: 20px; border-radius: 12px; max-width: 600px; max-height: 85vh; overflow: auto; }
+    #promptModal .panel h3 { margin: 0 0 12px 0; font-size: 14px; }
+    #promptModal .panel textarea { width: 100%; min-height: 60px; padding: 8px; border-radius: 6px; border: 1px solid #444; background: #222; color: #e0e0e0; font-size: 12px; margin-bottom: 8px; resize: vertical; }
+    #promptModal .panel .btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <h1>封面图管理</h1>
+  <div class="toolbar">
+    <button type="button" class="secondary" id="btnSelectAll">全选</button>
+    <button type="button" class="secondary" id="btnSelectNone">取消全选</button>
+    <button type="button" class="secondary" id="btnSelectFail" title="勾选所有审计为 Fail 的项">一键选中 Fail</button>
+    <button type="button" class="secondary" id="btnAudit" title="对选中项或全部运行 Kimi 审计">运行审计</button>
+    <button type="button" class="secondary" id="btnSortWorst" title="按评分从低到高排序">按最差排序</button>
+    <div class="filter-group">
+      <label for="verdictFilter">筛选:</label>
+      <select id="verdictFilter">
+        <option value="all">全部</option>
+        <option value="pass">Pass</option>
+        <option value="warn">Warn</option>
+        <option value="fail">Fail</option>
+      </select>
+    </div>
+    <button type="button" class="secondary" id="btnRegenOnly" title="仅重生成，保存为候选图，可在下方对比后选择采用或丢弃">仅重生成（存为候选）</button>
+    <button type="button" class="primary" id="btnRegenUpload" title="先重生成选中图片，完成后自动上传到云端">重生成并上传选中</button>
+    <button type="button" class="secondary" id="btnSmartOptimize" title="审计全部 → 自动筛选 Fail → 批量重生成候选 → 请到待对比确认">智能优化</button>
+  </div>
+  <div class="status" id="status">加载中…</div>
+  <div id="comparePanel" class="compare-panel" style="display: none;">
+    <h3>待对比（<span id="compareCount">0</span>） <button type="button" class="secondary" id="btnAdoptAll" style="margin-left:8px;padding:4px 10px;font-size:12px;">全部采用新图</button></h3>
+    <div id="compareList" class="compare-list"></div>
+  </div>
+  <div class="grid" id="grid"></div>
+  <div id="lightbox"><img src="" alt="" /></div>
+  <div id="refModal">
+    <div class="panel">
+      <h3 id="refModalTitle">参考图 URL</h3>
+      <input type="url" id="refUrlInput" placeholder="粘贴图片地址 (https://...)" />
+      <div class="btns">
+        <button type="button" class="secondary" id="refModalClear">清除</button>
+        <button type="button" class="primary" id="refModalSave">保存</button>
+      </div>
+    </div>
+  </div>
+  <div id="historyModal">
+    <div class="panel">
+      <h3 id="historyModalTitle">历史版本</h3>
+      <div id="historyList" class="history-grid"></div>
+    </div>
+  </div>
+  <div id="promptModal">
+    <div class="panel">
+      <h3 id="promptModalTitle">编辑 Prompt</h3>
+      <label>模板 A（俯拍）</label>
+      <textarea id="promptInput0" rows="2"></textarea>
+      <label>模板 B（45°）</label>
+      <textarea id="promptInput1" rows="2"></textarea>
+      <label>模板 C（近景）</label>
+      <textarea id="promptInput2" rows="2"></textarea>
+      <div class="btns">
+        <button type="button" class="secondary" id="promptModalSave">保存</button>
+        <button type="button" class="primary" id="promptModalRegen">保存并重生成</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const statusEl = document.getElementById('status');
+    const gridEl = document.getElementById('grid');
+    const btnRegenUpload = document.getElementById('btnRegenUpload');
+    const btnSelectAll = document.getElementById('btnSelectAll');
+    const btnSelectNone = document.getElementById('btnSelectNone');
+
+    let recipes = [];
+    const selected = new Set();
+    let currentRefRecipe = null;
+    let currentPromptRecipe = null;
+    let filterVerdict = 'all';
+    let sortOrder = 'default';
+
+    function setStatus(msg, type) {
+      statusEl.textContent = msg;
+      statusEl.className = 'status ' + (type || '');
+    }
+
+    async function fetchRecipes() {
+      const res = await fetch('/api/recipes');
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || '加载失败');
+      return json.data;
+    }
+
+    function getBaseName(slug) {
+      return (slug || '').replace(/\.(png|jpg|jpeg)$/i, '');
+    }
+
+    function renderComparePanel() {
+      const withCandidate = recipes.filter((r) => r.hasCandidate);
+      const panel = document.getElementById('comparePanel');
+      const listEl = document.getElementById('compareList');
+      const countEl = document.getElementById('compareCount');
+      if (withCandidate.length === 0) {
+        panel.style.display = 'none';
+        return;
+      }
+      panel.style.display = 'block';
+      countEl.textContent = withCandidate.length;
+      listEl.innerHTML = withCandidate.map((r) => {
+        const baseName = getBaseName(r.slug);
+        const currentImg = r.imageUrl + '?t=' + (r._ts || 0);
+        const candidateImg = '/images/candidates/' + baseName + '.jpg?t=' + Date.now();
+        const nameEsc = r.dishName.replace(/</g, '&lt;').replace(/"/g, '&quot;');
+        return `
+          <div class="compare-item" data-dish="${nameEsc}">
+            <span class="name">${nameEsc}</span>
+            <div class="imgs">
+              <img src="${currentImg}" alt="当前" title="当前封面" />
+              <img src="${candidateImg}" alt="候选" title="候选新图" />
+            </div>
+            <div class="btns">
+              <button type="button" class="keep" data-action="discard">保留旧图</button>
+              <button type="button" class="adopt" data-action="adopt">采用新图</button>
+            </div>
+          </div>`;
+      }).join('');
+
+      listEl.querySelectorAll('.compare-item .btns button').forEach((btn) => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const item = btn.closest('.compare-item');
+          const dishName = item.dataset.dish;
+          const action = btn.dataset.action;
+          if (!dishName) return;
+          const api = action === 'adopt' ? '/api/adopt' : '/api/discard';
+          setStatus(action === 'adopt' ? '正在采用新图并上传…' : '正在丢弃候选图…', 'loading');
+          try {
+            const res = await fetch(api, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ dishNames: [dishName] }),
+            });
+            const json = await res.json();
+            if (!json.ok) {
+              setStatus('操作失败: ' + (json.error || '未知错误'), 'err');
+              return;
+            }
+            const r = recipes.find((x) => x.dishName === dishName);
+            if (r) r._ts = Date.now();
+            recipes = await fetchRecipes();
+            renderComparePanel();
+            renderGrid();
+            setStatus(action === 'adopt' ? '已采用新图并上传' : '已丢弃候选图', 'ok');
+          } catch (err) {
+            setStatus('请求失败: ' + err.message, 'err');
+          }
+        });
+      });
+    }
+
+    function getDisplayRecipes() {
+      let list = recipes;
+      if (filterVerdict !== 'all') {
+        list = list.filter((r) => r.audit && r.audit.verdict === filterVerdict);
+      }
+      if (sortOrder === 'worst') {
+        list = [...list].sort((a, b) => (a.audit?.overall ?? 999) - (b.audit?.overall ?? 999));
+      }
+      return list;
+    }
+
+    let lastDisplayRecipes = [];
+
+    function renderGrid() {
+      lastDisplayRecipes = getDisplayRecipes();
+      gridEl.innerHTML = lastDisplayRecipes.map((r, i) => {
+        const id = r.dishName;
+        const checked = selected.has(id);
+        const imgUrl = r.imageUrl + '?t=' + (r._ts || 0);
+        const baseName = getBaseName(r.slug);
+        const hasRef = !!(r.refImageUrl && r.refImageUrl.trim());
+        const audit = r.audit;
+        const auditBadge = audit ? `<span class="audit-badge ${audit.verdict}" title="overall ${audit.overall}">${audit.verdict} ${audit.overall}</span>` : '';
+        return `
+          <div class="card ${checked ? 'selected' : ''}" data-index="${i}" data-dish="${id.replace(/"/g, '&quot;')}">
+            <div class="thumb">
+              <input type="checkbox" ${checked ? 'checked' : ''} />
+              ${hasRef ? '<span class="ref-badge" title="已设参考图">📷</span>' : ''}
+              <button type="button" class="prompt-btn" title="编辑 Prompt" data-index="${i}">P</button>
+              ${auditBadge}
+              <button type="button" class="history-btn" title="历史版本" data-index="${i}">历史</button>
+              <button type="button" class="ref-btn" title="设置参考图 URL" data-index="${i}">📷</button>
+              <img src="${imgUrl}" alt="${id.replace(/"/g, '&quot;')}" loading="lazy" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23333%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%22 y=%2250%22 fill=%22%23999%22 text-anchor=%22middle%22 dy=%22.3em%22%3E无图%3C/text%3E%3C/svg%3E'" />
+            </div>
+            <div class="name">${id.replace(/</g, '&lt;')}</div>
+          </div>`;
+      }).join('');
+
+      gridEl.querySelectorAll('.card').forEach((el) => {
+        el.addEventListener('click', (e) => {
+          if (e.target.closest('.ref-btn') || e.target.closest('.history-btn') || e.target.closest('.prompt-btn')) return;
+          const idx = parseInt(el.dataset.index, 10);
+          const r = lastDisplayRecipes[idx];
+          const name = r?.dishName;
+          if (!name) return;
+          if (selected.has(name)) selected.delete(name);
+          else selected.add(name);
+          el.classList.toggle('selected', selected.has(name));
+          el.querySelector('input').checked = selected.has(name);
+        });
+      });
+
+      gridEl.querySelectorAll('.card .thumb img').forEach((img) => {
+        img.addEventListener('dblclick', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          document.getElementById('lightbox').querySelector('img').src = img.src;
+          document.getElementById('lightbox').classList.add('show');
+        });
+      });
+
+      gridEl.querySelectorAll('.card .thumb .ref-btn').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const idx = parseInt(btn.dataset.index, 10);
+          const r = lastDisplayRecipes[idx];
+          if (!r) return;
+          currentRefRecipe = { dishName: r.dishName, slug: r.slug, baseName: getBaseName(r.slug) };
+          document.getElementById('refModalTitle').textContent = '参考图 URL · ' + r.dishName;
+          document.getElementById('refUrlInput').value = r.refImageUrl || '';
+          document.getElementById('refModal').classList.add('show');
+          document.getElementById('refUrlInput').focus();
+        });
+      });
+
+      gridEl.querySelectorAll('.card .thumb .history-btn').forEach((btn) => {
+        btn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const idx = parseInt(btn.dataset.index, 10);
+          const r = lastDisplayRecipes[idx];
+          if (!r) return;
+          const baseName = getBaseName(r.slug);
+          document.getElementById('historyModalTitle').textContent = '历史版本 · ' + r.dishName;
+          document.getElementById('historyModal').classList.add('show');
+          document.getElementById('historyList').innerHTML = '加载中…';
+          try {
+            const res = await fetch('/api/history/' + encodeURIComponent(baseName));
+            const json = await res.json();
+            if (!json.ok || !Array.isArray(json.data)) {
+              document.getElementById('historyList').innerHTML = '无历史记录';
+              return;
+            }
+            const list = json.data;
+            if (list.length === 0) {
+              document.getElementById('historyList').innerHTML = '无历史记录';
+              return;
+            }
+            document.getElementById('historyList').innerHTML = list.map((item) => {
+              const date = new Date(item.timestamp);
+              const dateStr = date.toLocaleString('zh-CN');
+              return `
+                <div class="history-item">
+                  <img src="/images/history/${item.filename}" alt="${dateStr}" />
+                  <div>${dateStr}</div>
+                  <button type="button" data-ts="${item.timestamp}">恢复</button>
+                </div>`;
+            }).join('');
+            document.getElementById('historyList').querySelectorAll('button').forEach((b) => {
+              b.addEventListener('click', async () => {
+                const ts = b.dataset.ts;
+                setStatus('正在恢复并上传…', 'loading');
+                try {
+                  const restoreRes = await fetch('/api/restore', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dishName: r.dishName, timestamp: parseInt(ts, 10) }),
+                  });
+                  const restoreJson = await restoreRes.json();
+                  if (!restoreJson.ok) {
+                    setStatus('恢复失败: ' + (restoreJson.error || ''), 'err');
+                    return;
+                  }
+                  const rec = recipes.find((x) => x.dishName === r.dishName);
+                  if (rec) rec._ts = Date.now();
+                  document.getElementById('historyModal').classList.remove('show');
+                  recipes = await fetchRecipes();
+                  renderGrid();
+                  renderComparePanel();
+                  setStatus('已恢复并上传', 'ok');
+                } catch (err) {
+                  setStatus('请求失败: ' + err.message, 'err');
+                }
+              });
+            });
+          } catch (err) {
+            document.getElementById('historyList').innerHTML = '加载失败: ' + err.message;
+          }
+        });
+      });
+
+      gridEl.querySelectorAll('.card .thumb .prompt-btn').forEach((btn) => {
+        btn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const idx = parseInt(btn.dataset.index, 10);
+          const r = lastDisplayRecipes[idx];
+          if (!r) return;
+          currentPromptRecipe = { dishName: r.dishName, baseName: getBaseName(r.slug) };
+          document.getElementById('promptModalTitle').textContent = '编辑 Prompt · ' + r.dishName;
+          document.getElementById('promptModal').classList.add('show');
+          document.getElementById('promptInput0').value = '';
+          document.getElementById('promptInput1').value = '';
+          document.getElementById('promptInput2').value = '';
+          try {
+            const res = await fetch('/api/prompts/' + encodeURIComponent(currentPromptRecipe.baseName));
+            const json = await res.json();
+            if (json.ok && Array.isArray(json.prompts)) {
+              document.getElementById('promptInput0').value = json.prompts[0] || '';
+              document.getElementById('promptInput1').value = json.prompts[1] || '';
+              document.getElementById('promptInput2').value = json.prompts[2] || '';
+            }
+          } catch (err) {
+            setStatus('加载 Prompt 失败: ' + err.message, 'err');
+          }
+        });
+      });
+    }
+
+    document.getElementById('promptModal').addEventListener('click', function (e) {
+      if (e.target === this) this.classList.remove('show');
+    });
+    document.getElementById('promptModalSave').addEventListener('click', async () => {
+      if (!currentPromptRecipe) return;
+      const prompts = [
+        document.getElementById('promptInput0').value.trim(),
+        document.getElementById('promptInput1').value.trim(),
+        document.getElementById('promptInput2').value.trim(),
+      ].filter(Boolean);
+      if (prompts.length === 0) {
+        setStatus('请至少填写一条 Prompt', 'err');
+        return;
+      }
+      try {
+        const res = await fetch('/api/custom-prompts', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ baseName: currentPromptRecipe.baseName, prompts }),
+        });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || '保存失败');
+        document.getElementById('promptModal').classList.remove('show');
+        setStatus('已保存自定义 Prompt', 'ok');
+      } catch (e) {
+        setStatus('保存失败: ' + e.message, 'err');
+      }
+    });
+    document.getElementById('promptModalRegen').addEventListener('click', async () => {
+      if (!currentPromptRecipe) return;
+      const prompts = [
+        document.getElementById('promptInput0').value.trim(),
+        document.getElementById('promptInput1').value.trim(),
+        document.getElementById('promptInput2').value.trim(),
+      ].filter(Boolean);
+      if (prompts.length === 0) {
+        setStatus('请至少填写一条 Prompt', 'err');
+        return;
+      }
+      try {
+        await fetch('/api/custom-prompts', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ baseName: currentPromptRecipe.baseName, prompts }),
+        });
+        document.getElementById('promptModal').classList.remove('show');
+        setStatus('正在重生成…', 'loading');
+        const regenRes = await fetch('/api/regen', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dishNames: [currentPromptRecipe.dishName] }),
+        });
+        const regenJson = await regenRes.json();
+        if (!regenJson.ok) {
+          setStatus('重生成失败: ' + (regenJson.error || ''), 'err');
+          return;
+        }
+        recipes = await fetchRecipes();
+        const r = recipes.find((x) => x.dishName === currentPromptRecipe.dishName);
+        if (r) r._ts = Date.now();
+        renderGrid();
+        renderComparePanel();
+        setStatus('已保存并重生成', 'ok');
+      } catch (e) {
+        setStatus('失败: ' + e.message, 'err');
+      }
+    });
+
+    async function saveRefImages(merged) {
+      const res = await fetch('/api/ref-images', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: merged }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || '保存失败');
+    }
+
+    document.getElementById('refModal').addEventListener('click', function (e) {
+      if (e.target === this) this.classList.remove('show');
+    });
+    document.getElementById('historyModal').addEventListener('click', function (e) {
+      if (e.target === this) this.classList.remove('show');
+    });
+    document.getElementById('refModalSave').addEventListener('click', async () => {
+      const input = document.getElementById('refUrlInput');
+      const url = (input.value || '').trim();
+      if (!currentRefRecipe) return;
+      const baseName = currentRefRecipe.baseName;
+      try {
+        const getRes = await fetch('/api/ref-images');
+        const getJson = await getRes.json();
+        const data = getJson.ok ? (getJson.data || {}) : {};
+        if (url) data[baseName] = url;
+        else delete data[baseName];
+        await saveRefImages(data);
+        document.getElementById('refModal').classList.remove('show');
+        recipes = await fetchRecipes();
+        renderGrid();
+        setStatus(url ? '已保存参考图 URL' : '已清除参考图', 'ok');
+      } catch (e) {
+        setStatus('保存失败: ' + e.message, 'err');
+      }
+    });
+    document.getElementById('refModalClear').addEventListener('click', async () => {
+      document.getElementById('refUrlInput').value = '';
+      if (!currentRefRecipe) return;
+      const baseName = currentRefRecipe.baseName;
+      try {
+        const getRes = await fetch('/api/ref-images');
+        const getJson = await getRes.json();
+        const data = getJson.ok ? (getJson.data || {}) : {};
+        delete data[baseName];
+        await saveRefImages(data);
+        document.getElementById('refModal').classList.remove('show');
+        recipes = await fetchRecipes();
+        renderGrid();
+        setStatus('已清除参考图', 'ok');
+      } catch (e) {
+        setStatus('清除失败: ' + e.message, 'err');
+      }
+    });
+
+    document.getElementById('lightbox').addEventListener('click', function () {
+      this.classList.remove('show');
+    });
+
+    btnSelectAll.addEventListener('click', () => {
+      recipes.forEach((r) => selected.add(r.dishName));
+      renderGrid();
+    });
+    btnSelectNone.addEventListener('click', () => {
+      selected.clear();
+      renderGrid();
+    });
+    document.getElementById('btnSelectFail').addEventListener('click', () => {
+      selected.clear();
+      recipes.forEach((r) => {
+        if (r.audit && r.audit.verdict === 'fail') selected.add(r.dishName);
+      });
+      renderGrid();
+      setStatus(`已勾选 ${selected.size} 项 Fail`, 'ok');
+    });
+    document.getElementById('btnAudit').addEventListener('click', async () => {
+      const list = Array.from(selected);
+      const body = list.length > 0 ? { dishNames: list } : {};
+      document.getElementById('btnAudit').disabled = true;
+      setStatus(list.length ? `正在审计选中的 ${list.length} 张…` : '正在审计全部封面…', 'loading');
+      try {
+        const res = await fetch('/api/audit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const json = await res.json();
+        if (!json.ok) {
+          setStatus('审计失败: ' + (json.error || '未知错误'), 'err');
+          document.getElementById('btnAudit').disabled = false;
+          return;
+        }
+        recipes = await fetchRecipes();
+        renderGrid();
+        setStatus(`审计完成，已更新 ${(json.results || []).length} 条结果。`, 'ok');
+      } catch (e) {
+        setStatus('审计请求失败: ' + e.message, 'err');
+      }
+      document.getElementById('btnAudit').disabled = false;
+    });
+    document.getElementById('btnSortWorst').addEventListener('click', () => {
+      sortOrder = sortOrder === 'worst' ? 'default' : 'worst';
+      document.getElementById('btnSortWorst').textContent = sortOrder === 'worst' ? '恢复默认排序' : '按最差排序';
+      renderGrid();
+    });
+    document.getElementById('verdictFilter').addEventListener('change', (e) => {
+      filterVerdict = e.target.value;
+      renderGrid();
+    });
+
+    async function regenThenUpload() {
+      const list = Array.from(selected);
+      if (list.length === 0) {
+        setStatus('请先勾选要处理的菜谱', 'err');
+        return;
+      }
+      btnRegenUpload.disabled = true;
+      const useStream = list.length > 1;
+      if (useStream) {
+        setStatus(`[0/${list.length}] 准备中…`, 'loading');
+      } else {
+        setStatus(`正在重生成 1 张…`, 'loading');
+      }
+
+      try {
+        const body = { dishNames: list };
+        if (useStream) body.streamProgress = true;
+        const regenRes = await fetch('/api/regen', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const regenJson = await regenRes.json();
+        if (!regenJson.ok) {
+          setStatus('重生成失败: ' + (regenJson.error || '未知错误'), 'err');
+          btnRegenUpload.disabled = false;
+          return;
+        }
+        let okRegen = [];
+        let failedRegen = [];
+        if (regenJson.jobId) {
+          await new Promise((resolve, reject) => {
+            const es = new EventSource('/api/regen/stream?jobId=' + encodeURIComponent(regenJson.jobId));
+            es.onmessage = (e) => {
+              const data = JSON.parse(e.data);
+              if (data.type === 'progress') {
+                setStatus(`[${data.done}/${data.total}] 正在生成：${data.currentDish || '…'}${data.error ? ' 失败' : ''}`, 'loading');
+              }
+              if (data.type === 'done') {
+                okRegen = data.ok || [];
+                failedRegen = data.failed || [];
+                es.close();
+                resolve();
+              }
+            };
+            es.onerror = () => {
+              es.close();
+              reject(new Error('Stream 断开'));
+            };
+          });
+        } else {
+          okRegen = regenJson.ok || [];
+          failedRegen = regenJson.failed || [];
+        }
+        if (failedRegen.length) {
+          setStatus(`重生成完成：成功 ${okRegen.length}，失败 ${failedRegen.length}（${failedRegen.map((f) => f.dishName + ': ' + f.error).join('; ')}）`, 'err');
+        }
+        if (okRegen.length === 0) {
+          btnRegenUpload.disabled = false;
+          return;
+        }
+
+        setStatus(`重生成完成，正在上传 ${okRegen.length} 张到云端…`, 'loading');
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dishNames: okRegen }),
+        });
+        const uploadJson = await uploadRes.json();
+        if (!uploadJson.ok) {
+          setStatus('上传失败: ' + (uploadJson.error || '未知错误'), 'err');
+          btnRegenUpload.disabled = false;
+          return;
+        }
+        const okUpload = uploadJson.ok || [];
+        const failedUpload = uploadJson.failed || [];
+        okUpload.forEach((name) => {
+          const r = recipes.find((x) => x.dishName === name);
+          if (r) r._ts = Date.now();
+        });
+        selected.clear();
+        renderGrid();
+        if (failedUpload.length) {
+          setStatus(`完成。上传成功 ${okUpload.length}，失败 ${failedUpload.length}：${failedUpload.map((f) => f.dishName).join('、')}`, 'err');
+        } else {
+          setStatus(`已重生成并上传 ${okUpload.length} 张，页面图片已刷新。`, 'ok');
+        }
+      } catch (e) {
+        setStatus('请求失败: ' + e.message, 'err');
+      }
+      btnRegenUpload.disabled = false;
+    }
+
+    btnRegenUpload.addEventListener('click', regenThenUpload);
+
+    document.getElementById('btnRegenOnly').addEventListener('click', async () => {
+      const list = Array.from(selected);
+      if (list.length === 0) {
+        setStatus('请先勾选要重生成的菜谱', 'err');
+        return;
+      }
+      const btn = document.getElementById('btnRegenOnly');
+      btn.disabled = true;
+      const useStream = list.length > 1;
+      if (useStream) setStatus(`[0/${list.length}] 准备中…`, 'loading');
+      else setStatus('正在重生成 1 张（存为候选）…', 'loading');
+      try {
+        const body = { dishNames: list, saveAsCandidate: true };
+        if (useStream) body.streamProgress = true;
+        const regenRes = await fetch('/api/regen', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const regenJson = await regenRes.json();
+        if (!regenJson.ok) {
+          setStatus('重生成失败: ' + (regenJson.error || '未知错误'), 'err');
+          btn.disabled = false;
+          return;
+        }
+        let okRegen = [];
+        if (regenJson.jobId) {
+          await new Promise((resolve, reject) => {
+            const es = new EventSource('/api/regen/stream?jobId=' + encodeURIComponent(regenJson.jobId));
+            es.onmessage = (e) => {
+              const data = JSON.parse(e.data);
+              if (data.type === 'progress') {
+                setStatus(`[${data.done}/${data.total}] 正在生成：${data.currentDish || '…'}`, 'loading');
+              }
+              if (data.type === 'done') {
+                okRegen = data.ok || [];
+                es.close();
+                resolve();
+              }
+            };
+            es.onerror = () => { es.close(); reject(new Error('Stream 断开')); };
+          });
+        } else {
+          okRegen = regenJson.ok || [];
+        }
+        recipes = await fetchRecipes();
+        renderComparePanel();
+        renderGrid();
+        setStatus(`已生成 ${okRegen.length} 张候选图，请在「待对比」中选择采用或保留旧图。`, 'ok');
+      } catch (e) {
+        setStatus('请求失败: ' + e.message, 'err');
+      }
+      btn.disabled = false;
+    });
+
+    document.getElementById('btnSmartOptimize').addEventListener('click', async () => {
+      const btn = document.getElementById('btnSmartOptimize');
+      btn.disabled = true;
+      setStatus('正在审计全部封面…', 'loading');
+      try {
+        const auditRes = await fetch('/api/audit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        });
+        const auditJson = await auditRes.json();
+        if (!auditJson.ok || !Array.isArray(auditJson.results)) {
+          setStatus('审计失败: ' + (auditJson.error || '未知错误'), 'err');
+          btn.disabled = false;
+          return;
+        }
+        const failList = auditJson.results.filter((r) => r.verdict === 'fail').map((r) => r.dishName);
+        if (failList.length === 0) {
+          setStatus('没有需要优化的项（无 Fail）', 'ok');
+          recipes = await fetchRecipes();
+          renderGrid();
+          renderComparePanel();
+          btn.disabled = false;
+          return;
+        }
+        setStatus(`发现 ${failList.length} 项 Fail，正在重生成候选图…`, 'loading');
+        const body = { dishNames: failList, saveAsCandidate: true };
+        if (failList.length > 1) body.streamProgress = true;
+        const regenRes = await fetch('/api/regen', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const regenJson = await regenRes.json();
+        if (!regenJson.ok) {
+          setStatus('重生成失败: ' + (regenJson.error || '未知错误'), 'err');
+          btn.disabled = false;
+          return;
+        }
+        let okRegen = [];
+        if (regenJson.jobId) {
+          await new Promise((resolve, reject) => {
+            const es = new EventSource('/api/regen/stream?jobId=' + encodeURIComponent(regenJson.jobId));
+            es.onmessage = (e) => {
+              const data = JSON.parse(e.data);
+              if (data.type === 'progress') {
+                setStatus(`[${data.done}/${data.total}] 正在生成：${data.currentDish || '…'}`, 'loading');
+              }
+              if (data.type === 'done') {
+                okRegen = data.ok || [];
+                es.close();
+                resolve();
+              }
+            };
+            es.onerror = () => { es.close(); reject(new Error('Stream 断开')); };
+          });
+        } else {
+          okRegen = regenJson.ok || [];
+        }
+        recipes = await fetchRecipes();
+        renderComparePanel();
+        renderGrid();
+        setStatus(`智能优化完成。已在「待对比」中生成 ${okRegen.length} 张候选图，请逐张确认采用或保留旧图。`, 'ok');
+      } catch (e) {
+        setStatus('智能优化失败: ' + e.message, 'err');
+      }
+      btn.disabled = false;
+    });
+
+    document.getElementById('comparePanel').addEventListener('click', async (e) => {
+      if (e.target.id !== 'btnAdoptAll') return;
+      const names = recipes.filter((r) => r.hasCandidate).map((r) => r.dishName);
+      if (names.length === 0) return;
+      e.target.disabled = true;
+      setStatus(`正在采用 ${names.length} 张新图并上传…`, 'loading');
+      try {
+        const res = await fetch('/api/adopt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dishNames: names }),
+        });
+        const json = await res.json();
+        if (!json.ok) {
+          setStatus('操作失败: ' + (json.error || '未知错误'), 'err');
+          e.target.disabled = false;
+          return;
+        }
+        recipes = await fetchRecipes();
+        renderComparePanel();
+        renderGrid();
+        setStatus(`已全部采用并上传 ${(json.ok || []).length} 张。`, 'ok');
+      } catch (err) {
+        setStatus('请求失败: ' + err.message, 'err');
+      }
+      e.target.disabled = false;
+    });
+
+    (async function init() {
+      try {
+        recipes = await fetchRecipes();
+        setStatus(`共 ${recipes.length} 道成人菜封面。单击卡片勾选，双击图片放大；勾选后点「重生成并上传选中」或「仅重生成」存为候选对比。`, 'ok');
+        renderGrid();
+        renderComparePanel();
+      } catch (e) {
+        setStatus('加载失败: ' + e.message, 'err');
+      }
+    })();
+  </script>
+</body>
+</html>

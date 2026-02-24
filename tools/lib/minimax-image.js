@@ -66,7 +66,7 @@ function request(apiKey, body, options = {}) {
  * 调用 MiniMax 文生图（与云函数 recipeCoverGen 同一套 API）
  * @param {string} apiKey - MINIMAX_API_KEY（按量付费创建的完整 Key）
  * @param {string} prompt - 英文 prompt（MJ 风格，如 Krautkopf style, professional food photography...）
- * @param {{ host?: string, model?: string }} [options] - 可选 host（api.minimaxi.com / api.minimax.io）、model（默认 image-01）
+ * @param {{ host?: string, model?: string, referenceImageUrl?: string }} [options] - 可选 host、model；referenceImageUrl 为参考图公网 URL 时走图生图
  * @returns {Promise<Buffer>} 图片 buffer（JPEG）
  */
 export function generateImage(apiKey, prompt, options = {}) {
@@ -75,13 +75,18 @@ export function generateImage(apiKey, prompt, options = {}) {
   }
   const key = apiKey.trim();
   const model = (options.model || 'image-01').trim() || 'image-01';
-  const body = JSON.stringify({
+  const payload = {
     model,
     prompt: prompt.slice(0, 1500),
     aspect_ratio: '1:1',
     response_format: 'base64',
     n: 1,
     prompt_optimizer: false,
-  });
+  };
+  const refUrl = (options.referenceImageUrl || '').trim();
+  if (refUrl) {
+    payload.subject_reference = [{ type: 'character', image_file: refUrl }];
+  }
+  const body = JSON.stringify(payload);
   return request(key, body, options);
 }

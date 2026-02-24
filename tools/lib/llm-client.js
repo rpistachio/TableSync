@@ -255,6 +255,8 @@ function safeParseJson(raw) {
   }
   // 去掉 JSON 中常见的尾逗号（LLM 常多打逗号）
   text = text.replace(/,(\s*[}\]])/g, '$1');
+  // 修复 LLM 常见错误：未加双引号的属性名（如 baseAmount: 150 → "baseAmount": 150）
+  text = text.replace(/([{,])\s*([a-zA-Z_$][\w$]*)\s*:/g, '$1 "$2":');
   try {
     return JSON.parse(text);
   } catch (e) {

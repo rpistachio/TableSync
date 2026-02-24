@@ -65,13 +65,17 @@ var STEP_DEFAULT_DURATION = {
   name: string,              // 菜名
   type: 'adult' | 'baby',
   taste: string,            // quick_stir_fry | slow_stew | steamed_salad 等
-  meat: string,             // chicken | pork | beef | fish | shrimp | vegetable
+  meat: string,             // chicken | pork | beef | fish | shrimp | lamb | duck | shellfish | vegetable
   prep_time: number,        // 备菜时间（分钟）
   cook_time: number,        // 烹饪时间（分钟），可选
   cover_image_url: string,  // 封面图，可选
   is_baby_friendly: boolean,
   can_share_base: boolean,
   common_allergens: string[],
+
+  tags: string[],           // 场景/属性标签，见 RECIPE_TAGS 词汇表（如 quick, light, spicy, late_night, ultra_quick）
+  ingredient_group: string, // 可选，一物多吃分组标识（如 whole_chicken），同组菜谱可共用主料推荐
+  spicy_sub: string,        // 可选，仅当 flavor_profile===spicy 时有效：mala(麻辣) | xianla(鲜辣) | xiangla(香辣，默认)
 
   // ---------- 分块食材（爱料理结构）----------
   main_ingredients: [       // 主料
@@ -111,6 +115,8 @@ var SAMPLE_RECIPE = {
   is_baby_friendly: true,
   can_share_base: true,
   common_allergens: [],
+  tags: ['quick', 'light', 'high_protein', 'steamed'],
+  ingredient_group: '',
 
   main_ingredients: [
     { name: '鸡里脊', amount: 300, unit: 'g', category: '肉类', sub_type: 'chicken_tenderloin' },

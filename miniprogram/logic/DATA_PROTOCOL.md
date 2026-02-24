@@ -102,3 +102,112 @@
   - 阶段横幅相关字段可能不再设置。
 
 逻辑层不调用 `wx.setStorageSync` 或 `this.setData`，这些由页面层在拿到返回值后自行处理。
+
+---
+
+## Taste Profile（口味档案）数据协议
+
+Storage key: `taste_profile`
+
+与 `today_menus_preference`（单次会话偏好）共存。Taste Profile 管理用户的**长期画像**，由需求探针（Demand Probes）逐步收集。
+
+### 完整结构
+
+```js
+{
+  // 场景（volatile，每次进入首页重置）
+  scene: 'couple',           // 'solo' | 'couple' | 'family' | 'gathering' | null
+  headcount: 2,              // 从 scene 自动推导
+
+  // 口味亲和度（persistent，累加制，Phase 2 启用）
+  flavorAffinity: {
+    light: 3,                // 选过 3 次"清淡"
+    spicy: 7,                // 选过 7 次"来点辣的"
+    sour_fresh: 1,
+    salty_umami: 2,
+    sweet_sour: 0
+  },
+
+  // 食材亲和度（persistent，累加制，Phase 2 启用）
+  ingredientAffinity: {
+    seafood: 2,
+    beef: 5,
+    chicken: 3,
+    pork: 1,
+    vegetable: 4
+  },
+
+  // 硬约束（persistent，由约束探针写入）
+  avoidList: ['spicy', 'peanut'],
+
+  // 库存急用（volatile，单次消费，用完即清）
+  urgentIngredient: null,    // 'meat' | 'vegetable' | 'seafood' | null
+
+  // 厨房配置（persistent，商业化预埋）
+  kitchenConfig: {
+    burners: 2,
+    hasSteamer: false,
+    hasAirFryer: false,
+    hasOven: false
+  },
+
+  // 元数据
+  createdAt: '2026-02-24',
+  lastProbeAt: '2026-02-24',
+  totalCooks: 0,
+  visitCount: 0,             // 累计访问次数（驱动库存探针轮换节奏）
+  version: 1
+}
+```
+
+### 字段分类
+
+| 类别 | 字段 | 生命周期 | 写入时机 |
+|------|------|----------|----------|
+| volatile | `scene`, `headcount`, `urgentIngredient` | 每次 session | 探针回答 / 进入首页时重置 |
+| persistent | `flavorAffinity`, `ingredientAffinity` | 累加不清除 | 探针回答（Phase 2） |
+| persistent | `avoidList`, `kitchenConfig` | 长期有效 | 探针回答 / 设置页编辑 |
+| metadata | `visitCount`, `totalCooks`, `lastProbeAt` | 递增不清除 | 每次进入首页 / 完成烹饪 |
+
+### 接口人（Exports）
+
+读写通过 `require('../../data/tasteProfile.js')`：
+
+| 函数 | 说明 | 副作用 |
+|------|------|--------|
+| `get()` | 读取完整档案 | 无 |
+| `save(profile)` | 写入完整档案 | wx.setStorageSync |
+| `update(patch)` | 合并更新部分字段 | wx.setStorageSync |
+| `setScene(scene)` | 设置场景 + 推导 headcount | wx.setStorageSync |
+| `getSceneConfig()` | 获取场景→菜品结构映射 | 无 |
+| `inferDietStyle(affinity?)` | 口味亲和度→dietStyle 推导 | 无 |
+| `inferPreferredMeats(affinity?)` | 食材亲和度→推荐主料推导 | 无 |
+| `getFlavorHint(affinity?)` | 生成 AI prompt 用的口味描述 | 无 |
+| `setUrgent(type)` | 设置库存急用 | wx.setStorageSync |
+| `consumeUrgent()` | 消费并清除库存急用（单次） | wx.setStorageSync |
+| `incrementVisit()` | 递增访问计数 | wx.setStorageSync |
+| `isFirstVisit()` | 是否首次使用 | 无 |
+
+探针选择逻辑通过 `require('../../logic/probeEngine.js')`：
+
+| 函数 | 说明 |
+|------|------|
+| `selectNextProbe()` | 根据档案完整度选择下一个探针 |
+| `resetVolatile()` | 重置 volatile 字段（进入首页时调用） |
+| `handleProbeAnswer(type, value)` | 处理用户选择，返回确认文案 |
+| `buildSessionSummary()` | 生成当前 session 的综合确认文案 |
+
+### userPreference 扩展字段
+
+`_buildZenPreference()` 现在从 Taste Profile 动态构建，新增以下扩展字段传递给 AI：
+
+```js
+{
+  // ... 原有字段 ...
+  preferredMeats: ['beef', 'chicken'],  // 从 ingredientAffinity 推导
+  flavorHint: '偏好辣味(7次)、清淡(3次)',  // AI prompt 可读的口味描述
+  urgentIngredient: 'meat'              // 库存急用，单次有效
+}
+```
+
+逻辑层（menuGenerator）对未识别的扩展字段不报错，仅在 AI 管道（smartMenuGen）中使用。

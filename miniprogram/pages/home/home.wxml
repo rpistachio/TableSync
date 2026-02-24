@@ -7,10 +7,37 @@
 
   <view class="home-main">
     <view class="home-main-content">
-      <!-- 今日氛围卡片（Phase 2 填充天气/问候） -->
+      <!-- 今日氛围卡片（探针内嵌，对话式一体） -->
       <view class="vibe-card">
         <text class="vibe-date">{{currentDate}}</text>
         <text class="vibe-greeting">{{vibeGreeting}}</text>
+
+        <!-- 探针区域：内嵌在 Vibe Card 内，像对话延续 -->
+        <view class="vibe-probe-area {{probeVisible ? 'is-open' : ''}} {{probeDismissed ? 'is-closing' : ''}}" wx:if="{{currentProbe && !probeFullyHidden}}">
+          <view class="vibe-probe-divider"></view>
+          <text class="probe-question">{{currentProbe.question}}</text>
+          <view class="probe-options {{currentProbe.multiSelect ? 'probe-options-wrap' : ''}}">
+            <view
+              wx:for="{{currentProbe.options}}"
+              wx:key="label"
+              class="probe-option {{!currentProbe.multiSelect && probeSelected != null && probeSelected === item.key ? 'is-selected' : ''}} {{currentProbe.multiSelect && probeMultiSelected && probeMultiSelected[item.key] ? 'is-selected' : ''}} {{item.key != null && item.key === probeLastChoice && probeSelected == null ? 'is-last-choice' : ''}}"
+              data-key="{{item.key}}"
+              data-type="{{currentProbe.type}}"
+              bindtap="onProbeSelect"
+            >
+              <text class="probe-option-icon">{{item.icon}}</text>
+              <text class="probe-option-label">{{item.label}}</text>
+            </view>
+          </view>
+          <view class="probe-confirm-btn" wx:if="{{currentProbe.multiSelect && probeMultiHasSelection}}" bindtap="onProbeConfirmMulti">
+            <text class="probe-confirm-btn-text">确定</text>
+          </view>
+        </view>
+
+        <!-- 即时确认文字（嵌入 Vibe Card 底部） -->
+        <view class="vibe-probe-confirm {{probeConfirmVisible ? 'probe-confirm-show' : ''}}" wx:if="{{probeConfirmText}}">
+          <text>{{probeConfirmText}}</text>
+        </view>
       </view>
 
       <!-- ===== Zen Mode: 一键定晚饭 ===== -->
@@ -18,6 +45,7 @@
         <view class="zen-illustration" wx:if="{{illustrationUrl}}">
           <image src="{{illustrationUrl}}" mode="widthFix" class="zen-illo-img" />
         </view>
+
         <view class="zen-main-btn" bindtap="onZenGo">
           <text class="zen-main-btn-text">想想吃什么</text>
         </view>
@@ -80,11 +108,23 @@
     </view>
     <text class="feature-arrow">›</text>
   </view>
+
+  <!-- 我的冰箱入口 -->
+  <view class="feature-entry fridge-entry" bindtap="onGoFridge">
+    <view class="feature-icon-wrap fridge-icon-wrap">
+      <text class="feature-icon">🧊</text>
+    </view>
+    <view class="feature-text-wrap">
+      <text class="feature-title">我的冰箱</text>
+      <text class="feature-desc">{{fridgeHint || '记录食材，AI 帮你优先消耗临期的'}}</text>
+    </view>
+    <text class="feature-arrow">›</text>
+  </view>
   </block>
 
   <!-- 更多高级功能入口（Zen 模式下显示） -->
   <view class="zen-advanced-link" wx:if="{{!showAdvanced}}" bindtap="onShowAdvanced">
-    <text>更多高级功能（导入）▾</text>
+    <text>更多高级功能 ▾</text>
   </view>
 
   <!-- 品牌露出已移至顶部水印，底部空间留给烟火集 -->

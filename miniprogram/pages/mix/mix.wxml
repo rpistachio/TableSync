@@ -42,9 +42,9 @@
       <view class="recipe-card" wx:for="{{selectedRecipes}}" wx:key="id">
         <view class="recipe-card-main">
           <image
-            wx:if="{{item._coverHttpUrl || item._coverTempUrl}}"
+            wx:if="{{item._coverTempUrl}}"
             class="recipe-card-thumb"
-            src="{{item._coverHttpUrl || item._coverTempUrl}}"
+            src="{{item._coverTempUrl}}"
             mode="aspectFill"
           />
           <view class="recipe-card-thumb-placeholder" wx:else>
@@ -208,9 +208,9 @@
             bindtap="onSelectNativeRecipe"
           >
             <image
-              wx:if="{{item._coverHttpUrl || item._coverTempUrl}}"
+              wx:if="{{item._coverTempUrl}}"
               class="recipe-pick-thumb"
-              src="{{item._coverHttpUrl || item._coverTempUrl}}"
+              src="{{item._coverTempUrl}}"
               mode="aspectFill"
             />
             <view class="recipe-pick-thumb-placeholder" wx:else>
@@ -244,9 +244,9 @@
             bindtap="onSelectImportedRecipe"
           >
             <image
-              wx:if="{{item._coverHttpUrl || item._coverTempUrl}}"
+              wx:if="{{item._coverTempUrl}}"
               class="recipe-pick-thumb"
-              src="{{item._coverHttpUrl || item._coverTempUrl}}"
+              src="{{item._coverTempUrl}}"
               mode="aspectFill"
             />
             <view class="recipe-pick-thumb-placeholder" wx:else>

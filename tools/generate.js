@@ -10,6 +10,7 @@ import { generateRecipesFromInput } from './lib/llm-client.js';
 import { normalizeGeneratedItems } from './lib/recipe-formatter.js';
 import { ensurePromptsForItems } from './lib/mj-prompt-builder.js';
 import { generateImage } from './lib/minimax-image.js';
+import { validateIngredientStepConsistency } from './lib/validate-recipe-consistency.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -141,6 +142,24 @@ async function main() {
       image_file: null
     }))
   };
+
+  // 生成后自动跑一遍配料-步骤与烹饪逻辑校验，输出警告
+  payload.items.forEach((it) => {
+    const recipe = it.recipe;
+    const v = validateIngredientStepConsistency(recipe);
+    if (!v.ok || (v.warnings && v.warnings.length > 0)) {
+      console.log(chalk.yellow(`  [校验] ${recipe.name}:`));
+      if (v.missingInSteps && v.missingInSteps.length) {
+        console.log(chalk.yellow(`    配料未在步骤中出现: ${v.missingInSteps.join('、')}`));
+      }
+      if (v.mentionedNotInList && v.mentionedNotInList.length) {
+        console.log(chalk.yellow(`    步骤中提到但配料表无: ${v.mentionedNotInList.join('、')}`));
+      }
+      if (v.warnings && v.warnings.length) {
+        v.warnings.forEach((w) => console.log(chalk.yellow(`    ${w}`)));
+      }
+    }
+  });
 
   fs.writeFileSync(filename, JSON.stringify(payload, null, 2), 'utf8');
 

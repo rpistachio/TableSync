@@ -1,0 +1,226 @@
+/* ============ 冰箱页 · Wabi-sabi 手账风 ============ */
+
+.fridge-page {
+  --paper: #F9F8F4;
+  --ink: #3A3D40;
+  --wood: #A69482;
+  --seal: #9E3E32;
+  --dust: rgba(0, 0, 0, 0.05);
+  --warning: #C4874B;
+  --critical: #B5523A;
+
+  min-height: 100vh;
+  padding: 24rpx 24rpx 80rpx;
+  box-sizing: border-box;
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(0, 0, 0, 0.012) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(0, 0, 0, 0.008) 0%, transparent 45%);
+  background-size: 120rpx 120rpx, 160rpx 160rpx;
+  background-repeat: repeat;
+}
+
+/* ============ 输入区 ============ */
+
+.fridge-input-bar {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 20rpx 24rpx;
+  background: linear-gradient(170deg, rgba(255, 253, 250, 0.95) 0%, rgba(248, 244, 238, 0.9) 100%);
+  border: 1rpx solid rgba(166, 148, 130, 0.22);
+  border-radius: 16rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.04);
+  margin-bottom: 28rpx;
+}
+
+.fridge-input {
+  flex: 1;
+  font-size: 28rpx;
+  color: var(--ink);
+  height: 60rpx;
+  line-height: 60rpx;
+}
+
+.fridge-input-placeholder {
+  color: #B5ADA5;
+  font-size: 26rpx;
+}
+
+.fridge-storage-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 8rpx 16rpx;
+  border: 1rpx solid rgba(166, 148, 130, 0.3);
+  border-radius: 20rpx;
+  flex-shrink: 0;
+}
+
+.fridge-storage-label {
+  font-size: 22rpx;
+  color: var(--wood);
+  transition: color 0.2s ease, font-weight 0.2s ease;
+}
+
+.fridge-storage-label.is-active {
+  color: var(--seal);
+  font-weight: 600;
+}
+
+.fridge-storage-divider {
+  font-size: 20rpx;
+  color: rgba(166, 148, 130, 0.4);
+}
+
+.fridge-add-btn {
+  flex-shrink: 0;
+  padding: 10rpx 24rpx;
+  background: var(--seal);
+  border-radius: 20rpx;
+}
+
+.fridge-add-btn-text {
+  font-size: 24rpx;
+  color: #fff;
+  font-weight: 500;
+}
+
+/* ============ 食材列表 ============ */
+
+.fridge-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.fridge-item {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 28rpx;
+  border-radius: 14rpx;
+  border: 1rpx solid rgba(166, 148, 130, 0.18);
+  transition: background 0.4s ease, border-color 0.4s ease;
+  background: linear-gradient(170deg, rgba(255, 253, 250, 0.95) 0%, rgba(248, 244, 238, 0.9) 100%);
+}
+
+.fridge-item.urgency-warning {
+  background: linear-gradient(170deg, #FDF5EC 0%, #F8EDE0 100%);
+  border-color: rgba(196, 135, 75, 0.25);
+}
+
+.fridge-item.urgency-critical,
+.fridge-item.urgency-expired {
+  background: linear-gradient(170deg, #FCF0EC 0%, #F5E4DD 100%);
+  border-color: rgba(181, 82, 58, 0.25);
+}
+
+.fridge-item-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.fridge-item-icon {
+  font-size: 40rpx;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.fridge-item-name {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: var(--ink);
+  flex: 1;
+}
+
+.fridge-item-storage {
+  font-size: 22rpx;
+  color: var(--wood);
+  padding: 4rpx 14rpx;
+  border: 1rpx solid rgba(166, 148, 130, 0.2);
+  border-radius: 16rpx;
+  flex-shrink: 0;
+}
+
+.fridge-item-status {
+  font-size: 22rpx;
+  color: var(--wood);
+  flex-shrink: 0;
+  min-width: 100rpx;
+  text-align: right;
+}
+
+.urgency-warning .fridge-item-status {
+  color: var(--warning);
+  font-weight: 500;
+}
+
+.urgency-critical .fridge-item-status,
+.urgency-expired .fridge-item-status {
+  color: var(--critical);
+  font-weight: 600;
+}
+
+.fridge-item-delete {
+  flex-shrink: 0;
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8rpx;
+}
+
+.fridge-item-delete-icon {
+  font-size: 32rpx;
+  color: var(--wood);
+  opacity: 0.6;
+}
+
+.fridge-item-delete:active .fridge-item-delete-icon {
+  color: var(--seal);
+  opacity: 1;
+}
+
+/* ============ 空状态 ============ */
+
+.fridge-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 0 80rpx;
+}
+
+.fridge-empty-icon {
+  font-size: 80rpx;
+  margin-bottom: 24rpx;
+  opacity: 0.6;
+}
+
+.fridge-empty-text {
+  font-size: 32rpx;
+  color: var(--ink);
+  font-weight: 500;
+  margin-bottom: 12rpx;
+}
+
+.fridge-empty-hint {
+  font-size: 24rpx;
+  color: var(--wood);
+}
+
+/* ============ 底部提示 ============ */
+
+.fridge-footer {
+  text-align: center;
+  padding: 32rpx 0 16rpx;
+}
+
+.fridge-footer-text {
+  font-size: 22rpx;
+  color: var(--wood);
+  opacity: 0.7;
+}

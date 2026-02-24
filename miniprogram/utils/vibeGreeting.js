@@ -1,6 +1,6 @@
 /**
- * 首页 Vibe Card 问候文案模板（20-30 条）
- * 根据时段、星期、天气类型选一条
+ * 首页 Vibe Card 问候文案引擎
+ * 三层优先级：状态感知层 > 天气模板层 > 通用 fallback
  */
 
 var RAIN_KEYWORDS = ['雨'];
@@ -59,19 +59,65 @@ function getTimeSlot(hour) {
 }
 
 /**
+ * 状态感知文案层（优先级最高，命中即返回）
+ * @param {Object} ctx - { totalCooks, lastDishName, fridgeExpiringNames, hour }
+ * @returns {string|null}
+ */
+function _contextGreeting(ctx) {
+  if (!ctx) return null;
+  var hour = typeof ctx.hour === 'number' ? ctx.hour : new Date().getHours();
+
+  // 深夜：温暖关怀
+  if (hour >= 22 || hour < 5) {
+    return '辛苦了，忙到现在。要不要来点暖胃又不重负担的？';
+  }
+
+  // 冰箱有临期食材：激活"清冰箱"心智
+  if (Array.isArray(ctx.fridgeExpiringNames) && ctx.fridgeExpiringNames.length > 0) {
+    var name = ctx.fridgeExpiringNames[0];
+    return '冰箱里的' + name + '该用掉了，今天围绕它做一桌？';
+  }
+
+  // 首次使用
+  if (ctx.totalCooks === 0 && ctx.visitCount <= 1) {
+    return '你好呀，告诉我今晚几个人吃、想吃什么口味';
+  }
+
+  // 连续做饭 3+ 天
+  if (typeof ctx.totalCooks === 'number' && ctx.totalCooks >= 3) {
+    var streak = ctx.totalCooks;
+    if (streak >= 7) return '连续第 ' + streak + ' 天下厨，你已经是真正的家庭主厨了';
+    if (streak >= 3) return '连续第 ' + streak + ' 天下厨，辛苦了。今天来个省心的？';
+  }
+
+  // 上次做了某道菜
+  if (ctx.lastDishName) {
+    return '上次的' + ctx.lastDishName + '还满意吗？今天换换口味';
+  }
+
+  return null;
+}
+
+/**
  * 选一条问候语
- * @param {Object} weather - { text?: string, temp?: string } 从 getWeather 返回
+ * @param {Object} weather - { text?: string, temp?: string }
  * @param {Object} [seedUser] - 种子用户信息 { seq, channel, isNew }
+ * @param {Object} [context] - 用户状态上下文 { totalCooks, lastDishName, fridgeExpiringNames, hour, visitCount }
  * @returns {string}
  */
-function pickGreeting(weather, seedUser) {
-  // 先锋主厨彩蛋：前 100 名种子用户显示专属问候
+function pickGreeting(weather, seedUser, context) {
+  // P0: 先锋主厨彩蛋
   if (seedUser && seedUser.seq > 0 && seedUser.seq <= 100) {
     var seqStr = String(seedUser.seq);
     while (seqStr.length < 3) seqStr = '0' + seqStr;
     return '您好，TableSync 的第 ' + seqStr + ' 位先锋主厨';
   }
 
+  // P1: 状态感知层
+  var contextText = _contextGreeting(context);
+  if (contextText) return contextText;
+
+  // P2: 天气模板层
   var d = new Date();
   var weekDay = d.getDay();
   var hour = d.getHours();

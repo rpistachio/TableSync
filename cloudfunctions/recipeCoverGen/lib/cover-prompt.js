@@ -1,16 +1,16 @@
 // cloudfunctions/recipeCoverGen/lib/cover-prompt.js
-// 与 tools/mj-prompt-builder 一致的「暗调高级感」风格，为外来菜谱生成封面用 prompt
+// 与 tools/mj-style-template.md 一致的「暖调有食欲」风格，为外来菜谱生成封面用 prompt
 
 /**
- * 容器描述：汤用碗，其他用盘
+ * 容器描述：汤用碗，其他用盘（暖色容器与台面）
  */
 function inferContainer(recipe) {
   const name = (recipe && recipe.name) || '';
   const isSoup = (recipe && recipe.dish_type === 'soup') || /汤|羹|粥/.test(name);
   if (isSoup) {
-    return 'in a dark ceramic bowl on a dark textured surface';
+    return 'in a warm ceramic bowl on a wooden or stone surface';
   }
-  return 'on a dark textured plate on a dark textured surface';
+  return 'on a warm-toned plate on a wooden or stone surface';
 }
 
 /**
@@ -21,9 +21,9 @@ function defaultEnglishName(chineseName, recipe) {
   return `Chinese home-style dish: ${chineseName}`;
 }
 
-/** 模版 A：俯拍，与 mj-style-template.md 一致 */
+/** 模版 A：俯拍，暖调有食欲，与 mj-style-template.md 一致 */
 const TEMPLATE_TOP_DOWN =
-  '{{english_name}}, {{chinese_name}}, {{container}}, top-down view, professional food photography, Krautkopf style, minimalist, moody tones';
+  '{{english_name}}, {{chinese_name}}, {{container}}, top-down view, professional food photography, warm ambient lighting, appetizing, rich colors, inviting, cozy';
 
 /**
  * 为单道菜生成一条封面用 MJ 风格 prompt（暗调高级感）

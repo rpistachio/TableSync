@@ -18,6 +18,38 @@
     <text class="collection-progress-text">{{totalEarned}} / {{totalDefs}}</text>
   </view>
 
+  <!-- 口味画像卡片 -->
+  <view class="taste-portrait" wx:if="{{tastePortrait}}">
+    <view class="taste-portrait-header">
+      <text class="taste-portrait-title">我的味觉</text>
+      <text class="taste-portrait-cooks" wx:if="{{tastePortrait.totalCooks > 0}}">已做 {{tastePortrait.totalCooks}} 餐</text>
+    </view>
+
+    <view class="taste-bars" wx:if="{{tastePortrait.topFlavors.length > 0}}">
+      <text class="taste-section-label">口味偏好</text>
+      <view class="taste-bar-row" wx:for="{{tastePortrait.topFlavors}}" wx:key="key">
+        <text class="taste-bar-label">{{item.label}}</text>
+        <view class="taste-bar-track">
+          <view class="taste-bar-fill" style="width: {{item.value > 10 ? 100 : item.value * 10}}%"></view>
+        </view>
+      </view>
+    </view>
+
+    <view class="taste-tags" wx:if="{{tastePortrait.topIngredients.length > 0}}">
+      <text class="taste-section-label">偏好食材</text>
+      <view class="taste-tag-list">
+        <text class="taste-tag" wx:for="{{tastePortrait.topIngredients}}" wx:key="key">{{item.label}}</text>
+      </view>
+    </view>
+
+    <view class="taste-avoid" wx:if="{{tastePortrait.avoidList.length > 0}}">
+      <text class="taste-section-label">忌口</text>
+      <view class="taste-tag-list">
+        <text class="taste-tag taste-tag-avoid" wx:for="{{tastePortrait.avoidList}}" wx:key="*this">{{item}}</text>
+      </view>
+    </view>
+  </view>
+
   <view class="collection-grid">
     <view
       wx:for="{{earnedList}}"

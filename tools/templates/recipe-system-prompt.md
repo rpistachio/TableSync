@@ -30,13 +30,13 @@
   type: 'adult',
   dish_type: 'soup',              // 汤类必须加
   taste: 'slow_stew',             // quick_stir_fry | slow_stew | steamed_salad
-  meat: 'chicken',                // chicken | pork | beef | fish | shrimp | vegetable
+  meat: 'chicken',                // chicken | pork | beef | fish | shrimp | lamb | duck | shellfish | vegetable
   prep_time: 15,                  // 备菜分钟数
   is_baby_friendly: false,        // 见下方推导规则
   common_allergens: [],           // 过敏原中文，如 ['虾', '蛋']
   can_share_base: false,          // 见下方推导规则
   flavor_profile: 'salty_umami',  // spicy | salty_umami | light | sweet_sour | sour_fresh
-  cook_type: 'stew',              // stew | steam | stir_fry
+  cook_type: 'stew',              // stew | steam | stir_fry | cold_dress | bake
   cook_minutes: 60,               // 烹饪时长（分钟）
   ingredients: [
     { name: '鸡腿', baseAmount: 400, unit: 'g', category: '肉类', sub_type: 'chicken_thigh' },
@@ -66,7 +66,11 @@
    - 鸡肉：`a-chi-{n}`
    - 猪肉：`a-pork-{n}`
    - 牛肉：`a-beef-{n}`
+   - 鱼类：`a-fish-{n}`
    - 虾：`a-shrimp-{n}`
+   - 羊肉：`a-lamb-{n}`
+   - 鸭肉：`a-duck-{n}`
+   - 贝类：`a-shell-{n}`
    - 素菜：`a-veg-{n}`
    实际编号由调用方在后处理时决定，你只需要给出**占位 id**，例如 `a-soup-new-1`，但前缀类别要正确。
 
@@ -81,6 +85,9 @@
    - 牛肉 → `beef`
    - 鱼类 → `fish`
    - 虾类 → `shrimp`
+   - 羊肉/羊排 → `lamb`
+   - 鸭肉/鸭腿/鸭脖/老鸭 → `duck`
+   - 贝类/软体类（蛤蜊、扇贝、鲍鱼、鱿鱼、墨鱼等） → `shellfish`
    - 纯蔬菜/鸡蛋/豆腐类 → `vegetable`
 
 4. **flavor_profile（风味）**：
@@ -117,6 +124,40 @@
 - 步骤只有「加调料翻炒」→ 必须写出具体调料名（生抽、蚝油等）及火候、时间。
 - 备菜步骤只写「肉切块」→ 必须写出切法尺寸（逆纹/顺纹、厚度或丁丝片）及腌制方法。
 
+### 烹饪逻辑规则（必须遵守，违反即为不合格菜谱）
+
+#### A. 步骤顺序铁律
+- 肉类必须先处理（焯水去血沫 或 腌制上浆）再下锅烹饪，禁止生肉直接炒
+- 需要焯水的食材（西兰花、菠菜、豆角、秋葵、笋）必须在 prep 中标注焯水
+- 豆角类必须充分加热（至少炒5分钟或焯水后炒3分钟），未熟豆角有毒
+- 先炝锅（葱姜蒜爆香）再下主料，禁止主料和香料同时冷锅下
+- 勾芡/收汁必须在锅中已有液体（酱汁/汤汁）的前提下进行
+- 蒸菜必须注明「水开后上锅蒸」，禁止冷水蒸
+
+#### B. 火候与技法匹配
+- 爆炒/滑炒：必须大火，锅要烧热（「热锅凉油」或「锅烧至冒烟」）
+- 炖/煲/焖：先大火烧开，再转小火慢炖，禁止全程大火炖煮
+- 蒸：注明蒸制时间，鱼类8-12分钟，肉类15-30分钟，蛋羹8-10分钟
+- 煎：中火为主，禁止大火煎（易糊外生内）
+
+#### C. 调料下锅时序
+- 料酒：加热后第一时间淋入（去腥），不要在出锅时加
+- 糖：在盐之前加（先甜后咸更易入味）
+- 生抽/蚝油：中后期加入，避免长时间高温使酱色发黑
+- 醋：出锅前沿锅边淋入（保留酸香），不要在炖煮开始就加
+- 香油/葱花：最后出锅时加，不要高温炒
+
+#### D. 食材-技法兼容性
+- 嫩豆腐：适合蒸/煮/焖，不适合爆炒（易碎）
+- 叶菜类（菠菜、空心菜）：大火快炒，禁止小火慢炖（变黄出水）
+- 鱼片/虾仁：滑炒至变色即出锅（约30秒-1分钟），过度翻炒会老
+- 根茎类（土豆、胡萝卜）：切薄片快炒 或 切块炖煮，禁止厚片快炒（不熟）
+
+#### E. 时间一致性
+- 所有 cook 步骤的 duration_num 之和应与菜谱的 cook_minutes 大致吻合（误差 <=30%）
+- prep 步骤的 duration_num 之和应与 prep_time 大致吻合
+- 腌制时间若 >= 15 分钟应在 prep 的 duration_num 中体现
+
 8. **baby_variant（宝宝餐变体，必填）**：
    - **每道菜必须**附带 `baby_variant` 对象，内含 `stages` 数组。
    - `stages` 按月龄分 2–3 档：`max_month: 8`（泥糊期）、`max_month: 12`（碎末期）、`max_month: 36`（小块/接近大人版）。至少包含 2 档，建议 3 档。
@@ -134,7 +175,22 @@
      }
      ```
 
-9. **is_baby_friendly 与 can_share_base 推导**：
+9. **tags（场景/属性标签，必填）**：
+   - 每道菜必须附带 `tags` 数组，从以下词汇表中选择（可多选）：
+     - 场景标签：`late_night`（深夜食堂/小酌）、`ultra_quick`（总时长≤8分钟）、`comfort`（暖心治愈）、`party`（聚会硬菜）
+     - 属性标签：`quick`（总时长≤25分钟）、`light`（清淡）、`high_protein`（高蛋白/含肉类）、`spicy`（辣味）、`vegetarian`（素食）、`no_oil`（少油/蒸/凉拌）、`steamed`（蒸制）、`salty_umami`（咸鲜）、`hearty`（丰盛/炖煮/汤）、`soup`（汤品）、`stir_fry`（炒制）、`baby_friendly`（is_baby_friendly 为 true 时加）
+
+10. **ingredient_group（一物多吃分组，可选）**：
+   - 若该菜适合与同主料的其他菜共享一次采购，填写分组标识，如：`whole_chicken`、`pork_ribs`、`beef_brisket`
+   - 例如：白切鸡 + 鸡汤 + 生炒鸡块 同属 `whole_chicken`
+
+11. **spicy_sub（辣味细分，仅 flavor_profile 为 spicy 时填写）**：
+   - `mala`：麻辣（花椒主导，如水煮肉片、麻辣鸭脖）
+   - `xianla`：鲜辣（辣椒+酸鲜，如剁椒鱼头、泰式酸辣虾）
+   - `xiangla`：香辣（酱香复合，如宫保鸡丁、回锅肉，默认值）
+   - 非辣味菜品不填此字段
+
+12. **is_baby_friendly 与 can_share_base 推导**：
    - 汤类、蒸菜、白灼、清淡炒菜等天然适合宝宝 → `is_baby_friendly: true`，可与宝宝共用基底 → `can_share_base: true`。
    - 辣菜、重油重盐、油炸、含酒精等 → `is_baby_friendly: false`，`can_share_base: false`（但仍必须生成 `baby_variant`，描述如何取未调味部分或改良做法）。
 

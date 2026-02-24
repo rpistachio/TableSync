@@ -58,6 +58,26 @@
   gap: 6rpx;
   position: relative;
   overflow: visible;
+  transition: all 0.3s ease-in-out;
+}
+
+.vibe-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #FFFFFF 0%, rgba(255, 255, 255, 0) 60%);
+  opacity: 0;
+  animation: vibeBreath 6s ease-in-out infinite;
+  pointer-events: none;
+  border-radius: 24rpx;
+}
+
+@keyframes vibeBreath {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 0.05; }
 }
 
 .vibe-card-sticker {
@@ -673,6 +693,10 @@
   background: rgba(139, 119, 101, 0.15);
 }
 
+.fridge-icon-wrap {
+  background: rgba(99, 160, 180, 0.15);
+}
+
 /* TableSync 品牌露出 */
 .home-brand {
   display: flex;
@@ -924,6 +948,182 @@
     width: 48rpx;
     height: 48rpx;
   }
+}
+
+/* ============ Demand Probe: 内嵌在 Vibe Card 中的探针区域 ============ */
+.vibe-probe-area {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16rpx;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, padding 0.3s ease-in-out;
+  padding: 0;
+}
+
+.vibe-probe-area.is-open {
+  max-height: 500rpx;
+  opacity: 1;
+  padding: 8rpx 0 4rpx;
+}
+
+.vibe-probe-area.is-closing {
+  max-height: 0;
+  opacity: 0;
+  padding: 0;
+  transition: max-height 0.3s ease-in-out, opacity 0.25s ease-in, padding 0.3s ease-in-out;
+}
+
+.vibe-probe-divider {
+  width: 80%;
+  height: 1rpx;
+  background: rgba(0, 0, 0, 0.03);
+  margin-bottom: 4rpx;
+}
+
+/* 确认文字（嵌入 Vibe Card 底部） */
+.vibe-probe-confirm {
+  width: 100%;
+  text-align: center;
+  font-size: 24rpx;
+  color: var(--text-muted);
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition: opacity 0.4s ease-out, max-height 0.3s ease-in-out;
+}
+
+.vibe-probe-confirm.probe-confirm-show {
+  opacity: 0.45;
+  max-height: 48rpx;
+  padding-top: 8rpx;
+}
+
+.probe-question {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: var(--text-soft);
+  letter-spacing: 2rpx;
+}
+
+.probe-options {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  justify-content: center;
+}
+
+.probe-options-wrap {
+  gap: 14rpx;
+}
+
+.probe-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  padding: 18rpx 20rpx;
+  min-width: 100rpx;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1rpx solid rgba(27, 61, 47, 0.10);
+  border-radius: 20rpx;
+  transition: all 0.2s ease;
+}
+
+.probe-option:active {
+  transform: scale(0.96);
+}
+
+.probe-option {
+  position: relative;
+}
+
+.probe-option.is-selected {
+  background: rgba(27, 61, 47, 0.08);
+  border-color: rgba(27, 61, 47, 0.18);
+  transform: scale(1.02);
+  box-shadow: 0 2rpx 12rpx rgba(27, 61, 47, 0.08);
+}
+
+.probe-option.is-selected::after {
+  content: '✓';
+  position: absolute;
+  top: -4rpx;
+  right: -4rpx;
+  width: 28rpx;
+  height: 28rpx;
+  font-size: 18rpx;
+  font-weight: 300;
+  line-height: 28rpx;
+  text-align: center;
+  color: #B8976A;
+  background: rgba(184, 151, 106, 0.12);
+  border-radius: 50%;
+}
+
+/* "上次选择"智能默认高亮：极微弱金色呼吸光边框 */
+.probe-option.is-last-choice {
+  border-color: rgba(184, 151, 106, 0.25);
+  animation: lastChoiceGlow 3s ease-in-out infinite;
+}
+
+.probe-option.is-last-choice .probe-option-label {
+  color: var(--text);
+}
+
+@keyframes lastChoiceGlow {
+  0%, 100% { box-shadow: 0 0 0 1rpx rgba(184, 151, 106, 0.08); }
+  50% { box-shadow: 0 0 8rpx 2rpx rgba(184, 151, 106, 0.18); }
+}
+
+/* 选中后取消 last-choice 动画（is-selected 优先） */
+.probe-option.is-selected.is-last-choice {
+  animation: none;
+}
+
+.probe-option-icon {
+  font-size: 36rpx;
+}
+
+.probe-option-label {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: var(--text-soft);
+  white-space: nowrap;
+}
+
+.probe-option.is-selected .probe-option-label {
+  color: var(--ink-green);
+  font-weight: 600;
+}
+
+.probe-confirm-btn {
+  padding: 14rpx 48rpx;
+  background: var(--ink-green);
+  border-radius: 100rpx;
+  margin-top: 4rpx;
+  transition: transform 0.2s ease;
+}
+
+.probe-confirm-btn:active {
+  transform: scale(0.96);
+}
+
+.probe-confirm-btn-text {
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #fff;
+  letter-spacing: 2rpx;
+}
+
+/* 即时确认文字（保留旧 class 兼容，功能已迁移到 .vibe-probe-confirm） */
+.probe-confirm-text {
+  display: none;
 }
 
 /* ============ Zen Mode ============ */

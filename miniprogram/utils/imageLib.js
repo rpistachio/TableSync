@@ -213,13 +213,11 @@ function batchResolveTempUrls(cloudIds, cb) {
     batches.push(needResolve.slice(b, b + BATCH));
   }
 
-  var pending = batches.length;
-  function onBatchDone() {
-    pending--;
-    if (pending === 0) cb(resultMap);
-  }
-
-  for (var idx = 0; idx < batches.length; idx++) {
+  function runBatch(idx) {
+    if (idx >= batches.length) {
+      cb(resultMap);
+      return;
+    }
     wx.cloud.getTempFileURL({
       fileList: batches[idx],
       success: function (res) {
@@ -232,9 +230,12 @@ function batchResolveTempUrls(cloudIds, cb) {
           }
         }
       },
-      complete: onBatchDone
+      complete: function () {
+        runBatch(idx + 1);
+      }
     });
   }
+  runBatch(0);
 }
 
 module.exports = {
