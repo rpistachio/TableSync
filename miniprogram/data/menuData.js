@@ -7,6 +7,7 @@
  */
 var generator = require('./menuGenerator.js');
 var cloudRecipeService = require('../utils/cloudRecipeService.js');
+var constant = require('../config/constant.js');
 
 var MEAT_LABEL_MAP = { chicken: '鸡肉', pork: '猪肉', beef: '牛肉', fish: '鱼肉', shrimp: '虾仁', vegetable: '素菜' };
 exports.MEAT_KEY_MAP = { 鸡肉: 'chicken', 猪肉: 'pork', 牛肉: 'beef', 鱼肉: 'fish', 虾仁: 'shrimp', 素菜: 'vegetable', chicken: 'chicken', pork: 'pork', beef: 'beef', fish: 'fish', shrimp: 'shrimp', vegetable: 'vegetable' };
@@ -480,6 +481,9 @@ exports.getTodayMenusByCombo = function (preference) {
   if (preference && Array.isArray(preference.excludeRecipeNames) && preference.excludeRecipeNames.length > 0) {
     userPreference.excludeRecipeNames = preference.excludeRecipeNames;
   }
+  if (preference && preference.topFlavorKey) userPreference.topFlavorKey = preference.topFlavorKey;
+  if (preference && preference.flavorAffinity && typeof preference.flavorAffinity === 'object') userPreference.flavorAffinity = preference.flavorAffinity;
+  if (preference && Array.isArray(preference.preferredMeats)) userPreference.preferredMeats = preference.preferredMeats;
   var shuffleMode = preference && preference.shuffleMode;
   var stewCountRef = { stewCount: 0 };
   
@@ -604,6 +608,7 @@ exports.getTodayMenusByCombo = function (preference) {
             }
           }
           res = generator.generateMenuWithFilters(slot.meat, babyMonth, hasBabyThis, adultCount, babyTaste, {
+            preferredFlavor: (preference && preference.topFlavorKey) || null,
             excludeIngredients: excludeNames.length > 0 ? excludeNames : null,
             userPreference: userPreference,
             existingMenus: menus,
@@ -821,7 +826,7 @@ function getFlavorProfileCounts(menus) {
 
 /**
  * 口味互补：辣菜不超过 1 道，有辣必配至少 1 道清淡/酸甜解腻。
- * 餐厅思路：浓→淡→甜，辣菜必配清淡或酸甜，避免味觉疲劳。
+ * 使用 config/constant 中的 FLAVOR_COMPLEMENT 矩阵决定互补风味。
  */
 function applyFlavorBalance(menus, preference) {
   if (!menus || menus.length === 0) return menus;
@@ -835,11 +840,17 @@ function applyFlavorBalance(menus, preference) {
   }
   var counts = getFlavorProfileCounts(menus);
   var lightOrSweet = counts.light + counts.sweet_sour + counts.sour_fresh;
+  var complementMap = (constant && constant.FLAVOR_COMPLEMENT) || { spicy: ['light', 'sour_fresh'], salty_umami: ['light', 'sour_fresh'], sweet_sour: ['salty_umami', 'light'], light: ['salty_umami', 'spicy'], sour_fresh: ['salty_umami', 'sweet_sour'] };
 
   function isSoupSlot(idx) {
     var recipe = menus[idx].adultRecipe;
-    // 优先使用 dish_type 字段判断，兼容名称检测
     return (recipe && recipe.dish_type === 'soup') || (recipe && recipe.name && recipe.name.indexOf('汤') !== -1);
+  }
+
+  function pickComplementFlavor(heroFlavor) {
+    var arr = complementMap[heroFlavor];
+    if (!Array.isArray(arr) || arr.length === 0) return 'light';
+    return arr[Math.floor(Math.random() * arr.length)];
   }
 
   if (counts.spicy > 1) {
@@ -852,7 +863,8 @@ function applyFlavorBalance(menus, preference) {
       var replaceIdx = spicyIndices[Math.floor(Math.random() * spicyIndices.length)];
       var meat = menus[replaceIdx].meat;
       var hasBabyThis = hasBaby && meat !== 'vegetable' && replaceIdx === firstMeatIndex;
-      var res = generator.generateMenuWithFilters(meat, babyMonth, hasBabyThis, adultCount, babyTaste, { preferredFlavor: 'light', existingMenus: menus, excludeRecipeNames: (preference && preference.userPreference && preference.userPreference.excludeRecipeNames) || [] });
+      var preferredFlavor = pickComplementFlavor('spicy');
+      var res = generator.generateMenuWithFilters(meat, babyMonth, hasBabyThis, adultCount, babyTaste, { preferredFlavor: preferredFlavor, existingMenus: menus, excludeRecipeNames: (preference && preference.userPreference && preference.userPreference.excludeRecipeNames) || [] });
       menus[replaceIdx] = {
         meat: (res.adultRecipe && res.adultRecipe.meat) || meat,
         taste: (res.adultRecipe && res.adultRecipe.taste) || menus[replaceIdx].taste,
@@ -875,7 +887,7 @@ function applyFlavorBalance(menus, preference) {
       var replaceIdx = nonSpicyIndices[Math.floor(Math.random() * nonSpicyIndices.length)];
       var meat = menus[replaceIdx].meat;
       var hasBabyThis = hasBaby && meat !== 'vegetable' && replaceIdx === firstMeatIndex;
-      var complementFlavor = Math.random() < 0.5 ? 'light' : 'sweet_sour';
+      var complementFlavor = pickComplementFlavor('spicy');
       var res = generator.generateMenuWithFilters(meat, babyMonth, hasBabyThis, adultCount, babyTaste, { preferredFlavor: complementFlavor, existingMenus: menus, excludeRecipeNames: (preference && preference.userPreference && preference.userPreference.excludeRecipeNames) || [] });
       menus[replaceIdx] = {
         meat: (res.adultRecipe && res.adultRecipe.meat) || meat,

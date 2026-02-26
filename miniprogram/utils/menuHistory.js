@@ -192,13 +192,15 @@ function getYesterdayDishes() {
 }
 
 /**
- * 获取本周（过去 7 天）吃过的菜品名称列表（去重）
+ * 获取过去 N 天吃过的菜品名称列表（去重）
  * @param {Number} maxItems - 最多返回数量，默认 20
+ * @param {Number} days - 统计天数，默认 7
  * @returns {Array<String>}
  */
-function getWeekDishNames(maxItems) {
+function getWeekDishNames(maxItems, days) {
   maxItems = maxItems || 20;
-  var recent = getRecentHistory(MAX_HISTORY_DAYS);
+  days = days || MAX_HISTORY_DAYS;
+  var recent = getRecentHistory(days);
   var set = {};
   for (var i = 0; i < recent.length; i++) {
     var day = recent[i];

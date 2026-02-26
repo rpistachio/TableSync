@@ -168,6 +168,18 @@ var SPICY_SUB = {
   XIANGLA: 'xiangla'  // 香辣 — 酱香复合，默认
 };
 
+/**
+ * 风味互补矩阵：主角风味 -> 推荐搭配的互补风味（用于盲盒 Combo 引擎）
+ * 例：红烧肉(咸鲜) 配 清炒时蔬(清淡) + 快手汤(鲜咸)
+ */
+var FLAVOR_COMPLEMENT = {
+  spicy: ['light', 'sour_fresh'],
+  salty_umami: ['light', 'sour_fresh'],
+  sweet_sour: ['salty_umami', 'light'],
+  light: ['salty_umami', 'spicy'],
+  sour_fresh: ['salty_umami', 'sweet_sour']
+};
+
 // ==================== 业务索引 ====================
 
 /**
@@ -242,6 +254,7 @@ module.exports = {
   FLAVOR_PROFILE: FLAVOR_PROFILE,
   COOK_TYPE: COOK_TYPE,
   SPICY_SUB: SPICY_SUB,
+  FLAVOR_COMPLEMENT: FLAVOR_COMPLEMENT,
   
   // 业务索引
   BABY_PORTION_FIRST_IDX: BABY_PORTION_FIRST_IDX,

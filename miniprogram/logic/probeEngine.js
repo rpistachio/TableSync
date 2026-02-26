@@ -15,9 +15,14 @@ var fridgeStore = require('../data/fridgeStore.js');
 // ============ Session 追踪（模块级，页面生命周期内有效） ============
 
 var _sessionAnswered = {};
+var _forceKitchenProbe = false;
 
 function resetSession() {
   _sessionAnswered = {};
+}
+
+function setForceKitchenProbe(value) {
+  _forceKitchenProbe = !!value;
 }
 
 function isSessionAnswered(type) {
@@ -154,13 +159,15 @@ var KITCHEN_PROBE = {
     { key: 'hasAirFryer', label: '空气炸锅', icon: '🍟' },
     { key: 'hasSteamer',  label: '蒸锅',     icon: '♨️' },
     { key: 'hasOven',     label: '烤箱',     icon: '🔥' },
+    { key: 'hasRiceCooker', label: '电饭煲', icon: '🍚' },
+    { key: 'hasMicrowave',  label: '微波炉', icon: '📦' },
     { key: null,          label: '就灶台',   icon: '🍳' }
   ],
   confirmTemplate: function (keys) {
     if (!keys || keys.length === 0 || (keys.length === 1 && keys[0] === null)) {
       return '好的，灶台搞定一切';
     }
-    var LABELS = { hasAirFryer: '空气炸锅', hasSteamer: '蒸锅', hasOven: '烤箱' };
+    var LABELS = { hasAirFryer: '空气炸锅', hasSteamer: '蒸锅', hasOven: '烤箱', hasRiceCooker: '电饭煲', hasMicrowave: '微波炉' };
     var names = [];
     for (var i = 0; i < keys.length; i++) {
       if (keys[i] && LABELS[keys[i]]) names.push(LABELS[keys[i]]);
@@ -181,7 +188,7 @@ function _hasPositiveValues(obj) {
 
 function _isDefaultKitchen(profile) {
   var kc = profile.kitchenConfig || {};
-  return !kc.hasAirFryer && !kc.hasSteamer && !kc.hasOven;
+  return !kc.hasAirFryer && !kc.hasSteamer && !kc.hasOven && !kc.hasRiceCooker && !kc.hasMicrowave;
 }
 
 function _buildFridgeProbe(expiring) {
@@ -251,6 +258,12 @@ function selectNextProbe() {
         return _buildFridgeProbe(expiring);
       }
     } catch (e) {}
+  }
+
+  // 疲惫模式首次选中且厨房为默认配置时，主动弹出厨房探针
+  if (_forceKitchenProbe && !_sessionAnswered.kitchen && _isDefaultKitchen(profile)) {
+    _forceKitchenProbe = false;
+    return KITCHEN_PROBE;
   }
 
   // Persistent 1: 约束探针（仅首次）
@@ -380,7 +393,11 @@ module.exports = {
   resetSession: resetSession,
   resetVolatile: resetSession,
   isSessionAnswered: isSessionAnswered,
+  setForceKitchenProbe: setForceKitchenProbe,
   getLastChoice: getLastChoice,
+  getSceneOptions: function () { return SCENE_PROBE.options; },
+  getTasteProbe: function () { return _withDynamicQuestion(TASTE_PROBE); },
+  getKitchenOptions: function () { return KITCHEN_PROBE.options; },
   handleProbeAnswer: handleProbeAnswer,
   buildSessionSummary: buildSessionSummary
 };

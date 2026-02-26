@@ -16,6 +16,7 @@ const MOOD_CN_MAP = {
   '想吃轻食': 'health_conscious',
   '馋了': 'craving_heavy',
   '随便': 'random',
+  '主厨包办': 'omakase',
 };
 
 /**
@@ -81,6 +82,18 @@ const MOOD_STRATEGY = {
       '不附加特殊偏向，完全按用户 preference 和菜品多样性选择',
       '注重荤素搭配的口味差异化（避免全部咸鲜或全部清淡）',
       '优先选择 flavor_profile 不重复的菜品组合',
+    ],
+    dietStyleOverride: null,
+  },
+  omakase: {
+    label: '主厨包办',
+    goal: '惊喜感优先、兼顾口味偏好的定向盲盒',
+    rules: [
+      '在用户偏好的大框架下，优先选择用户近期未做过的菜品',
+      '注重视觉冲击力：优先选封面质量高、色彩丰富的菜品',
+      '口味组合追求惊喜感——不要完全安全牌，可以搭配一道略出圈的菜',
+      '荤素搭配必须均衡，但具体菜品选择大胆一些',
+      '套餐整体应有「故事感」：如一道经典 + 一道新尝试 + 一道安慰系',
     ],
     dietStyleOverride: null,
   },
@@ -487,7 +500,27 @@ function buildUserMessage(opts) {
   highlightRules.push('- 禁止空泛理由如"好吃"、"推荐"、"经典菜"');
 
   parts.push(highlightRules.join('\n'));
-  parts.push('返回纯 JSON：{ "reasoning": "用朋友聊天的语气，亲切告诉用户今天为什么选了这几道菜（2-3句，≤100字，自然温暖，不用术语）", "recipeIds": ["id1", ...], "dishHighlights": { "id1": "因果理由（≤20字）", ... } }');
+
+  if (normalizedMood === 'omakase') {
+    parts.push('');
+    parts.push('## 动态微文案（omakaseCopy）');
+    parts.push('请额外返回一个 omakaseCopy 字段（字符串）。你必须严格遵守以下 4 条铁律，否则系统将报错：');
+    parts.push('1. 极度克制：总长度绝对不能超过 15 个中文字符，不要任何标点符号结尾。');
+    parts.push('2. 彻底拒绝 AI 腔调：禁止出现"为您推荐"、"希望你喜欢"、"不仅...还..."等机器客服用语。');
+    parts.push('3. 角色设定：你是一位自信、内敛的私人主厨。用类似手账笔记的口吻，像朋友一样给出一个做这道菜的感性理由。');
+    parts.push('4. 触发逻辑：根据当前条件（用户疲惫/临期食材/重口味/清淡）选择一个切入点，只说一句话。');
+    parts.push('');
+    parts.push('语料参考（照此风格生成，勿照抄）：');
+    parts.push('- 用户疲惫：一点酸甜卸下今天的疲惫、不用动脑今晚吃顿舒服的、热气升腾把烦恼挡在锅外、今天辛苦了吃点好的补补');
+    parts.push('- 临期食材：番茄在等你今晚让它大放异彩、赶在风味流失前把它变成杰作、冰箱里的老朋友今天做主角');
+    parts.push('- 重口味：今天痛快吃卡路里明天再说、恰到好处的火辣专治胃口不佳、无肉不欢的夜晚就选这一道');
+    parts.push('- 清淡：给肠胃放个假尝点食材本味、低卡零负担今晚好好爱自己、保留山野之气一口吃到春天');
+    parts.push('- 盲盒兜底：既然拿不定主意相信我的直觉、缘分摇出来的菜通常都不会差、随机的惊喜往往是最优解');
+    parts.push('');
+    parts.push('返回纯 JSON：{ "reasoning": "...", "recipeIds": ["id1", ...], "dishHighlights": { "id1": "因果理由（≤20字）", ... }, "omakaseCopy": "一句≤15字无标点结尾的微文案" }');
+  } else {
+    parts.push('返回纯 JSON：{ "reasoning": "用朋友聊天的语气，亲切告诉用户今天为什么选了这几道菜（2-3句，≤100字，自然温暖，不用术语）", "recipeIds": ["id1", ...], "dishHighlights": { "id1": "因果理由（≤20字）", ... } }');
+  }
 
   return parts.join('\n');
 }

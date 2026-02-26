@@ -26,22 +26,49 @@ function buildIdCounters(existing) {
     'a-lamb': 0,
     'a-duck': 0,
     'a-shell': 0,
-    'a-veg': 0
+    'a-veg': 0,
+    'af-chi': 0,
+    'af-pork': 0,
+    'af-beef': 0,
+    'af-fish': 0,
+    'af-shrimp': 0,
+    'af-veg': 0
   };
   existing.forEach((r) => {
     if (!r.id || typeof r.id !== 'string') return;
-    const m = r.id.match(/^(a\-(soup|chi|pork|beef|fish|shrimp|lamb|duck|shell|veg))\-(\d+)$/);
-    if (!m) return;
-    const prefix = m[1];
-    const n = Number(m[3]) || 0;
-    counters[prefix] = Math.max(counters[prefix], n);
+    let m = r.id.match(/^(a\-(soup|chi|pork|beef|fish|shrimp|lamb|duck|shell|veg))\-(\d+)$/);
+    if (m) {
+      const prefix = m[1];
+      const n = Number(m[3]) || 0;
+      counters[prefix] = Math.max(counters[prefix] || 0, n);
+      return;
+    }
+    m = r.id.match(/^(af\-(chi|pork|beef|fish|shrimp|veg))\-(\d+)$/);
+    if (m) {
+      const prefix = m[1];
+      const n = Number(m[3]) || 0;
+      counters[prefix] = Math.max(counters[prefix] || 0, n);
+    }
   });
   return counters;
 }
 
 function pickPrefix(recipe) {
-  if (recipe.dish_type === 'soup') return 'a-soup';
-  switch (recipe.meat) {
+  const isAirFryer = recipe.cook_type === 'air_fryer';
+  if (recipe.dish_type === 'soup' && !isAirFryer) return 'a-soup';
+  const meat = recipe.meat || inferMeat(recipe);
+  if (isAirFryer) {
+    switch (meat) {
+      case 'chicken': return 'af-chi';
+      case 'pork': return 'af-pork';
+      case 'beef': return 'af-beef';
+      case 'fish': return 'af-fish';
+      case 'shrimp': return 'af-shrimp';
+      case 'vegetable': return 'af-veg';
+      default: return 'af-veg';
+    }
+  }
+  switch (meat) {
     case 'chicken': return 'a-chi';
     case 'pork': return 'a-pork';
     case 'beef': return 'a-beef';
@@ -129,6 +156,7 @@ export function normalizeGeneratedItems(raw) {
       console.warn(`⚠ [${recipe.name}] 缺少或无效的 baby_variant，已跳过该字段（建议在 prompt 中要求每道菜附带 baby_variant）`);
     }
 
+    const cookType = recipe.cook_type || inferCookType(recipe);
     const fixed = {
       type: 'adult',
       taste: recipe.taste || inferTaste(recipe),
@@ -139,13 +167,14 @@ export function normalizeGeneratedItems(raw) {
       can_share_base: recipe.can_share_base ?? false,
       dish_type: recipe.dish_type,
       flavor_profile: recipe.flavor_profile || inferFlavorProfile(recipe),
-      cook_type: recipe.cook_type || inferCookType(recipe),
+      cook_type: cookType,
       cook_minutes: recipe.cook_minutes || (recipe.taste === 'slow_stew' ? 90 : 15),
       ingredients: recipe.ingredients || [],
       steps: recipe.steps || [],
       tags: Array.isArray(recipe.tags) ? recipe.tags : [],
       base_serving: recipe.base_serving || 2
     };
+    if (cookType === 'air_fryer') fixed.is_airfryer_alt = true;
     if (recipe.ingredient_group) fixed.ingredient_group = recipe.ingredient_group;
     if (recipe.spicy_sub && fixed.flavor_profile === 'spicy') fixed.spicy_sub = recipe.spicy_sub;
     if (validatedBabyVariant) {

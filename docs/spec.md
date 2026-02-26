@@ -1,4 +1,4 @@
-# TableSync 技术规格与 2026 需求实现状态
+# TableSync 技术规格与 2026 需求实现状态 (v4.9)
 
 本文档为 TableSync 微信小程序的核心技术规格与 2026 版需求落地状态说明。需求原文见 [TableSync-核心逻辑与用户体验优化需求-2026.md](./TableSync-核心逻辑与用户体验优化需求-2026.md)。
 
@@ -46,7 +46,7 @@ flowchart TD
 
 ### 3.2 状态贯通机制
 
-- **首页（无感角色切换）**：home 仅保留 **cookStatus**（还行 / 疲惫）选择；角色固定为「自己做」（cookWho 恒为 `self`，不再展示「谁来做」开关）。持久化：`wx.setStorageSync('zen_cook_status')`；`_buildZenPreference()` 产出 `preference.isTimeSave`、`preference.kitchenConfig.hasAirFryer`，`preference.who` 不传。
+- **首页（Context Dashboard Sheet + Omakase）**：底部固定操作栏「想想吃什么」打开底部 Sheet（场景/口味/状态/厨具四区），Sheet 确认后触发 `onZenGo`。摇一摇或点击 FAB 触发 Omakase 盲盒模式（跳过 Sheet，用上次偏好+惊喜策略）。持久化：`wx.setStorageSync('zen_cook_status')`；`_buildZenPreference()` 产出 `preference.isTimeSave`、`preference.kitchenConfig`（含 hasRiceCooker/hasMicrowave），`preference.who` 不传。
 - **分享裂变**：用户点击分享时，`onShareAppMessage` 的 path 强制带 `role=helper`，接收方打开即进入 steps 执行者模式（纸条/阿姨模式），本机 preview 始终为标准视图。
 - **preference** 通过 `getApp().globalData.preference` 与 storage 传递到 **preview → shopping → steps**。
 - 各页根据 `preference.isTimeSave` 做差异化展示（空气炸锅标签、疲惫氛围等）；steps 根据 URL 参数 `role=helper` 进入执行者模式。
@@ -78,6 +78,11 @@ flowchart TD
 | smartMenuGen 大升级 | 已完成 | 口味档案/冰箱临期/用户微调/不喜欢列表全面注入 AI prompt；候选池 500 + 按肉类均匀截断；dishHighlights 必填因果推理。详见 §5.10。 |
 | 问候引擎升级 | 已完成 | 三层优先级（上下文感知 > 天气 > 通用）；支持深夜陪伴、冰箱临期、连续做饭等状态问候。详见 §5.16。 |
 | 封面风格转变 | 已完成 | 暗调极简 → 暖光诱人丰富色彩；容器从深色陶瓷改为木/石面暖色餐具。 |
+| Omakase 摇一摇盲盒 | 已完成 | 首页摇一摇/FAB 触发惊喜菜单；视觉准入过滤 + 14 天防重复 + AI omakase 策略 + ≤15 字微文案。详见 §11.8。 |
+| Context Dashboard Sheet | 已完成 | 首页探针从 Vibe Card 内嵌改为底部半屏 Sheet（场景/口味/状态/厨具四区）；首页精简为日期+问候+底部操作栏。详见 §11.8。 |
+| 做过的菜 Tab | 已完成 | 我的菜谱库新增「做过的菜」Tab，展示烹饪日志/反馈/再做一次/改评价。详见 §11.8。 |
+| 电饭煲/微波炉设备支持 | 已完成 | 设备模型扩展 rice_cooker + microwave，全链路适配（设备追踪/探针/kitchenConfig）。详见 §11.8。 |
+| 口味驱动加权选菜 | 已完成 | _affinityWeight 加权随机 + FLAVOR_COMPLEMENT 互补矩阵；用户越做越合口味。详见 §11.8。 |
 | stressWeight 评分因子 | 待扩展 | 当前 isTimeSave 已驱动过滤与空气炸锅优先，未单独暴露 stressWeight 数值。 |
 
 ---
@@ -382,6 +387,26 @@ flowchart TD
 - **vibeGreeting.pickGreeting(weather, context)**  
   - 位置：`miniprogram/utils/vibeGreeting.js`  
   - 三层优先级问候：上下文感知（深夜/冰箱/连续做饭/首访/上次菜品） > 天气 > 通用。
+
+- **tasteProfile.recordRecipeFeedback(recipeName, feedback, note, source)**  
+  - 位置：`miniprogram/data/tasteProfile.js`  
+  - 记录单次烹饪反馈到 `recipe_cook_log`。`applyPostCookFeedback` 内部自动调用；也可由 helper 完成时直接调用。
+
+- **tasteProfile.getRecipeCookLog()**  
+  - 位置：`miniprogram/data/tasteProfile.js`  
+  - 返回做过的菜列表（按最近烹饪时间降序），含 name/count/lastCookedAt/lastFeedback/note/history/lastSource。供「做过的菜」Tab 使用。
+
+- **tasteProfile.updateRecipeFeedback(recipeName, newFeedback, newNote, recipeInfo)**  
+  - 位置：`miniprogram/data/tasteProfile.js`  
+  - 改评价：更新 lastFeedback/note，并反向修正全局 flavorAffinity/ingredientAffinity（old delta → new delta 差值回填）。
+
+- **constant.FLAVOR_COMPLEMENT**  
+  - 位置：`miniprogram/config/constant.js`  
+  - 风味互补矩阵：主角风味 → 推荐搭配的互补风味（如 spicy→[light, sour_fresh]），供 applyFlavorBalance 使用。
+
+- **menuHistory.getWeekDishNames(maxItems, days)**  
+  - 位置：`miniprogram/utils/menuHistory.js`  
+  - 获取过去 N 天吃过的菜品名称列表（去重）。days 参数新增（v4.9），默认 7；Omakase 模式传 14 增大防重复窗口。
 
 ---
 
@@ -783,6 +808,122 @@ flowchart TD
 | tools/lib/validate-recipe-consistency.js | cooking logic 校验 |
 | tools/lib/recipe-formatter.js | 新字段 |
 | tools/optimize-recipes.js | 重试 + partial save |
+
+### 11.8 2026-02-26 变更（Omakase 摇一摇盲盒、Context Sheet、做过的菜、设备/口味扩展）
+
+> **本次为 v4.9 更新**，核心变化：首页交互从 Vibe Card 内嵌探针重构为底部 Context Dashboard Sheet + Omakase 摇一摇盲盒模式；我的菜谱库新增「做过的菜」Tab 与改评价能力；设备模型扩展电饭煲/微波炉；口味亲和度驱动加权随机选菜；风味互补矩阵；统筹预览整合到 preview 页；工具链新增参考菜谱爬取与 AI 交叉校验。
+
+#### Omakase 摇一摇盲盒模式
+
+| 维度 | 说明 |
+|------|------|
+| 触发方式 | 首页摇一摇手势检测（加速计 magnitude > 2.5）或点击右侧 FAB 按钮 |
+| 转场体验 | 长震动 + 模糊遮罩（`shakeBlur`）「正在为你安排...」 → 跳转 preview |
+| 视觉准入 | 仅推荐封面评分 appetizing ≥ 8 且 styleConsistency ≥ 8 的菜品（recipeCoverAudit 数据） |
+| 防重复 | 14 天去重（普通模式 7 天），含 last_cook_dishes 历史 |
+| AI 策略 | smartMenuGen 新增 `omakase` 心情——惊喜感优先、视觉冲击力、一道略出圈的菜 + 故事感组合 |
+| 微文案 | AI 返回 `omakaseCopy`（≤15 字，手账风格），有 5 类场景池（疲惫/临期/重口/清淡/盲盒兜底） |
+| 揭菜仪式 | preview 页全屏英雄区（hero image + 主菜名 + 微文案 + 配菜列表），摇一摇可换一组 |
+| 退出 | 点击「开始做饭」或「看详情」揭开英雄区，进入标准预览 |
+
+#### Context Dashboard Sheet（首页底部抽屉）
+
+| 维度 | 说明 |
+|------|------|
+| 背景 | 原 Vibe Card 内嵌探针（probe-enter/exit 动画）交互不够直观且首页过于拥挤 |
+| 新方案 | 底部半屏 Sheet（`sheet-panel`），含：场景选择（pills 横滑）、口味选择（动态问题）、状态 toggle（疲惫/还好）、厨具多选 |
+| 触发 | 点击固定底部栏「想想吃什么」按钮 → 弹出 Sheet |
+| 确认 | Sheet 内「生成推荐」按钮 → 写入 tasteProfile + 触发 onZenGo |
+| 首页精简 | Vibe Card 仅保留日期 + 问候语；移除 zen-status-cards/zen-main-btn 等旧 UI；底部固定操作栏（主 CTA + 摇一摇 FAB） |
+
+#### 做过的菜 Tab（我的菜谱库升级）
+
+| 维度 | 说明 |
+|------|------|
+| Tab 结构 | myRecipes 页新增 Tab 切换：「做过的菜」(默认) / 「导入菜谱」 |
+| 数据源 | `tasteProfile.getRecipeCookLog()` — 新增 `recipe_cook_log` Storage Key |
+| 每道菜展示 | 菜名、反馈 emoji（😋/🙂/😐）、做过次数、上次日期、备注预览、来源标签（帮做） |
+| 操作 | 「再做一次」→ 按菜名查系统菜谱 → 生成步骤跳转 steps；「改评价」→ 底部 Sheet 修改反馈/备注 |
+| 改评价逻辑 | `updateRecipeFeedback` 反向修正全局亲和度（old delta → new delta 差值回填 flavorAffinity / ingredientAffinity） |
+| 历史记录 | 每道菜保留最近 5 次烹饪历史（feedback + cookedAt + note + source） |
+
+#### 设备模型扩展
+
+| 新增 | 说明 |
+|------|------|
+| 电饭煲 `rice_cooker` | 独立设备不占灶；kitchenConfig.hasRiceCooker |
+| 微波炉 `microwave` | 独立设备不占灶；kitchenConfig.hasMicrowave |
+| 烤箱别名 `oven` | COOK_TYPE_TO_DEVICE 新增 oven→oven 映射 |
+| 探针适配 | probeEngine KITCHEN_PROBE 新增电饭煲🍚/微波炉📦选项 |
+| 全链路 | 设备计数(initDeviceCounts)、追踪器(createDeviceTracker)、限制计算(computeDeviceLimits)、tasteProfile.setKitchenDevices 均已适配 |
+
+#### 口味驱动选菜与风味互补
+
+| 维度 | 说明 |
+|------|------|
+| 加权随机 | `_affinityWeight(recipe, flavorOptions)` — 基于 flavorAffinity/preferredMeats 给候选菜谱打权重分，pickOneWithDeviceBalance 改为加权随机 |
+| 口味传递 | menuData.getTodayMenusByCombo 将 topFlavorKey/flavorAffinity/preferredMeats 传入选菜 slot |
+| 风味互补矩阵 | constant.js 新增 `FLAVOR_COMPLEMENT`（如 spicy→[light, sour_fresh]）；applyFlavorBalance 从硬编码改为查矩阵 |
+| 效果 | 用户偏好辣味时辣菜概率提升，同时自动搭配清淡/酸甜解腻菜 |
+
+#### 统筹预览整合
+
+- preview.js 引用 `scheduleEngine`，新增 `_computeSchedulePreview(menus)` 方法
+- `schedulePreview` 数据（totalTime/serialTime/savedTime/efficiency/cookingOrder/parallelPercent）进入 preview data
+- 所有更新菜单的 setData 追加 schedulePreview
+
+#### 工具链增强
+
+| 工具 | 变更 |
+|------|------|
+| generate.js | 新增 `--with-ref` 参考菜谱爬取 + `--auto-review` AI 交叉校验；排除列表改为本地+云端合并 |
+| recipe-crawler.js | 新建：按菜名爬取下厨房/爱料理参考菜谱 |
+| recipe-reviewer.js | 新建：AI 交叉校验生成菜谱与参考菜谱一致性 |
+| llm-client.js | max_tokens 8192→16384；`tryRepairTruncatedJson` 截断修复；`callLlmForJson` 通用接口 |
+| validate-recipe-consistency.js | 新增 errors 级别输出 |
+| recipe-formatter.js | 字段扩展适配 |
+| cloud-db.js | fetchExistingNames 支持拉取云端菜名 |
+| audit-covers.js | 封面审计支持 appetizing/styleConsistency 评分 |
+
+#### 菜谱数据
+
+- `recipes.js`：大幅精简 + 优化（-5003/+2872 行）
+- `recipeCoverSlugs.js`：新增/修改封面映射
+- `recipeCoverAudit.js`：新建，封面视觉评分数据（供 Omakase 视觉准入过滤）
+
+#### 涉及文件一览（§11.8）
+
+| 文件 | 变更摘要 |
+|------|----------|
+| miniprogram/pages/home/home.js | 摇一摇检测(onShake/加速计)、Context Sheet 逻辑、Omakase 视觉准入过滤、14天防重复、_buildRecentDishNames |
+| miniprogram/pages/home/home.wxml | 移除内嵌探针/状态卡/主按钮；新增底部操作栏(CTA+FAB)、Sheet Panel、摇一摇遮罩 |
+| miniprogram/pages/home/home.wxss | 删除 probe 样式；新增 shake-blur/bottom-bar/sheet-panel/toggle 样式 |
+| miniprogram/pages/preview/preview.js | Omakase 揭菜(onOmakaseReveal/Reshuffle)、omakaseCopy 场景池、schedulePreview 计算 |
+| miniprogram/pages/preview/preview.wxml | Omakase 英雄区、统筹预览区 |
+| miniprogram/pages/preview/preview.wxss | Omakase hero 样式、统筹对比样式 |
+| miniprogram/pages/myRecipes/myRecipes.js | Tab 切换、做过的菜加载、再做一次、改评价 Sheet |
+| miniprogram/pages/myRecipes/myRecipes.wxml | 双 Tab UI、做过的菜列表、反馈 Sheet |
+| miniprogram/pages/myRecipes/myRecipes.wxss | Tab 样式、cooked-card 样式、feedback sheet 样式 |
+| miniprogram/pages/steps/steps.js | 反馈传 source(self/helper) |
+| miniprogram/data/tasteProfile.js | recipe_cook_log 存储、recordRecipeFeedback/getRecipeCookLog/updateRecipeFeedback；kitchenConfig +hasRiceCooker/hasMicrowave |
+| miniprogram/logic/probeEngine.js | 电饭煲/微波炉探针选项；getSceneOptions/getTasteProbe/getKitchenOptions 导出给 Sheet 用；setForceKitchenProbe |
+| miniprogram/data/menuGenerator.js | _affinityWeight 加权随机；设备映射+限制+追踪器适配 microwave/oven；initDeviceCounts 扩展 |
+| miniprogram/data/menuData.js | FLAVOR_COMPLEMENT 互补矩阵；flavorAffinity/preferredMeats 传入选菜；applyFlavorBalance 查矩阵 |
+| miniprogram/config/constant.js | FLAVOR_COMPLEMENT 矩阵导出 |
+| miniprogram/data/recipes.js | 大幅精简 + 优化 |
+| miniprogram/data/recipeCoverSlugs.js | 新增封面映射 |
+| miniprogram/data/recipeCoverAudit.js | 新建：封面视觉评分数据 |
+| miniprogram/utils/menuHistory.js | getWeekDishNames 支持自定义天数参数 |
+| cloudfunctions/smartMenuGen/index.js | omakaseCopy 返回字段 |
+| cloudfunctions/smartMenuGen/lib/prompt-builder.js | omakase 心情策略 + omakaseCopy prompt 指令 |
+| tools/generate.js | --with-ref/--auto-review 选项；排除列表本地+云端合并 |
+| tools/lib/recipe-crawler.js | 新建：参考菜谱爬取 |
+| tools/lib/recipe-reviewer.js | 新建：AI 交叉校验 |
+| tools/lib/llm-client.js | max_tokens 提升、截断修复、callLlmForJson 通用接口 |
+| tools/lib/validate-recipe-consistency.js | errors 级别输出 |
+| tools/lib/recipe-formatter.js | 字段扩展 |
+| tools/lib/cloud-db.js | fetchExistingNames |
+| tools/audit-covers.js | 评分维度扩展 |
 
 ### 11.6 2026-02-14 变更（导入极速解析、宝宝占位符、封面直链、统筹空气炸锅）
 

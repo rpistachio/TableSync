@@ -155,7 +155,35 @@ async function runAudit(opts) {
   fs.writeFileSync(htmlPath, html, 'utf8');
   console.log(chalk.green(`已生成报告 ${htmlPath}`));
 
+  if (opts.writeAudit) {
+    writeRecipeCoverAudit(report);
+  }
+
   return { report, jsonPath };
+}
+
+/** 将审计结果回写为 miniprogram/data/recipeCoverAudit.js，供摇一摇盲盒视觉准入使用 */
+function writeRecipeCoverAudit(report) {
+  const auditPath = path.join(CONFIG.projectRoot, 'miniprogram', 'data', 'recipeCoverAudit.js');
+  const map = {};
+  for (const r of report.results || []) {
+    if (!r.dishName || r.error) continue;
+    const appetizing = typeof r.appetizing === 'number' ? r.appetizing : Number(r.appetizing) || 0;
+    const styleConsistency = typeof r.style_consistency === 'number' ? r.style_consistency : Number(r.style_consistency) || 0;
+    map[r.dishName] = { appetizing, styleConsistency };
+  }
+  const header = `/**
+ * 封面图审计结果：用于摇一摇盲盒第一层视觉准入。
+ * 仅 appetizing >= 8 且 styleConsistency >= 8 的菜谱可进入盲盒奖池。
+ *
+ * 由 tools/audit-covers.js 全量审计后通过 --write-audit 回写生成，或手动维护。
+ * key: 菜名（与 recipes 中 name 一致）
+ * value: { appetizing: number, styleConsistency: number }
+ */
+`;
+  const body = 'module.exports = ' + JSON.stringify(map, null, 2) + ';\n';
+  fs.writeFileSync(auditPath, header + body, 'utf8');
+  console.log(chalk.green(`已回写 ${auditPath}（${Object.keys(map).length} 条）`));
 }
 
 /** 生成 HTML 报告：统计 + 筛选 + 卡片网格 + 点击放大 */
@@ -177,7 +205,7 @@ function buildHtmlReport(report, baseUrl) {
       <div class="thumb" data-src="${imgSrc}">${imgSrc ? `<img src="${imgSrc}" alt="${(r.dishName || '').replace(/"/g, '&quot;')}" loading="lazy" />` : '<span>无图</span>'}</div>
       <div class="meta">
         <strong class="name">${(r.dishName || '').replace(/</g, '&lt;')}</strong>
-        <div class="scores">match ${r.match ?? '-'} · appetizing ${r.appetizing ?? '-'} · quality ${r.quality ?? '-'}</div>
+        <div class="scores">match ${r.match ?? '-'} · appetizing ${r.appetizing ?? '-'} · style_consistency ${r.style_consistency ?? '-'} · quality ${r.quality ?? '-'}</div>
         <div class="overall">overall ${r.overall ?? '-'} <span class="verdict">${verdictClass}</span></div>
         ${issues ? `<div class="issues">${String(issues).replace(/</g, '&lt;')}</div>` : ''}
         ${err ? `<div class="error">${String(err).replace(/</g, '&lt;')}</div>` : ''}
@@ -389,6 +417,7 @@ async function main() {
   program
     .option('--recipe <name>', '只审核指定菜名')
     .option('--threshold <n>', '及格线 overall 阈值（仅影响报告展示）', (v) => Number(v), 7)
+    .option('--write-audit', '审核完成后将 appetizing/style_consistency 回写至 miniprogram/data/recipeCoverAudit.js')
     .option('--regen', '审核完成后对低于阈值的项自动重生成封面图')
     .option('--regen-only', '仅重生成（需配合 --report 使用）')
     .option('--regen-threshold <n>', 'overall 低于此分则重生成（默认 5；设为 9 则 9 分以下都重生成）', (v) => Number(v), 5)

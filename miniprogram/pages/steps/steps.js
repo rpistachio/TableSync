@@ -1790,7 +1790,8 @@ Page({
     var feedback = (e.currentTarget.dataset || {}).feedback || 'ok';
     var tasteProfile = require('../../data/tasteProfile.js');
     var recipes = this._menuRecipes || [];
-    tasteProfile.applyPostCookFeedback(feedback, recipes);
+    var source = this._isHelperRole ? 'helper' : 'self';
+    tasteProfile.applyPostCookFeedback(feedback, recipes, source);
 
     try { wx.vibrateShort({ type: 'light' }); } catch (err) {}
 

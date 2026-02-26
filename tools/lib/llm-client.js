@@ -98,7 +98,7 @@ async function generateOneBatch({ mode, input, count, excludeNames, client, syst
   const msg = await withRetry(() =>
     client.messages.create({
       model: model || CONFIG.llmModel,
-      max_tokens: 8192,
+      max_tokens: 16384,
       temperature: 0.6,
       system: systemPrompt,
       messages: [{ role: 'user', content: userInstruction }]
@@ -260,11 +260,42 @@ function safeParseJson(raw) {
   try {
     return JSON.parse(text);
   } catch (e) {
+    const repaired = tryRepairTruncatedJson(text);
+    if (repaired) {
+      try { return JSON.parse(repaired); } catch (_) {}
+    }
     const snippet = text.slice(0, 600);
     throw new Error(
       `解析 LLM JSON 失败（${e.message}）。\n原始内容片段：\n${snippet}${text.length > 600 ? '...' : ''}`
     );
   }
+}
+
+/**
+ * 尝试修复被截断的 JSON：移除最后一个不完整的元素，补齐所有未关闭的括号。
+ * 返回修复后的字符串或 null。
+ */
+function tryRepairTruncatedJson(text) {
+  let t = text.replace(/,(\s*$)/, '$1');
+  const lastComplete = Math.max(t.lastIndexOf('},'), t.lastIndexOf('}\n'));
+  if (lastComplete > 0) {
+    t = t.slice(0, lastComplete + 1);
+  }
+  const opens = [];
+  let inStr = false;
+  let escaped = false;
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i];
+    if (escaped) { escaped = false; continue; }
+    if (c === '\\') { escaped = true; continue; }
+    if (c === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (c === '{' || c === '[') opens.push(c);
+    else if (c === '}' || c === ']') opens.pop();
+  }
+  if (opens.length === 0) return null;
+  const closers = opens.reverse().map((c) => (c === '{' ? '}' : ']')).join('');
+  return t + closers;
 }
 
 /**
@@ -306,7 +337,7 @@ export async function optimizeRecipesWithLlm(recipes) {
     msg = await withRetry(() =>
       client.messages.create({
         model,
-        max_tokens: 8192,
+        max_tokens: 16384,
         temperature: 0.3,
         system: systemPrompt,
         messages: [{ role: 'user', content: userMessage }]
@@ -316,6 +347,42 @@ export async function optimizeRecipesWithLlm(recipes) {
     throw wrapConnectionError(err, baseURL);
   }
 
+  const text = getTextFromContent(msg.content);
+  return safeParseJson(text);
+}
+
+/**
+ * 通用 LLM 调用：自定义 system + user，返回解析后的 JSON。
+ * 供 recipe-extractor、recipe-reviewer 等模块复用。
+ * @param {string} systemPrompt
+ * @param {string} userMessage
+ * @param {{ maxTokens?: number, temperature?: number }} [options]
+ * @returns {Promise<object>}
+ */
+export async function callLlmForJson(systemPrompt, userMessage, options = {}) {
+  const useMiniMax = CONFIG.llmProvider === 'minimax';
+  if (useMiniMax && !CONFIG.minimaxApiKey) {
+    throw new Error('MINIMAX_API_KEY 未配置，请在 tools/.env 中设置');
+  }
+  if (!useMiniMax && !CONFIG.anthropicApiKey) {
+    throw new Error('ANTHROPIC_API_KEY 未配置，请在 tools/.env 中设置');
+  }
+  const opts = useMiniMax
+    ? { apiKey: CONFIG.minimaxApiKey, baseURL: `https://${CONFIG.minimaxHost}/anthropic` }
+    : { apiKey: CONFIG.anthropicApiKey, baseURL: process.env.ANTHROPIC_BASE_URL };
+  const client = new Anthropic(opts);
+  const model = useMiniMax ? CONFIG.minimaxLlmModel : CONFIG.llmModel;
+  const maxTokens = options.maxTokens ?? 8192;
+  const temperature = options.temperature ?? 0.3;
+  const msg = await withRetry(() =>
+    client.messages.create({
+      model,
+      max_tokens: maxTokens,
+      temperature,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userMessage }]
+    })
+  );
   const text = getTextFromContent(msg.content);
   return safeParseJson(text);
 }

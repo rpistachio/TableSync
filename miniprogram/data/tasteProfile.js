@@ -9,6 +9,8 @@
  */
 
 var STORAGE_KEY = 'taste_profile';
+var RECIPE_COOK_LOG_KEY = 'recipe_cook_log';
+var MAX_RECIPE_HISTORY = 5;
 
 /** 场景 → 菜品结构映射（黄金配比）*/
 var SCENE_CONFIGS = {
@@ -59,7 +61,9 @@ function createEmpty() {
       burners: 2,
       hasSteamer: false,
       hasAirFryer: false,
-      hasOven: false
+      hasOven: false,
+      hasRiceCooker: false,
+      hasMicrowave: false
     },
     createdAt: now,
     lastProbeAt: null,
@@ -412,11 +416,146 @@ function applyPostCookFeedback(feedback, recipes) {
 
   profile.lastProbeAt = _dateKey();
   save(profile);
+
+  // 同步写入 recipe_cook_log，供「做过的菜」Tab 展示与回溯
+  var source = (arguments.length >= 3 && arguments[2]) ? arguments[2] : 'self';
+  for (var j = 0; j < recipes.length; j++) {
+    var rec = recipes[j];
+    if (rec && rec.name) recordRecipeFeedback(rec.name, feedback, '', source);
+  }
 }
 
 function _meatToIngredientKey(meat) {
   var map = { fish: 'seafood', shrimp: 'seafood', beef: 'beef', chicken: 'chicken', pork: 'pork' };
   return map[meat] || null;
+}
+
+// ============ recipe_cook_log（做过的菜 + 单菜反馈） ============
+
+function _loadRecipeCookLogRaw() {
+  try {
+    var raw = wx.getStorageSync(RECIPE_COOK_LOG_KEY);
+    if (!raw) return {};
+    if (typeof raw === 'object') return raw;
+    return JSON.parse(raw) || {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function _saveRecipeCookLogRaw(obj) {
+  try {
+    wx.setStorageSync(RECIPE_COOK_LOG_KEY, JSON.stringify(obj));
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * 记录单次烹饪反馈到 recipe_cook_log（applyPostCookFeedback 内部调用，或 helper 完成时写入）
+ * @param {string} recipeName - 菜名
+ * @param {string} feedback - 'like'|'ok'|'dislike'
+ * @param {string} note - 用户备注
+ * @param {string} source - 'self'|'helper'
+ */
+function recordRecipeFeedback(recipeName, feedback, note, source) {
+  if (!recipeName) return;
+  var log = _loadRecipeCookLogRaw();
+  var now = Date.now();
+  var src = source === 'helper' ? 'helper' : 'self';
+  var entry = log[recipeName];
+  if (!entry) {
+    entry = { count: 0, lastCookedAt: 0, lastFeedback: null, note: '', history: [] };
+    log[recipeName] = entry;
+  }
+  entry.count = (entry.count || 0) + 1;
+  entry.lastCookedAt = now;
+  entry.lastFeedback = feedback;
+  entry.note = typeof note === 'string' ? note : '';
+  var histItem = { feedback: feedback, cookedAt: now, note: entry.note, source: src };
+  if (!Array.isArray(entry.history)) entry.history = [];
+  entry.history.unshift(histItem);
+  if (entry.history.length > MAX_RECIPE_HISTORY) entry.history = entry.history.slice(0, MAX_RECIPE_HISTORY);
+  _saveRecipeCookLogRaw(log);
+}
+
+/**
+ * 获取做过的菜列表（按最近烹饪时间降序），供「做过的菜」Tab 使用
+ * @returns {Array<{ name: string, count: number, lastCookedAt: number, lastFeedback: string|null, note: string, history: Array, lastSource: string }>}
+ */
+function getRecipeCookLog() {
+  var log = _loadRecipeCookLogRaw();
+  var list = [];
+  for (var name in log) {
+    if (!Object.prototype.hasOwnProperty.call(log, name)) continue;
+    var e = log[name];
+    list.push({
+      name: name,
+      count: e.count || 0,
+      lastCookedAt: e.lastCookedAt || 0,
+      lastFeedback: e.lastFeedback || null,
+      note: e.note || '',
+      history: Array.isArray(e.history) ? e.history : [],
+      lastSource: (e.history && e.history[0]) ? e.history[0].source : 'self'
+    });
+  }
+  list.sort(function (a, b) { return (b.lastCookedAt || 0) - (a.lastCookedAt || 0); });
+  return list;
+}
+
+/**
+ * 改评价：更新某道菜的 lastFeedback 和 note，并反向修正全局亲和度后应用新 delta
+ * @param {string} recipeName - 菜名
+ * @param {string} newFeedback - 'like'|'ok'|'dislike'
+ * @param {string} newNote - 新备注
+ * @param {Object} recipeInfo - { meat, flavor_profile } 用于亲和度修正
+ */
+function updateRecipeFeedback(recipeName, newFeedback, newNote, recipeInfo) {
+  var log = _loadRecipeCookLogRaw();
+  var entry = log[recipeName];
+  if (!entry) return;
+  var oldFeedback = entry.lastFeedback;
+  entry.lastFeedback = newFeedback;
+  entry.note = typeof newNote === 'string' ? newNote : '';
+  if (Array.isArray(entry.history) && entry.history.length > 0) {
+    entry.history[0].feedback = newFeedback;
+    entry.history[0].note = entry.note;
+  }
+  _saveRecipeCookLogRaw(log);
+
+  var profile = get();
+  if (!profile.flavorAffinity) profile.flavorAffinity = {};
+  if (!profile.ingredientAffinity) profile.ingredientAffinity = {};
+  var recipe = recipeInfo || {};
+
+  function deltaFor(fb) {
+    if (fb === 'like') return 2;
+    if (fb === 'dislike') return -1;
+    return 0;
+  }
+  var oldDelta = deltaFor(oldFeedback);
+  var newDelta = deltaFor(newFeedback);
+  var diff = newDelta - oldDelta;
+  if (diff === 0) {
+    save(profile);
+    return;
+  }
+  if (recipe.flavor_profile) {
+    var fv = (profile.flavorAffinity[recipe.flavor_profile] || 0) + diff;
+    profile.flavorAffinity[recipe.flavor_profile] = Math.max(0, fv);
+  }
+  var meatKey = recipe.meat ? _meatToIngredientKey(recipe.meat) : null;
+  if (meatKey) {
+    var iv = (profile.ingredientAffinity[meatKey] || 0) + diff;
+    profile.ingredientAffinity[meatKey] = Math.max(0, iv);
+  }
+  if (recipe.meat === 'vegetable') {
+    var vv = (profile.ingredientAffinity.vegetable || 0) + diff;
+    profile.ingredientAffinity.vegetable = Math.max(0, vv);
+  }
+  profile.lastProbeAt = _dateKey();
+  save(profile);
 }
 
 /**
@@ -534,7 +673,9 @@ function setKitchenDevices(deviceKeys) {
     burners: 2,
     hasAirFryer: keys.indexOf('hasAirFryer') !== -1,
     hasSteamer: keys.indexOf('hasSteamer') !== -1,
-    hasOven: keys.indexOf('hasOven') !== -1
+    hasOven: keys.indexOf('hasOven') !== -1,
+    hasRiceCooker: keys.indexOf('hasRiceCooker') !== -1,
+    hasMicrowave: keys.indexOf('hasMicrowave') !== -1
   };
   update({ kitchenConfig: kc });
 }
@@ -701,5 +842,8 @@ module.exports = {
   recordCookComplete: recordCookComplete,
   applyPostCookFeedback: applyPostCookFeedback,
   getTastePortrait: getTastePortrait,
-  pickHeroIngredient: pickHeroIngredient
+  pickHeroIngredient: pickHeroIngredient,
+  recordRecipeFeedback: recordRecipeFeedback,
+  getRecipeCookLog: getRecipeCookLog,
+  updateRecipeFeedback: updateRecipeFeedback
 };

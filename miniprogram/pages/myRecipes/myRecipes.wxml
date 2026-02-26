@@ -1,65 +1,186 @@
-<!--pages/myRecipes/myRecipes.wxml - 视觉与首页一致 -->
+<!--pages/myRecipes/myRecipes.wxml - 做过的菜 + 导入菜谱 -->
 <view class="myrecipes-container">
-  <!-- 与首页入口一致的头部卡片 -->
   <view class="myrecipes-header-card">
     <view class="myrecipes-header-icon-wrap">
       <text class="myrecipes-header-icon">📚</text>
     </view>
     <view class="myrecipes-header-text-wrap">
       <text class="myrecipes-title">我的菜谱库</text>
-      <text class="myrecipes-subtitle">过去导入的菜谱，今天继续做</text>
+      <text class="myrecipes-subtitle">我的烹饪记忆和收藏的菜谱</text>
     </view>
     <view class="myrecipes-refresh-wrap" bindtap="onRefresh">
       <text class="myrecipes-refresh-text">刷新</text>
     </view>
   </view>
 
-  <view class="myrecipes-loading" wx:if="{{loading}}">
-    <text class="myrecipes-loading-text">加载中...</text>
+  <!-- Tab 切换 -->
+  <view class="myrecipes-tabs">
+    <view
+      class="myrecipes-tab {{activeTab === 'cooked' ? 'active' : ''}}"
+      data-tab="cooked"
+      bindtap="onSwitchTab"
+    >
+      <text class="myrecipes-tab-text">做过的菜</text>
+    </view>
+    <view
+      class="myrecipes-tab {{activeTab === 'imported' ? 'active' : ''}}"
+      data-tab="imported"
+      bindtap="onSwitchTab"
+    >
+      <text class="myrecipes-tab-text">导入菜谱</text>
+    </view>
   </view>
 
-  <view class="myrecipes-empty-card" wx:elif="{{empty}}">
-    <text class="myrecipes-empty-icon">📚</text>
-    <text class="myrecipes-empty-text">还没有导入过菜谱</text>
-    <text class="myrecipes-empty-hint">在「导入赛博菜谱」中保存的菜谱会出现在这里</text>
-    <view class="myrecipes-empty-btn" bindtap="onGoImport">去导入</view>
-  </view>
-
-  <view wx:else class="myrecipes-list-wrap">
-    <view class="myrecipes-refresh-tip" wx:if="{{!loading}}">下拉页面可刷新列表</view>
-    <view class="myrecipes-list">
-      <view
-        class="myrecipes-card"
-        wx:for="{{recipeList}}"
-        wx:key="id"
-      >
-        <view class="myrecipes-card-cover" wx:if="{{item.displayCoverUrl}}">
-          <image class="myrecipes-cover-img" src="{{item.displayCoverUrl}}" mode="aspectFill" />
-        </view>
-        <view class="myrecipes-card-cover myrecipes-card-cover-placeholder" wx:else>
-          <text class="myrecipes-cover-emoji">🍳</text>
-        </view>
-        <view class="myrecipes-card-body">
-          <view class="myrecipes-card-top-row">
-            <text class="myrecipes-card-name">{{item.name}}</text>
-            <view class="myrecipes-delete-btn" data-index="{{index}}" bindtap="onDeleteRecipe">
-              <text class="myrecipes-delete-icon">×</text>
+  <!-- 做过的菜 Tab -->
+  <block wx:if="{{activeTab === 'cooked'}}">
+    <view class="myrecipes-empty-card" wx:if="{{emptyCooked}}">
+      <text class="myrecipes-empty-icon">🍳</text>
+      <text class="myrecipes-empty-text">还没有做过的菜记录</text>
+      <text class="myrecipes-empty-hint">做完饭并点一次反馈后，会出现在这里</text>
+    </view>
+    <view wx:else class="myrecipes-list-wrap">
+      <view class="myrecipes-refresh-tip">下拉页面可刷新列表</view>
+      <view class="myrecipes-list">
+        <view
+          class="myrecipes-card myrecipes-cooked-card"
+          wx:for="{{cookedList}}"
+          wx:key="name"
+        >
+          <view class="myrecipes-card-cover myrecipes-card-cover-placeholder">
+            <text class="myrecipes-cover-emoji">🍳</text>
+          </view>
+          <view class="myrecipes-card-body">
+            <view class="myrecipes-card-top-row">
+              <text class="myrecipes-card-name">{{item.name}}</text>
+              <view class="myrecipes-cooked-badges">
+                <text class="myrecipes-feedback-emoji">{{item.feedbackEmoji}}</text>
+                <text class="myrecipes-cook-count">×{{item.count}}</text>
+                <text class="myrecipes-helper-tag" wx:if="{{item.lastSource === 'helper'}}">帮做</text>
+              </view>
             </view>
-          </view>
-          <view class="myrecipes-card-meta">
-            <text class="myrecipes-card-source" wx:if="{{item.sourcePlatform === 'screenshot'}}">截图导入</text>
-            <text class="myrecipes-card-source" wx:elif="{{item.sourcePlatform === 'xiaohongshu' || item.sourcePlatform === '小红书'}}">小红书</text>
-            <text class="myrecipes-card-source" wx:elif="{{item.sourcePlatform === 'douyin' || item.sourcePlatform === '抖音'}}">抖音</text>
-            <text class="myrecipes-card-source" wx:elif="{{item.sourcePlatform}}">{{item.sourcePlatform}}</text>
-            <text class="myrecipes-card-source" wx:elif="{{item.source === 'external'}}">外部导入</text>
-          </view>
-          <view class="myrecipes-card-actions">
-            <view class="myrecipes-btn myrecipes-btn-primary" data-index="{{index}}" bindtap="onCookToday">今天做</view>
-            <view class="myrecipes-btn myrecipes-btn-secondary" data-index="{{index}}" bindtap="onAddToMix">加入组餐</view>
+            <view class="myrecipes-card-meta">
+              <text class="myrecipes-card-source" wx:if="{{item.lastDateStr}}">上次做：{{item.lastDateStr}}</text>
+            </view>
+            <view class="myrecipes-note-preview" wx:if="{{item.note}}">
+              <text class="myrecipes-note-text">"{{item.note}}"</text>
+            </view>
+            <view class="myrecipes-card-actions">
+              <view class="myrecipes-btn myrecipes-btn-primary" data-index="{{index}}" bindtap="onCookAgain">再做一次</view>
+              <view class="myrecipes-btn myrecipes-btn-secondary" data-index="{{index}}" bindtap="onEditFeedback">改评价</view>
+            </view>
           </view>
         </view>
       </view>
     </view>
-  </view>
+  </block>
+
+  <!-- 导入菜谱 Tab -->
+  <block wx:if="{{activeTab === 'imported'}}">
+    <view class="myrecipes-loading" wx:if="{{loading}}">
+      <text class="myrecipes-loading-text">加载中...</text>
+    </view>
+    <view class="myrecipes-empty-card" wx:elif="{{empty}}">
+      <text class="myrecipes-empty-icon">📚</text>
+      <text class="myrecipes-empty-text">还没有导入过菜谱</text>
+      <text class="myrecipes-empty-hint">在「导入赛博菜谱」中保存的菜谱会出现在这里</text>
+      <view class="myrecipes-empty-btn" bindtap="onGoImport">去导入</view>
+    </view>
+    <view wx:else class="myrecipes-list-wrap">
+      <view class="myrecipes-refresh-tip" wx:if="{{!loading}}">下拉页面可刷新列表</view>
+      <view class="myrecipes-list">
+        <view
+          class="myrecipes-card"
+          wx:for="{{recipeList}}"
+          wx:key="id"
+        >
+          <view class="myrecipes-card-cover" wx:if="{{item.displayCoverUrl}}">
+            <image class="myrecipes-cover-img" src="{{item.displayCoverUrl}}" mode="aspectFill" />
+          </view>
+          <view class="myrecipes-card-cover myrecipes-card-cover-placeholder" wx:else>
+            <text class="myrecipes-cover-emoji">🍳</text>
+          </view>
+          <view class="myrecipes-card-body">
+            <view class="myrecipes-card-top-row">
+              <text class="myrecipes-card-name">{{item.name}}</text>
+              <view class="myrecipes-delete-btn" data-index="{{index}}" bindtap="onDeleteRecipe">
+                <text class="myrecipes-delete-icon">×</text>
+              </view>
+            </view>
+            <view class="myrecipes-card-meta">
+              <text class="myrecipes-card-source" wx:if="{{item.sourcePlatform === 'screenshot'}}">截图导入</text>
+              <text class="myrecipes-card-source" wx:elif="{{item.sourcePlatform === 'xiaohongshu' || item.sourcePlatform === '小红书'}}">小红书</text>
+              <text class="myrecipes-card-source" wx:elif="{{item.sourcePlatform === 'douyin' || item.sourcePlatform === '抖音'}}">抖音</text>
+              <text class="myrecipes-card-source" wx:elif="{{item.sourcePlatform}}">{{item.sourcePlatform}}</text>
+              <text class="myrecipes-card-source" wx:elif="{{item.source === 'external'}}">外部导入</text>
+            </view>
+            <view class="myrecipes-card-actions">
+              <view class="myrecipes-btn myrecipes-btn-primary" data-index="{{index}}" bindtap="onCookToday">今天做</view>
+              <view class="myrecipes-btn myrecipes-btn-secondary" data-index="{{index}}" bindtap="onAddToMix">加入组餐</view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </block>
 </view>
 
+<!-- 改评价底部面板 -->
+<view class="feedback-sheet-mask" wx:if="{{showFeedbackSheet}}" catchtap="onCloseFeedbackSheet"></view>
+<view class="feedback-sheet {{showFeedbackSheet ? 'feedback-sheet-open' : ''}}" wx:if="{{showFeedbackSheet}}">
+  <view class="feedback-sheet-header">
+    <text class="feedback-sheet-title">改评价</text>
+    <text class="feedback-sheet-recipe" wx:if="{{feedbackRecipe}}">{{feedbackRecipe.name}}</text>
+  </view>
+  <view class="feedback-sheet-body">
+    <view class="feedback-sheet-options">
+      <view
+        class="feedback-option {{feedbackEditFeedback === 'like' ? 'active' : ''}}"
+        data-feedback="like"
+        bindtap="onFeedbackOptionTap"
+      >
+        <text class="feedback-option-icon">😋</text>
+        <text class="feedback-option-label">很喜欢</text>
+      </view>
+      <view
+        class="feedback-option {{feedbackEditFeedback === 'ok' ? 'active' : ''}}"
+        data-feedback="ok"
+        bindtap="onFeedbackOptionTap"
+      >
+        <text class="feedback-option-icon">🙂</text>
+        <text class="feedback-option-label">还不错</text>
+      </view>
+      <view
+        class="feedback-option {{feedbackEditFeedback === 'dislike' ? 'active' : ''}}"
+        data-feedback="dislike"
+        bindtap="onFeedbackOptionTap"
+      >
+        <text class="feedback-option-icon">😐</text>
+        <text class="feedback-option-label">不太对</text>
+      </view>
+    </view>
+    <view class="feedback-note-wrap">
+      <textarea
+        class="feedback-note-input"
+        placeholder="下次做的时候提醒自己..."
+        maxlength="100"
+        value="{{feedbackEditNote}}"
+        bindinput="onFeedbackNoteInput"
+      />
+      <text class="feedback-note-count">{{feedbackEditNote.length}}/100</text>
+    </view>
+    <view class="feedback-history-wrap" wx:if="{{feedbackRecipe && feedbackRecipe.history && feedbackRecipe.history.length > 0}}">
+      <text class="feedback-history-title">历史记录</text>
+      <view class="feedback-history-list">
+        <view class="feedback-history-item" wx:for="{{feedbackRecipe.history}}" wx:key="cookedAt">
+          <text class="feedback-history-emoji">{{item.feedback === 'like' ? '😋' : (item.feedback === 'dislike' ? '😐' : '🙂')}}</text>
+          <text class="feedback-history-date">{{item.dateStr}}</text>
+          <text class="feedback-history-note" wx:if="{{item.note}}">{{item.note}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+  <view class="feedback-sheet-footer">
+    <view class="feedback-sheet-btn feedback-sheet-cancel" bindtap="onCloseFeedbackSheet">取消</view>
+    <view class="feedback-sheet-btn feedback-sheet-save" bindtap="onSaveFeedbackEdit">保存</view>
+  </view>
+</view>

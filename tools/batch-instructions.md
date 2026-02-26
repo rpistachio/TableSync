@@ -245,10 +245,83 @@ node generate.js --mode text --count 5 --input "
 
 ---
 
+## Batch 7: 疲惫模式 — 空气炸锅菜（is_airfryer_alt）
+
+口味需覆盖 5 种 flavor_profile：salty_umami、light、spicy、sweet_sour、sour_fresh。每道菜 cook_type: air_fryer，prep_time ≤ 10，cook_minutes ≤ 20，steps ≤ 6。生成后 recipe-formatter 会自动设置 is_airfryer_alt: true 与 af-* ID。
+
+```bash
+node generate.js --mode text --count 16 --input "
+请生成 16 道空气炸锅家常菜，用于疲惫模式（放进去就好）。要求：
+- cook_type: air_fryer，prep_time ≤ 10，cook_minutes ≤ 20，步骤 ≤ 6 步
+- 口味覆盖：salty_umami / light / spicy / sweet_sour / sour_fresh 五种都要有
+- 肉类分布：鸡 3 道、猪 3 道、牛 2 道、鱼 2 道、虾 2 道、素菜 4 道
+- 菜名 3–7 字，如「空气炸锅蜜汁鸡翅」「空气炸锅蒜香排骨」，可与现有 af- 系列不重名
+- 每道菜必须适合家庭空气炸锅制作，步骤极简
+" --out drafts/batch7_airfryer.json
+```
+
+---
+
+## Batch 8: 疲惫模式 — 凉拌/冷菜（cold_dress）
+
+素菜为主，cook_type: cold_dress 或 cold，prep_time ≤ 15，cook_minutes 为 0 或很小。口味覆盖咸香、酸爽、清淡等。
+
+```bash
+node generate.js --mode text --count 7 --input "
+请生成 7 道凉拌/冷菜，用于疲惫模式素菜槽。要求：
+- cook_type: cold_dress 或 cold，meat: vegetable（可含 1–2 道禽肉凉拌如鸡丝）
+- prep_time ≤ 15，cook_minutes 为 0 或 ≤ 5
+- flavor_profile 覆盖：sour_fresh、salty_umami、light 等，不要全部酸口
+- 菜名如：凉拌黄瓜、凉拌西兰花、凉拌金针菇、皮蛋豆腐、拍黄瓜、糖拌番茄、凉拌三丝等，与库中已有凉拌木耳/腐竹/老醋花生不重名
+- 步骤极简，免开火或仅焯水
+" --out drafts/batch8_cold_dress.json
+```
+
+---
+
+## Batch 9: 疲惫模式 — 烤箱菜（cook_type: oven）
+
+```bash
+node generate.js --mode text --count 9 --input "
+请生成 9 道烤箱/焗烤家常菜，用于疲惫模式。要求：
+- cook_type: oven 或 bake，prep_time ≤ 15，cook_minutes ≤ 25，步骤 ≤ 6 步
+- 肉类与素菜搭配：鸡/猪/牛/鱼/虾/蔬菜等，口味覆盖咸香、清淡、酸甜
+- 菜名如：烤鸡翅、烤蔬菜、焗饭、烤三文鱼等，适合家庭烤箱
+" --out drafts/batch9_oven.json
+```
+
+---
+
+## Batch 10: 疲惫模式 — 电饭煲菜（cook_type: rice_cooker）
+
+```bash
+node generate.js --mode text --count 5 --input "
+请生成 5 道电饭煲菜，用于疲惫模式（放进去就好）。要求：
+- cook_type: rice_cooker，prep_time ≤ 15，cook_minutes ≤ 40（电饭煲程序时间），步骤 ≤ 6 步
+- 如：电饭煲焖饭、煲仔饭、电饭煲炖汤、一锅出等
+- 口味覆盖咸香、清淡
+" --out drafts/batch10_rice_cooker.json
+```
+
+---
+
+## Batch 11: 疲惫模式 — 微波炉菜（cook_type: microwave）
+
+```bash
+node generate.js --mode text --count 5 --input "
+请生成 5 道微波炉快手菜，用于疲惫模式。要求：
+- cook_type: microwave，prep_time ≤ 10，cook_minutes ≤ 15，步骤 ≤ 5 步
+- 如：微波炉蒸蛋、微波炉蒸鱼、微波炉加热类快手菜
+- 口味覆盖咸香、清淡
+" --out drafts/batch11_microwave.json
+```
+
+---
+
 ## 执行顺序建议
 
-1. 按 Batch 1 → 6 依次执行
-2. 每批产出后先 `node scripts/validate_recipes.js` 校验
+1. 按 Batch 1 → 11 依次执行（Batch 7–11 为疲惫模式补全）
+2. 每批产出后先 `node scripts/validate_recipes.js` 校验（若有）
 3. 确认无误后 `node tools/sync.js --draft <path>` 上云
 4. 全部完成后运行 `node tools/batch-sync-recipes.js --dry-run` 检查云端一致性
 
@@ -262,7 +335,12 @@ node generate.js --mode text --count 5 --input "
 | Batch 4 | 辣味层次 | 5 | spicy_sub 细分 (mala/xianla/xiangla) |
 | Batch 5 | 深夜+快手 | 5 | 场景 late_night / ultra_quick |
 | Batch 6 | 宝宝共享 | 5 | can_share_base + ingredient_group |
-| **总计** | | **30** | |
+| Batch 7 | 空气炸锅（疲惫模式） | 16 | is_airfryer_alt，af-* ID，口味覆盖 |
+| Batch 8 | 凉拌/冷菜（疲惫模式） | 7 | cold_dress，素菜槽 |
+| Batch 9 | 烤箱（疲惫模式） | 9 | cook_type: oven |
+| Batch 10 | 电饭煲（疲惫模式） | 5 | cook_type: rice_cooker |
+| Batch 11 | 微波炉（疲惫模式） | 5 | cook_type: microwave |
+| **总计** | | **72** | |
 
 ---
 

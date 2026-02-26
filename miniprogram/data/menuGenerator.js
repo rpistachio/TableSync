@@ -330,30 +330,34 @@ function filterByPreference(recipes, userPreference) {
 
 /** cook_type → 设备类型映射 */
 var COOK_TYPE_TO_DEVICE = {
-  stir_fry: 'wok',           // 炒菜 → 炒锅
-  quick_stir_fry: 'wok',     // 快炒 → 炒锅
-  fry: 'wok',                // 煎炸 → 炒锅
-  braise: 'wok',             // 红烧 → 炒锅
-  stew: 'stove_long',        // 炖菜 → 长时间占灶（炖锅/砂锅）
-  steam: 'steamer',          // 蒸菜 → 蒸锅
-  bake: 'oven',              // 焗/烤 → 烤箱
-  cold: 'none',              // 凉菜 → 无需设备
-  cold_dress: 'none',        // 凉拌 → 无需设备 (与 mix.js 一致)
-  salad: 'none',             // 拌菜 → 无需设备
-  boil: 'pot',               // 煮汤 → 汤锅
-  air_fryer: 'air_fryer',    // 空气炸锅 → 独立设备，不占灶
-  rice_cooker: 'rice_cooker' // 电饭煲 → 独立设备，不占灶
+  stir_fry: 'wok',
+  quick_stir_fry: 'wok',
+  fry: 'wok',
+  braise: 'wok',
+  stew: 'stove_long',
+  steam: 'steamer',
+  bake: 'oven',
+  oven: 'oven',              // 烤箱菜谱
+  cold: 'none',
+  cold_dress: 'none',
+  salad: 'none',
+  boil: 'pot',
+  air_fryer: 'air_fryer',
+  rice_cooker: 'rice_cooker',
+  microwave: 'microwave'     // 微波炉 → 独立设备，不占灶
 };
 
 /** 设备数量限制（普通家庭厨房配置，fallback 用） */
 var DEVICE_LIMITS = {
-  wok: 2,                    // 最多 2 道炒菜（1-2 个炒锅）
-  stove_long: 1,             // 最多 1 道长时间占灶（炖菜）
-  steamer: 1,                // 最多 1 道蒸菜
-  pot: 1,                    // 最多 1 道汤
-  none: 99,                  // 凉菜无限制
-  air_fryer: 1,              // 最多 1 道空气炸锅菜
-  rice_cooker: 1             // 最多 1 道电饭煲菜
+  wok: 2,
+  stove_long: 1,
+  steamer: 1,
+  pot: 1,
+  none: 99,
+  air_fryer: 1,
+  rice_cooker: 1,
+  oven: 1,
+  microwave: 1
 };
 
 /**
@@ -367,25 +371,31 @@ function computeDeviceLimits(kitchenConfig) {
   var burners = Math.max(1, Math.min(4, cfg.burners != null ? cfg.burners : 2));
   var hasSteamer = cfg.hasSteamer === true;
   var hasAirFryer = cfg.hasAirFryer === true;
+  var hasOven = cfg.hasOven === true;
   var hasRiceCooker = cfg.hasRiceCooker === true;
+  var hasMicrowave = cfg.hasMicrowave === true;
 
   return {
-    wok: Math.min(burners, 2),         // 炒锅上限 = min(火眼数, 2)
-    stove_long: burners >= 2 ? 1 : 0,  // 炖锅: 双灶及以上才允许独占 1 眼炖煮
-    steamer: 1,                         // 蒸锅始终允许 1 道
-    pot: burners >= 2 ? 1 : 0,         // 汤锅: 双灶及以上才允许独占 1 眼煲汤
+    wok: Math.min(burners, 2),
+    stove_long: burners >= 2 ? 1 : 0,
+    steamer: 1,
+    pot: burners >= 2 ? 1 : 0,
     none: 99,
-    air_fryer: hasAirFryer ? 1 : 0,   // 有空气炸锅则最多 1 道，否则 0
-    rice_cooker: hasRiceCooker ? 1 : 0, // 有电饭煲则最多 1 道，否则 0
+    air_fryer: hasAirFryer ? 1 : 0,
+    rice_cooker: hasRiceCooker ? 1 : 0,
+    oven: hasOven ? 1 : 0,
+    microwave: hasMicrowave ? 1 : 0,
     _burners: burners,
     _needsBurner: {
       wok: true,
       stove_long: true,
-      steamer: !hasSteamer,             // 电蒸锅不占灶
+      steamer: !hasSteamer,
       pot: true,
       none: false,
-      air_fryer: false,                 // 空气炸锅不占灶
-      rice_cooker: false                // 电饭煲不占灶
+      air_fryer: false,
+      rice_cooker: false,
+      oven: false,
+      microwave: false
     }
   };
 }
@@ -406,7 +416,7 @@ function getRecipeDevice(recipe) {
  * @returns {Object} { wok: 0, stove_long: 0, steamer: 0, pot: 0, none: 0 }
  */
 function initDeviceCounts() {
-  return { wok: 0, stove_long: 0, steamer: 0, pot: 0, none: 0, air_fryer: 0, rice_cooker: 0 };
+  return { wok: 0, stove_long: 0, steamer: 0, pot: 0, none: 0, air_fryer: 0, rice_cooker: 0, oven: 0, microwave: 0 };
 }
 
 /**
@@ -417,8 +427,8 @@ function initDeviceCounts() {
  */
 function createDeviceTracker(kitchenConfig) {
   var useBurnerPool = kitchenConfig != null && typeof kitchenConfig === 'object';
-  var limits = useBurnerPool ? computeDeviceLimits(kitchenConfig) : { wok: 2, stove_long: 1, steamer: 1, pot: 1, none: 99, air_fryer: 1, rice_cooker: 1 };
-  var reservations = { wok: [], stove_long: [], steamer: [], pot: [], none: [] };
+  var limits = useBurnerPool ? computeDeviceLimits(kitchenConfig) : { wok: 2, stove_long: 1, steamer: 1, pot: 1, none: 99, air_fryer: 1, rice_cooker: 1, oven: 1, microwave: 1 };
+  var reservations = { wok: [], stove_long: [], steamer: [], pot: [], none: [], air_fryer: [], rice_cooker: [], oven: [], microwave: [] };
   var totalBurners = useBurnerPool && limits._burners != null ? limits._burners : null;
   var needsBurner = useBurnerPool && limits._needsBurner ? limits._needsBurner : null;
   var burnerPool = totalBurners != null ? [] : null;
@@ -554,29 +564,56 @@ function filterByDeviceLimits(pool, deviceCounts, limits) {
  * @param {Array} pool - 已做 preFilter 的池
  * @param {Object} deviceCountsRef - { wok, stove_long, steamer, pot, none }，会原地更新
  * @param {Object} [limits] - 设备上限，缺省用 DEVICE_LIMITS
- * @returns {{ recipe: Object, deviceCounts: Object }} 选中的菜谱与更新后的设备计数
+ * @param {Object} [flavorOptions] - 可选，{ preferredFlavor, flavorAffinity, _preferredMeats }，用于加权随机
+ * @returns {{ recipe: Object, deviceCounts: Object }}
  */
-function pickOneWithDeviceBalance(pool, deviceCountsRef, limits) {
+function _affinityWeight(recipe, flavorOptions) {
+  if (!flavorOptions || !recipe) return 1;
+  var s = 1;
+  var flavorAff = flavorOptions.flavorAffinity || {};
+  var preferredFlavor = flavorOptions.preferredFlavor;
+  if (recipe.flavor_profile && flavorAff[recipe.flavor_profile] != null) {
+    s += flavorAff[recipe.flavor_profile] * 2;
+  }
+  if (preferredFlavor && recipe.flavor_profile === preferredFlavor) s += 5;
+  if (Array.isArray(flavorOptions._preferredMeats) && flavorOptions._preferredMeats.indexOf(recipe.meat) !== -1) {
+    s += 3;
+  }
+  return Math.max(0.5, s);
+}
+
+function pickOneWithDeviceBalance(pool, deviceCountsRef, limits, flavorOptions) {
   if (!Array.isArray(pool) || pool.length === 0) {
     return { recipe: null, deviceCounts: deviceCountsRef || initDeviceCounts() };
   }
-  
+
   var counts = deviceCountsRef || initDeviceCounts();
-  
-  // 过滤掉会导致设备超限的菜谱
   var availablePool = filterByDeviceLimits(pool, counts, limits);
-  
-  // 随机抽选
-  var pick = availablePool[Math.floor(Math.random() * availablePool.length)];
-  
-  // 更新设备计数
+
+  var pick;
+  if (flavorOptions && availablePool.length > 0) {
+    var weights = availablePool.map(function (r) { return _affinityWeight(r, flavorOptions); });
+    var totalWeight = 0;
+    for (var w = 0; w < weights.length; w++) totalWeight += weights[w];
+    var rand = Math.random() * totalWeight;
+    var cumulative = 0;
+    pick = availablePool[0];
+    for (var i = 0; i < availablePool.length; i++) {
+      cumulative += weights[i];
+      if (rand <= cumulative) { pick = availablePool[i]; break; }
+      pick = availablePool[i];
+    }
+  } else {
+    pick = availablePool[Math.floor(Math.random() * availablePool.length)];
+  }
+
   if (pick) {
     var device = getRecipeDevice(pick);
     if (counts[device] != null) {
       counts[device]++;
     }
   }
-  
+
   return { recipe: pick, deviceCounts: counts };
 }
 
@@ -588,19 +625,17 @@ function pickOneWithDeviceBalance(pool, deviceCountsRef, limits) {
  * @param {Array} pool - 已做 preFilter 的池
  * @param {number} stewCount - 当前已选中的 stew 数量
  * @param {Object} [limits] - 设备上限，缺省用 DEVICE_LIMITS
- * @returns {{ recipe: Object, stewCount: number }} 选中的菜谱与更新后的 stewCount
+ * @param {Object} [flavorOptions] - 可选，口味加权 { preferredFlavor, flavorAffinity, _preferredMeats }
+ * @returns {{ recipe: Object, stewCount: number }}
  */
-function pickOneWithStewBalance(pool, stewCount, limits) {
+function pickOneWithStewBalance(pool, stewCount, limits, flavorOptions) {
   if (!Array.isArray(pool) || pool.length === 0) return { recipe: null, stewCount: stewCount };
 
-  // 将 stewCount 转换为设备计数格式
   var deviceCounts = initDeviceCounts();
   deviceCounts.stove_long = stewCount || 0;
-  
-  // 使用新的设备平衡算法
-  var result = pickOneWithDeviceBalance(pool, deviceCounts, limits);
-  
-  // 返回兼容旧格式的结果
+
+  var result = pickOneWithDeviceBalance(pool, deviceCounts, limits, flavorOptions);
+
   return {
     recipe: result.recipe,
     stewCount: result.deviceCounts.stove_long
@@ -1624,18 +1659,43 @@ function generateMenuWithFilters(meat, babyMonth, hasBaby, adultCount, babyTaste
         if (aPool.length === 0) fallbackReason = 'time_save_filter_empty';
       }
     } else {
-      // 荤槽：强制 is_airfryer_alt，优先空气炸锅/烤箱
+      // 荤槽：空气炸锅 + 用户有的其他小家电（烤箱/电饭煲/微波炉），均需满足疲惫时间约束
+      var kc = kitchenConfig || (userPreference && userPreference.kitchenConfig) || {};
       var airfryerPool = currentAdultRecipes.filter(function (r) {
         return r.meat === meatKey && r.is_airfryer_alt === true;
       });
-      if (airfryerPool.length > 0) {
-        var filteredAirfryer = preFilter(airfryerPool, userPreference);
-        if (filteredAirfryer.length > 0) {
-          aPool = filteredAirfryer;
-        } else {
-          aPool = _applyTimeSaveFilter(aPool, currentAdultRecipes, meatKey);
-          if (aPool.length === 0) fallbackReason = 'time_save_filter_empty';
-        }
+      var appliancePools = [];
+      if (kc.hasOven) {
+        var ovenPool = currentAdultRecipes.filter(function (r) {
+          return r.meat === meatKey && (r.cook_type === 'oven' || r.cook_type === 'bake');
+        });
+        ovenPool = _applyTimeSaveFilter(ovenPool.length > 0 ? ovenPool : [], currentAdultRecipes, meatKey);
+        if (ovenPool.length > 0) appliancePools = appliancePools.concat(ovenPool);
+      }
+      if (kc.hasRiceCooker) {
+        var ricePool = currentAdultRecipes.filter(function (r) {
+          return r.meat === meatKey && r.cook_type === 'rice_cooker';
+        });
+        ricePool = _applyTimeSaveFilter(ricePool.length > 0 ? ricePool : [], currentAdultRecipes, meatKey);
+        if (ricePool.length > 0) appliancePools = appliancePools.concat(ricePool);
+      }
+      if (kc.hasMicrowave) {
+        var microPool = currentAdultRecipes.filter(function (r) {
+          return r.meat === meatKey && r.cook_type === 'microwave';
+        });
+        microPool = _applyTimeSaveFilter(microPool.length > 0 ? microPool : [], currentAdultRecipes, meatKey);
+        if (microPool.length > 0) appliancePools = appliancePools.concat(microPool);
+      }
+      var filteredAirfryer = airfryerPool.length > 0 ? preFilter(airfryerPool, userPreference) : [];
+      var filteredAppliance = appliancePools.length > 0 ? preFilter(appliancePools, userPreference) : [];
+      var seenIds = {};
+      var merged = [];
+      filteredAirfryer.forEach(function (r) { if (r.id && !seenIds[r.id]) { seenIds[r.id] = true; merged.push(r); } });
+      filteredAppliance.forEach(function (r) { if (r.id && !seenIds[r.id]) { seenIds[r.id] = true; merged.push(r); } });
+      if (merged.length > 0) {
+        aPool = merged;
+      } else if (filteredAirfryer.length > 0) {
+        aPool = filteredAirfryer;
       } else {
         aPool = _applyTimeSaveFilter(aPool, currentAdultRecipes, meatKey);
         if (aPool.length === 0) fallbackReason = 'time_save_filter_empty';
@@ -1678,7 +1738,15 @@ function generateMenuWithFilters(meat, babyMonth, hasBaby, adultCount, babyTaste
   aPool = diversityFilter(aPool, existingMenus, diversityOpts);
 
   var currentStew = stewCountRef && typeof stewCountRef.stewCount === 'number' ? stewCountRef.stewCount : 0;
-  var pickResult = pickOneWithStewBalance(aPool, currentStew, deviceLimits);
+  var flavorOptions = null;
+  if (preferredFlavor || (userPreference && (userPreference.flavorAffinity || userPreference.preferredMeats))) {
+    flavorOptions = {
+      preferredFlavor: preferredFlavor || null,
+      flavorAffinity: (userPreference && userPreference.flavorAffinity) || {},
+      _preferredMeats: (userPreference && userPreference.preferredMeats) || []
+    };
+  }
+  var pickResult = pickOneWithStewBalance(aPool, currentStew, deviceLimits, flavorOptions);
   if (stewCountRef && typeof stewCountRef.stewCount === 'number') stewCountRef.stewCount = pickResult.stewCount;
 
   var adultRaw = pickResult.recipe;
@@ -2641,7 +2709,8 @@ function buildParallelContext(steps) {
 }
 
 /**
- * 四阶段重排：prep → long_term → gap(active/idle_prep) → finish
+ * 四阶段重排（盲盒第四层 Combo 引擎之时序统筹）：预处理 → 长耗时烹饪 → 间隙/快炒 → 收汁收尾
+ * 对应设计：prep → long_term → gap(active/idle_prep) → finish
  * @param {Array} allSteps 原始步骤数组（可混合多个菜）
  * @param {Array} menus    当前菜单列表（暂未强依赖，预留扩展）
  * @param {Object} [kitchenConfig] - 厨房配置，供 buildTimeline / fillGaps 使用

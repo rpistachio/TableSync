@@ -1,0 +1,1589 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>菜谱与封面管理</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, "PingFang SC", sans-serif; margin: 0; padding: 0; background: #111; color: #e0e0e0; min-height: 100vh; }
+    .tabs { display: flex; gap: 0; border-bottom: 1px solid #333; padding: 0 12px; background: #1a1a1a; }
+    .tabs button { padding: 12px 20px; border: none; background: none; color: #999; cursor: pointer; font-size: 14px; border-bottom: 2px solid transparent; }
+    .tabs button:hover { color: #e0e0e0; }
+    .tabs button.active { color: #2563eb; border-bottom-color: #2563eb; }
+    .panel { display: none; padding: 12px; min-height: 70vh; }
+    .panel.active { display: block; }
+    .panel h2 { font-size: 1rem; margin: 0 0 12px 0; }
+    .form-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; }
+    .form-row label { display: flex; align-items: center; gap: 6px; }
+    .form-row input[type="text"], .form-row input[type="number"] { padding: 8px 10px; border-radius: 6px; border: 1px solid #444; background: #222; color: #e0e0e0; font-size: 13px; min-width: 200px; }
+    .form-row select { padding: 6px 10px; border-radius: 6px; border: 1px solid #444; background: #222; color: #e0e0e0; font-size: 12px; }
+    button.primary { background: #2563eb; color: #fff; border: none; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+    button.primary:disabled { background: #555; color: #999; cursor: not-allowed; }
+    button.secondary { background: #333; color: #e0e0e0; border: none; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+    .status { padding: 8px 12px; border-radius: 8px; background: #222; font-size: 13px; margin-bottom: 12px; min-height: 20px; }
+    .status.loading { color: #93c5fd; }
+    .status.ok { color: #86efac; }
+    .status.err { color: #fca5a5; }
+    .draft-list { margin-top: 12px; }
+    .draft-item { padding: 8px 12px; background: #1e1e1e; border-radius: 8px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+    .draft-item a { color: #93c5fd; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    @media (max-width: 768px) { .split { grid-template-columns: 1fr; } }
+    .card-box { background: #1e1e1e; border-radius: 12px; padding: 12px; }
+    .card-box h3 { margin: 0 0 8px 0; font-size: 13px; }
+    .steps-list { list-style: none; padding: 0; margin: 0; }
+    .steps-list li { padding: 6px 0; border-bottom: 1px solid #333; font-size: 12px; }
+    .review-scores { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+    .review-scores span { padding: 4px 8px; background: #333; border-radius: 4px; font-size: 11px; }
+    .review-suggestions { font-size: 12px; color: #c4b5fd; margin-top: 8px; }
+    .logic-errors { color: #fca5a5; font-size: 12px; margin-top: 6px; }
+    .logic-warnings { color: #fef08a; font-size: 12px; margin-top: 4px; }
+    .logic-ok { color: #86efac; font-size: 12px; margin-top: 4px; }
+    .cover-preview { margin-top: 12px; padding: 12px; background: #1a1a1a; border-radius: 8px; }
+    .cover-preview img { max-width: 200px; max-height: 200px; object-fit: cover; border-radius: 8px; display: block; }
+    .cover-preview .refresh-btn { margin-top: 8px; font-size: 12px; }
+    #coverFrame { width: 100%; height: 75vh; border: none; background: #111; border-radius: 8px; }
+    .edit-card { background: #1e1e1e; border-radius: 12px; padding: 12px; margin-bottom: 16px; }
+    .edit-card h3 { margin: 0 0 8px 0; font-size: 13px; cursor: pointer; user-select: none; }
+    .edit-card h3 .toggle-icon { font-size: 11px; margin-right: 4px; transition: transform 0.2s; display: inline-block; }
+    .edit-card h3 .toggle-icon.open { transform: rotate(90deg); }
+    .edit-body { display: none; }
+    .edit-body.open { display: block; }
+    .edit-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
+    .edit-row label { font-size: 12px; color: #aaa; min-width: 80px; }
+    .edit-row input, .edit-row select { padding: 5px 8px; border-radius: 4px; border: 1px solid #444; background: #222; color: #e0e0e0; font-size: 12px; }
+    .edit-row input[type="number"] { width: 70px; }
+    .edit-row input[type="text"] { min-width: 120px; }
+    .edit-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px; }
+    .edit-table th { text-align: left; padding: 4px 6px; background: #292929; color: #aaa; font-weight: 500; font-size: 11px; }
+    .edit-table td { padding: 3px 6px; border-bottom: 1px solid #333; }
+    .edit-table input { width: 100%; padding: 3px 6px; border-radius: 3px; border: 1px solid #444; background: #222; color: #e0e0e0; font-size: 12px; }
+    .edit-table .row-del { color: #ef4444; cursor: pointer; border: none; background: none; font-size: 14px; padding: 0 4px; }
+    .edit-add-btn { background: #333; border: 1px dashed #555; color: #aaa; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; margin-top: 4px; }
+    .edit-save-row { margin-top: 10px; display: flex; gap: 8px; align-items: center; }
+    .edit-save-row .save-hint { font-size: 11px; color: #86efac; }
+  </style>
+</head>
+<body>
+  <div class="tabs">
+    <button type="button" data-tab="generate" class="active">菜谱生成</button>
+    <button type="button" data-tab="review">步骤校验</button>
+    <button type="button" data-tab="overview">菜谱总览</button>
+    <button type="button" data-tab="cover">封面管理</button>
+  </div>
+
+  <div id="panelGenerate" class="panel active">
+    <h2>菜谱生成</h2>
+    <div class="form-row">
+      <label>输入：<input type="text" id="genInput" placeholder="主题关键词 / URL / 文本" /></label>
+      <label>模式：<select id="genMode"><option value="text">text</option><option value="trending">trending</option><option value="url">url</option></select></label>
+      <label>数量：<input type="number" id="genCount" value="5" min="1" max="20" style="min-width:60px" /></label>
+      <label><input type="checkbox" id="genWithRef" /> 爬参考</label>
+      <label><input type="checkbox" id="genAutoReview" /> 自动校验</label>
+      <button type="button" class="primary" id="btnGenerate">一键生成</button>
+    </div>
+    <div class="status" id="genStatus">准备就绪。填写输入后点击「一键生成」。</div>
+    <div class="draft-list" id="draftList"></div>
+  </div>
+
+  <div id="panelReview" class="panel">
+    <h2>步骤校验</h2>
+    <div id="cloudModeBanner" style="display:none;padding:8px 12px;background:#312e81;border-radius:8px;margin-bottom:10px;font-size:13px;color:#c7d2fe;">
+      云端菜谱编辑模式：<strong id="cloudModeName"></strong>
+      <button type="button" class="secondary" id="btnExitCloudMode" style="margin-left:12px;padding:4px 10px;font-size:11px;">退出云端模式</button>
+    </div>
+    <div class="form-row" id="draftSelector">
+      <label>草稿：<select id="reviewDraft"><option value="">选择草稿文件</option></select></label>
+      <label>菜谱：<select id="reviewItem"><option value="">选择一道菜</option></select></label>
+      <button type="button" class="secondary" id="btnLoadReview">加载</button>
+    </div>
+    <div class="split">
+      <div class="card-box">
+        <h3>生成步骤</h3>
+        <ul class="steps-list" id="reviewSteps"></ul>
+        <div class="cover-preview" id="coverPreview" style="display:none;">
+          <h4 style="margin:0 0 8px 0;font-size:12px;">封面预览</h4>
+          <img id="coverPreviewImg" src="" alt="封面" />
+          <div class="refresh-btn">
+            <button type="button" class="secondary" id="btnRefreshCover">刷新预览</button>
+            <button type="button" class="secondary" id="btnRegenCover" title="不满意可重新生成封面">重新生成封面</button>
+          </div>
+        </div>
+      </div>
+      <div class="card-box">
+        <h3>参考菜谱 <button type="button" class="secondary" id="btnCrawlRef" style="margin-left:8px;padding:4px 8px;font-size:11px;">爬取参考</button></h3>
+        <div id="refRecipesList"></div>
+        <p style="font-size:11px;color:#888;margin-top:8px;">导入：<input type="text" id="importRefInput" placeholder="URL 或粘贴文本" style="width:100%;margin-top:4px;" /><button type="button" class="secondary" id="btnImportRef" style="margin-top:4px;">导入参考</button></p>
+      </div>
+    </div>
+    <div class="edit-card" id="editCard" style="display:none;">
+      <h3 id="editToggle"><span class="toggle-icon" id="editToggleIcon">▶</span> 编辑菜谱</h3>
+      <div class="edit-body" id="editBody">
+        <div class="edit-row">
+          <label>菜名</label><input type="text" id="editName" style="min-width:200px;" />
+          <label>prep_time</label><input type="number" id="editPrepTime" min="0" />
+          <label>cook_minutes</label><input type="number" id="editCookMinutes" min="0" />
+        </div>
+        <h4 style="font-size:12px;margin:10px 0 4px;color:#aaa;">配料表</h4>
+        <table class="edit-table" id="editIngredientsTable">
+          <thead><tr><th>名称</th><th>数量</th><th>单位</th><th>分类</th><th style="width:30px;"></th></tr></thead>
+          <tbody id="editIngredientsBody"></tbody>
+        </table>
+        <button type="button" class="edit-add-btn" id="btnAddIngredient">+ 添加配料</button>
+        <h4 style="font-size:12px;margin:10px 0 4px;color:#aaa;">步骤</h4>
+        <table class="edit-table" id="editStepsTable">
+          <thead><tr><th style="width:40px;">序号</th><th>描述</th><th style="width:70px;">类型</th><th style="width:70px;">时长(分)</th><th style="width:30px;"></th></tr></thead>
+          <tbody id="editStepsBody"></tbody>
+        </table>
+        <button type="button" class="edit-add-btn" id="btnAddStep">+ 添加步骤</button>
+        <div class="edit-save-row">
+          <button type="button" class="primary" id="btnSaveEdit">保存修改</button>
+          <button type="button" class="secondary" id="btnSaveAndValidate">保存并重新校验</button>
+          <button type="button" class="primary" id="btnSaveToCloud" style="display:none;background:#6366f1;">保存到云端</button>
+          <button type="button" class="secondary" id="btnSaveToCloudAndValidate" style="display:none;">保存到云端并校验</button>
+          <span id="editSaveHint" class="save-hint"></span>
+        </div>
+      </div>
+    </div>
+    <div class="card-box" id="logicValidationCard">
+      <h3>烹饪逻辑校验 <button type="button" class="secondary" id="btnRefreshLogic" style="margin-left:8px;padding:4px 8px;font-size:11px;">刷新</button></h3>
+      <div id="logicValidationResult">选择一道菜后自动运行校验</div>
+    </div>
+    <div class="card-box" id="reviewCard" style="display:none;">
+      <h3>AI 校验</h3>
+      <div class="review-scores" id="reviewScores"></div>
+      <p>总分：<strong id="reviewOverall">0</strong> · 结论：<strong id="reviewVerdict">-</strong></p>
+      <div class="review-suggestions" id="reviewSuggestions"></div>
+      <div style="margin-top:12px;">
+        <button type="button" class="secondary" id="btnRunReview">重新校验</button>
+        <button type="button" style="margin-left:8px;background:#7c3aed;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px;" id="btnAutoFix">AI 自动修复</button>
+        <button type="button" class="primary" id="btnApprove" style="margin-left:8px;">通过</button>
+        <button type="button" class="primary" id="btnApproveAndCover" style="margin-left:8px;">通过并生成封面</button>
+        <button type="button" class="secondary" id="btnUploadCloud" style="margin-left:8px;display:none;" title="有封面时上传到云端">上传到云端</button>
+      </div>
+    </div>
+    <div class="card-box" id="autoFixCard" style="display:none;">
+      <h3 style="color:#a78bfa;">AI 修复结果</h3>
+      <div id="autoFixChanges" style="font-size:12px;"></div>
+      <div style="margin-top:10px;">
+        <button type="button" class="primary" id="btnApplyFix" style="background:#7c3aed;">应用修复</button>
+        <button type="button" class="secondary" id="btnDiscardFix" style="margin-left:8px;">放弃</button>
+        <span id="autoFixHint" style="margin-left:8px;font-size:11px;color:#86efac;"></span>
+      </div>
+    </div>
+    <div class="status" id="reviewStatus"></div>
+  </div>
+
+  <div id="panelOverview" class="panel">
+    <h2>菜谱总览</h2>
+    <div class="form-row">
+      <label>来源：<select id="ovSource"><option value="all">全部</option><option value="local">仅本地</option><option value="cloud">仅云端</option></select></label>
+      <label>分类：<select id="ovCategory"><option value="all">全部</option></select></label>
+      <label>搜索：<input type="text" id="ovSearch" placeholder="输入菜名或 id…" style="min-width:160px;" /></label>
+      <button type="button" class="primary" id="btnLoadOverview">加载 / 刷新</button>
+      <span id="ovSelectedCount" style="font-size:12px;color:#999;"></span>
+    </div>
+    <div class="form-row" style="gap:8px;flex-wrap:wrap;">
+      <button type="button" style="background:#0891b2;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;" id="btnBatchCrawl" disabled>1. 批量爬取参考</button>
+      <button type="button" style="background:#7c3aed;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;" id="btnBatchValidate" disabled>2. 批量校验</button>
+      <button type="button" style="background:#6d28d9;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;" id="btnBatchReview" disabled>3. 批量AI校验</button>
+      <button type="button" style="background:#6d28d9;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;" id="btnBatchAutoFix" disabled>4. 批量修复</button>
+      <span style="color:#555;font-size:12px;">│</span>
+      <button type="button" style="background:#dc2626;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;" id="btnFullPipeline" disabled>一键全流程 (1→4)</button>
+      <span style="color:#555;font-size:12px;">│</span>
+      <button type="button" style="background:#7f1d1d;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;" id="btnDeleteSelected" disabled>删除选中</button>
+    </div>
+    <div class="form-row" style="gap:12px;font-size:11px;color:#ccc;margin-top:2px;">
+      <span style="color:#888;">爬取站点：</span>
+      <label><input type="checkbox" class="crawl-site-cb" value="xiachufang" checked /> 下厨房</label>
+      <label><input type="checkbox" class="crawl-site-cb" value="icook" checked /> 爱料理</label>
+      <label><input type="checkbox" class="crawl-site-cb" value="meishij" checked /> 美食杰</label>
+      <label><input type="checkbox" class="crawl-site-cb" value="cookpad" checked /> Cookpad</label>
+      <label><input type="checkbox" class="crawl-site-cb" value="douguo" checked /> 豆果美食</label>
+    </div>
+    <div class="status" id="ovStatus">点击「加载 / 刷新」获取全量菜谱。</div>
+    <div id="ovTable" style="overflow-x:auto;"></div>
+  </div>
+
+  <div id="panelCover" class="panel">
+    <h2>封面管理</h2>
+    <iframe id="coverFrame" src="/cover/" title="封面图管理"></iframe>
+  </div>
+
+  <script>
+    const tabs = document.querySelectorAll('.tabs button');
+    const panels = document.querySelectorAll('.panel');
+    tabs.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const t = btn.dataset.tab;
+        tabs.forEach((b) => b.classList.remove('active'));
+        panels.forEach((p) => {
+          const id = p.id;
+          const show = (t === 'generate' && id === 'panelGenerate') || (t === 'review' && id === 'panelReview') || (t === 'overview' && id === 'panelOverview') || (t === 'cover' && id === 'panelCover');
+          p.classList.toggle('active', show);
+        });
+        btn.classList.add('active');
+      });
+    });
+
+    const genStatus = document.getElementById('genStatus');
+    const draftListEl = document.getElementById('draftList');
+    const btnGenerate = document.getElementById('btnGenerate');
+
+    async function loadDrafts() {
+      try {
+        const res = await fetch('/api/drafts');
+        const json = await res.json();
+        if (!json.ok) return [];
+        return json.data || [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function renderDraftList(files) {
+      draftListEl.innerHTML = (files || []).map((f) => `
+        <div class="draft-item">
+          <span>${f}</span>
+          <a href="#" data-file="${f}">查看</a>
+        </div>
+      `).join('') || '<p style="color:#888;">暂无草稿。请先在「菜谱生成」中生成。</p>';
+      draftListEl.querySelectorAll('a[data-file]').forEach((a) => {
+        a.addEventListener('click', (e) => {
+          e.preventDefault();
+          document.getElementById('reviewDraft').value = a.dataset.file;
+          document.querySelector('.tabs button[data-tab="review"]').click();
+          loadReviewDraftOptions();
+        });
+      });
+    }
+
+    btnGenerate.addEventListener('click', async () => {
+      const input = document.getElementById('genInput').value.trim();
+      if (!input) {
+        genStatus.textContent = '请填写输入（主题/URL/文本）';
+        genStatus.className = 'status err';
+        return;
+      }
+      btnGenerate.disabled = true;
+      genStatus.textContent = '正在生成…';
+      genStatus.className = 'status loading';
+      const body = {
+        mode: document.getElementById('genMode').value,
+        input,
+        count: parseInt(document.getElementById('genCount').value, 10) || 5,
+        withRef: document.getElementById('genWithRef').checked,
+        autoReview: document.getElementById('genAutoReview').checked,
+        streamProgress: true
+      };
+      try {
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const json = await res.json();
+        if (!json.ok) {
+          genStatus.textContent = '失败: ' + (json.error || '未知错误');
+          genStatus.className = 'status err';
+          btnGenerate.disabled = false;
+          return;
+        }
+        const jobId = json.jobId;
+        const es = new EventSource('/api/generate/stream?jobId=' + encodeURIComponent(jobId));
+        es.onmessage = (e) => {
+          const data = JSON.parse(e.data);
+          if (data.type === 'progress') {
+            genStatus.textContent = (data.message || data.step || '') + '…';
+          }
+          if (data.type === 'done') {
+            es.close();
+            genStatus.textContent = data.ok ? '生成完成: ' + (data.filename || '') : '失败: ' + (data.error || '');
+            genStatus.className = 'status ' + (data.ok ? 'ok' : 'err');
+            btnGenerate.disabled = false;
+            loadDrafts().then(renderDraftList);
+          }
+        };
+        es.onerror = () => {
+          es.close();
+          genStatus.textContent = '连接中断';
+          genStatus.className = 'status err';
+          btnGenerate.disabled = false;
+        };
+      } catch (e) {
+        genStatus.textContent = '请求失败: ' + e.message;
+        genStatus.className = 'status err';
+        btnGenerate.disabled = false;
+      }
+    });
+
+    const reviewDraftSelect = document.getElementById('reviewDraft');
+    const reviewItemSelect = document.getElementById('reviewItem');
+    const reviewStepsEl = document.getElementById('reviewSteps');
+    const refRecipesListEl = document.getElementById('refRecipesList');
+    const reviewCard = document.getElementById('reviewCard');
+    const reviewStatus = document.getElementById('reviewStatus');
+    let currentDraftData = null;
+    let currentItemIndex = -1;
+    let coverPreviewTs = 0;
+    let cloudEditMode = false;
+    let cloudEditRecipeId = null;
+
+    async function apiJson(res) {
+      const text = await res.text();
+      if (!res.ok && !text.trim().startsWith('{')) {
+        if (res.status === 404) throw new Error('接口不存在(404)。请确认已启动统一管理服务：npm run recipe-manager');
+        throw new Error(res.status + ' ' + (text || res.statusText));
+      }
+      try {
+        return JSON.parse(text || '{}');
+      } catch (e) {
+        throw new Error(res.ok ? '响应解析失败' : (res.status + ' ' + (text || res.statusText)));
+      }
+    }
+
+    async function loadReviewDraftOptions() {
+      const files = await loadDrafts();
+      reviewDraftSelect.innerHTML = '<option value="">选择草稿文件</option>' + files.map((f) => `<option value="${f}">${f}</option>`).join('');
+      const sel = document.getElementById('reviewDraft').value;
+      if (sel) reviewDraftSelect.value = sel;
+    }
+
+    async function loadDraftContent(filename) {
+      const res = await fetch('/api/draft/' + encodeURIComponent(filename));
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || '加载失败');
+      return json.data;
+    }
+
+    reviewDraftSelect.addEventListener('change', async () => {
+      if (cloudEditMode) exitCloudMode();
+      const file = reviewDraftSelect.value;
+      reviewItemSelect.innerHTML = '<option value="">选择一道菜</option>';
+      if (!file) return;
+      try {
+        currentDraftData = await loadDraftContent(file);
+        const items = (currentDraftData && currentDraftData.items) || [];
+        items.forEach((it, i) => {
+          const name = (it.recipe && it.recipe.name) || ('第' + (i + 1) + '道');
+          reviewItemSelect.appendChild(new Option(name, String(i)));
+        });
+      } catch (e) {
+        reviewStatus.textContent = '加载失败: ' + e.message;
+        reviewStatus.className = 'status err';
+      }
+    });
+
+    reviewItemSelect.addEventListener('change', () => {
+      currentItemIndex = parseInt(reviewItemSelect.value, 10);
+      if (Number.isNaN(currentItemIndex) || currentItemIndex < 0) return;
+      renderReviewItem();
+    });
+
+    function getCoverBaseName(item) {
+      const slugMap = item.slug || {};
+      const fn = Object.values(slugMap)[0];
+      return (fn || '').replace(/\.(png|jpg|jpeg)$/i, '');
+    }
+
+    function renderReviewItem() {
+      if (!currentDraftData || !currentDraftData.items || currentItemIndex < 0) return;
+      const item = currentDraftData.items[currentItemIndex];
+      if (!item || !item.recipe) return;
+      document.getElementById('autoFixCard').style.display = 'none';
+      lastAutoFixResult = null;
+      const steps = (item.recipe.steps || []).map((s, i) => (i + 1) + '. ' + (s.text || s));
+      reviewStepsEl.innerHTML = steps.map((t) => '<li>' + t.replace(/</g, '&lt;') + '</li>').join('') || '<li>无步骤</li>';
+      const refs = item.ref_recipes || [];
+      const sourceLabels = { xiachufang: '下厨房', icook: '爱料理', meishij: '美食杰', cookpad: 'Cookpad', douguo: '豆果美食' };
+      refRecipesListEl.innerHTML = refs.length ? refs.map((r) => '<div style="font-size:11px;margin-bottom:6px;padding:6px;background:#222;border-radius:4px;"><b>' + (r.title || r.url || '') + '</b> (' + (sourceLabels[r.source] || r.source || '') + ')<br/>' + (r.steps && r.steps.length ? r.steps.length + ' 步' : '') + '</div>').join('') : '<p style="color:#888;">无参考菜谱，可点「爬取参考」或「导入参考」</p>';
+      if (item.review) {
+        reviewCard.style.display = 'block';
+        document.getElementById('reviewOverall').textContent = item.review.overall;
+        document.getElementById('reviewVerdict').textContent = item.review.verdict || '-';
+        const scores = item.review.scores || {};
+        document.getElementById('reviewScores').innerHTML = Object.entries(scores).map(([k, v]) => '<span>' + k + ': ' + v + '</span>').join('');
+        document.getElementById('reviewSuggestions').innerHTML = (item.review.suggestions || []).map((s) => '<div>' + s + '</div>').join('') || '';
+      } else {
+        reviewCard.style.display = 'block';
+        document.getElementById('reviewOverall').textContent = '-';
+        document.getElementById('reviewVerdict').textContent = '未校验';
+        document.getElementById('reviewScores').innerHTML = '';
+        document.getElementById('reviewSuggestions').innerHTML = '';
+      }
+      if (cloudEditMode) {
+        document.getElementById('coverPreview').style.display = 'none';
+        document.getElementById('btnUploadCloud').style.display = 'none';
+        document.getElementById('btnApprove').style.display = 'none';
+        document.getElementById('btnApproveAndCover').style.display = 'none';
+      } else {
+        document.getElementById('btnApprove').style.display = '';
+        document.getElementById('btnApproveAndCover').style.display = '';
+        var coverBox = document.getElementById('coverPreview');
+        var coverImg = document.getElementById('coverPreviewImg');
+        var baseName = getCoverBaseName(item);
+        var hasCover = (item.image_file || item.status === 'has_image') && baseName;
+        if (hasCover) {
+          coverBox.style.display = 'block';
+          coverImg.src = '/images/' + baseName + '.jpg?t=' + (coverPreviewTs || Date.now());
+          coverImg.onerror = function () { coverBox.style.display = 'none'; };
+        } else {
+          coverBox.style.display = 'none';
+        }
+        document.getElementById('btnUploadCloud').style.display = hasCover ? 'inline-block' : 'none';
+      }
+      editCard.style.display = 'block';
+      document.getElementById('btnSaveEdit').style.display = cloudEditMode ? 'none' : '';
+      document.getElementById('btnSaveAndValidate').style.display = cloudEditMode ? 'none' : '';
+      document.getElementById('btnSaveToCloud').style.display = cloudEditMode ? '' : 'none';
+      document.getElementById('btnSaveToCloudAndValidate').style.display = cloudEditMode ? '' : 'none';
+      populateEditForm(item.recipe);
+      fetchAndShowLogicValidation();
+    }
+
+    /* ───────── 编辑菜谱功能 ───────── */
+    const editCard = document.getElementById('editCard');
+    const editBody = document.getElementById('editBody');
+    const editToggle = document.getElementById('editToggle');
+    const editToggleIcon = document.getElementById('editToggleIcon');
+    const editSaveHint = document.getElementById('editSaveHint');
+
+    editToggle.addEventListener('click', () => {
+      const open = editBody.classList.toggle('open');
+      editToggleIcon.classList.toggle('open', open);
+    });
+
+    function populateEditForm(recipe) {
+      document.getElementById('editName').value = recipe.name || '';
+      document.getElementById('editPrepTime').value = recipe.prep_time != null ? recipe.prep_time : '';
+      document.getElementById('editCookMinutes').value = recipe.cook_minutes != null ? recipe.cook_minutes : '';
+      renderEditIngredients(recipe.ingredients || []);
+      renderEditSteps(recipe.steps || []);
+      editSaveHint.textContent = '';
+    }
+
+    function renderEditIngredients(ingredients) {
+      const tbody = document.getElementById('editIngredientsBody');
+      tbody.innerHTML = '';
+      ingredients.forEach((ing, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          `<td><input type="text" data-field="name" value="${esc(ing.name || '')}" /></td>` +
+          `<td><input type="number" data-field="baseAmount" value="${ing.baseAmount != null ? ing.baseAmount : ''}" style="width:60px;" /></td>` +
+          `<td><input type="text" data-field="unit" value="${esc(ing.unit || '')}" style="width:50px;" /></td>` +
+          `<td><input type="text" data-field="category" value="${esc(ing.category || '')}" style="width:60px;" /></td>` +
+          `<td><button type="button" class="row-del" data-idx="${i}" title="删除">&times;</button></td>`;
+        tbody.appendChild(tr);
+      });
+      tbody.querySelectorAll('.row-del').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          btn.closest('tr').remove();
+        });
+      });
+    }
+
+    function renderEditSteps(steps) {
+      const tbody = document.getElementById('editStepsBody');
+      tbody.innerHTML = '';
+      steps.forEach((s, i) => {
+        const text = typeof s === 'string' ? s : (s.text || '');
+        const action = typeof s === 'object' ? (s.action || 'cook') : 'cook';
+        const dur = typeof s === 'object' ? (s.duration_minutes != null ? s.duration_minutes : (s.duration_num != null ? s.duration_num : '')) : '';
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          `<td style="text-align:center;color:#888;">${i + 1}</td>` +
+          `<td><input type="text" data-field="text" value="${esc(text)}" /></td>` +
+          `<td><select data-field="action"><option value="prep" ${action === 'prep' ? 'selected' : ''}>prep</option><option value="cook" ${action === 'cook' ? 'selected' : ''}>cook</option></select></td>` +
+          `<td><input type="number" data-field="duration" value="${dur}" style="width:60px;" /></td>` +
+          `<td><button type="button" class="row-del" data-idx="${i}" title="删除">&times;</button></td>`;
+        tbody.appendChild(tr);
+      });
+      tbody.querySelectorAll('.row-del').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          btn.closest('tr').remove();
+          renumberSteps();
+        });
+      });
+    }
+
+    function renumberSteps() {
+      const rows = document.querySelectorAll('#editStepsBody tr');
+      rows.forEach((tr, i) => { tr.querySelector('td').textContent = i + 1; });
+    }
+
+    function esc(s) { return String(s).replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+
+    document.getElementById('btnAddIngredient').addEventListener('click', () => {
+      const tbody = document.getElementById('editIngredientsBody');
+      const tr = document.createElement('tr');
+      const idx = tbody.rows.length;
+      tr.innerHTML =
+        `<td><input type="text" data-field="name" value="" /></td>` +
+        `<td><input type="number" data-field="baseAmount" value="0" style="width:60px;" /></td>` +
+        `<td><input type="text" data-field="unit" value="适量" style="width:50px;" /></td>` +
+        `<td><input type="text" data-field="category" value="" style="width:60px;" /></td>` +
+        `<td><button type="button" class="row-del" data-idx="${idx}" title="删除">&times;</button></td>`;
+      tbody.appendChild(tr);
+      tr.querySelector('.row-del').addEventListener('click', () => tr.remove());
+      tr.querySelector('input').focus();
+    });
+
+    document.getElementById('btnAddStep').addEventListener('click', () => {
+      const tbody = document.getElementById('editStepsBody');
+      const idx = tbody.rows.length;
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        `<td style="text-align:center;color:#888;">${idx + 1}</td>` +
+        `<td><input type="text" data-field="text" value="" /></td>` +
+        `<td><select data-field="action"><option value="prep">prep</option><option value="cook" selected>cook</option></select></td>` +
+        `<td><input type="number" data-field="duration" value="" style="width:60px;" /></td>` +
+        `<td><button type="button" class="row-del" data-idx="${idx}" title="删除">&times;</button></td>`;
+      tbody.appendChild(tr);
+      tr.querySelector('.row-del').addEventListener('click', () => { tr.remove(); renumberSteps(); });
+      tr.querySelector('input[data-field="text"]').focus();
+    });
+
+    function collectEditedRecipe() {
+      if (!currentDraftData || !currentDraftData.items || currentItemIndex < 0) return null;
+      const item = currentDraftData.items[currentItemIndex];
+      if (!item || !item.recipe) return null;
+      const base = item.recipe;
+      const recipe = { ...base };
+      recipe.name = document.getElementById('editName').value.trim() || recipe.name;
+      const pt = parseInt(document.getElementById('editPrepTime').value, 10);
+      if (!isNaN(pt)) recipe.prep_time = pt;
+      const cm = parseInt(document.getElementById('editCookMinutes').value, 10);
+      if (!isNaN(cm)) recipe.cook_minutes = cm;
+
+      const ingRows = document.querySelectorAll('#editIngredientsBody tr');
+      recipe.ingredients = [];
+      ingRows.forEach((tr) => {
+        const name = (tr.querySelector('[data-field="name"]').value || '').trim();
+        if (!name) return;
+        const amt = parseFloat(tr.querySelector('[data-field="baseAmount"]').value) || 0;
+        const unit = (tr.querySelector('[data-field="unit"]').value || '').trim() || '适量';
+        const cat = (tr.querySelector('[data-field="category"]').value || '').trim();
+        const ing = { name, baseAmount: amt, unit };
+        if (cat) ing.category = cat;
+        recipe.ingredients.push(ing);
+      });
+
+      const stepRows = document.querySelectorAll('#editStepsBody tr');
+      recipe.steps = [];
+      stepRows.forEach((tr) => {
+        const text = (tr.querySelector('[data-field="text"]').value || '').trim();
+        if (!text) return;
+        const action = tr.querySelector('[data-field="action"]').value || 'cook';
+        const dur = parseFloat(tr.querySelector('[data-field="duration"]').value);
+        const step = { text, action };
+        if (!isNaN(dur)) step.duration_minutes = dur;
+        recipe.steps.push(step);
+      });
+
+      return recipe;
+    }
+
+    async function saveEditedRecipe() {
+      const recipe = collectEditedRecipe();
+      if (!recipe) return false;
+      const draftFile = reviewDraftSelect.value;
+      if (!draftFile) return false;
+      try {
+        const res = await fetch('/api/update-draft-item', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ draftFile, itemIndex: currentItemIndex, recipe })
+        });
+        const json = await apiJson(res);
+        if (!json.ok) throw new Error(json.error || '保存失败');
+        currentDraftData.items[currentItemIndex].recipe = recipe;
+        editSaveHint.textContent = '已保存 ✓';
+        setTimeout(() => { editSaveHint.textContent = ''; }, 3000);
+        renderReviewItem();
+        return true;
+      } catch (e) {
+        editSaveHint.textContent = '保存失败: ' + e.message;
+        editSaveHint.style.color = '#fca5a5';
+        setTimeout(() => { editSaveHint.style.color = ''; }, 3000);
+        return false;
+      }
+    }
+
+    document.getElementById('btnSaveEdit').addEventListener('click', () => saveEditedRecipe());
+    document.getElementById('btnSaveAndValidate').addEventListener('click', async () => {
+      const ok = await saveEditedRecipe();
+      if (ok) fetchAndShowLogicValidation();
+    });
+
+    async function saveToCloud() {
+      const recipe = collectEditedRecipe();
+      if (!recipe || !cloudEditRecipeId) return false;
+      editSaveHint.textContent = '正在保存到云端…';
+      editSaveHint.style.color = '#93c5fd';
+      try {
+        const res = await fetch('/api/update-cloud-recipe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ recipeId: cloudEditRecipeId, recipe })
+        });
+        const json = await apiJson(res);
+        if (!json.ok) throw new Error(json.error || '保存失败');
+        currentDraftData.items[currentItemIndex].recipe = recipe;
+        editSaveHint.textContent = '已保存到云端 ✓';
+        editSaveHint.style.color = '';
+        setTimeout(() => { editSaveHint.textContent = ''; }, 3000);
+        renderReviewItem();
+        return true;
+      } catch (e) {
+        editSaveHint.textContent = '保存失败: ' + e.message;
+        editSaveHint.style.color = '#fca5a5';
+        setTimeout(() => { editSaveHint.style.color = ''; }, 5000);
+        return false;
+      }
+    }
+
+    document.getElementById('btnSaveToCloud').addEventListener('click', () => saveToCloud());
+    document.getElementById('btnSaveToCloudAndValidate').addEventListener('click', async () => {
+      const ok = await saveToCloud();
+      if (ok) fetchAndShowLogicValidation();
+    });
+
+    function enterCloudMode(recipeId, recipe) {
+      cloudEditMode = true;
+      cloudEditRecipeId = recipeId;
+      currentDraftData = { items: [{ recipe, ref_recipes: [], review: null }] };
+      currentItemIndex = 0;
+      document.getElementById('cloudModeBanner').style.display = 'block';
+      document.getElementById('cloudModeName').textContent = recipe.name || recipeId;
+      document.getElementById('draftSelector').style.display = 'none';
+      reviewDraftSelect.value = '';
+      reviewItemSelect.innerHTML = '<option value="">-</option>';
+      editBody.classList.add('open');
+      editToggleIcon.classList.add('open');
+      renderReviewItem();
+    }
+
+    function exitCloudMode() {
+      cloudEditMode = false;
+      cloudEditRecipeId = null;
+      currentDraftData = null;
+      currentItemIndex = -1;
+      document.getElementById('cloudModeBanner').style.display = 'none';
+      document.getElementById('draftSelector').style.display = '';
+      reviewStepsEl.innerHTML = '';
+      refRecipesListEl.innerHTML = '';
+      reviewCard.style.display = 'none';
+      editCard.style.display = 'none';
+      document.getElementById('logicValidationResult').innerHTML = '选择一道菜后自动运行校验';
+      reviewStatus.textContent = '';
+    }
+
+    document.getElementById('btnExitCloudMode').addEventListener('click', exitCloudMode);
+
+    async function loadCloudRecipeForReview(recipeId) {
+      tabs.forEach((b) => b.classList.remove('active'));
+      panels.forEach((p) => p.classList.toggle('active', p.id === 'panelReview'));
+      document.querySelector('[data-tab="review"]').classList.add('active');
+      reviewStatus.textContent = '正在从云端加载菜谱 ' + recipeId + '…';
+      reviewStatus.className = 'status loading';
+      try {
+        const res = await fetch('/api/cloud-recipe?id=' + encodeURIComponent(recipeId));
+        const json = await apiJson(res);
+        if (!json.ok) throw new Error(json.error || '加载失败');
+        enterCloudMode(recipeId, json.data);
+        reviewStatus.textContent = '已加载云端菜谱「' + (json.data.name || recipeId) + '」，可编辑后保存到云端。';
+        reviewStatus.className = 'status ok';
+      } catch (e) {
+        reviewStatus.textContent = '加载失败: ' + e.message;
+        reviewStatus.className = 'status err';
+      }
+    }
+
+    let lastValidationResult = null;
+    let lastAutoFixResult = null;
+
+    document.getElementById('btnAutoFix').addEventListener('click', async () => {
+      if (!currentDraftData || currentItemIndex < 0) return;
+      const item = currentDraftData.items[currentItemIndex];
+      if (!item || !item.recipe) return;
+      const autoFixCard = document.getElementById('autoFixCard');
+      const changesEl = document.getElementById('autoFixChanges');
+      const hintEl = document.getElementById('autoFixHint');
+      autoFixCard.style.display = 'none';
+      reviewStatus.textContent = 'AI 正在分析并修复菜谱，请稍候…';
+      reviewStatus.className = 'status loading';
+      document.getElementById('btnAutoFix').disabled = true;
+      try {
+        const payload = { recipe: item.recipe };
+        if (lastValidationResult) payload.validation = lastValidationResult;
+        if (item.review) payload.review = { scores: item.review.scores, overall: item.review.overall, verdict: item.review.verdict, suggestions: item.review.suggestions };
+        const res = await fetch('/api/auto-fix-recipe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const json = await apiJson(res);
+        if (!json.ok) throw new Error(json.error || '修复失败');
+        lastAutoFixResult = json.data;
+        const changes = json.data.changes || [];
+        changesEl.innerHTML = changes.length > 0
+          ? '<ul style="margin:4px 0;padding-left:18px;">' + changes.map((c) => '<li style="margin-bottom:3px;color:#c4b5fd;">' + String(c).replace(/</g, '&lt;') + '</li>').join('') + '</ul>'
+          : '<p style="color:#86efac;">无需修改，菜谱已通过。</p>';
+        hintEl.textContent = '';
+        autoFixCard.style.display = 'block';
+        reviewStatus.textContent = 'AI 修复完成，共 ' + changes.length + ' 处修改。请审核后点「应用修复」。';
+        reviewStatus.className = 'status ok';
+      } catch (e) {
+        reviewStatus.textContent = 'AI 修复失败: ' + e.message;
+        reviewStatus.className = 'status err';
+      }
+      document.getElementById('btnAutoFix').disabled = false;
+    });
+
+    document.getElementById('btnApplyFix').addEventListener('click', async () => {
+      if (!lastAutoFixResult || !lastAutoFixResult.recipe) return;
+      if (!currentDraftData || currentItemIndex < 0) return;
+      currentDraftData.items[currentItemIndex].recipe = lastAutoFixResult.recipe;
+      if (cloudEditMode) {
+        const ok = await saveToCloud();
+        if (ok) {
+          document.getElementById('autoFixHint').textContent = '已应用并保存到云端 ✓';
+        }
+      } else if (reviewDraftSelect.value) {
+        const draftFile = reviewDraftSelect.value;
+        try {
+          const res = await fetch('/api/update-draft-item', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ draftFile, itemIndex: currentItemIndex, recipe: lastAutoFixResult.recipe })
+          });
+          const json = await apiJson(res);
+          if (json.ok) document.getElementById('autoFixHint').textContent = '已应用并保存到草稿 ✓';
+        } catch (e) {
+          document.getElementById('autoFixHint').textContent = '保存失败: ' + e.message;
+        }
+      }
+      renderReviewItem();
+      lastAutoFixResult = null;
+    });
+
+    document.getElementById('btnDiscardFix').addEventListener('click', () => {
+      lastAutoFixResult = null;
+      document.getElementById('autoFixCard').style.display = 'none';
+      reviewStatus.textContent = '已放弃修复。';
+      reviewStatus.className = 'status';
+    });
+
+    async function fetchAndShowLogicValidation() {
+      var el = document.getElementById('logicValidationResult');
+      if (!currentDraftData || currentItemIndex < 0) {
+        el.innerHTML = '选择一道菜后自动运行校验';
+        lastValidationResult = null;
+        return;
+      }
+      var item = currentDraftData.items[currentItemIndex];
+      if (!item || !item.recipe) {
+        el.innerHTML = '无菜谱数据';
+        lastValidationResult = null;
+        return;
+      }
+      el.innerHTML = '校验中…';
+      try {
+        var res = await fetch('/api/validate-recipe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ recipe: item.recipe })
+        });
+        var json = await apiJson(res);
+        if (!json.ok || !json.data) {
+          el.innerHTML = '<span class="logic-warnings">校验请求失败</span>';
+          lastValidationResult = null;
+          return;
+        }
+        var v = json.data;
+        lastValidationResult = v;
+        var parts = [];
+        if (v.errors && v.errors.length > 0) {
+          parts.push('<div class="logic-errors"><strong>错误（须修复）：</strong><ul style="margin:4px 0 0 0;padding-left:18px;">' +
+            v.errors.map(function (e) { return '<li>' + String(e).replace(/</g, '&lt;') + '</li>'; }).join('') + '</ul></div>');
+        }
+        if (v.warnings && v.warnings.length > 0) {
+          parts.push('<div class="logic-warnings"><strong>建议：</strong><ul style="margin:4px 0 0 0;padding-left:18px;">' +
+            v.warnings.map(function (w) { return '<li>' + String(w).replace(/</g, '&lt;') + '</li>'; }).join('') + '</ul></div>');
+        }
+        if (v.missingInSteps && v.missingInSteps.length > 0) {
+          parts.push('<div class="logic-warnings">配料未在步骤中出现：' + v.missingInSteps.join('、').replace(/</g, '&lt;') + '</div>');
+        }
+        if (v.mentionedNotInList && v.mentionedNotInList.length > 0) {
+          parts.push('<div class="logic-warnings">步骤中提到但配料表无：' + v.mentionedNotInList.join('、').replace(/</g, '&lt;') + '</div>');
+        }
+        if (parts.length === 0) {
+          el.innerHTML = '<span class="logic-ok">通过（无错误与建议）</span>';
+        } else {
+          el.innerHTML = parts.join('');
+        }
+      } catch (e) {
+        el.innerHTML = '<span class="logic-warnings">校验失败: ' + String(e.message).replace(/</g, '&lt;') + '</span>';
+      }
+    }
+
+    document.getElementById('btnRefreshLogic').addEventListener('click', function () {
+      fetchAndShowLogicValidation();
+    });
+
+    document.getElementById('btnRefreshCover').addEventListener('click', function () {
+      coverPreviewTs = Date.now();
+      renderReviewItem();
+    });
+
+    document.getElementById('btnRegenCover').addEventListener('click', async function () {
+      if (!currentDraftData || currentItemIndex < 0 || !reviewDraftSelect.value) return;
+      var btn = this;
+      btn.disabled = true;
+      reviewStatus.textContent = '正在重新生成封面…';
+      reviewStatus.className = 'status loading';
+      try {
+        const res = await fetch('/api/generate-cover-for-draft', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ draftFile: reviewDraftSelect.value, itemIndex: currentItemIndex })
+        });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || '生成失败');
+        var item = currentDraftData.items[currentItemIndex];
+        if (item) {
+          item.image_file = json.imageFile || item.image_file;
+          item.status = 'has_image';
+        }
+        coverPreviewTs = Date.now();
+        renderReviewItem();
+        reviewStatus.textContent = '封面已重新生成，请查看上方预览。';
+        reviewStatus.className = 'status ok';
+      } catch (e) {
+        reviewStatus.textContent = '重新生成失败: ' + e.message;
+        reviewStatus.className = 'status err';
+      }
+      btn.disabled = false;
+    });
+
+    document.getElementById('btnLoadReview').addEventListener('click', () => {
+      if (reviewDraftSelect.value && reviewItemSelect.value !== '') {
+        currentItemIndex = parseInt(reviewItemSelect.value, 10);
+        currentDraftData ? renderReviewItem() : loadDraftContent(reviewDraftSelect.value).then((data) => {
+          currentDraftData = data;
+          renderReviewItem();
+        });
+      }
+    });
+
+    document.getElementById('btnCrawlRef').addEventListener('click', async () => {
+      if (!currentDraftData || currentItemIndex < 0) {
+        reviewStatus.textContent = '请先选择草稿和一道菜';
+        reviewStatus.className = 'status err';
+        return;
+      }
+      const name = currentDraftData.items[currentItemIndex].recipe.name;
+      if (!name) return;
+      reviewStatus.textContent = '正在爬取参考菜谱…';
+      reviewStatus.className = 'status loading';
+      try {
+        const crawlBody = { keyword: name };
+        const selSites = typeof getSelectedCrawlSites === 'function' ? getSelectedCrawlSites() : [];
+        if (selSites.length > 0 && selSites.length < 5) crawlBody.sites = selSites;
+        const res = await fetch('/api/crawl', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(crawlBody)
+        });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || '爬取失败');
+        const refs = json.data || [];
+        if (!currentDraftData.items[currentItemIndex].ref_recipes) currentDraftData.items[currentItemIndex].ref_recipes = [];
+        currentDraftData.items[currentItemIndex].ref_recipes.push(...refs);
+        renderReviewItem();
+        reviewStatus.textContent = '已爬取 ' + refs.length + ' 条参考';
+        reviewStatus.className = 'status ok';
+      } catch (e) {
+        reviewStatus.textContent = '爬取失败: ' + e.message;
+        reviewStatus.className = 'status err';
+      }
+    });
+
+    document.getElementById('btnImportRef').addEventListener('click', async () => {
+      const input = document.getElementById('importRefInput').value.trim();
+      if (!input) {
+        reviewStatus.textContent = '请粘贴 URL 或文本';
+        reviewStatus.className = 'status err';
+        return;
+      }
+      if (!currentDraftData || currentItemIndex < 0) {
+        reviewStatus.textContent = '请先选择草稿和一道菜';
+        reviewStatus.className = 'status err';
+        return;
+      }
+      reviewStatus.textContent = '正在导入…';
+      reviewStatus.className = 'status loading';
+      try {
+        const res = await fetch('/api/import-ref', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            input,
+            recipeName: currentDraftData.items[currentItemIndex].recipe.name
+          })
+        });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || '导入失败');
+        if (!currentDraftData.items[currentItemIndex].ref_recipes) currentDraftData.items[currentItemIndex].ref_recipes = [];
+        currentDraftData.items[currentItemIndex].ref_recipes.push(json.data);
+        renderReviewItem();
+        document.getElementById('importRefInput').value = '';
+        reviewStatus.textContent = '已导入参考';
+        reviewStatus.className = 'status ok';
+      } catch (e) {
+        reviewStatus.textContent = '导入失败: ' + e.message;
+        reviewStatus.className = 'status err';
+      }
+    });
+
+    document.getElementById('btnRunReview').addEventListener('click', async () => {
+      if (!currentDraftData || currentItemIndex < 0) return;
+      const item = currentDraftData.items[currentItemIndex];
+      reviewStatus.textContent = '正在 AI 校验…';
+      reviewStatus.className = 'status loading';
+      try {
+        const res = await fetch('/api/review', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ recipe: item.recipe, refRecipes: item.ref_recipes || [] })
+        });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || '校验失败');
+        item.review = json.data;
+        renderReviewItem();
+        reviewStatus.textContent = '校验完成';
+        reviewStatus.className = 'status ok';
+      } catch (e) {
+        reviewStatus.textContent = '校验失败: ' + e.message;
+        reviewStatus.className = 'status err';
+      }
+    });
+
+    document.getElementById('btnApprove').addEventListener('click', async () => {
+      if (!currentDraftData || currentItemIndex < 0 || !reviewDraftSelect.value) return;
+      reviewStatus.textContent = '正在处理…';
+      reviewStatus.className = 'status loading';
+      try {
+        const approveRes = await fetch('/api/approve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ draftFile: reviewDraftSelect.value, itemIndex: currentItemIndex })
+        });
+        const approveJson = await approveRes.json();
+        if (!approveJson.ok) throw new Error(approveJson.error || '通过失败');
+        var item = currentDraftData.items[currentItemIndex];
+        if (item && (item.image_file || item.status === 'has_image')) {
+          reviewStatus.textContent = '已通过，正在上传到云端…';
+          const syncRes = await fetch('/api/sync-item', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ draftFile: reviewDraftSelect.value, itemIndex: currentItemIndex })
+          });
+          const syncJson = await apiJson(syncRes);
+          if (!syncJson.ok) throw new Error(syncJson.error || '上传失败');
+          reviewStatus.textContent = '已通过并上传到云端。';
+        } else {
+          reviewStatus.textContent = '已通过。无封面未上传，生成封面后可点「上传到云端」。';
+        }
+        reviewStatus.className = 'status ok';
+      } catch (e) {
+        reviewStatus.textContent = '操作失败: ' + e.message;
+        reviewStatus.className = 'status err';
+      }
+    });
+
+    document.getElementById('btnApproveAndCover').addEventListener('click', async () => {
+      if (!currentDraftData || currentItemIndex < 0 || !reviewDraftSelect.value) return;
+      reviewStatus.textContent = '正在标记通过并生成封面…';
+      reviewStatus.className = 'status loading';
+      try {
+        const approveRes = await fetch('/api/approve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ draftFile: reviewDraftSelect.value, itemIndex: currentItemIndex })
+        });
+        const approveJson = await approveRes.json();
+        if (!approveJson.ok) throw new Error(approveJson.error || '通过失败');
+        const coverRes = await fetch('/api/generate-cover-for-draft', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ draftFile: reviewDraftSelect.value, itemIndex: currentItemIndex })
+        });
+        const coverJson = await coverRes.json();
+        if (!coverJson.ok) throw new Error(coverJson.error || '生成封面失败');
+        var item = currentDraftData.items[currentItemIndex];
+        if (item) {
+          item.image_file = coverJson.imageFile || item.image_file;
+          item.status = 'has_image';
+        }
+        coverPreviewTs = Date.now();
+        renderReviewItem();
+        reviewStatus.textContent = '封面已生成，正在上传到云端…';
+        try {
+          const syncRes = await fetch('/api/sync-item', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ draftFile: reviewDraftSelect.value, itemIndex: currentItemIndex })
+          });
+          const syncJson = await apiJson(syncRes);
+          if (syncJson.ok) {
+            reviewStatus.textContent = '已通过、生成封面并上传到云端。';
+          } else {
+            reviewStatus.textContent = '已通过并生成封面。上传失败: ' + (syncJson.error || '');
+          }
+        } catch (e) {
+          reviewStatus.textContent = '已通过并生成封面。上传失败: ' + e.message;
+        }
+        reviewStatus.className = 'status ok';
+      } catch (e) {
+        reviewStatus.textContent = '操作失败: ' + e.message;
+        reviewStatus.className = 'status err';
+      }
+    });
+
+    document.getElementById('btnUploadCloud').addEventListener('click', async function () {
+      if (!currentDraftData || currentItemIndex < 0 || !reviewDraftSelect.value) return;
+      var item = currentDraftData.items[currentItemIndex];
+      if (!item || !(item.image_file || item.status === 'has_image')) {
+        reviewStatus.textContent = '当前项无封面，请先「通过并生成封面」。';
+        reviewStatus.className = 'status err';
+        return;
+      }
+      var btn = this;
+      btn.disabled = true;
+      reviewStatus.textContent = '正在上传到云端…';
+      reviewStatus.className = 'status loading';
+      try {
+        const res = await fetch('/api/sync-item', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ draftFile: reviewDraftSelect.value, itemIndex: currentItemIndex })
+        });
+        const json = await apiJson(res);
+        if (!json.ok) throw new Error(json.error || '上传失败');
+        reviewStatus.textContent = '已上传到云端并更新本地。';
+        reviewStatus.className = 'status ok';
+      } catch (e) {
+        reviewStatus.textContent = '上传失败: ' + e.message;
+        reviewStatus.className = 'status err';
+      }
+      btn.disabled = false;
+    });
+
+    /* ───────── 菜谱总览 Tab ───────── */
+    const ovStatus = document.getElementById('ovStatus');
+    const ovTableEl = document.getElementById('ovTable');
+    const ovSourceSel = document.getElementById('ovSource');
+    const ovCatSel = document.getElementById('ovCategory');
+    const ovSearchInput = document.getElementById('ovSearch');
+    const btnLoadOverview = document.getElementById('btnLoadOverview');
+    const btnDeleteSelected = document.getElementById('btnDeleteSelected');
+    const ovSelectedCountEl = document.getElementById('ovSelectedCount');
+
+    let ovAllRecipes = [];
+    let ovSelected = new Set();
+    let ovValidationResults = {};
+    let ovCrawledRefs = {};
+    let ovReviewResults = {};
+    let ovFixResults = {};
+    let ovRecipeCache = {};
+
+    const MEAT_LABELS = { chicken:'鸡', beef:'牛', pork:'猪', fish:'鱼', shrimp:'虾', vegetable:'蔬菜', tofu:'豆腐', lamb:'羊', duck:'鸭', seafood:'海鲜' };
+    const COOK_LABELS = { stir_fry:'炒', stew:'炖/煮', steam:'蒸/凉', bake:'烤', fry:'煎', other:'其他' };
+    const SOURCE_LABELS = { local:'仅本地', cloud:'仅云端', both:'本地+云端' };
+
+    function buildCategoryOptions(recipes) {
+      const cats = new Set();
+      recipes.forEach((r) => { if (r.meat) cats.add(r.meat); });
+      ovCatSel.innerHTML = '<option value="all">全部</option>';
+      Array.from(cats).sort().forEach((c) => {
+        const o = document.createElement('option');
+        o.value = c;
+        o.textContent = MEAT_LABELS[c] || c;
+        ovCatSel.appendChild(o);
+      });
+    }
+
+    function getFilteredRecipes() {
+      const src = ovSourceSel.value;
+      const cat = ovCatSel.value;
+      const q = ovSearchInput.value.trim().toLowerCase();
+      return ovAllRecipes.filter((r) => {
+        if (src !== 'all' && r._source !== src) {
+          if (src === 'local' && r._source !== 'local' && r._source !== 'both') return false;
+          if (src === 'cloud' && r._source !== 'cloud' && r._source !== 'both') return false;
+        }
+        if (cat !== 'all' && r.meat !== cat) return false;
+        if (q && !(r.name || '').toLowerCase().includes(q) && !(r.id || '').toLowerCase().includes(q)) return false;
+        return true;
+      });
+    }
+
+    function updateSelectedCount() {
+      const n = ovSelected.size;
+      ovSelectedCountEl.textContent = n > 0 ? `已选 ${n} 项` : '';
+      btnDeleteSelected.disabled = n === 0;
+      document.getElementById('btnBatchCrawl').disabled = n === 0;
+      document.getElementById('btnBatchValidate').disabled = n === 0;
+      document.getElementById('btnBatchReview').disabled = n === 0;
+      document.getElementById('btnBatchAutoFix').disabled = n === 0;
+      document.getElementById('btnFullPipeline').disabled = n === 0;
+    }
+
+    function renderOverviewTable() {
+      const filtered = getFilteredRecipes();
+      if (filtered.length === 0) {
+        ovTableEl.innerHTML = '<p style="color:#999;text-align:center;">无匹配菜谱</p>';
+        return;
+      }
+
+      const grouped = {};
+      filtered.forEach((r) => {
+        const key = r.meat || '其他';
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(r);
+      });
+
+      let html = '';
+      const groupKeys = Object.keys(grouped).sort();
+      for (const gk of groupKeys) {
+        const groupLabel = MEAT_LABELS[gk] || gk;
+        const items = grouped[gk];
+        html += `<div style="margin-top:12px;">
+          <h3 style="margin:0 0 6px;font-size:14px;color:#6366f1;border-bottom:1px solid #e0e0e0;padding-bottom:4px;">
+            ${groupLabel}（${items.length}）
+          </h3>
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+              <tr style="background:#f5f5f5;">
+                <th style="width:32px;padding:4px;"><input type="checkbox" class="ov-group-check" data-group="${gk}" /></th>
+                <th style="text-align:left;padding:4px;">菜名</th>
+                <th style="text-align:left;padding:4px;">ID</th>
+                <th style="text-align:center;padding:4px;">类型</th>
+                <th style="text-align:center;padding:4px;">烹饪</th>
+                <th style="text-align:center;padding:4px;">口味</th>
+                <th style="text-align:center;padding:4px;">来源</th>
+                <th style="text-align:center;padding:4px;">参考</th>
+                <th style="text-align:center;padding:4px;">逻辑校验</th>
+                <th style="text-align:center;padding:4px;">AI评分</th>
+                <th style="text-align:center;padding:4px;">修复状态</th>
+                <th style="text-align:center;padding:4px;">操作</th>
+              </tr>
+            </thead>
+            <tbody>`;
+        for (const r of items) {
+          const checked = ovSelected.has(r.id) ? 'checked' : '';
+          const srcColor = r._source === 'both' ? '#16a34a' : r._source === 'cloud' ? '#2563eb' : '#a16207';
+          const hasCloud = r._source === 'cloud' || r._source === 'both';
+          const vr = ovValidationResults[r.id];
+          let statusHtml = '<span style="color:#666;">-</span>';
+          if (vr) {
+            const errCount = (vr.errors || []).length;
+            const warnCount = (vr.warnings || []).length + (vr.missingInSteps || []).length + (vr.mentionedNotInList || []).length;
+            if (errCount > 0) statusHtml = `<span style="color:#fca5a5;" title="${errCount} 错误, ${warnCount} 警告">❌ ${errCount}错 ${warnCount}警</span>`;
+            else if (warnCount > 0) statusHtml = `<span style="color:#fef08a;" title="${warnCount} 警告">⚠️ ${warnCount}警告</span>`;
+            else statusHtml = '<span style="color:#86efac;">✅ 通过</span>';
+          }
+          const refCount = (ovCrawledRefs[r.id] || []).length;
+          const refHtml = refCount > 0 ? `<span style="color:#22d3ee;">${refCount} 条</span>` : '<span style="color:#666;">-</span>';
+          const rv = ovReviewResults[r.id];
+          let reviewHtml = '<span style="color:#666;">-</span>';
+          if (rv) {
+            const color = rv.overall >= 7 ? '#86efac' : rv.overall >= 5 ? '#fef08a' : '#fca5a5';
+            reviewHtml = `<span style="color:${color};font-weight:600;" title="${rv.verdict}">${rv.overall}</span>`;
+          }
+          html += `<tr style="border-bottom:1px solid #eee;">
+            <td style="text-align:center;padding:4px;"><input type="checkbox" class="ov-item-check" data-id="${r.id}" ${checked} /></td>
+            <td style="padding:4px;">${r.name || '-'}</td>
+            <td style="padding:4px;color:#888;font-size:11px;">${r.id || '-'}</td>
+            <td style="text-align:center;padding:4px;font-size:11px;">${r._type === 'baby' ? '👶宝宝' : '🧑成人'}</td>
+            <td style="text-align:center;padding:4px;font-size:11px;">${COOK_LABELS[r.cook_type] || r.cook_type || '-'}</td>
+            <td style="text-align:center;padding:4px;font-size:11px;">${r.taste || r.flavor_profile || '-'}</td>
+            <td style="text-align:center;padding:4px;font-size:11px;color:${srcColor};font-weight:600;">${SOURCE_LABELS[r._source] || r._source}</td>
+            <td style="text-align:center;padding:4px;font-size:11px;">${refHtml}</td>
+            <td style="text-align:center;padding:4px;font-size:11px;">${statusHtml}</td>
+            <td style="text-align:center;padding:4px;font-size:11px;">${reviewHtml}</td>
+            <td style="text-align:center;padding:4px;font-size:11px;">${(() => {
+              const fr = ovFixResults[r.id];
+              if (!fr) return '<span style="color:#666;">-</span>';
+              if (fr.status === 'success') return `<span style="color:#86efac;" title="修改 ${fr.changes || 0} 处&#10;${fr.time}">✅ 成功</span><br/><span style="color:#888;font-size:10px;">${fr.time}</span>`;
+              return `<span style="color:#fca5a5;" title="${(fr.error || '').replace(/"/g, '&quot;')}&#10;${fr.time}">❌ 失败</span><br/><span style="color:#888;font-size:10px;">${fr.time}</span>`;
+            })()}</td>
+            <td style="text-align:center;padding:4px;">${hasCloud ? `<button type="button" class="ov-validate-btn" data-id="${r.id}" style="background:#6366f1;color:#fff;border:none;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:11px;">校验</button>` : '<span style="color:#666;font-size:11px;">-</span>'}</td>
+          </tr>`;
+        }
+        html += '</tbody></table></div>';
+      }
+      html += `<p style="color:#999;font-size:12px;margin-top:8px;">共 ${filtered.length} 道菜谱</p>`;
+      ovTableEl.innerHTML = html;
+
+      ovTableEl.querySelectorAll('.ov-item-check').forEach((cb) => {
+        cb.addEventListener('change', () => {
+          if (cb.checked) ovSelected.add(cb.dataset.id);
+          else ovSelected.delete(cb.dataset.id);
+          updateSelectedCount();
+        });
+      });
+      ovTableEl.querySelectorAll('.ov-group-check').forEach((cb) => {
+        cb.addEventListener('change', () => {
+          const group = cb.dataset.group;
+          const items = grouped[group] || [];
+          items.forEach((r) => {
+            if (cb.checked) ovSelected.add(r.id);
+            else ovSelected.delete(r.id);
+          });
+          renderOverviewTable();
+          updateSelectedCount();
+        });
+      });
+      ovTableEl.querySelectorAll('.ov-validate-btn').forEach((btn) => {
+        btn.addEventListener('click', () => loadCloudRecipeForReview(btn.dataset.id));
+      });
+    }
+
+    btnLoadOverview.addEventListener('click', async () => {
+      ovStatus.textContent = '正在加载全量菜谱（本地 + 云端）…';
+      ovStatus.className = 'status loading';
+      btnLoadOverview.disabled = true;
+      try {
+        const res = await fetch('/api/all-recipes');
+        const json = await apiJson(res);
+        if (!json.ok) throw new Error(json.error || '加载失败');
+        ovAllRecipes = json.data || [];
+        ovSelected.clear();
+        ovValidationResults = {};
+        ovCrawledRefs = {};
+        ovReviewResults = {};
+        ovRecipeCache = {};
+        buildCategoryOptions(ovAllRecipes);
+        renderOverviewTable();
+        updateSelectedCount();
+        ovStatus.textContent = `已加载 ${ovAllRecipes.length} 道菜谱（本地 ${json.localCount}，云端 ${json.cloudCount}）。`;
+        ovStatus.className = 'status ok';
+      } catch (e) {
+        ovStatus.textContent = '加载失败: ' + e.message;
+        ovStatus.className = 'status err';
+      }
+      btnLoadOverview.disabled = false;
+    });
+
+    ovSourceSel.addEventListener('change', renderOverviewTable);
+    ovCatSel.addEventListener('change', renderOverviewTable);
+    let ovSearchTimer;
+    ovSearchInput.addEventListener('input', () => {
+      clearTimeout(ovSearchTimer);
+      ovSearchTimer = setTimeout(renderOverviewTable, 300);
+    });
+
+    btnDeleteSelected.addEventListener('click', async () => {
+      if (ovSelected.size === 0) return;
+      const ids = Array.from(ovSelected);
+      const names = ids.map((id) => {
+        const r = ovAllRecipes.find((x) => x.id === id);
+        return r ? r.name : id;
+      });
+      const msg = `确定删除以下 ${ids.length} 道菜谱？\n\n${names.join('、')}\n\n将从云端和本地同时删除，此操作不可撤销。`;
+      if (!confirm(msg)) return;
+      btnDeleteSelected.disabled = true;
+      ovStatus.textContent = `正在删除 ${ids.length} 道菜谱…`;
+      ovStatus.className = 'status loading';
+      try {
+        const res = await fetch('/api/delete-recipes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids, deleteFromCloud: true, deleteFromLocal: true })
+        });
+        const json = await apiJson(res);
+        if (!json.ok) throw new Error(json.error || '删除失败');
+        const parts = [];
+        if (json.cloudDeleted > 0) parts.push(`云端删除 ${json.cloudDeleted} 条`);
+        if (json.localDeleted > 0) parts.push(`本地删除 ${json.localDeleted} 条`);
+        if (json.errors && json.errors.length > 0) parts.push(`${json.errors.length} 个错误`);
+        ovStatus.textContent = '删除完成：' + (parts.join('，') || '无变化') + '。正在刷新…';
+        ovStatus.className = 'status ok';
+        ovSelected.clear();
+        updateSelectedCount();
+        btnLoadOverview.click();
+      } catch (e) {
+        ovStatus.textContent = '删除失败: ' + e.message;
+        ovStatus.className = 'status err';
+      }
+      btnDeleteSelected.disabled = false;
+    });
+
+    function getSelectedCloudIds() {
+      return Array.from(ovSelected).filter((id) => {
+        const r = ovAllRecipes.find((x) => x.id === id);
+        return r && (r._source === 'cloud' || r._source === 'both');
+      });
+    }
+
+    function hasProblems(id) {
+      const vr = ovValidationResults[id];
+      if (!vr) return false;
+      return (vr.errors || []).length > 0 || (vr.warnings || []).length > 0 || (vr.missingInSteps || []).length > 0 || (vr.mentionedNotInList || []).length > 0;
+    }
+
+    function getRecipeName(id) {
+      const r = ovAllRecipes.find((x) => x.id === id);
+      return r ? r.name : id;
+    }
+
+    async function ensureRecipeCached(id) {
+      if (ovRecipeCache[id]) return ovRecipeCache[id];
+      const res = await fetch('/api/cloud-recipe?id=' + encodeURIComponent(id));
+      const json = await apiJson(res);
+      if (json.ok && json.data) { ovRecipeCache[id] = json.data; return json.data; }
+      return null;
+    }
+
+    function getSelectedCrawlSites() {
+      const checked = document.querySelectorAll('.crawl-site-cb:checked');
+      return Array.from(checked).map((cb) => cb.value);
+    }
+
+    async function batchCrawl(cloudIds, progressPrefix) {
+      let done = 0;
+      let crawled = 0;
+      const sites = getSelectedCrawlSites();
+      for (const id of cloudIds) {
+        const name = getRecipeName(id);
+        ovStatus.textContent = `${progressPrefix}爬取参考…（${done}/${cloudIds.length}）${name}`;
+        try {
+          const body = { keyword: name };
+          if (sites.length > 0 && sites.length < 5) body.sites = sites;
+          const res = await fetch('/api/crawl', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+          const json = await apiJson(res);
+          if (json.ok && Array.isArray(json.data) && json.data.length > 0) {
+            ovCrawledRefs[id] = json.data;
+            crawled++;
+          }
+        } catch (_) {}
+        done++;
+      }
+      renderOverviewTable();
+      return crawled;
+    }
+
+    async function batchValidate(cloudIds, progressPrefix) {
+      let done = 0;
+      let errCount = 0;
+      let warnTotal = 0;
+      for (const id of cloudIds) {
+        ovStatus.textContent = `${progressPrefix}逻辑校验…（${done}/${cloudIds.length}）${getRecipeName(id)}`;
+        try {
+          const recipe = await ensureRecipeCached(id);
+          if (!recipe) { done++; continue; }
+          const valRes = await fetch('/api/validate-recipe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ recipe })
+          });
+          const valJson = await apiJson(valRes);
+          if (valJson.ok && valJson.data) {
+            ovValidationResults[id] = valJson.data;
+            const e = (valJson.data.errors || []).length;
+            const w = (valJson.data.warnings || []).length + (valJson.data.missingInSteps || []).length + (valJson.data.mentionedNotInList || []).length;
+            if (e > 0) errCount++;
+            warnTotal += w;
+          }
+        } catch (_) {}
+        done++;
+      }
+      renderOverviewTable();
+      return { errCount, warnTotal };
+    }
+
+    async function batchReview(cloudIds, progressPrefix) {
+      let done = 0;
+      let reviewed = 0;
+      for (const id of cloudIds) {
+        ovStatus.textContent = `${progressPrefix}AI 校验…（${done}/${cloudIds.length}）${getRecipeName(id)}`;
+        try {
+          const recipe = await ensureRecipeCached(id);
+          if (!recipe) { done++; continue; }
+          const refs = ovCrawledRefs[id] || [];
+          const res = await fetch('/api/review', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ recipe, refRecipes: refs })
+          });
+          const json = await apiJson(res);
+          if (json.ok && json.data) {
+            ovReviewResults[id] = json.data;
+            reviewed++;
+          }
+        } catch (_) {}
+        done++;
+      }
+      renderOverviewTable();
+      return reviewed;
+    }
+
+    async function batchFix(problemIds, progressPrefix) {
+      let done = 0;
+      let fixed = 0;
+      let failed = 0;
+      for (const id of problemIds) {
+        ovStatus.textContent = `${progressPrefix}AI 修复…（${done}/${problemIds.length}）${getRecipeName(id)}`;
+        const ts = new Date().toLocaleString('zh-CN', { hour12: false });
+        try {
+          const recipe = await ensureRecipeCached(id);
+          if (!recipe) { done++; failed++; ovFixResults[id] = { status: 'failed', time: ts, error: '无法获取菜谱数据' }; continue; }
+          const payload = { recipe };
+          if (ovValidationResults[id]) payload.validation = ovValidationResults[id];
+          if (ovReviewResults[id]) payload.review = ovReviewResults[id];
+          const fixRes = await fetch('/api/auto-fix-recipe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const fixJson = await apiJson(fixRes);
+          if (!fixJson.ok || !fixJson.data || !fixJson.data.recipe) { done++; failed++; ovFixResults[id] = { status: 'failed', time: ts, error: fixJson.error || 'AI修复返回异常' }; continue; }
+          const saveRes = await fetch('/api/update-cloud-recipe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ recipeId: id, recipe: fixJson.data.recipe })
+          });
+          const saveJson = await apiJson(saveRes);
+          if (saveJson.ok) {
+            fixed++;
+            delete ovRecipeCache[id];
+            const changeCount = (fixJson.data.changes || []).length;
+            ovFixResults[id] = { status: 'success', time: ts, changes: changeCount };
+          } else {
+            failed++;
+            ovFixResults[id] = { status: 'failed', time: ts, error: saveJson.error || '保存到云端失败' };
+          }
+        } catch (e) { failed++; ovFixResults[id] = { status: 'failed', time: ts, error: e.message || '未知错误' }; }
+        done++;
+      }
+      renderOverviewTable();
+      return { fixed, failed };
+    }
+
+    /* ── 批量爬取参考 ── */
+    document.getElementById('btnBatchCrawl').addEventListener('click', async () => {
+      const cloudIds = getSelectedCloudIds();
+      if (cloudIds.length === 0) { ovStatus.textContent = '所选菜谱中无云端数据。'; ovStatus.className = 'status err'; return; }
+      document.getElementById('btnBatchCrawl').disabled = true;
+      ovStatus.className = 'status loading';
+      const crawled = await batchCrawl(cloudIds, '');
+      ovStatus.textContent = `爬取完成：${cloudIds.length} 道菜谱，${crawled} 道成功获取参考。`;
+      ovStatus.className = 'status ok';
+      document.getElementById('btnBatchCrawl').disabled = false;
+    });
+
+    /* ── 批量校验 ── */
+    document.getElementById('btnBatchValidate').addEventListener('click', async () => {
+      const cloudIds = getSelectedCloudIds();
+      if (cloudIds.length === 0) { ovStatus.textContent = '所选菜谱中无云端数据。'; ovStatus.className = 'status err'; return; }
+      document.getElementById('btnBatchValidate').disabled = true;
+      ovStatus.className = 'status loading';
+      const { errCount, warnTotal } = await batchValidate(cloudIds, '');
+      const problemCount = cloudIds.filter(hasProblems).length;
+      ovStatus.textContent = `校验完成：${cloudIds.length} 道，${errCount} 道有错误，${problemCount} 道有问题，共 ${warnTotal} 条警告。`;
+      ovStatus.className = 'status ok';
+      document.getElementById('btnBatchValidate').disabled = false;
+    });
+
+    /* ── 批量AI校验 ── */
+    document.getElementById('btnBatchReview').addEventListener('click', async () => {
+      const cloudIds = getSelectedCloudIds();
+      if (cloudIds.length === 0) { ovStatus.textContent = '所选菜谱中无云端数据。'; ovStatus.className = 'status err'; return; }
+      document.getElementById('btnBatchReview').disabled = true;
+      ovStatus.className = 'status loading';
+      const reviewed = await batchReview(cloudIds, '');
+      ovStatus.textContent = `AI 校验完成：${cloudIds.length} 道菜谱，${reviewed} 道已评分。`;
+      ovStatus.className = 'status ok';
+      document.getElementById('btnBatchReview').disabled = false;
+    });
+
+    /* ── 批量修复 ── */
+    document.getElementById('btnBatchAutoFix').addEventListener('click', async () => {
+      const cloudIds = getSelectedCloudIds();
+      const problemIds = cloudIds.filter(hasProblems);
+      if (problemIds.length === 0) {
+        ovStatus.textContent = '所选菜谱中无校验问题，无需修复。请先运行「批量校验」。';
+        ovStatus.className = 'status err';
+        return;
+      }
+      const names = problemIds.map(getRecipeName);
+      if (!confirm(`将对 ${problemIds.length} 道有问题的菜谱执行 AI 修复并保存到云端：\n\n${names.join('、')}\n\n确定？`)) return;
+      document.getElementById('btnBatchAutoFix').disabled = true;
+      ovStatus.className = 'status loading';
+      const { fixed, failed } = await batchFix(problemIds, '');
+      ovStatus.textContent = `修复完成：${fixed} 道已保存到云端，${failed} 道失败。`;
+      ovStatus.className = 'status ok';
+      document.getElementById('btnBatchAutoFix').disabled = false;
+      ovValidationResults = {};
+      ovReviewResults = {};
+      ovRecipeCache = {};
+      renderOverviewTable();
+    });
+
+    /* ── 一键全流程：爬取参考 → 逻辑校验 → AI校验 → 自动修复 ── */
+    document.getElementById('btnFullPipeline').addEventListener('click', async () => {
+      const cloudIds = getSelectedCloudIds();
+      if (cloudIds.length === 0) { ovStatus.textContent = '所选菜谱中无云端数据。'; ovStatus.className = 'status err'; return; }
+      if (!confirm(`将对 ${cloudIds.length} 道云端菜谱执行全流程：\n\n1. 爬取参考菜谱\n2. 烹饪逻辑校验\n3. AI 交叉校验\n4. 自动修复有问题的菜谱\n\n全程可能需要较长时间，确定？`)) return;
+      const btnIds = ['btnBatchCrawl', 'btnBatchValidate', 'btnBatchReview', 'btnBatchAutoFix', 'btnFullPipeline'];
+      btnIds.forEach((b) => { document.getElementById(b).disabled = true; });
+      ovStatus.className = 'status loading';
+
+      ovStatus.textContent = `[1/4] 爬取参考…（共 ${cloudIds.length} 道）`;
+      const crawled = await batchCrawl(cloudIds, '[1/4] ');
+      ovStatus.textContent = `[1/4] 爬取完成（${crawled} 道有参考）→ 开始逻辑校验…`;
+
+      ovStatus.textContent = `[2/4] 逻辑校验…（共 ${cloudIds.length} 道）`;
+      const { errCount, warnTotal } = await batchValidate(cloudIds, '[2/4] ');
+      const problemCount = cloudIds.filter(hasProblems).length;
+      ovStatus.textContent = `[2/4] 校验完成（${problemCount} 道有问题）→ 开始 AI 校验…`;
+
+      const reviewIds = cloudIds.filter(hasProblems);
+      if (reviewIds.length > 0) {
+        ovStatus.textContent = `[3/4] AI 校验…（${reviewIds.length} 道有问题的菜谱）`;
+        await batchReview(reviewIds, '[3/4] ');
+      }
+      ovStatus.textContent = `[3/4] AI 校验完成 → 开始自动修复…`;
+
+      const fixIds = cloudIds.filter(hasProblems);
+      let fixResult = { fixed: 0, failed: 0 };
+      if (fixIds.length > 0) {
+        ovStatus.textContent = `[4/4] 自动修复…（${fixIds.length} 道）`;
+        fixResult = await batchFix(fixIds, '[4/4] ');
+      }
+
+      ovStatus.textContent = `全流程完成：${cloudIds.length} 道菜谱，爬取参考 ${crawled} 道，发现问题 ${problemCount} 道，修复 ${fixResult.fixed} 道，失败 ${fixResult.failed} 道。`;
+      ovStatus.className = 'status ok';
+      ovValidationResults = {};
+      ovReviewResults = {};
+      ovRecipeCache = {};
+      renderOverviewTable();
+      btnIds.forEach((b) => { document.getElementById(b).disabled = false; });
+      updateSelectedCount();
+    });
+
+    (async function init() {
+      const files = await loadDrafts();
+      renderDraftList(files);
+      loadReviewDraftOptions();
+    })();
+  </script>
+</body>
+</html>

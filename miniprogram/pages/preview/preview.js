@@ -5,6 +5,7 @@ var menuData = require('../../data/menuData.js');
 var menuGen = require('../../data/menuGenerator.js');
 var seedUserService = require('../../utils/seedUserService.js');
 var tasteProfile = require('../../data/tasteProfile.js');
+var scheduleEngine = require('../../utils/scheduleEngine.js');
 
 var ENV_ID = 'cloud1-7g5mdmib90e9f670';
 var CLOUD_ROOT = recipeResources && recipeResources.CLOUD_ROOT ? recipeResources.CLOUD_ROOT : ('cloud://' + ENV_ID);
@@ -34,6 +35,65 @@ function getTodayDateKey() {
   var m = String(d.getMonth() + 1);
   var day = String(d.getDate());
   return y + '-' + (m.length < 2 ? '0' + m : m) + '-' + (day.length < 2 ? '0' + day : day);
+}
+
+var OMAKASE_COPY_POOL = {
+  tired: [
+    '一点酸甜，卸下今天的疲惫',
+    '不用动脑，今晚吃顿舒服的',
+    '热气升腾，把烦恼挡在锅外',
+    '给自己十分钟，胃口会感谢你',
+    '今天辛苦了，吃点好的补补'
+  ],
+  expiring: [
+    '{ingredient}在等你，今晚让它大放异彩',
+    '赶在风味流失前，把它变成杰作',
+    '冰箱里的老朋友，今天做主角',
+    '不浪费食材，是主厨的最高修养'
+  ],
+  heavy: [
+    '今天痛快吃，卡路里明天再说',
+    '恰到好处的火辣，专治胃口不佳',
+    '用一点重口味，叫醒疲惫的味蕾',
+    '无肉不欢的夜晚，就选这一道'
+  ],
+  light: [
+    '给肠胃放个假，尝点食材本味',
+    '无需重料点缀，吃的就是清爽',
+    '低卡零负担，今晚好好爱自己',
+    '保留山野之气，一口吃到春天'
+  ],
+  random: [
+    '既然拿不定主意，相信我的直觉',
+    '缘分摇出来的菜，通常都不会差',
+    '别纠结了，这道菜肯定对你胃口',
+    '随机的惊喜，往往是最优解'
+  ]
+};
+
+function pickOmakaseCopy(context) {
+  if (!context) context = {};
+  var pool = OMAKASE_COPY_POOL.random;
+  var key = 'random';
+  if (context.isTired) {
+    pool = OMAKASE_COPY_POOL.tired;
+    key = 'tired';
+  } else if (context.hasExpiringIngredient && context.heroIngredient) {
+    pool = OMAKASE_COPY_POOL.expiring;
+    key = 'expiring';
+  } else if (context.heroFlavor === 'spicy' || context.heroCookType === 'braise' || context.heroCookType === 'fry') {
+    pool = OMAKASE_COPY_POOL.heavy;
+    key = 'heavy';
+  } else if (context.heroFlavor === 'light' || context.heroCookType === 'steam' || context.heroCookType === 'boil') {
+    pool = OMAKASE_COPY_POOL.light;
+    key = 'light';
+  }
+  if (!Array.isArray(pool) || pool.length === 0) pool = OMAKASE_COPY_POOL.random;
+  var line = pool[Math.floor(Math.random() * pool.length)];
+  if (key === 'expiring' && context.heroIngredient) {
+    line = line.replace(/\{ingredient\}/g, context.heroIngredient);
+  }
+  return line;
 }
 
 var COOK_TYPE_HINTS = {
@@ -126,7 +186,17 @@ Page({
     pickerNativeRecipes: [],
     pickerFilteredNativeRecipes: [],
     pickerImportedRecipes: [],
-    tweakText: ''
+    tweakText: '',
+    schedulePreview: { totalTime: 0, serialTime: 0, savedTime: 0, efficiency: 0, cookingOrder: [], parallelPercent: 0 },
+    isOmakase: false,
+    omakaseVisible: false,
+    omakaseHeroImage: '',
+    omakaseCopy: '',
+    omakaseBgUrl: '',
+    professionalSuggestionCoverUrl: '',
+    omakaseHeroName: '',
+    omakaseComboText: '',
+    omakaseRefreshing: false
   },
 
   onShareAppMessage: function () {
@@ -157,9 +227,11 @@ Page({
     };
   },
 
-  onLoad: function () {
+  onLoad: function (options) {
     this._pageAlive = true;
+    this._shuffleExcludeHistory = [];
     var that = this;
+    var isOmakaseEntry = options && options.omakase === 'true';
     try {
       var fallbackMessage = (getApp().globalData && getApp().globalData.previewFallbackMessage) ? getApp().globalData.previewFallbackMessage : '';
       // 图片（cloud://）解析放到 onReady：避免渲染层过早创建 <image> 导致 500 / 被当作本地资源
@@ -233,11 +305,12 @@ Page({
         };
       });
 
-      // 3. 计算看板数据（Dashboard）
+      // 3. 计算看板数据（Dashboard）与统筹预览
       var dashboard = {};
       if (typeof that._computePreviewDashboard === 'function') {
         dashboard = that._computePreviewDashboard(menus, pref);
       }
+      var schedulePreview = that._computeSchedulePreview(menus);
 
       // 4. 一次性 setData
       var hasSharedBase = rows.some(function (r) { return r.showSharedHint; });
@@ -264,9 +337,41 @@ Page({
       var avoidCapsules = that.data.avoidCapsules.slice().map(function (cap) {
         return { key: cap.key, label: cap.label, active: avoidList.indexOf(cap.key) !== -1 };
       });
+
+      var omakasePayload = { isOmakase: false, omakaseVisible: false, omakaseCopy: '', omakaseHeroImage: '', omakaseHeroName: '', omakaseComboText: '' };
+      if (isOmakaseEntry && menus.length > 0) {
+        var heroMenu = menus.filter(function (m) { return m.meat && m.meat !== 'vegetable'; })[0] || menus[0];
+        var heroName = (heroMenu.adultRecipe && heroMenu.adultRecipe.name) || '这道菜';
+        var otherNames = menus.filter(function (m) { return m !== heroMenu; }).map(function (m) {
+          return (m.adultRecipe && m.adultRecipe.name) || '';
+        }).filter(Boolean);
+        var comboText = otherNames.join(' · ');
+        var copyContext = {
+          isTired: isTiredMode,
+          hasExpiringIngredient: !!(pref.heroIngredient || (Array.isArray(pref.fridgeExpiring) && pref.fridgeExpiring.length > 0)),
+          heroIngredient: pref.heroIngredient || (Array.isArray(pref.fridgeExpiring) && pref.fridgeExpiring[0]) || '',
+          heroFlavor: (heroMenu.adultRecipe && heroMenu.adultRecipe.flavor_profile) || '',
+          heroCookType: (heroMenu.adultRecipe && heroMenu.adultRecipe.cook_type) || ''
+        };
+        var aiCopy = (getApp().globalData && getApp().globalData.omakaseCopy) ? String(getApp().globalData.omakaseCopy).trim() : '';
+        var microCopy = (aiCopy && aiCopy.length <= 15) ? aiCopy : pickOmakaseCopy(copyContext);
+        omakasePayload = {
+          isOmakase: true,
+          omakaseVisible: true,
+          omakaseCopy: microCopy,
+          omakaseHeroImage: '',
+          omakaseHeroName: heroName,
+          omakaseComboText: comboText
+        };
+        that._omakaseHeroRowIndex = menus.indexOf(heroMenu);
+      } else {
+        that._omakaseHeroRowIndex = null;
+      }
+
       that.setData({
         previewMenuRows: rows,
         previewDashboard: dashboard,
+        schedulePreview: schedulePreview,
         previewHasBaby: hasBaby,
         babyMonthLabel: hasBaby ? that._babyMonthToLabel(pref.babyMonth) : '',
         previewHasSharedBase: hasSharedBase,
@@ -283,7 +388,13 @@ Page({
         previewPrimaryCta: previewPrimaryCta,
         helperData: helperData,
         adultCount: adultCount,
-        avoidCapsules: avoidCapsules.length ? avoidCapsules : that.data.avoidCapsules
+        avoidCapsules: avoidCapsules.length ? avoidCapsules : that.data.avoidCapsules,
+        isOmakase: omakasePayload.isOmakase,
+        omakaseVisible: omakasePayload.omakaseVisible,
+        omakaseCopy: omakasePayload.omakaseCopy,
+        omakaseHeroImage: omakasePayload.omakaseHeroImage,
+        omakaseHeroName: omakasePayload.omakaseHeroName || '',
+        omakaseComboText: omakasePayload.omakaseComboText || ''
       }, function () {
         // rows 真正进入视图层后，再按 onReady 规则触发图片解析
         if (that._pageReady) that._resolvePreviewImages();
@@ -342,14 +453,17 @@ Page({
   
   onShow: function () {
     this._pageAlive = true;
+    if (this.data.isOmakase) this._startOmakaseShake();
   },
-  
+
   onHide: function () {
     this._pageAlive = false;
+    this._stopOmakaseShake();
   },
-  
+
   onUnload: function () {
     this._pageAlive = false;
+    this._stopOmakaseShake();
   },
 
   onReady: function () {
@@ -393,6 +507,11 @@ Page({
     // 营养师插图
     var talkBgCloudId = CLOUD_ROOT + '/background_pic/professional_talk_background.png';
     fileIds.push(talkBgCloudId);
+    // 手账风 Omakase：牛皮纸背景、营养师问候头像
+    var omakaseBgCloudId = CLOUD_ROOT + '/background_pic/hero_image_background.png';
+    var suggestionCoverCloudId = CLOUD_ROOT + '/background_pic/professional_suggestion_cover.png';
+    fileIds.push(omakaseBgCloudId);
+    fileIds.push(suggestionCoverCloudId);
 
     // 去重，避免重复请求
     var uniq = [];
@@ -418,12 +537,21 @@ Page({
 
       // 营养师插图 URL
       var talkUrl = tempMap[talkBgCloudId] || '';
+      var omakaseBgUrl = tempMap[omakaseBgCloudId] || '';
+      var professionalSuggestionCoverUrl = tempMap[suggestionCoverCloudId] || '';
 
-      that.setData({
+      var omakaseHeroNext = {};
+      if (that.data.isOmakase && that._omakaseHeroRowIndex != null && newRows[that._omakaseHeroRowIndex]) {
+        omakaseHeroNext.omakaseHeroImage = newRows[that._omakaseHeroRowIndex].coverTempUrl || '';
+      }
+
+      that.setData(Object.assign({
         previewMenuRows: newRows,
         isImageReady: true,
-        professionalTalkBgUrl: talkUrl
-      });
+        professionalTalkBgUrl: talkUrl,
+        omakaseBgUrl: omakaseBgUrl,
+        professionalSuggestionCoverUrl: professionalSuggestionCoverUrl
+      }, omakaseHeroNext));
 
       // 同步回 globalData：确保后续页面/逻辑读到的是可渲染的 URL
       try {
@@ -494,6 +622,78 @@ Page({
     });
   },
 
+  onOmakaseReveal: function () {
+    var that = this;
+    this._stopOmakaseShake();
+    if (getApp().globalData) getApp().globalData.omakaseCopy = '';
+    this.setData({ omakaseVisible: false });
+    setTimeout(function () {
+      if (that._pageAlive) that.setData({ isOmakase: false });
+    }, 450);
+  },
+
+  onOmakaseReshuffle: function () {
+    var that = this;
+    wx.vibrateLong();
+    that.setData({ omakaseRefreshing: true });
+
+    setTimeout(function () {
+      if (!that._pageAlive) return;
+      that.handleShuffle();
+
+      var menus = getApp().globalData.todayMenus || [];
+      if (menus.length > 0) {
+        var heroMenu = menus.filter(function (m) { return m.meat && m.meat !== 'vegetable'; })[0] || menus[0];
+        var heroName = (heroMenu.adultRecipe && heroMenu.adultRecipe.name) || '这道菜';
+        var otherNames = menus.filter(function (m) { return m !== heroMenu; }).map(function (m) {
+          return (m.adultRecipe && m.adultRecipe.name) || '';
+        }).filter(Boolean);
+        var pref = getApp().globalData.preference || {};
+        var isTiredMode = pref.isTimeSave === true || pref.is_time_save === true || (wx.getStorageSync('zen_cook_status') === 'tired');
+        var copyContext = {
+          isTired: isTiredMode,
+          hasExpiringIngredient: !!(pref.heroIngredient || (Array.isArray(pref.fridgeExpiring) && pref.fridgeExpiring.length > 0)),
+          heroIngredient: pref.heroIngredient || (Array.isArray(pref.fridgeExpiring) && pref.fridgeExpiring[0]) || '',
+          heroFlavor: (heroMenu.adultRecipe && heroMenu.adultRecipe.flavor_profile) || '',
+          heroCookType: (heroMenu.adultRecipe && heroMenu.adultRecipe.cook_type) || ''
+        };
+        that._omakaseHeroRowIndex = menus.indexOf(heroMenu);
+        that.setData({
+          omakaseHeroName: heroName,
+          omakaseComboText: otherNames.join(' \u00b7 '),
+          omakaseCopy: pickOmakaseCopy(copyContext),
+          omakaseHeroImage: '',
+          omakaseRefreshing: false
+        });
+      } else {
+        that.setData({ omakaseRefreshing: false });
+      }
+    }, 220);
+  },
+
+  _startOmakaseShake: function () {
+    var that = this;
+    wx.startAccelerometer({ interval: 'normal' });
+    this._omakaseShakeHandler = function (res) {
+      var mag = Math.sqrt(res.x * res.x + res.y * res.y + res.z * res.z);
+      if (mag > 2.5 && !that._omakaseShakeCooldown && that.data.omakaseVisible) {
+        that._omakaseShakeCooldown = true;
+        wx.vibrateLong();
+        that.onOmakaseReshuffle();
+        setTimeout(function () { that._omakaseShakeCooldown = false; }, 3000);
+      }
+    };
+    wx.onAccelerometerChange(this._omakaseShakeHandler);
+  },
+
+  _stopOmakaseShake: function () {
+    wx.stopAccelerometer();
+    if (this._omakaseShakeHandler) {
+      wx.offAccelerometerChange(this._omakaseShakeHandler);
+      this._omakaseShakeHandler = null;
+    }
+  },
+
   onCheckRow: function (e) {
     var index = parseInt(e.currentTarget.dataset.index, 10);
     if (isNaN(index) || index < 0) return;
@@ -557,6 +757,7 @@ Page({
     newMenus.splice(index, 1);
     newRows.splice(index, 1);
     var dashboard = that._computePreviewDashboard(newMenus, pref);
+    var schedulePreview = that._computeSchedulePreview(newMenus);
     var nextHelperData = that.data.helperData;
     if (that.data.isHelperMode && newMenus.length > 0) {
       try {
@@ -582,6 +783,7 @@ Page({
     that.setData({
       previewMenuRows: newRows,
       previewDashboard: dashboard,
+      schedulePreview: schedulePreview,
       helperData: nextHelperData,
       isImageReady: false
     }, function () { if (that._pageReady) that._resolvePreviewImages(); });
@@ -699,9 +901,12 @@ Page({
         payload && payload.preference ? payload.preference : that._defaultPreference(),
         { adultCount: that.data.adultCount, avoidList: that._getActiveAvoidList() }
       );
-      // 换一桌时排除当前桌已有菜品，避免重复
       var currentNames = (that.data.previewMenuRows || []).map(function (r) { return r.adultName || ''; }).filter(Boolean);
-      if (currentNames.length > 0) pref.excludeRecipeNames = currentNames;
+      var history = Array.isArray(that._shuffleExcludeHistory) ? that._shuffleExcludeHistory : [];
+      var seen = {};
+      var mergedExclude = [];
+      currentNames.concat(history).forEach(function (n) { if (n && !seen[n]) { seen[n] = true; mergedExclude.push(n); } });
+      if (mergedExclude.length > 0) pref.excludeRecipeNames = mergedExclude;
       var result = menuService.getTodayMenusByCombo(pref);
       var rawMenus = result.menus || result;
       var hasBaby = pref.hasBaby === true;
@@ -730,6 +935,7 @@ Page({
         });
       }
       var dashboard = that._computePreviewDashboard(newMenus, pref);
+      var schedulePreview = that._computeSchedulePreview(newMenus);
       var hasSharedBase = newRows.some(function (r) { return r.showSharedHint; });
       var balanceTip = '';
       var hasSpicy = false, hasLightOrSweet = false;
@@ -750,6 +956,11 @@ Page({
       }
       getApp().globalData.preference = pref;
       getApp().globalData.todayMenus = newMenus;
+      if (!Array.isArray(that._shuffleExcludeHistory)) that._shuffleExcludeHistory = [];
+      currentNames.forEach(function (n) {
+        if (n && that._shuffleExcludeHistory.indexOf(n) === -1) that._shuffleExcludeHistory.push(n);
+      });
+      if (that._shuffleExcludeHistory.length > 30) that._shuffleExcludeHistory = that._shuffleExcludeHistory.slice(-20);
       var tips = that._buildPreviewTips(dashboard, hasSharedBase, balanceTip, that.data.previewFallbackMessage);
       var nextHelperData = that.data.helperData || { mergedTitle: '', combinedPrepItems: [], combinedActions: [], heartMessage: '' };
       if (that.data.isHelperMode && newMenus.length > 0) {
@@ -771,6 +982,7 @@ Page({
           previewComboName: result.comboName || '',
           previewBalanceTip: balanceTip,
           previewDashboard: dashboard,
+          schedulePreview: schedulePreview,
           previewHasSharedBase: hasSharedBase,
           previewHasBaby: hasBaby,
           babyMonthLabel: hasBaby ? that._babyMonthToLabel(pref.babyMonth) : '',
@@ -894,6 +1106,7 @@ Page({
       getApp().globalData.preference = pref;
       getApp().globalData.todayMenus = newMenus;
       var dashboard = that._computePreviewDashboard(newMenus, pref);
+      var schedulePreview = that._computeSchedulePreview(newMenus);
       var tips = that._buildPreviewTips(dashboard, newRows.some(function (r) { return r.showSharedHint; }), balanceTip, that.data.previewFallbackMessage);
       var nextHelperData = that.data.helperData || { mergedTitle: '', combinedPrepItems: [], combinedActions: [], heartMessage: '' };
       if (that.data.isHelperMode && newMenus.length > 0) {
@@ -914,6 +1127,7 @@ Page({
         previewMenuRows: newRows,
         previewBalanceTip: balanceTip,
         previewDashboard: dashboard,
+        schedulePreview: schedulePreview,
         previewHasSharedBase: newRows.some(function (r) { return r.showSharedHint; }),
         previewHasBaby: !!(pref && pref.hasBaby),
         babyMonthLabel: pref && pref.hasBaby ? that._babyMonthToLabel(pref.babyMonth) : '',
@@ -1070,6 +1284,7 @@ Page({
         });
       }
       var dashboard = that._computePreviewDashboard(menus, pref);
+      var schedulePreview = that._computeSchedulePreview(menus);
       var shoppingList = menuData.generateShoppingListFromMenus(pref, menus) || [];
       getApp().globalData.preference = pref;
       getApp().globalData.todayMenus = menus;
@@ -1093,6 +1308,7 @@ Page({
       that.setData({
         previewMenuRows: newRows,
         previewDashboard: dashboard,
+        schedulePreview: schedulePreview,
         previewComboName: (pref.meatCount || 0) + '荤' + (pref.vegCount || 0) + '素' + (pref.soupCount ? '1汤' : ''),
         helperData: nextHelperData
       }, function () { if (that._pageReady) that._resolvePreviewImages(); });
@@ -1169,6 +1385,7 @@ Page({
         });
       }
       var dashboard = that._computePreviewDashboard(newMenus, pref);
+      var schedulePreview = that._computeSchedulePreview(newMenus);
       var hasSharedBase = newRows.some(function (r) { return r.showSharedHint; });
       var tips = that._buildPreviewTips(dashboard, hasSharedBase, '', that.data.previewFallbackMessage);
       if (getApp().globalData.menuPreview) {
@@ -1186,6 +1403,7 @@ Page({
         previewMenuRows: newRows,
         previewComboName: result.comboName || (meatCount + '荤' + vegCount + '素' + (pref.soupCount ? '1汤' : '')),
         previewDashboard: dashboard,
+        schedulePreview: schedulePreview,
         previewHasSharedBase: hasSharedBase,
         previewHasBaby: hasBaby,
         babyMonthLabel: hasBaby ? that._babyMonthToLabel(pref.babyMonth) : '',
@@ -1263,6 +1481,7 @@ Page({
       });
     }
     var dashboard = that._computePreviewDashboard(newMenus, pref);
+    var schedulePreview = that._computeSchedulePreview(newMenus);
     if (getApp().globalData.menuPreview) {
       getApp().globalData.menuPreview.menus = newMenus;
       getApp().globalData.menuPreview.rows = newRows;
@@ -1276,6 +1495,7 @@ Page({
       showBabyPicker: false,
       previewMenuRows: newRows,
       previewDashboard: dashboard,
+      schedulePreview: schedulePreview,
       previewHasBaby: true,
       babyMonthLabel: that._babyMonthToLabel(month),
       previewHasSharedBase: newRows.some(function (r) { return r.showSharedHint; }),
@@ -1323,6 +1543,7 @@ Page({
       });
     }
     var dashboard = that._computePreviewDashboard(newMenus, pref);
+    var schedulePreview = that._computeSchedulePreview(newMenus);
     if (getApp().globalData.menuPreview) {
       getApp().globalData.menuPreview.menus = newMenus;
       getApp().globalData.menuPreview.rows = newRows;
@@ -1336,6 +1557,7 @@ Page({
       showBabyPicker: false,
       previewMenuRows: newRows,
       previewDashboard: dashboard,
+      schedulePreview: schedulePreview,
       previewHasBaby: false,
       babyMonthLabel: '',
       previewHasSharedBase: false,
@@ -1474,6 +1696,7 @@ Page({
       };
       var newRows = rows.concat([newRow]);
       var dashboard = that._computePreviewDashboard(newMenus, pref);
+      var schedulePreview = that._computeSchedulePreview(newMenus);
       var nextHelperData = that.data.helperData;
       if (that.data.isHelperMode) {
         try {
@@ -1494,6 +1717,7 @@ Page({
       that.setData({
         previewMenuRows: newRows,
         previewDashboard: dashboard,
+        schedulePreview: schedulePreview,
         helperData: nextHelperData,
         isImageReady: false,
         showPickerPanel: false
@@ -1566,6 +1790,7 @@ Page({
       };
       var newRows = (that.data.previewMenuRows || []).concat([newRow]);
       var dashboard = that._computePreviewDashboard(newMenus, pref);
+      var schedulePreview = that._computeSchedulePreview(newMenus);
       var nextHelperData = that.data.helperData;
       if (that.data.isHelperMode) {
         try {
@@ -1586,6 +1811,7 @@ Page({
       that.setData({
         previewMenuRows: newRows,
         previewDashboard: dashboard,
+        schedulePreview: schedulePreview,
         helperData: nextHelperData,
         isImageReady: false
       }, function () { if (that._pageReady) that._resolvePreviewImages(); });
@@ -1678,6 +1904,7 @@ Page({
     getApp().globalData.menuPreview.preference = pref;
     getApp().globalData.todayMenus = menus;
     var dashboard = that._computePreviewDashboard(menus, pref);
+    var schedulePreview = that._computeSchedulePreview(menus);
     var nextHelperData = that.data.helperData;
     if (that.data.isHelperMode && menus.length > 0) {
       try {
@@ -1694,6 +1921,7 @@ Page({
     that.setData({
       previewMenuRows: newRows,
       previewDashboard: dashboard,
+      schedulePreview: schedulePreview,
       helperData: nextHelperData,
       isImageReady: false
     }, function () { if (that._pageReady) that._resolvePreviewImages(); });
@@ -1748,6 +1976,21 @@ Page({
     if (dashboard && dashboard.prepAheadHint) tips.push(dashboard.prepAheadHint);
     if (dashboard && dashboard.prepOrderHint) tips.push(dashboard.prepOrderHint);
     return tips.slice(0, 2);
+  },
+
+  _computeSchedulePreview: function (menus) {
+    var empty = { totalTime: 0, serialTime: 0, savedTime: 0, efficiency: 0, cookingOrder: [], parallelPercent: 0 };
+    if (!menus || menus.length < 2) return empty;
+    var recipes = [];
+    for (var i = 0; i < menus.length; i++) {
+      var r = menus[i].adultRecipe;
+      if (r) recipes.push(r);
+    }
+    if (recipes.length < 2) return empty;
+    var result = scheduleEngine.computeSchedulePreview(recipes);
+    if (!result || result.serialTime <= 0) return empty;
+    result.parallelPercent = Math.round(result.totalTime / result.serialTime * 100);
+    return result;
   },
 
   _computePreviewDashboard: function (menus, pref) {

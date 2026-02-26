@@ -11,6 +11,8 @@ import { normalizeGeneratedItems } from './lib/recipe-formatter.js';
 import { ensurePromptsForItems } from './lib/mj-prompt-builder.js';
 import { generateImage } from './lib/minimax-image.js';
 import { validateIngredientStepConsistency } from './lib/validate-recipe-consistency.js';
+import { crawlRefRecipes } from './lib/recipe-crawler.js';
+import { reviewRecipeWithRefs } from './lib/recipe-reviewer.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -47,6 +49,8 @@ async function main() {
     .option('--gen-images', '生成草稿后使用 MiniMax 按 MJ prompt 自动出图并写入 drafts/images')
     .option('--gen-images-only', '仅对已有草稿补图（需配合 --draft 使用，不再调用 LLM）')
     .option('--draft <file>', '草稿 JSON 路径（与 --gen-images-only 一起用时，只对该草稿出图）', '')
+    .option('--with-ref', '生成后按菜名爬取下厨房/爱料理参考菜谱并写入草稿')
+    .option('--auto-review', '生成并爬取参考后用 AI 做交叉校验并写入草稿（建议与 --with-ref 同用）')
     .parse(process.argv);
 
   const opts = program.opts();
@@ -110,8 +114,20 @@ async function main() {
     return;
   }
 
-  // 读取已有菜名，告知 LLM 不要生成重复菜品
-  const excludeNames = loadExistingRecipeNames();
+  // 读取已有菜名（本地 + 云端），告知 LLM 不要生成重复菜品
+  const localNames = loadExistingRecipeNames();
+  let excludeNames = localNames;
+  try {
+    const { fetchExistingNames } = await import('./lib/cloud-db.js');
+    const { names: cloudNamesSet } = await fetchExistingNames();
+    const cloudNames = Array.from(cloudNamesSet);
+    if (cloudNames.length > 0) {
+      excludeNames = [...new Set([...localNames, ...cloudNames])];
+      console.log(chalk.gray(`[generate] 排除列表：本地 ${localNames.length} + 云端 ${cloudNames.length} = ${excludeNames.length} 道`));
+    }
+  } catch (e) {
+    console.warn(chalk.yellow('⚠ 无法拉取云端菜名，仅使用本地排除列表: ' + (e && e.message ? e.message : String(e))));
+  }
   const provider = CONFIG.llmProvider === 'minimax' ? 'MiniMax' : 'Claude';
   const modelName = CONFIG.llmProvider === 'minimax' ? CONFIG.minimaxLlmModel : CONFIG.llmModel;
   console.log(chalk.cyan(`\n[generate] mode=${mode}, count=${count}, 已有菜谱=${excludeNames.length} 道，LLM: ${provider} (${modelName})`));
@@ -139,7 +155,9 @@ async function main() {
       slug: it.slug,
       mj_prompts: it.mj_prompts,
       selected_prompt_index: null,
-      image_file: null
+      image_file: null,
+      ref_recipes: null,
+      review: null
     }))
   };
 
@@ -147,8 +165,11 @@ async function main() {
   payload.items.forEach((it) => {
     const recipe = it.recipe;
     const v = validateIngredientStepConsistency(recipe);
-    if (!v.ok || (v.warnings && v.warnings.length > 0)) {
+    if (!v.ok || (v.warnings && v.warnings.length > 0) || (v.errors && v.errors.length > 0)) {
       console.log(chalk.yellow(`  [校验] ${recipe.name}:`));
+      if (v.errors && v.errors.length) {
+        v.errors.forEach((e) => console.log(chalk.red(`    [错误] ${e}`)));
+      }
       if (v.missingInSteps && v.missingInSteps.length) {
         console.log(chalk.yellow(`    配料未在步骤中出现: ${v.missingInSteps.join('、')}`));
       }
@@ -160,6 +181,42 @@ async function main() {
       }
     }
   });
+
+  // --with-ref: 按菜名爬取参考菜谱
+  if (opts.withRef) {
+    console.log(chalk.cyan('\n[generate] 正在爬取参考菜谱（下厨房/爱料理）…'));
+    for (let i = 0; i < payload.items.length; i += 1) {
+      const it = payload.items[i];
+      const name = it.recipe && it.recipe.name;
+      if (!name) continue;
+      try {
+        const refs = await crawlRefRecipes(name, { maxPerSite: 2 });
+        it.ref_recipes = refs;
+        console.log(chalk.gray(`  ${name}: ${refs.length} 条参考`));
+      } catch (err) {
+        console.warn(chalk.yellow(`  ${name} 爬取失败: ${err.message}`));
+        it.ref_recipes = [];
+      }
+    }
+  }
+
+  // --auto-review: AI 交叉校验（建议与 --with-ref 同用）
+  if (opts.autoReview) {
+    console.log(chalk.cyan('\n[generate] 正在 AI 交叉校验…'));
+    for (let i = 0; i < payload.items.length; i += 1) {
+      const it = payload.items[i];
+      const refs = it.ref_recipes || [];
+      try {
+        const review = await reviewRecipeWithRefs(it.recipe, refs);
+        it.review = review;
+        const tag = review.verdict === 'pass' ? chalk.green : review.verdict === 'warn' ? chalk.yellow : chalk.red;
+        console.log(chalk.gray(`  ${it.recipe.name}: ${tag(review.overall)} 分 (${review.verdict})`));
+      } catch (err) {
+        console.warn(chalk.yellow(`  ${it.recipe.name} 校验失败: ${err.message}`));
+        it.review = { scores: {}, overall: 0, verdict: 'fail', suggestions: [], needs_revision: true };
+      }
+    }
+  }
 
   fs.writeFileSync(filename, JSON.stringify(payload, null, 2), 'utf8');
 

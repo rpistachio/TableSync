@@ -19,8 +19,10 @@
           </view>
         </block>
         <block wx:else>
-          <view class="dash-item">
-            <text class="dash-value">{{previewDashboard.estimatedTime}}</text>
+          <view class="dash-item dash-item-time">
+            <text class="dash-value" wx:if="{{schedulePreview.savedTime > 0}}">约 {{schedulePreview.totalTime}} 分钟</text>
+            <text class="dash-value" wx:else>{{previewDashboard.estimatedTime}}</text>
+            <text class="dash-save-tag" wx:if="{{schedulePreview.savedTime > 0}}">省{{schedulePreview.savedTime}}min</text>
           </view>
           <view class="dash-item">
             <text class="dash-value">{{previewDashboard.stoveCount}}火</text>
@@ -257,6 +259,31 @@
           <text class="pp-recipe-pick-empty-text">还没有导入过菜谱</text>
         </view>
       </scroll-view>
+    </view>
+  </view>
+
+  <!-- Omakase 全屏揭晓遮罩（手账风） -->
+  <view class="omakase-reveal {{omakaseVisible ? 'is-visible' : ''}}" wx:if="{{isOmakase}}">
+    <image class="omakase-bg-paper" src="{{omakaseBgUrl}}" mode="aspectFill" wx:if="{{omakaseBgUrl}}" />
+    <view class="omakase-greeting">
+      <image class="omakase-greeting-avatar" src="{{professionalSuggestionCoverUrl}}" mode="aspectFit" wx:if="{{professionalSuggestionCoverUrl}}" />
+      <text class="omakase-greeting-text">营养师刚刚为你手写了这份菜单</text>
+    </view>
+    <view class="omakase-polaroid {{omakaseRefreshing ? 'is-refreshing' : ''}}">
+      <view class="omakase-polaroid-frame">
+        <image class="omakase-polaroid-img" src="{{omakaseHeroImage}}" mode="aspectFill" wx:if="{{omakaseHeroImage}}" />
+      </view>
+      <text class="omakase-hero-name" wx:if="{{omakaseHeroName}}">{{omakaseHeroName}}</text>
+    </view>
+    <text class="omakase-micro-copy {{omakaseRefreshing ? 'is-refreshing' : ''}}" wx:if="{{omakaseCopy}}">{{omakaseCopy}}</text>
+    <text class="omakase-combo-text {{omakaseRefreshing ? 'is-refreshing' : ''}}" wx:if="{{omakaseComboText}}">{{omakaseComboText}}</text>
+    <view class="omakase-actions">
+      <view class="omakase-cta" bindtap="onOmakaseReveal">
+        <text>就吃这个</text>
+      </view>
+      <view class="omakase-secondary" bindtap="onOmakaseReshuffle">
+        <text>再摇一次，换个惊喜</text>
+      </view>
     </view>
   </view>
 </view>

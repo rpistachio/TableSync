@@ -147,8 +147,9 @@ async function main() {
 
   mergedRecipes.forEach((recipe) => {
     const v = runValidation(recipe);
-    if (!v.ok || (v.warnings && v.warnings.length > 0)) {
+    if (!v.ok || (v.warnings && v.warnings.length > 0) || (v.errors && v.errors.length > 0)) {
       console.log(chalk.yellow(`  [校验] ${recipe.name}:`));
+      if (v.errors && v.errors.length) v.errors.forEach((e) => console.log(chalk.red(`    [错误] ${e}`)));
       if (v.missingInSteps.length) console.log(chalk.yellow(`    配料未在步骤中出现: ${v.missingInSteps.join('、')}`));
       if (v.mentionedNotInList.length) console.log(chalk.yellow(`    步骤中提到但配料表无: ${v.mentionedNotInList.join('、')}`));
       if (v.warnings && v.warnings.length) v.warnings.forEach((w) => console.log(chalk.yellow(`    ${w}`)));

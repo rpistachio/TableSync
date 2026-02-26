@@ -117,7 +117,7 @@ function normalizeStepsForCloud(steps = []) {
  * - cook_time（来自 cook_minutes，如有）
  * - baby_variant（显式校验并规范化后写入，便于大手牵小手功能）
  */
-function buildCloudRecipeDoc(recipe) {
+export function buildCloudRecipeDoc(recipe) {
   const { ingredients, steps, cook_minutes, baby_variant, ...rest } = recipe || {};
 
   const ing = splitIngredientsForCloud(Array.isArray(ingredients) ? ingredients : []);
@@ -139,6 +139,30 @@ function buildCloudRecipeDoc(recipe) {
   }
 
   return doc;
+}
+
+/**
+ * 分页拉取云端 recipes 集合中所有菜谱的 id 与 name，用于生成前去重。
+ * @returns {Promise<{ ids: Set<string>, names: Set<string> }>}
+ */
+export async function fetchExistingNames() {
+  const db = getDb();
+  const coll = db.collection('recipes');
+  const ids = new Set();
+  const names = new Set();
+  const PAGE = 100;
+  let offset = 0;
+  while (true) {
+    const res = await coll.field({ id: true, name: true }).skip(offset).limit(PAGE).get();
+    if (!res.data || res.data.length === 0) break;
+    res.data.forEach((r) => {
+      if (r.id) ids.add(r.id);
+      if (r.name && typeof r.name === 'string') names.add(String(r.name).trim());
+    });
+    if (res.data.length < PAGE) break;
+    offset += PAGE;
+  }
+  return { ids, names };
 }
 
 /**

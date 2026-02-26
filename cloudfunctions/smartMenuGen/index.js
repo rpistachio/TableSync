@@ -167,6 +167,7 @@ exports.main = async (event, context) => {
     const recipeIds = parsed.recipeIds;
     let reasoning = (parsed.reasoning && String(parsed.reasoning).trim()) || '';
     const dishHighlights = parsed.dishHighlights || {};
+    const omakaseCopy = (parsed.omakaseCopy && String(parsed.omakaseCopy).trim()) ? String(parsed.omakaseCopy).trim().slice(0, 15) : '';
     // 主厨报告降级：若 AI 未返回有效文案则用预设模板（spec 10.5）
     if (reasoning.length < 10) {
       if (hasBasket && basketItems.length > 0) {
@@ -190,15 +191,14 @@ exports.main = async (event, context) => {
 
     console.log('[smartMenuGen] 推荐成功:', validated.join(', '), '| 思路:', reasoning);
 
-    // 返回结果 (reasoning/dishHighlights 为可选扩展字段, 遵循 spec 6.3 加法兼容原则)
-    return {
-      code: 0,
-      data: {
-        recipeIds: validated,
-        reasoning: reasoning,
-        dishHighlights: dishHighlights,
-      },
+    // 返回结果 (reasoning/dishHighlights/omakaseCopy 为可选扩展字段, 遵循 spec 6.3 加法兼容原则)
+    const data = {
+      recipeIds: validated,
+      reasoning: reasoning,
+      dishHighlights: dishHighlights,
     };
+    if (omakaseCopy) data.omakaseCopy = omakaseCopy;
+    return { code: 0, data };
   } catch (err) {
     console.error('[smartMenuGen]', err);
     return { code: 500, fallback: true, message: err.message || '智能推荐失败' };

@@ -1,7 +1,16 @@
 // pages/myRecipes/myRecipes.js
-// 我的菜谱库 —— 导入历史管理，支持「今天继续做」与「加入组餐」
+// 我的菜谱库 —— 做过的菜 + 导入菜谱，支持今天做、改评价、加入组餐
 
 var CACHE_KEY = 'imported_recipes_cache';
+
+var FEEDBACK_EMOJI = { like: '😋', ok: '🙂', dislike: '😐' };
+function formatLastCooked(ts) {
+  if (!ts) return '';
+  var d = new Date(ts);
+  var m = d.getMonth() + 1;
+  var day = d.getDate();
+  return m + '月' + day + '日';
+}
 
 /**
  * 从本地缓存获取已导入菜谱列表
@@ -47,31 +56,71 @@ function mergeRecipeLists(cloudList, localList) {
 
 Page({
   data: {
+    activeTab: 'cooked',
     recipeList: [],
+    cookedList: [],
     loading: true,
     empty: false,
-    fromMix: false
+    emptyCooked: false,
+    fromMix: false,
+    showFeedbackSheet: false,
+    feedbackRecipe: null,
+    feedbackEditFeedback: 'ok',
+    feedbackEditNote: ''
   },
 
   onLoad: function (options) {
     var fromMix = (options && options.from === 'mix');
     this.setData({ fromMix: fromMix });
+    this._loadCookedList();
     this._loadRecipes();
   },
 
   onShow: function () {
+    this._loadCookedList();
     this._loadRecipes();
   },
 
   onPullDownRefresh: function () {
     var that = this;
+    that._loadCookedList();
     that._loadRecipes(function () {
       wx.stopPullDownRefresh();
     });
   },
 
   onRefresh: function () {
+    this._loadCookedList();
     this._loadRecipes();
+  },
+
+  onSwitchTab: function (e) {
+    var tab = (e.currentTarget.dataset || {}).tab;
+    if (tab === 'cooked' || tab === 'imported') {
+      this.setData({ activeTab: tab });
+    }
+  },
+
+  _loadCookedList: function () {
+    var tasteProfile = require('../../data/tasteProfile.js');
+    var raw = tasteProfile.getRecipeCookLog();
+    var list = raw.map(function (item) {
+      return {
+        name: item.name,
+        count: item.count,
+        lastCookedAt: item.lastCookedAt,
+        lastFeedback: item.lastFeedback,
+        note: item.note,
+        lastSource: item.lastSource || 'self',
+        feedbackEmoji: FEEDBACK_EMOJI[item.lastFeedback] || '🙂',
+        lastDateStr: formatLastCooked(item.lastCookedAt),
+        history: item.history || []
+      };
+    });
+    this.setData({
+      cookedList: list,
+      emptyCooked: list.length === 0
+    });
   },
 
   _loadRecipes: function (callback) {
@@ -289,5 +338,86 @@ Page({
 
   onGoImport: function () {
     wx.navigateTo({ url: '/pages/import/import' });
+  },
+
+  /** 做过的菜：再做一次 —— 用菜名查系统菜谱，写入 todayMenus 后跳步骤页 */
+  onCookAgain: function (e) {
+    var idx = e.currentTarget.dataset.index;
+    var list = this.data.cookedList;
+    var item = list[idx];
+    if (!item || !item.name) return;
+    var menuData = require('../../data/menuData.js');
+    var recipe = menuData.getAdultRecipeByName(item.name);
+    if (!recipe || !recipe.id) {
+      wx.showToast({ title: '未找到该菜谱', icon: 'none' });
+      return;
+    }
+    var pref = { adultCount: 2, hasBaby: false };
+    try {
+      var result = menuData.generateStepsFromRecipeIds([recipe.id], pref);
+      if (!result || !result.menus || result.menus.length === 0) {
+        wx.showToast({ title: '菜谱步骤生成失败', icon: 'none' });
+        return;
+      }
+      var app = getApp();
+      if (app.globalData) app.globalData.todayMenus = result.menus;
+      if (menuData.serializeMenusForStorage) {
+        var slim = menuData.serializeMenusForStorage(result.menus);
+        wx.setStorageSync('today_menus', JSON.stringify(slim));
+      }
+      wx.setStorageSync('today_menus_preference', JSON.stringify(pref));
+    } catch (err) {
+      wx.showToast({ title: '加载失败', icon: 'none' });
+      return;
+    }
+    wx.navigateTo({ url: '/pages/steps/steps' });
+  },
+
+  /** 做过的菜：打开改评价面板 */
+  onEditFeedback: function (e) {
+    var idx = e.currentTarget.dataset.index;
+    var list = this.data.cookedList;
+    var item = list[idx];
+    if (!item) return;
+    var historyDisplay = (item.history || []).map(function (h) {
+      return { feedback: h.feedback, cookedAt: h.cookedAt, note: h.note || '', dateStr: formatLastCooked(h.cookedAt) };
+    });
+    this.setData({
+      showFeedbackSheet: true,
+      feedbackRecipe: { name: item.name, history: historyDisplay },
+      feedbackEditFeedback: item.lastFeedback || 'ok',
+      feedbackEditNote: item.note || ''
+    });
+  },
+
+  onCloseFeedbackSheet: function () {
+    this.setData({ showFeedbackSheet: false, feedbackRecipe: null });
+  },
+
+  onFeedbackOptionTap: function (e) {
+    var fb = (e.currentTarget.dataset || {}).feedback;
+    if (fb) this.setData({ feedbackEditFeedback: fb });
+  },
+
+  onFeedbackNoteInput: function (e) {
+    var v = (e.detail && e.detail.value) || '';
+    if (v.length > 100) v = v.slice(0, 100);
+    this.setData({ feedbackEditNote: v });
+  },
+
+  onSaveFeedbackEdit: function () {
+    var recipe = this.data.feedbackRecipe;
+    if (!recipe || !recipe.name) return;
+    var newFeedback = this.data.feedbackEditFeedback || 'ok';
+    var newNote = this.data.feedbackEditNote || '';
+    var menuData = require('../../data/menuData.js');
+    var tasteProfile = require('../../data/tasteProfile.js');
+    var r = menuData.getAdultRecipeByName(recipe.name);
+    var recipeInfo = r ? { meat: r.meat, flavor_profile: r.flavor_profile } : {};
+    tasteProfile.updateRecipeFeedback(recipe.name, newFeedback, newNote, recipeInfo);
+    try { wx.vibrateShort({ type: 'light' }); } catch (err) {}
+    this.setData({ showFeedbackSheet: false, feedbackRecipe: null });
+    this._loadCookedList();
+    wx.showToast({ title: '已更新', icon: 'success', duration: 1200 });
   }
 });

@@ -6,15 +6,16 @@
 
 /**
  * @param {Object} recipe - 含 ingredients、steps 的菜谱对象
- * @returns {{ ok: boolean, missingInSteps: string[], mentionedNotInList: string[], warnings: string[] }}
+ * @returns {{ ok: boolean, missingInSteps: string[], mentionedNotInList: string[], warnings: string[], errors: string[] }}
  */
 export function validateIngredientStepConsistency(recipe) {
   const missingInSteps = [];
   const mentionedNotInList = [];
   const warnings = [];
+  const errors = [];
 
   if (!recipe) {
-    return { ok: true, missingInSteps: [], mentionedNotInList: [], warnings: [] };
+    return { ok: true, missingInSteps: [], mentionedNotInList: [], warnings: [], errors: [] };
   }
 
   const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
@@ -87,11 +88,29 @@ export function validateIngredientStepConsistency(recipe) {
     warnings.push('含肉类且为炒/烧等做法时，prep 中应包含焯水或腌制步骤');
   }
 
-  // 7) 必焯水食材：若配料含此类食材，prep 或 cook 应出现焯水
-  const MUST_BLANCH = ['西兰花', '菠菜', '豆角', '四季豆', '扁豆', '秋葵', '笋', '春笋', '冬笋'];
-  const hasMustBlanchIngredient = ingredientNames.some((n) => MUST_BLANCH.some((b) => n.includes(b) || b.includes(n)));
-  if (hasMustBlanchIngredient && !BLANCH_KEYWORDS.some((k) => fullText.includes(k))) {
-    warnings.push('配料含需焯水食材（如豆角、笋、西兰花等），步骤中应体现焯水');
+  // 7) 必焯水食材：豆角类为安全红线（errors），其余为 warnings
+  const BEAN_DANGER = ['豆角', '四季豆', '扁豆'];
+  const MUST_BLANCH_OTHER = ['西兰花', '菠菜', '秋葵', '笋', '春笋', '冬笋'];
+  const hasDangerousBean = ingredientNames.some((n) =>
+    BEAN_DANGER.some((b) => n.includes(b) || b.includes(n)));
+  const hasMustBlanchOther = ingredientNames.some((n) =>
+    MUST_BLANCH_OTHER.some((b) => n.includes(b) || b.includes(n)));
+  if (hasDangerousBean) {
+    const hasBlanch = BLANCH_KEYWORDS.some((k) => fullText.includes(k));
+    if (!hasBlanch) {
+      const longHeatRe = /(?:焖|炖|煮|炒)[^，。]*?(\d+)\s*分钟/g;
+      let hasLongHeat = false;
+      let m;
+      while ((m = longHeatRe.exec(fullText)) !== null) {
+        if (parseInt(m[1], 10) >= 8) { hasLongHeat = true; break; }
+      }
+      if (!hasLongHeat) {
+        errors.push('[安全] 豆角/四季豆必须焯水或加热 >= 8 分钟，未熟食用有中毒风险');
+      }
+    }
+  }
+  if (hasMustBlanchOther && !BLANCH_KEYWORDS.some((k) => fullText.includes(k))) {
+    warnings.push('配料含需焯水食材（如笋、西兰花等），步骤中应体现焯水');
   }
 
   // 8) 火候矛盾：小火+爆炒、大火+炖煮 等
@@ -144,11 +163,49 @@ export function validateIngredientStepConsistency(recipe) {
     }
   }
 
+  // 11) 液体存在性：焖/炖/煮/收汁前必须有加水/加汤/加汁动作
+  const NEED_LIQUID_ACTIONS = ['焖', '炖', '煮', '收汁', '焖煮'];
+  const ADD_LIQUID_KEYWORDS = ['加水', '倒水', '加入清水', '倒入清水', '注入', '加汤', '倒入汤', '加入高汤', '加入酱汁', '倒入酱汁', '热水', '开水', '没过'];
+  let textSoFar = '';
+  for (let i = 0; i < cookSteps.length; i++) {
+    const t = (cookSteps[i] && cookSteps[i].text) || '';
+    if (NEED_LIQUID_ACTIONS.some((a) => t.includes(a))) {
+      const priorAndCurrent = textSoFar + t;
+      if (!ADD_LIQUID_KEYWORDS.some((k) => priorAndCurrent.includes(k))) {
+        warnings.push('焖/炖/煮/收汁前步骤中须先出现加水/加汤/倒入酱汁等注入液体的动作');
+        break;
+      }
+    }
+    textSoFar += t;
+  }
+
+  // 12) 爆炒单步骤不应超过 3 分钟
+  cookSteps.forEach((s) => {
+    const text = (s && s.text) || '';
+    const dur = getStepDuration(s);
+    if ((text.includes('爆炒') || text.includes('滑炒') || text.includes('大火快炒')) && dur > 3) {
+      warnings.push(`爆炒/滑炒步骤 duration_num=${dur} 分钟，建议不超过 3 分钟`);
+    }
+  });
+
+  // 13) 叶菜类：盐应在关火前（最后一条 cook 步骤）加入
+  const LEAFY_VEGS = ['菠菜', '空心菜', '青菜', '上海青', '油麦菜', '生菜', '娃娃菜', '包菜', '时蔬', '时令青菜', '荷兰豆'];
+  const hasLeafy = ingredientNames.some((n) => LEAFY_VEGS.some((l) => n.includes(l)));
+  if (hasLeafy && recipe.cook_type === 'stir_fry' && cookSteps.length > 0) {
+    const lastCookText = (cookSteps[cookSteps.length - 1] && cookSteps[cookSteps.length - 1].text) || '';
+    const saltInLast = lastCookText.includes('盐');
+    const saltInEarlier = cookSteps.slice(0, -1).some((s) => ((s && s.text) || '').includes('盐'));
+    if (saltInEarlier && !saltInLast) {
+      warnings.push('叶菜类建议关火前最后加盐，过早放盐会出水变蔫');
+    }
+  }
+
   const ok = missingInSteps.length === 0 && mentionedNotInList.length === 0;
   return {
     ok,
     missingInSteps,
     mentionedNotInList,
-    warnings
+    warnings,
+    errors
   };
 }

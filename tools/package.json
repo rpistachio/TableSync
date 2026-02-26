@@ -7,6 +7,7 @@
   "scripts": {
     "generate": "node generate.js",
     "sync": "node sync.js",
+    "recipe-manager": "node recipe-manager-server.js",
     "test:fridge": "node test-fridge-scan.js",
     "test:fridge:cloud": "node test-fridge-scan.js --cloud"
   },
@@ -14,6 +15,7 @@
     "@anthropic-ai/sdk": "latest",
     "@cloudbase/node-sdk": "latest",
     "chalk": "latest",
+    "cheerio": "latest",
     "commander": "latest",
     "dotenv": "latest"
   }

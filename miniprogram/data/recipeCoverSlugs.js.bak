@@ -22,10 +22,7 @@ var RECIPE_NAME_TO_SLUG = {
   '鲜淮山炖牛肉汤': 'beef_soup_with_fresh_yam.jpg',
   '玉米排骨汤': 'pork_rib_soup_with_corn.jpg',
   '番茄蛋花汤': 'tomato_and_egg_drop_soup.jpg',
-  '紫菜蛋花汤': 'seaweed_and_egg_drop_soup.jpg',
   '冬瓜海带排骨汤': 'winter_melon_and_kelp_soup_with_pork_ribs.jpg',
-  '丝瓜蛋花汤': 'luffa_and_egg_drop_soup.jpg',
-  '番茄金针菇蛋花汤': 'tomato_and_enoki_mushroom_egg_soup.jpg',
   /* 成人菜 - 鸡 */
   '清蒸柠檬鸡里脊': 'steamed_lemon_chicken_fillet.jpg',
   '宫保鸡丁': 'kung_pao_chicken_with_peanut.jpg',

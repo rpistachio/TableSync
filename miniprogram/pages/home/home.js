@@ -2,6 +2,7 @@ var menuHistory = require('../../utils/menuHistory.js');
 var menuData = require('../../data/menuData.js');
 var menuGen = require('../../data/menuGenerator.js');
 var recipeCoverSlugs = require('../../data/recipeCoverSlugs.js');
+var recipeCoverAudit = require('../../data/recipeCoverAudit.js');
 var vibeGreeting = require('../../utils/vibeGreeting.js');
 var seedUserService = require('../../utils/seedUserService.js');
 var tasteProfile = require('../../data/tasteProfile.js');
@@ -49,22 +50,24 @@ Page({
       showStickerDrop: false,
       stickerDropQueue: [],    // [{ stickerId, name, emoji }]
       showCookingLoading: false,
-      // ====== 需求探针（Demand Probes） ======
-      currentProbe: null,            // 当前探针对象 { type, question, options, ... }
-      probeVisible: false,           // 控制 probe-enter 动画
-      probeDismissed: false,         // 控制 probe-exit 动画
-      probeFullyHidden: true,        // 退场动画结束后真正移除 DOM
-      probeSelected: null,           // 单选已选 key
-      probeMultiSelected: {},        // 多选已选 map { key: true }
-      probeMultiHasSelection: false, // 多选是否有勾选项
-      probeLastChoice: null,         // 上次选择 key（智能默认高亮）
-      probeConfirmText: '',          // 即时确认文案
-      probeConfirmVisible: false,    // 控制确认文字 fade-in
+      // ====== Context Dashboard Sheet ======
+      showSheet: false,
+      sheetScene: 'couple',
+      sheetStatus: 'ok',
+      sheetTaste: null,
+      sheetTasteQuestion: '',
+      sheetShowTaste: false,
+      sheetSceneOptions: [],
+      sheetTasteOptions: [],
+      sheetKitchenOptions: [],
+      sheetKitchen: [],
+      sheetKitchenSet: {},        // 多选高亮用：{ hasAirFryer: true }
       // ====== 烟火集悬浮书脊 ======
       spineMode: _initSpineMode,      // spine-day / spine-morning / spine-night / spine-night-tired
       spineSealIcon: _initSealIcon,    // 🔖 常规 / 🪔 深夜疲惫小油灯
       hasUnviewedCooks: false,         // 有新烹饪记录未查看 → 微光呼吸
-      spineHighlight: false            // 贴纸收下后短暂高亮
+      spineHighlight: false,           // 贴纸收下后短暂高亮
+      shakeBlur: false                 // 摇一摇触发时的模糊遮罩
     };
   })(),
 
@@ -126,17 +129,54 @@ Page({
     setTimeout(function () {
       that._refreshSpineAndUnviewed();
     }, 0);
-    // 需求探针：延迟展示，制造纸质浮现感
-    that._showNextProbe();
 
     // 冰箱提示：高级功能入口动态文案
     that._refreshFridgeHint();
+
+    // 摇一摇：启动加速计监听（仅首页前台）
+    wx.startAccelerometer({ interval: 'normal' });
+    this._shakeHandler = function (res) {
+      var magnitude = Math.sqrt(res.x * res.x + res.y * res.y + res.z * res.z);
+      if (magnitude > 2.5 && !that._shakeCooldown && !that._zenGenerating) {
+        that._shakeCooldown = true;
+        that._onShakeDetected();
+        setTimeout(function () { that._shakeCooldown = false; }, 3000);
+      }
+    };
+    wx.onAccelerometerChange(this._shakeHandler);
+  },
+
+  onHide: function () {
+    wx.stopAccelerometer();
+    if (this._shakeHandler) {
+      wx.offAccelerometerChange(this._shakeHandler);
+    }
+  },
+
+  onUnload: function () {
+    wx.stopAccelerometer();
+    if (this._shakeHandler) {
+      wx.offAccelerometerChange(this._shakeHandler);
+    }
+  },
+
+  /** 摇一摇检测到：震动 + 模糊转场 + 触发 Omakase 版 onZenGo（跳过 Sheet） */
+  _onShakeDetected: function () {
+    if (this._zenGenerating) return;
+    this._isOmakase = true;
+    wx.vibrateLong();
+    wx.setStorageSync('omakase_hint_seen', true);
+    this.setData({ shakeBlur: true });
+    this.onZenGo();
   },
 
   /** Zen Mode: 大按钮 -> 自动生成菜谱并进入 preview 页（不跳转今日灵感/spinner） */
   onZenGo: function () {
     if (this._zenGenerating) return;
     this._zenGenerating = true;
+
+    var isOmakase = this._isOmakase === true;
+    this._isOmakase = false;
 
     // ====== 犹豫检测：停留 > 60s 或切换 >= 3 次 → 标记为犹豫 ======
     var dwellTime = this._homeShowTime ? (Date.now() - this._homeShowTime) : 0;
@@ -148,36 +188,23 @@ Page({
     this._homeShowTime = Date.now();
     this._toggleCount = 0;
 
-    // 处理未回答的 volatile 探针：降级到持久化记录
-    var skippedVolatile = false;
+    // Omakase 或未经过 Sheet 时：用上次选择兜底
     if (!probeEngine.isSessionAnswered('scene')) {
-      skippedVolatile = true;
       var lastScene = probeEngine.getLastChoice('scene');
       if (lastScene) {
         tasteProfile.setScene(lastScene);
       }
-    }
-    if (!probeEngine.isSessionAnswered('taste')) {
-      skippedVolatile = true;
     }
 
     this.setData({ showCookingLoading: true });
     var that = this;
     var pref = that._buildZenPreference();
 
-    // 跳过态确认文案
-    if (skippedVolatile) {
-      var skipSummary = probeEngine.buildSessionSummary(true);
-      if (skipSummary) {
-        that.setData({ probeConfirmText: skipSummary, probeConfirmVisible: true });
-        that._scheduleConfirmFade();
-      }
-    }
-    var moodText = that.data.cookStatus === 'tired' ? '疲惫' : '随便';
+    var moodText = isOmakase ? '主厨包办' : (that.data.cookStatus === 'tired' ? '疲惫' : '随便');
     var source = menuData.getRecipeSource && menuData.getRecipeSource();
     var adultRecipes = (source && source.adultRecipes) || [];
 
-    // Layer 1: 智能候选池 — 过滤忌口 → 按亲和度排序 → ≤500 全量，>500 智能截断
+    // Layer 1: 智能候选池 — 过滤忌口 → [Omakase] 视觉准入 → 按亲和度排序 → ≤500 全量，>500 智能截断
     var profile = tasteProfile.get();
     var filtered = menuGen.filterByPreference(adultRecipes, pref);
     var dislikedIds = tasteProfile.getDislikedRecipeIds ? tasteProfile.getDislikedRecipeIds() : [];
@@ -186,9 +213,27 @@ Page({
       for (var di = 0; di < dislikedIds.length; di++) dislikedSet[dislikedIds[di]] = true;
       filtered = filtered.filter(function (r) { return !dislikedSet[r.id || r._id]; });
     }
+    if (isOmakase) {
+      var auditMap = recipeCoverAudit && typeof recipeCoverAudit === 'object' ? recipeCoverAudit : {};
+      filtered = filtered.filter(function (r) {
+        var a = auditMap[r.name] || auditMap[r.id] || auditMap[r._id];
+        if (!a) return true;
+        return (a.appetizing >= 8 && a.styleConsistency >= 8);
+      });
+    }
     profile._preferredMeats = pref.preferredMeats || [];
     var ranked = menuGen.rankByAffinity(filtered, profile);
     var candidatePool = ranked.length > 500 ? ranked.slice(0, 500) : ranked;
+    var recentDishNames = that._buildRecentDishNames(isOmakase ? 14 : 7);
+    if (recentDishNames) {
+      var recentSet = {};
+      recentDishNames.split('、').forEach(function (n) {
+        if (n && n.trim()) recentSet[n.trim()] = true;
+      });
+      if (Object.keys(recentSet).length > 0) {
+        candidatePool = candidatePool.filter(function (r) { return !recentSet[r.name]; });
+      }
+    }
     var candidates = candidatePool.map(function (r) {
       return {
         id: r.id || r._id,
@@ -209,7 +254,7 @@ Page({
         preference: pref,
         mood: moodText,
         weather: {},
-        recentDishNames: '',
+        recentDishNames: recentDishNames,
         dislikedDishNames: dislikedNames,
         fridgeExpiring: pref.fridgeExpiring || [],
         heroIngredient: pref.heroIngredient || null,
@@ -220,20 +265,43 @@ Page({
       if (out && out.code === 0 && out.data && Array.isArray(out.data.recipeIds) && out.data.recipeIds.length > 0) {
         getApp().globalData.chefReportText = (out.data && out.data.reasoning) || '';
         getApp().globalData.dishHighlights = (out.data && out.data.dishHighlights) || {};
+        if (isOmakase && out.data.omakaseCopy && typeof out.data.omakaseCopy === 'string') {
+          getApp().globalData.omakaseCopy = out.data.omakaseCopy.trim().slice(0, 15);
+        } else {
+          getApp().globalData.omakaseCopy = '';
+        }
         var menus = that._zenRecipeIdsToMenus(out.data.recipeIds, pref);
         if (menus.length > 0) {
-          that._zenNavigateToPreview(menus, pref);
+          that._zenNavigateToPreview(menus, pref, isOmakase);
           return;
         }
       }
       getApp().globalData.chefReportText = '';
       getApp().globalData.dishHighlights = {};
-      that._zenApplyLocalMenus(pref);
+      getApp().globalData.omakaseCopy = '';
+      that._zenApplyLocalMenus(pref, isOmakase);
     }).catch(function () {
       getApp().globalData.chefReportText = '';
       getApp().globalData.dishHighlights = {};
-      that._zenApplyLocalMenus(pref);
+      getApp().globalData.omakaseCopy = '';
+      that._zenApplyLocalMenus(pref, isOmakase);
     });
+  },
+
+  /** 最近做过的菜名（用于防重复）：历史 + last_cook_dishes，逗号分隔 */
+  _buildRecentDishNames: function (days) {
+    var list = menuHistory.getWeekDishNames(30, days);
+    try {
+      var lastCook = wx.getStorageSync('last_cook_dishes');
+      if (Array.isArray(lastCook) && lastCook.length > 0) {
+        var set = {};
+        list.forEach(function (name) { set[name] = true; });
+        lastCook.forEach(function (name) {
+          if (name && !set[name]) { set[name] = true; list.push(name); }
+        });
+      }
+    } catch (e) {}
+    return list.length > 0 ? list.join('、') : '';
   },
 
   /** Zen 偏好：从 Taste Profile 动态构建，疲惫模式叠加省时 + 空气炸锅 */
@@ -262,9 +330,12 @@ Page({
         burners: kc.burners || 2,
         hasSteamer: kc.hasSteamer || false,
         hasAirFryer: isTired ? true : (kc.hasAirFryer || false),
-        hasOven: kc.hasOven || false
+        hasOven: kc.hasOven || false,
+        hasRiceCooker: kc.hasRiceCooker || false,
+        hasMicrowave: kc.hasMicrowave || false
       },
       preferredMeats: preferredMeats,
+      flavorAffinity: profile.flavorAffinity || {},
       flavorHint: tasteProfile.getFlavorHint(profile.flavorAffinity),
       topFlavorKey: flavorResult.top,
       secondFlavorKey: flavorResult.ambiguous ? flavorResult.second : null,
@@ -314,7 +385,7 @@ Page({
   },
 
   /** 本地降级生成菜单，然后跳转 preview */
-  _zenApplyLocalMenus: function (pref) {
+  _zenApplyLocalMenus: function (pref, isOmakase) {
     var that = this;
     try {
       var result = menuData.getTodayMenusByCombo(pref);
@@ -330,18 +401,18 @@ Page({
       });
       getApp().globalData.preference = pref;
       getApp().globalData.todayMenus = menus;
-      that._zenNavigateToPreview(menus, pref);
+      that._zenNavigateToPreview(menus, pref, isOmakase || false);
     } catch (err) {
       that._zenGenerating = false;
-      that.setData({ showCookingLoading: false });
+      that.setData({ showCookingLoading: false, shakeBlur: false });
       wx.showModal({ title: '生成失败', content: err.message || '请稍后重试', showCancel: false });
     }
   },
 
   /** 写入 Storage 与 globalData，并跳转 preview（异步 Storage 不阻塞主线程） */
-  _zenNavigateToPreview: function (menus, pref) {
+  _zenNavigateToPreview: function (menus, pref, isOmakase) {
     this._zenGenerating = false;
-    this.setData({ showCookingLoading: false });
+    this.setData({ showCookingLoading: false, shakeBlur: false });
     getApp().globalData.preference = pref;
     getApp().globalData.todayMenus = menus;
     var shoppingList = menuData.generateShoppingListFromMenus(pref, menus);
@@ -378,6 +449,7 @@ Page({
         });
       });
     };
+    var previewUrl = '/pages/preview/preview' + (isOmakase ? '?omakase=true' : '');
     Promise.all([
       setStorage('cart_ingredients', shoppingList || []),
       setStorage('today_menus', todayMenusStr),
@@ -385,20 +457,18 @@ Page({
       setStorage('menu_generated_date', todayKey),
       setStorage('today_prep_time', maxPrepTime)
     ]).then(function () {
-      wx.redirectTo({ url: '/pages/preview/preview' });
+      wx.redirectTo({ url: previewUrl });
     }).catch(function () {
-      wx.redirectTo({ url: '/pages/preview/preview' });
+      wx.redirectTo({ url: previewUrl });
     });
   },
 
-  /** Zen Mode: 切换今日状态 */
+  /** Zen Mode: 切换今日状态（Sheet 内用 onSheetStatusToggle，此处保留供逻辑/书脊用） */
   onToggleCookStatus: function (e) {
     var val = e.currentTarget.dataset.value;
     this.setData({ cookStatus: val });
     wx.setStorageSync('zen_cook_status', val);
-    // 犹豫追踪：累计切换次数
     this._toggleCount = (this._toggleCount || 0) + 1;
-    // 书脊：状态切换影响深夜油灯模式
     this._updateSpineMode();
   },
 
@@ -444,6 +514,99 @@ Page({
       }
       this.setData({ fridgeHint: hint });
     } catch (e) {}
+  },
+
+  onOpenSheet: function () {
+    var scene = probeEngine.getLastChoice('scene') || 'couple';
+    var status = wx.getStorageSync('zen_cook_status') || 'ok';
+    var showTaste = !probeEngine.isSessionAnswered('taste');
+    var tasteProbe = showTaste ? probeEngine.getTasteProbe() : null;
+    var sceneOptions = probeEngine.getSceneOptions();
+    var tasteOptions = tasteProbe ? (tasteProbe.options || []) : [];
+    var tasteQuestion = tasteProbe ? (tasteProbe.question || '') : '';
+    var lastTaste = probeEngine.getLastChoice('taste');
+    var kitchenOptions = probeEngine.getKitchenOptions && probeEngine.getKitchenOptions();
+    var kc = (tasteProfile.get() && tasteProfile.get().kitchenConfig) || {};
+    var sheetKitchen = [];
+    if (kc.hasAirFryer) sheetKitchen.push('hasAirFryer');
+    if (kc.hasSteamer) sheetKitchen.push('hasSteamer');
+    if (kc.hasOven) sheetKitchen.push('hasOven');
+    if (kc.hasRiceCooker) sheetKitchen.push('hasRiceCooker');
+    if (kc.hasMicrowave) sheetKitchen.push('hasMicrowave');
+    var sheetKitchenSet = {};
+    sheetKitchen.forEach(function (k) { sheetKitchenSet[k] = true; });
+    this.setData({
+      showSheet: true,
+      sheetScene: scene,
+      sheetStatus: status,
+      sheetShowTaste: showTaste,
+      sheetSceneOptions: sceneOptions || [],
+      sheetTasteOptions: tasteOptions,
+      sheetTasteQuestion: tasteQuestion,
+      sheetTaste: lastTaste,
+      sheetKitchenOptions: kitchenOptions || [],
+      sheetKitchen: sheetKitchen,
+      sheetKitchenSet: sheetKitchenSet
+    });
+  },
+
+  onCloseSheet: function () {
+    this.setData({ showSheet: false });
+  },
+
+  onSheetSceneSelect: function (e) {
+    var key = e.currentTarget.dataset.key;
+    this.setData({ sheetScene: key });
+    if (wx.vibrateShort) wx.vibrateShort({ type: 'light' });
+  },
+
+  onSheetTasteSelect: function (e) {
+    var key = e.currentTarget.dataset.key;
+    this.setData({ sheetTaste: key === 'null' || key === undefined ? null : key });
+    if (wx.vibrateShort) wx.vibrateShort({ type: 'light' });
+  },
+
+  onSheetStatusToggle: function (e) {
+    var val = e.currentTarget.dataset.value;
+    this.setData({ sheetStatus: val });
+  },
+
+  onSheetKitchenToggle: function (e) {
+    var key = e.currentTarget.dataset.key;
+    var list = (this.data.sheetKitchen || []).slice();
+    if (key === null || key === 'null' || key === undefined || key === '' || (typeof key === 'string' && key.trim() === '')) {
+      this.setData({ sheetKitchen: [], sheetKitchenSet: {} });
+      return;
+    }
+    var idx = list.indexOf(key);
+    if (idx !== -1) {
+      list.splice(idx, 1);
+    } else {
+      list.push(key);
+    }
+    var set = {};
+    list.forEach(function (k) { set[k] = true; });
+    this.setData({ sheetKitchen: list, sheetKitchenSet: set });
+  },
+
+  onSheetConfirm: function () {
+    this.setData({ showSheet: false });
+    var scene = this.data.sheetScene;
+    var taste = this.data.sheetTaste;
+    var status = this.data.sheetStatus;
+    var sheetKitchen = this.data.sheetKitchen || [];
+
+    probeEngine.handleProbeAnswer('scene', scene);
+    if (this.data.sheetShowTaste && taste !== null && taste !== undefined && taste !== 'null') {
+      probeEngine.handleProbeAnswer('taste', taste);
+    }
+    if (tasteProfile.setKitchenDevices) {
+      tasteProfile.setKitchenDevices(Array.isArray(sheetKitchen) ? sheetKitchen : []);
+    }
+    this.setData({ cookStatus: status });
+    wx.setStorageSync('zen_cook_status', status);
+    this._updateSpineMode();
+    this.onZenGo();
   },
 
   onStickerDropClose: function () {
@@ -617,147 +780,4 @@ Page({
     };
   },
 
-  // ====== 需求探针（Demand Probes）交互 ======
-
-  /** 展示下一个探针（延迟 0.4s 制造浮现感） */
-  _showNextProbe: function () {
-    var that = this;
-    var probe = probeEngine.selectNextProbe();
-    if (!probe) {
-      // 无探针 → 展示综合确认文案
-      var summary = probeEngine.buildSessionSummary();
-      if (summary) {
-        that.setData({
-          probeConfirmText: summary,
-          probeConfirmVisible: true
-        });
-        that._scheduleConfirmFade();
-      }
-      return;
-    }
-    // 获取 volatile 探针的"上次选择"用于智能高亮
-    var lastChoice = probeEngine.getLastChoice(probe.type);
-    that.setData({
-      currentProbe: probe,
-      probeLastChoice: lastChoice,
-      probeVisible: false,
-      probeDismissed: false,
-      probeFullyHidden: false,
-      probeSelected: null,
-      probeMultiSelected: {},
-      probeMultiHasSelection: false
-    });
-    setTimeout(function () {
-      that.setData({ probeVisible: true });
-    }, 400);
-  },
-
-  /** 探针选项点击 */
-  onProbeSelect: function (e) {
-    var key = e.currentTarget.dataset.key;
-    var type = e.currentTarget.dataset.type;
-    var probe = this.data.currentProbe;
-    if (!probe) return;
-
-    // 触觉反馈
-    if (wx.vibrateShort) {
-      wx.vibrateShort({ type: 'light' });
-    }
-
-    if (probe.multiSelect) {
-      // 多选模式（约束探针）
-      var selected = this.data.probeMultiSelected || {};
-      if (key === null || key === 'null' || key === '') {
-        // "都能吃" → 清空所有选择并立即提交
-        var confirmText = probeEngine.handleProbeAnswer(type, []);
-        this._dismissProbe(confirmText);
-        return;
-      }
-      // 处理 key 可能是字符串 "null" 的情况
-      var realKey = (key === 'null') ? null : key;
-      if (realKey === null) {
-        var confirmText2 = probeEngine.handleProbeAnswer(type, []);
-        this._dismissProbe(confirmText2);
-        return;
-      }
-      if (selected[realKey]) {
-        delete selected[realKey];
-      } else {
-        selected[realKey] = true;
-      }
-      var hasAny = false;
-      for (var k in selected) {
-        if (selected.hasOwnProperty(k) && selected[k]) { hasAny = true; break; }
-      }
-      this.setData({
-        probeMultiSelected: selected,
-        probeMultiHasSelection: hasAny
-      });
-    } else {
-      // 单选模式 → 选中后自动提交
-      this.setData({ probeSelected: key });
-      var that = this;
-      var confirmText3 = probeEngine.handleProbeAnswer(type, key);
-      setTimeout(function () {
-        that._dismissProbe(confirmText3);
-        // 单选场景探针提交后，检查是否有下一个探针要展示
-        setTimeout(function () {
-          that._showNextProbe();
-        }, 600);
-      }, 300);
-    }
-  },
-
-  /** 多选确定按钮 */
-  onProbeConfirmMulti: function () {
-    var probe = this.data.currentProbe;
-    if (!probe) return;
-    var selected = this.data.probeMultiSelected || {};
-    var keys = [];
-    for (var k in selected) {
-      if (selected.hasOwnProperty(k) && selected[k]) keys.push(k);
-    }
-    var confirmText = probeEngine.handleProbeAnswer(probe.type, keys);
-    this._dismissProbe(confirmText);
-    var that = this;
-    setTimeout(function () {
-      that._showNextProbe();
-    }, 600);
-  },
-
-  /** 收起探针卡片 + 展示确认文字 */
-  _dismissProbe: function (confirmText) {
-    var that = this;
-    that.setData({
-      probeDismissed: true,
-      probeVisible: false
-    });
-    // 退场动画完成后移除 DOM
-    setTimeout(function () {
-      that.setData({
-        probeFullyHidden: true,
-        currentProbe: null
-      });
-    }, 400);
-    // 展示即时确认文字
-    if (confirmText) {
-      that.setData({
-        probeConfirmText: confirmText,
-        probeConfirmVisible: true
-      });
-      that._scheduleConfirmFade();
-    }
-  },
-
-  /** 确认文字停留 3s 后 fade-out */
-  _scheduleConfirmFade: function () {
-    var that = this;
-    if (that._confirmFadeTimer) clearTimeout(that._confirmFadeTimer);
-    that._confirmFadeTimer = setTimeout(function () {
-      that.setData({ probeConfirmVisible: false });
-      setTimeout(function () {
-        that.setData({ probeConfirmText: '' });
-      }, 1000);
-    }, 3000);
-  }
 });

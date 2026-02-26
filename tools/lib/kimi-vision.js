@@ -13,17 +13,18 @@ const SCORE_SYSTEM_PROMPT = `你是专业美食摄影评审，熟悉中餐视觉
 评分维度（1-10 分）：
 - match: 图片内容是否与菜名一致（主料、形态、品类是否对得上）
 - appetizing: 是否诱人、有食欲。中餐专项：红烧/焖菜需色泽红亮、有酱香挂汁感（glistening sauce），不能发黑发灰；清蒸/小炒需颜色翠绿或清新，不能炒过头萎靡；汤类需汤色清亮或奶白自然
+- style_consistency: 极简风格一致性。整体是否统一为「日食记」式极简风：背景干净（纯色或柔和渐变）、主体突出、无杂乱道具、无过度装饰；与 App 内其他封面风格一致则高分，西餐摆盘/网红滤镜/复杂布景则低分
 - quality: 构图/光线/色彩是否专业，有无 AI 伪影、模糊、不自然元素
 - chinese_authenticity: 中餐地道感。餐具是否中式（如白瓷盘、青瓷、中式碗盘），摆盘是否符合家常中餐风格，有无西餐化/“左宗棠鸡”式错位（如白菜粉丝煲被画成西式沙拉碗则低分）
 - texture_realism: 质感真实度。芡汁是否匀整自然（不能像胶水）、有无“锅气”的视觉暗示、蛋花类是否为絮状/丝状（若被画成面条则直接低分）
 
-计算 overall = match*0.25 + appetizing*0.25 + quality*0.20 + chinese_authenticity*0.15 + texture_realism*0.15，保留一位小数。
+计算 overall = match*0.22 + appetizing*0.22 + style_consistency*0.18 + quality*0.14 + chinese_authenticity*0.12 + texture_realism*0.12，保留一位小数。
 verdict: overall >= 7 → "pass", 5 <= overall < 7 → "warn", overall < 5 → "fail"
 issues: 具体问题列表（中文，数组），无问题则为空数组。
 
-仅返回一个 JSON 对象，不要 markdown 代码块、不要其他文字。必须包含 match, appetizing, quality, chinese_authenticity, texture_realism, overall, verdict, issues。
+仅返回一个 JSON 对象，不要 markdown 代码块、不要其他文字。必须包含 match, appetizing, style_consistency, quality, chinese_authenticity, texture_realism, overall, verdict, issues。
 格式示例：
-{"match":8,"appetizing":7,"quality":6,"chinese_authenticity":7,"texture_realism":7,"overall":7.0,"verdict":"pass","issues":[]}`;
+{"match":8,"appetizing":7,"style_consistency":8,"quality":6,"chinese_authenticity":7,"texture_realism":7,"overall":7.2,"verdict":"pass","issues":[]}`;
 
 /**
  * 调用 Kimi chat/completions（支持多模态）
@@ -116,7 +117,7 @@ function parseScoreJson(raw) {
  * @param {string} dishName - 中文菜名
  * @param {Object} [opts]
  * @param {string} [opts.model] - Vision 模型，默认 moonshot-v1-8k-vision-preview
- * @returns {Promise<{ match: number, appetizing: number, quality: number, overall: number, verdict: string, issues: string[] }>}
+ * @returns {Promise<{ match: number, appetizing: number, style_consistency: number, quality: number, overall: number, verdict: string, issues: string[] }>}
  */
 export async function scoreImage(apiKey, imageBase64, dishName, opts = {}) {
   const model = opts.model || 'moonshot-v1-8k-vision-preview';
@@ -145,11 +146,12 @@ export async function scoreImage(apiKey, imageBase64, dishName, opts = {}) {
 
   const match = typeof parsed.match === 'number' ? parsed.match : Number(parsed.match) || 5;
   const appetizing = typeof parsed.appetizing === 'number' ? parsed.appetizing : Number(parsed.appetizing) || 5;
+  const styleConsistency = typeof parsed.style_consistency === 'number' ? parsed.style_consistency : Number(parsed.style_consistency) || 5;
   const quality = typeof parsed.quality === 'number' ? parsed.quality : Number(parsed.quality) || 5;
   const chineseAuthenticity = typeof parsed.chinese_authenticity === 'number' ? parsed.chinese_authenticity : Number(parsed.chinese_authenticity) || 5;
   const textureRealism = typeof parsed.texture_realism === 'number' ? parsed.texture_realism : Number(parsed.texture_realism) || 5;
   const overall = typeof parsed.overall === 'number' ? parsed.overall
-    : match * 0.25 + appetizing * 0.25 + quality * 0.2 + chineseAuthenticity * 0.15 + textureRealism * 0.15;
+    : match * 0.22 + appetizing * 0.22 + styleConsistency * 0.18 + quality * 0.14 + chineseAuthenticity * 0.12 + textureRealism * 0.12;
   const verdict = parsed.verdict === 'pass' || parsed.verdict === 'warn' || parsed.verdict === 'fail'
     ? parsed.verdict
     : (overall >= 7 ? 'pass' : overall >= 5 ? 'warn' : 'fail');
@@ -158,6 +160,7 @@ export async function scoreImage(apiKey, imageBase64, dishName, opts = {}) {
   return {
     match,
     appetizing,
+    style_consistency: styleConsistency,
     quality,
     chinese_authenticity: chineseAuthenticity,
     texture_realism: textureRealism,
