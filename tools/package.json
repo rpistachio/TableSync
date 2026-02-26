@@ -9,7 +9,17 @@
     "sync": "node sync.js",
     "recipe-manager": "node recipe-manager-server.js",
     "test:fridge": "node test-fridge-scan.js",
-    "test:fridge:cloud": "node test-fridge-scan.js --cloud"
+    "test:fridge:cloud": "node test-fridge-scan.js --cloud",
+    "plan": "node batch-planner.js",
+    "plan:cloud": "node batch-planner.js --cloud",
+    "plan:gen": "node batch-planner.js --gen",
+    "plan:baby": "node batch-planner.js --baby",
+    "plan:cook": "node batch-planner.js --cook",
+    "plan:json": "node batch-planner.js --json",
+    "similarity": "node recipe-similarity.js",
+    "similarity:cloud": "node recipe-similarity.js --cloud",
+    "similarity:strict": "node recipe-similarity.js --threshold 0.7",
+    "similarity:json": "node recipe-similarity.js --json"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "latest",

@@ -276,7 +276,18 @@
       <text class="omakase-hero-name" wx:if="{{omakaseHeroName}}">{{omakaseHeroName}}</text>
     </view>
     <text class="omakase-micro-copy {{omakaseRefreshing ? 'is-refreshing' : ''}}" wx:if="{{omakaseCopy}}">{{omakaseCopy}}</text>
-    <text class="omakase-combo-text {{omakaseRefreshing ? 'is-refreshing' : ''}}" wx:if="{{omakaseComboText}}">{{omakaseComboText}}</text>
+    <view class="omakase-dish-list {{omakaseRefreshing ? 'is-refreshing' : ''}}" wx:if="{{omakaseDishList.length > 0}}">
+      <view class="omakase-dish-row" wx:for="{{omakaseDishList}}" wx:key="id">
+        <view class="omakase-dish-name-wrap">
+          <text class="omakase-role-badge omakase-role-{{item.role === '荤' ? 'meat' : item.role === '素' ? 'veg' : 'soup'}}">{{item.role}}</text>
+          <text class="omakase-dish-name">{{item.name}}</text>
+        </view>
+        <view class="omakase-reject-btn" bindtap="onRejectSingleDish" data-recipe-id="{{item.id}}">
+          <text class="omakase-reject-icon">↻</text>
+          <text class="omakase-reject-text">换掉</text>
+        </view>
+      </view>
+    </view>
     <view class="omakase-actions">
       <view class="omakase-cta" bindtap="onOmakaseReveal">
         <text>就吃这个</text>

@@ -166,6 +166,33 @@ export async function fetchExistingNames() {
 }
 
 /**
+ * 分页拉取云端 recipes 的分析字段（用于 batch-planner / recipe-similarity 等工具）。
+ * 返回包含核心维度的精简文档数组。
+ */
+export async function fetchRecipesForAnalysis() {
+  const db = getDb();
+  const coll = db.collection('recipes');
+  const results = [];
+  const PAGE = 100;
+  let offset = 0;
+  const fields = {
+    id: true, name: true, type: true,
+    meat: true, taste: true, flavor_profile: true,
+    cook_type: true, dish_type: true, is_baby_friendly: true,
+    can_share_base: true, prep_time: true, cook_minutes: true,
+    cook_time: true, common_allergens: true, base_serving: true,
+  };
+  while (true) {
+    const res = await coll.field(fields).skip(offset).limit(PAGE).get();
+    if (!res.data || res.data.length === 0) break;
+    results.push(...res.data);
+    if (res.data.length < PAGE) break;
+    offset += PAGE;
+  }
+  return results;
+}
+
+/**
  * 将成人菜谱写入云端 recipes 集合。
  * 处理 type='adult' 的条目，并补充 updateTime 字段；若 recipe 含 baby_variant，会一并写入（大手牵小手）。
  */

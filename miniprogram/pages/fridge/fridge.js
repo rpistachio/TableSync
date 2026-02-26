@@ -5,7 +5,9 @@ Page({
     items: [],
     inputText: '',
     storageType: 'fridge',
-    isEmpty: true
+    isEmpty: true,
+    expiringCount: 0,
+    expiringNames: ''
   },
 
   onShow: function () {
@@ -39,7 +41,15 @@ Page({
       };
     });
 
-    this.setData({ items: list, isEmpty: list.length === 0 });
+    var expiring = list.filter(function (it) { return it.daysLeft <= 2 && it.urgency !== 'normal'; });
+    var expiringNames = expiring.slice(0, 3).map(function (it) { return it.name; }).join('、');
+
+    this.setData({
+      items: list,
+      isEmpty: list.length === 0,
+      expiringCount: expiring.length,
+      expiringNames: expiringNames
+    });
   },
 
   onInputChange: function (e) {
@@ -66,7 +76,12 @@ Page({
     this.setData({ inputText: '' });
     this._refresh();
     var names = added.map(function (a) { return a.name; }).join('、');
-    wx.showToast({ title: names + ' 已入库', icon: 'none' });
+    var all = fridgeStore.getAll();
+    if (all.length === added.length) {
+      wx.showToast({ title: names + ' 已入库，点下方按钮生成菜谱', icon: 'none', duration: 2500 });
+    } else {
+      wx.showToast({ title: names + ' 已入库', icon: 'none' });
+    }
   },
 
   onInputConfirm: function () {
@@ -78,6 +93,34 @@ Page({
     if (!id) return;
     fridgeStore.removeItem(id);
     this._refresh();
+  },
+
+  onEditExpiry: function (e) {
+    var id = e.currentTarget.dataset.id;
+    var currentDays = e.currentTarget.dataset.days || 0;
+    var name = e.currentTarget.dataset.name || '食材';
+    var that = this;
+
+    var options = ['1天', '2天', '3天', '5天', '7天', '10天', '14天', '30天'];
+    var dayValues = [1, 2, 3, 5, 7, 10, 14, 30];
+
+    wx.showActionSheet({
+      itemList: options,
+      success: function (res) {
+        var newDays = dayValues[res.tapIndex];
+        fridgeStore.updateExpiry(id, newDays);
+        that._refresh();
+        wx.showToast({
+          title: name + ' 改为' + newDays + '天',
+          icon: 'none'
+        });
+      }
+    });
+  },
+
+  onGoGenerate: function () {
+    getApp().globalData._fromFridgeGenerate = true;
+    wx.navigateBack({ delta: 1 });
   },
 
   onToggleItemStorage: function (e) {

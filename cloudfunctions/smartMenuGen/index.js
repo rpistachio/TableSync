@@ -111,7 +111,7 @@ exports.main = async (event, context) => {
     return { code: 500, fallback: true, message: 'MOONSHOT_API_KEY 未配置' };
   }
 
-  const { preference, mood, weather, recentDishNames, dislikedDishNames, fridgeExpiring, heroIngredient, candidates, basketItems, userTweak } = event || {};
+  const { preference, mood, weather, recentDishNames, dislikedDishNames, fridgeExpiring, fridgeAll, heroIngredient, candidates, basketItems, userTweak } = event || {};
   if (!preference || !Array.isArray(candidates) || candidates.length === 0) {
     return { code: 400, fallback: true, message: '缺少 preference 或 candidates' };
   }
@@ -129,6 +129,7 @@ exports.main = async (event, context) => {
       recentDishNames: recentDishNames || '',
       dislikedDishNames: dislikedDishNames || [],
       fridgeExpiring: fridgeExpiring || [],
+      fridgeAll: fridgeAll || [],
       heroIngredient: heroIngredient || null,
       candidates,
       basketItems: hasBasket ? basketItems : undefined,

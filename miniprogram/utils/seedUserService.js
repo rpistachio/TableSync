@@ -170,7 +170,7 @@ function registerSeedUser(channel) {
           tracker.trackEvent('seed_user_registered', {
             seq: seq,
             channel: ch,
-            channelLabel: getChannelLabel(ch)
+            channel_label: getChannelLabel(ch)
           });
           resolve({ seq: seq, channel: ch, isNew: true, total: seq });
         });

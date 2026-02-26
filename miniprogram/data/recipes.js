@@ -3957,6 +3957,511 @@ var adultRecipes = [
     ],
     "base_serving": 2,
     "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/microwave_steamed_egg.png"
+  },
+  {
+    "id": "a-lamb-5",
+    "name": "柠檬香煎羊排",
+    "type": "adult",
+    "taste": "quick_stir_fry",
+    "meat": "lamb",
+    "prep_time": 10,
+    "is_baby_friendly": true,
+    "common_allergens": [],
+    "can_share_base": true,
+    "flavor_profile": "sour_fresh",
+    "cook_type": "stir_fry",
+    "cook_minutes": 5,
+    "ingredients": [
+      {
+        "name": "羊排",
+        "baseAmount": 400,
+        "unit": "g",
+        "category": "肉类",
+        "sub_type": "lamb_chop"
+      },
+      {
+        "name": "柠檬",
+        "baseAmount": 1,
+        "unit": "个",
+        "category": "蔬菜",
+        "sub_type": "lemon"
+      },
+      {
+        "name": "迷迭香",
+        "baseAmount": 3,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "蒜",
+        "baseAmount": 10,
+        "unit": "g",
+        "category": "调料",
+        "sub_type": "garlic"
+      },
+      {
+        "name": "橄榄油",
+        "baseAmount": 30,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "黑胡椒",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "黄油",
+        "baseAmount": 15,
+        "unit": "g",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "羊排两面均匀撒上盐和黑胡椒，挤入半个柠檬汁，加迷迭香和切碎的蒜瓣，腌制10分钟使其入味。",
+        "duration_minutes": 10
+      },
+      {
+        "action": "cook",
+        "text": "平底锅烧热倒入橄榄油，放入羊排中火煎制，每面煎约2分钟至表面金黄微焦，期间不要频繁翻动。",
+        "duration_minutes": 4
+      },
+      {
+        "action": "cook",
+        "text": "加入黄油在锅中融化，用勺子将黄油淋在羊排上提升香气，再挤入剩余柠檬汁，稍作翻面让汁水均匀包裹羊排，关火盛出。",
+        "duration_minutes": 1
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "柠檬羊肉泥",
+          "action": "取煎好的羊肉去骨刺，用料理机打泥，挤少量柠檬汁调味，加入原汁调稀"
+        },
+        {
+          "max_month": 12,
+          "name": "柠檬羊肉碎",
+          "action": "羊肉去骨切碎，加少量柠檬汁和水煮至软烂，拌入蔬菜泥"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝柠檬羊排",
+          "action": "同大人版，羊排切小块，柠檬减量，去除迷迭香等香草"
+        }
+      ]
+    },
+    "tags": [
+      "quick",
+      "sour_fresh",
+      "high_protein",
+      "baby_friendly"
+    ],
+    "base_serving": 2,
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/lemon_pan_seared_lamb_chops.png"
+  },
+  {
+    "id": "a-lamb-5",
+    "name": "柠檬香煎羊排",
+    "type": "adult",
+    "taste": "quick_stir_fry",
+    "meat": "lamb",
+    "prep_time": 10,
+    "is_baby_friendly": true,
+    "common_allergens": [],
+    "can_share_base": true,
+    "flavor_profile": "sour_fresh",
+    "cook_type": "stir_fry",
+    "cook_minutes": 5,
+    "ingredients": [
+      {
+        "name": "羊排",
+        "baseAmount": 400,
+        "unit": "g",
+        "category": "肉类",
+        "sub_type": "lamb_chop"
+      },
+      {
+        "name": "柠檬",
+        "baseAmount": 1,
+        "unit": "个",
+        "category": "蔬菜",
+        "sub_type": "lemon"
+      },
+      {
+        "name": "迷迭香",
+        "baseAmount": 3,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "蒜",
+        "baseAmount": 10,
+        "unit": "g",
+        "category": "调料",
+        "sub_type": "garlic"
+      },
+      {
+        "name": "橄榄油",
+        "baseAmount": 30,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "黑胡椒",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "黄油",
+        "baseAmount": 15,
+        "unit": "g",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "羊排两面均匀撒上盐和黑胡椒，挤入半个柠檬汁，加迷迭香和切碎的蒜瓣，腌制10分钟使其入味。",
+        "duration_minutes": 10
+      },
+      {
+        "action": "cook",
+        "text": "平底锅烧热倒入橄榄油，放入羊排中火煎制，每面煎约2分钟至表面金黄微焦，期间不要频繁翻动。",
+        "duration_minutes": 4
+      },
+      {
+        "action": "cook",
+        "text": "加入黄油在锅中融化，用勺子将黄油淋在羊排上提升香气，再挤入剩余柠檬汁，稍作翻面让汁水均匀包裹羊排，关火盛出。",
+        "duration_minutes": 1
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "柠檬羊肉泥",
+          "action": "取煎好的羊肉去骨刺，用料理机打泥，挤少量柠檬汁调味，加入原汁调稀"
+        },
+        {
+          "max_month": 12,
+          "name": "柠檬羊肉碎",
+          "action": "羊肉去骨切碎，加少量柠檬汁和水煮至软烂，拌入蔬菜泥"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝柠檬羊排",
+          "action": "同大人版，羊排切小块，柠檬减量，去除迷迭香等香草"
+        }
+      ]
+    },
+    "tags": [
+      "quick",
+      "sour_fresh",
+      "high_protein",
+      "baby_friendly"
+    ],
+    "base_serving": 2,
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/lemon_pan_seared_lamb_chops.png"
+  },
+  {
+    "id": "a-lamb-6",
+    "name": "糖醋羊肉卷",
+    "type": "adult",
+    "taste": "quick_stir_fry",
+    "meat": "lamb",
+    "prep_time": 20,
+    "is_baby_friendly": false,
+    "common_allergens": [],
+    "can_share_base": false,
+    "flavor_profile": "sweet_sour",
+    "cook_type": "stir_fry",
+    "cook_minutes": 11,
+    "ingredients": [
+      {
+        "name": "羊腿肉",
+        "baseAmount": 250,
+        "unit": "g",
+        "category": "肉类",
+        "sub_type": "lamb_leg"
+      },
+      {
+        "name": "胡萝卜",
+        "baseAmount": 80,
+        "unit": "g",
+        "category": "蔬菜",
+        "sub_type": "carrot"
+      },
+      {
+        "name": "洋葱",
+        "baseAmount": 60,
+        "unit": "g",
+        "category": "蔬菜",
+        "sub_type": "onion"
+      },
+      {
+        "name": "鸡蛋",
+        "baseAmount": 1,
+        "unit": "个",
+        "category": "蛋类"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 20,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "香醋",
+        "baseAmount": 25,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "白糖",
+        "baseAmount": 30,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "番茄酱",
+        "baseAmount": 30,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "料酒",
+        "baseAmount": 10,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "淀粉",
+        "baseAmount": 15,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "食用油",
+        "baseAmount": 30,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "大蒜",
+        "baseAmount": 3,
+        "unit": "瓣",
+        "category": "调料"
+      },
+      {
+        "name": "姜",
+        "baseAmount": 5,
+        "unit": "g",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "羊腿肉逆纹切成约0.2cm的薄片，加入料酒、少量盐腌制10分钟。胡萝卜和洋葱切细丝，鸡蛋打散备用。大蒜切末，姜切丝。",
+        "duration_num": 15
+      },
+      {
+        "action": "cook",
+        "text": "将羊肉片铺平，放上胡萝卜丝和洋葱丝卷成卷状，用淀粉水粘合收口。",
+        "duration_num": 3
+      },
+      {
+        "action": "cook",
+        "text": "锅烧热倒食用油，先下蒜末、姜丝爆香，再放入洋葱丝翻炒出香味。",
+        "duration_num": 1
+      },
+      {
+        "action": "cook",
+        "text": "将羊肉卷接口朝下放入锅中煎至定型微黄，约2分钟。",
+        "duration_num": 2
+      },
+      {
+        "action": "cook",
+        "text": "将生抽、香醋、白糖、番茄酱调成糖醋汁倒入锅中，加少许水没过羊肉卷一半，中火焖煮3分钟至汁浓起泡，裹满肉卷表面。",
+        "duration_num": 4
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "糖醋羊肉泥",
+          "action": "取少量无辣味纯瘦羊肉煮熟打泥，加少量番茄酱和糖醋汁调味（去醋）"
+        },
+        {
+          "max_month": 12,
+          "name": "糖醋羊肉末",
+          "action": "羊肉、胡萝卜切碎煮软，用番茄酱和少量糖调味，不加醋"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝糖醋羊肉",
+          "action": "糖醋汁减糖减醋，羊肉切小块延长烹饪时间至完全熟透"
+        }
+      ]
+    },
+    "tags": [
+      "quick",
+      "sweet_sour",
+      "high_protein"
+    ],
+    "base_serving": 2,
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/spicy_cold_lamb_shank.png"
+  },
+  {
+    "id": "a-lamb-8",
+    "name": "话梅酸甜羊肉",
+    "type": "adult",
+    "taste": "sweet_sour",
+    "meat": "lamb",
+    "prep_time": 15,
+    "is_baby_friendly": false,
+    "common_allergens": [],
+    "can_share_base": false,
+    "flavor_profile": "sour_fresh",
+    "cook_type": "stew",
+    "cook_minutes": 45,
+    "ingredients": [
+      {
+        "name": "羊排",
+        "baseAmount": 500,
+        "unit": "g",
+        "category": "肉类",
+        "sub_type": "lamb_ribs"
+      },
+      {
+        "name": "话梅",
+        "baseAmount": 15,
+        "unit": "g",
+        "category": "干货"
+      },
+      {
+        "name": "山楂片",
+        "baseAmount": 10,
+        "unit": "g",
+        "category": "干货"
+      },
+      {
+        "name": "白醋",
+        "baseAmount": 30,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "冰糖",
+        "baseAmount": 40,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "番茄酱",
+        "baseAmount": 50,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "生抽",
+        "baseAmount": 20,
+        "unit": "ml",
+        "category": "调料"
+      },
+      {
+        "name": "姜",
+        "baseAmount": 15,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "葱",
+        "baseAmount": 20,
+        "unit": "g",
+        "category": "调料"
+      },
+      {
+        "name": "盐",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      },
+      {
+        "name": "水淀粉",
+        "baseAmount": 0,
+        "unit": "适量",
+        "category": "调料"
+      }
+    ],
+    "steps": [
+      {
+        "action": "prep",
+        "text": "羊排剁成 3cm 见方块，冷水下锅加姜片、葱段、料酒焯水，去尽血沫后捞出洗净备用。话梅、山楂片用温水泡 10 分钟。"
+      },
+      {
+        "action": "cook",
+        "text": "锅中放少许油，下冰糖小火炒至融化呈琥珀色，放入羊排翻炒上色。加入姜片、葱段、话梅、山楂片、番茄酱翻炒均匀。"
+      },
+      {
+        "action": "cook",
+        "text": "倒入生抽、白醋，加开水没过羊排，大火烧开后转中小火炖 35 分钟至肉质软烂。"
+      },
+      {
+        "action": "cook",
+        "text": "捡出葱姜，大火收汁至浓稠，淋少许水淀粉勾芡，出锅前撒少许盐调味。"
+      }
+    ],
+    "baby_variant": {
+      "stages": [
+        {
+          "max_month": 8,
+          "name": "羊肉酸甜泥",
+          "action": "取炖好的羊肉去骨，连同少量汤汁打成细腻泥糊，去掉话梅核"
+        },
+        {
+          "max_month": 12,
+          "name": "羊肉酸甜碎末",
+          "action": "羊肉切碎，去掉话梅核，配软米饭，酸味减轻"
+        },
+        {
+          "max_month": 36,
+          "name": "宝宝版酸甜羊肉",
+          "action": "取炖好的羊肉小块，少盐少糖，配粥或米饭"
+        }
+      ]
+    },
+    "tags": [
+      "sweet_sour",
+      "hearty",
+      "high_protein"
+    ],
+    "base_serving": 2,
+    "coverFileID": "cloud://cloud1-7g5mdmib90e9f670.636c-cloud1-7g5mdmib90e9f670-1401654193/adults_recipes/prune_sweet_sour_lamb.png"
   }
 ];
 

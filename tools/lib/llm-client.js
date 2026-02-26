@@ -257,6 +257,9 @@ function safeParseJson(raw) {
   text = text.replace(/,(\s*[}\]])/g, '$1');
   // 修复 LLM 常见错误：未加双引号的属性名（如 baseAmount: 150 → "baseAmount": 150）
   text = text.replace(/([{,])\s*([a-zA-Z_$][\w$]*)\s*:/g, '$1 "$2":');
+  // 修复 LLM 用中文数字/分数代替数值（如 "baseAmount":半 → "baseAmount":0.5）
+  const cnNumMap = { '半': '0.5', '一': '1', '两': '2', '三': '3', '四': '4', '五': '5', '六': '6', '七': '7', '八': '8', '九': '9', '十': '10', '适量': '0', '少许': '0' };
+  text = text.replace(/:(\s*)(半|一|两|三|四|五|六|七|八|九|十|适量|少许)(\s*[,}\]])/g, (_, ws1, cn, tail) => `:${ws1}${cnNumMap[cn] || 0}${tail}`);
   try {
     return JSON.parse(text);
   } catch (e) {

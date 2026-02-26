@@ -510,6 +510,15 @@ exports.getTodayMenusByCombo = function (preference) {
           if (items[ti].name && templateNames[items[ti].name]) { templateHasDups = true; break; }
           if (items[ti].name) templateNames[items[ti].name] = true;
         }
+        var avoidListForTemplate = (userPreference && Array.isArray(userPreference.avoidList) && userPreference.avoidList.length > 0) ? userPreference.avoidList : ((userPreference && Array.isArray(userPreference.allergens) && userPreference.allergens.length > 0) ? userPreference.allergens : []);
+        if (avoidListForTemplate.length > 0) {
+          var templateHasAvoid = false;
+          for (var ai = 0; ai < items.length; ai++) {
+            var checkRecipe = adultByNameCache[items[ai].name];
+            if (checkRecipe && generator.recipeContainsAvoid(checkRecipe, avoidListForTemplate)) { templateHasAvoid = true; break; }
+          }
+          if (templateHasAvoid) templateHasDups = true;
+        }
         if (!templateHasDups) {
           for (var k = 0; k < items.length; k++) {
             var item = items[k];
@@ -578,8 +587,9 @@ exports.getTodayMenusByCombo = function (preference) {
             ? generator.getSoupRecipesByType(adultRecipes, soupType)
             : getSoupRecipes(adultRecipes);
         }
-        // 汤品也需要去重：排除已选菜谱
+        var soupAvoidList = (userPreference && Array.isArray(userPreference.avoidList) && userPreference.avoidList.length > 0) ? userPreference.avoidList : ((userPreference && Array.isArray(userPreference.allergens) && userPreference.allergens.length > 0) ? userPreference.allergens : []);
         var availableSoups = soupRecipes.filter(function (soup) {
+          if (soupAvoidList.length > 0 && generator.recipeContainsAvoid(soup, soupAvoidList)) return false;
           for (var si = 0; si < menus.length; si++) {
             var picked = menus[si] && menus[si].adultRecipe;
             if (picked && ((picked.id && picked.id === soup.id) || (picked.name && picked.name === soup.name))) return false;
@@ -988,7 +998,7 @@ function applyVisualDiversity(menus, preference) {
 }
 
 /** 灶台约束：quick_stir_fry 最多 3，slow_stew 最多 2；反向过滤：辣/咸>2 时强制选 light；excludeMeats 与已勾选肉类不重复 */
-function pickReplacementFromCache(meat, constraints) {
+function pickReplacementFromCache(meat, constraints, userPreference) {
   var recipes = require('./recipes.js');
   var list = recipes.adultRecipes || [];
   ensureAdultCache(recipes, list);
@@ -996,6 +1006,7 @@ function pickReplacementFromCache(meat, constraints) {
   var currentStirFry = (constraints && constraints.currentStirFry) || 0;
   var currentStew = (constraints && constraints.currentStew) || 0;
   var excludeMeats = (constraints && constraints.excludeMeats) || [];
+  var avoidList = (userPreference && Array.isArray(userPreference.avoidList) && userPreference.avoidList.length > 0) ? userPreference.avoidList : ((userPreference && Array.isArray(userPreference.allergens)) ? userPreference.allergens : []);
   var meatKey = meat === 'vegetable' ? 'vegetable' : (exports.MEAT_KEY_MAP[meat] || meat);
   var pool = [];
   if (adultByMeatCache) {
@@ -1007,6 +1018,9 @@ function pickReplacementFromCache(meat, constraints) {
     } else {
       if (adultByMeatCache[meatKey]) pool = adultByMeatCache[meatKey].slice();
     }
+  }
+  if (avoidList.length > 0) {
+    pool = pool.filter(function (r) { return !generator.recipeContainsAvoid(r, avoidList); });
   }
   if (forceLight && adultByFlavorCache && adultByFlavorCache.light && pool.length > 0) {
     var lightOnly = [];

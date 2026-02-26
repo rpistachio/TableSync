@@ -13,6 +13,7 @@ import { generateImage } from './lib/minimax-image.js';
 import { validateIngredientStepConsistency } from './lib/validate-recipe-consistency.js';
 import { crawlRefRecipes } from './lib/recipe-crawler.js';
 import { reviewRecipeWithRefs } from './lib/recipe-reviewer.js';
+import { checkConflicts } from './lib/recipe-similarity.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -160,6 +161,31 @@ async function main() {
       review: null
     }))
   };
+
+  // 语义相似度冲突检查：新生成菜谱 vs 已有菜谱
+  {
+    const existingRecipesForSim = (() => {
+      try {
+        const rPath = path.join(CONFIG.projectRoot, 'miniprogram', 'data', 'recipes.js');
+        const rMod = require(rPath);
+        return (rMod.adultRecipes || []).concat(rMod.babyRecipes || []);
+      } catch { return []; }
+    })();
+    if (existingRecipesForSim.length > 0) {
+      const newForSim = payload.items.map(it => it.recipe);
+      const conflicts = checkConflicts(newForSim, existingRecipesForSim, 0.55);
+      if (conflicts.length > 0) {
+        console.log(chalk.yellow.bold(`\n⚠ 语义相似度预警（${conflicts.length} 道与已有菜谱相似）：`));
+        for (const c of conflicts) {
+          const pct = (c.score * 100).toFixed(0);
+          const tag = c.score >= 0.8 ? chalk.red : chalk.yellow;
+          const label = c.reason === 'device-variant' ? ' [设备变体]' : '';
+          console.log(tag(`  "${c.newName}" ↔ "${c.existingName}"  ${pct}%${label}`));
+        }
+        console.log(chalk.gray('  （可用 --threshold 调整阈值，或忽略此预警继续）\n'));
+      }
+    }
+  }
 
   // 生成后自动跑一遍配料-步骤与烹饪逻辑校验，输出警告
   payload.items.forEach((it) => {

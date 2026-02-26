@@ -1,7 +1,8 @@
 {
   "usingComponents": {
     "sticker-drop": "/components/sticker-drop/sticker-drop",
-    "cooking-loading": "/components/cooking-loading/cooking-loading"
+    "cooking-loading": "/components/cooking-loading/cooking-loading",
+    "pro-paywall": "/components/pro-paywall/pro-paywall"
   },
-  "navigationBarTitleText": "TableSync 家庭餐桌智能助手"
+  "navigationBarTitleText": "点食 TableSync"
 }

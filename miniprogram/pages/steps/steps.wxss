@@ -849,6 +849,18 @@
   letter-spacing: 2rpx;
 }
 
+.action-gantt {
+  padding: 0 16rpx;
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+}
+
+.action-gantt-icon {
+  font-size: 36rpx;
+  color: var(--accent);
+}
+
 .action-list {
   padding: 0 20rpx;
   height: 88rpx;
@@ -1007,16 +1019,258 @@
   flex-shrink: 0;
 }
 
-/* --- 甘特图 Sheet --- */
+/* --- 甘特图 Sheet：横向泳道图 --- */
+.gantt-stats {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 20rpx;
+  flex-wrap: wrap;
+}
+
+.gantt-stats-text {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.gantt-stats-saved {
+  font-size: 24rpx;
+  color: var(--accent);
+}
+
+.gantt-timeline-wrap {
+  margin-bottom: 16rpx;
+}
+
+.gantt-time-ruler {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 0 8rpx 120rpx;
+  font-size: 20rpx;
+  color: var(--text-muted);
+}
+
+.gantt-time-tick {
+  flex-shrink: 0;
+}
+
+.gantt-lanes-scroll {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.gantt-lanes-inner {
+  padding-right: 32rpx;
+}
+
+.gantt-lane {
+  display: flex;
+  align-items: center;
+  height: 48rpx;
+  margin-bottom: 8rpx;
+}
+
+.gantt-lane-label {
+  width: 120rpx;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.gantt-lane-dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+}
+
+.gantt-lane-name {
+  font-size: 22rpx;
+  color: var(--text-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gantt-lane-bars {
+  flex: 1;
+  position: relative;
+  height: 48rpx;
+  min-width: 200rpx;
+}
+
+.gantt-bar {
+  position: absolute;
+  top: 8rpx;
+  height: 32rpx;
+  border-radius: 8rpx;
+  display: flex;
+  align-items: center;
+  padding: 0 12rpx;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.gantt-bar-name {
+  font-size: 20rpx;
+  color: rgba(255, 255, 255, 0.95);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gantt-bar-check {
+  margin-left: 4rpx;
+  font-size: 20rpx;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.gantt-bar-current {
+  box-shadow: 0 0 0 3rpx var(--accent);
+  animation: gantt-bar-pulse 1.2s ease-in-out infinite;
+}
+
+.gantt-bar-done {
+  opacity: 0.75;
+}
+
+@keyframes gantt-bar-pulse {
+  0%, 100% { box-shadow: 0 0 0 3rpx var(--accent); }
+  50% { box-shadow: 0 0 0 6rpx var(--accent); }
+}
+
+/* --- 甘特图降级：按菜品分组列表 --- */
 .gantt-section {
   padding: 8rpx 0;
+}
+
+.gantt-recipe-group {
+  margin-bottom: 28rpx;
+}
+
+.gantt-recipe-group:last-child {
+  margin-bottom: 8rpx;
+}
+
+.gantt-recipe-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.gantt-recipe-name {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: var(--text);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gantt-recipe-progress {
+  font-size: 22rpx;
+  color: var(--accent);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.gantt-recipe-time {
+  font-size: 22rpx;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.gantt-bar-track {
+  height: 12rpx;
+  border-radius: 999rpx;
+  background: rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  margin-bottom: 12rpx;
+}
+
+.gantt-bar-fill {
+  height: 100%;
+  border-radius: 999rpx;
+  background: linear-gradient(90deg, var(--accent), #f7c28a);
+  transition: width 0.4s ease;
+}
+
+.gantt-step-list {
+  padding-left: 8rpx;
+}
+
+.gantt-step-item {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 10rpx 0;
+}
+
+.gantt-step-dot {
+  font-size: 22rpx;
+  color: var(--text-muted);
+  width: 32rpx;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.gantt-step-item.is-done .gantt-step-dot {
+  color: #6cb58b;
+}
+
+.gantt-step-item.is-current .gantt-step-dot {
+  color: var(--accent);
+}
+
+.gantt-step-title {
+  font-size: 24rpx;
+  color: var(--text-soft);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gantt-step-item.is-done .gantt-step-title {
+  color: var(--text-subtle);
+  text-decoration: line-through;
+}
+
+.gantt-step-item.is-current .gantt-step-title {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.gantt-step-dur {
+  font-size: 22rpx;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* --- 并行实时状态区 --- */
+.gantt-parallel-section {
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid var(--line);
+}
+
+.gantt-parallel-title {
+  display: block;
+  font-size: 24rpx;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 12rpx;
 }
 
 .gantt-task-row {
   display: flex;
   align-items: center;
   gap: 16rpx;
-  padding: 16rpx 0;
+  padding: 12rpx 0;
 }
 
 .gantt-task-name {
@@ -1027,21 +1281,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.gantt-bar-track {
-  flex: 1;
-  height: 16rpx;
-  border-radius: 999rpx;
-  background: rgba(0, 0, 0, 0.05);
-  overflow: hidden;
-}
-
-.gantt-bar-fill {
-  height: 100%;
-  border-radius: 999rpx;
-  background: linear-gradient(90deg, var(--accent), #f7c28a);
-  transition: width 0.4s ease;
 }
 
 .gantt-task-time {

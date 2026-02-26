@@ -1,0 +1,45 @@
+<view wx:if="{{visible}}" class="pro-paywall">
+  <view class="pro-paywall-mask" bindtap="onMaskTap"></view>
+  <view class="pro-paywall-sheet {{visible ? 'is-open' : ''}}">
+    <view class="pro-paywall-header">
+      <view class="pro-paywall-badge">Pro</view>
+      <text class="pro-paywall-title">解锁高级功能</text>
+      <text class="pro-paywall-subtitle">{{featureTitle}}</text>
+    </view>
+    <view class="pro-paywall-bullets">
+      <view class="pro-paywall-bullet" wx:if="{{feature === 'nutrition'}}">
+        <text class="pro-bullet-icon">📊</text>
+        <text class="pro-bullet-text">本周营养摄入与均衡分析</text>
+      </view>
+      <view class="pro-paywall-bullet" wx:if="{{feature === 'nutrition'}}">
+        <text class="pro-bullet-icon">🥗</text>
+        <text class="pro-bullet-text">蛋白质 / 碳水 / 膳食纤维一目了然</text>
+      </view>
+      <view class="pro-paywall-bullet" wx:if="{{feature === 'import'}}">
+        <text class="pro-bullet-icon">🔗</text>
+        <text class="pro-bullet-text">截图菜谱一键解析为可执行步骤</text>
+      </view>
+      <view class="pro-paywall-bullet" wx:if="{{feature === 'import'}}">
+        <text class="pro-bullet-icon">✨</text>
+        <text class="pro-bullet-text">AI 智能识别食材与用量</text>
+      </view>
+      <view class="pro-paywall-bullet" wx:if="{{feature === 'fridge_scan'}}">
+        <text class="pro-bullet-icon">📸</text>
+        <text class="pro-bullet-text">拍照一秒识别冰箱里的食材</text>
+      </view>
+      <view class="pro-paywall-bullet" wx:if="{{feature === 'fridge_scan'}}">
+        <text class="pro-bullet-icon">✨</text>
+        <text class="pro-bullet-text">基于库存智能推荐今日菜谱</text>
+      </view>
+    </view>
+    <view class="pro-paywall-hint">
+      <text class="pro-hint-text">多种方案可选，首周低至 ¥0.99</text>
+    </view>
+    <view class="pro-paywall-actions">
+      <view class="pro-paywall-btn" bindtap="onPayTap">查看 Pro 方案</view>
+    </view>
+    <view class="pro-paywall-footer">
+      <text class="pro-paywall-close" bindtap="onCloseTap">关闭</text>
+    </view>
+  </view>
+</view>

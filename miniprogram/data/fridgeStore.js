@@ -260,12 +260,14 @@ function toggleStorage(id) {
   for (var i = 0; i < items.length; i++) {
     if (items[i].id === id) {
       var item = items[i];
-      var info = _recognize(item.name) || DEFAULT_ITEM;
       item.storage = item.storage === 'fridge' ? 'freezer' : 'fridge';
-      var newShelfDays = item.storage === 'freezer' ? (info.freezer || 30) : (info.fridge || 3);
-      if (newShelfDays === 0) newShelfDays = info.fridge || 3;
-      item.shelfDays = newShelfDays;
-      item.expiresAt = item.addedAt + newShelfDays * 86400000;
+      if (!item._manualExpiry) {
+        var info = _recognize(item.name) || DEFAULT_ITEM;
+        var newShelfDays = item.storage === 'freezer' ? (info.freezer || 30) : (info.fridge || 3);
+        if (newShelfDays === 0) newShelfDays = info.fridge || 3;
+        item.shelfDays = newShelfDays;
+        item.expiresAt = item.addedAt + newShelfDays * 86400000;
+      }
       _save(items);
       return item;
     }
@@ -289,6 +291,45 @@ function getCount() {
   return getAll().length;
 }
 
+/**
+ * 返回所有冰箱食材名称（不限临期，供 AI 菜谱生成用）
+ * @returns {Array<string>}
+ */
+function getAllNames() {
+  return getAll().map(function (it) { return it.name; });
+}
+
+/**
+ * 返回冰箱食材摘要（名称 + 剩余天数），供 AI 理解优先级
+ * @returns {Array<{name: string, daysLeft: number}>}
+ */
+function getAllSummary() {
+  return getAll().map(function (it) {
+    return { name: it.name, daysLeft: getDaysLeft(it) };
+  });
+}
+
+/**
+ * 手动修改某食材的保质期天数
+ * @param {string} id - 食材 ID
+ * @param {number} newDays - 从今天起算的新剩余天数
+ * @returns {Object|null}
+ */
+function updateExpiry(id, newDays) {
+  if (!id || typeof newDays !== 'number' || newDays < 0) return null;
+  var items = _load();
+  for (var i = 0; i < items.length; i++) {
+    if (items[i].id === id) {
+      items[i].expiresAt = Date.now() + newDays * 86400000;
+      items[i].shelfDays = newDays;
+      items[i]._manualExpiry = true;
+      _save(items);
+      return items[i];
+    }
+  }
+  return null;
+}
+
 // ============ 导出 ============
 
 module.exports = {
@@ -298,9 +339,12 @@ module.exports = {
   getExpiringSoon: getExpiringSoon,
   getExpiringCategories: getExpiringCategories,
   getExpiringNames: getExpiringNames,
+  getAllNames: getAllNames,
+  getAllSummary: getAllSummary,
   consumeByCategory: consumeByCategory,
   removeItem: removeItem,
   toggleStorage: toggleStorage,
   getDaysLeft: getDaysLeft,
-  getCount: getCount
+  getCount: getCount,
+  updateExpiry: updateExpiry
 };

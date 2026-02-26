@@ -36,6 +36,10 @@ App({
   globalData: {
     // 跨页传递的偏好参数，供 menu/steps/shopping 使用
     preference: null,
+    // VIP 状态，与 storage key tablesync_user_vip 同步
+    isVip: false,
+    // 设备平台信息（wx.getSystemInfoSync 结果），用于 Android/iOS 物理隔离
+    platformInfo: null,
     // 种子用户信息 { seq, channel, isNew }
     seedUser: null,
     // AI 主厨报告文本（reasoning）
@@ -54,6 +58,17 @@ App({
   onLaunch: function(options) {
     var self = this;
     ensureFetch();
+
+    // 设备平台与 VIP 状态：用于甘特图付费拦截与 iOS 合规隔离
+    try {
+      if (typeof wx !== 'undefined' && wx.getSystemInfoSync) {
+        self.globalData.platformInfo = wx.getSystemInfoSync();
+      }
+      if (typeof wx !== 'undefined' && wx.getStorageSync) {
+        var stored = wx.getStorageSync('tablesync_user_vip');
+        self.globalData.isVip = stored === true || stored === '1';
+      }
+    } catch (e) {}
 
     // 埋点队列补报（spec 9.4.3）
     try { tracker.flushTrackingQueue(); } catch (e) {}
@@ -175,6 +190,19 @@ App({
    */
   clearRecipeCache: function() {
     cloudRecipeService.clearCache();
+  },
+
+  /**
+   * 设置 VIP 状态并持久化到 storage
+   * @param {Boolean} val - 是否为 VIP
+   */
+  setVip: function(val) {
+    this.globalData.isVip = !!val;
+    try {
+      if (typeof wx !== 'undefined' && wx.setStorageSync) {
+        wx.setStorageSync('tablesync_user_vip', val ? true : false);
+      }
+    } catch (e) {}
   },
 
 });

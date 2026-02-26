@@ -7,6 +7,7 @@ var vibeGreeting = require('../../utils/vibeGreeting.js');
 var seedUserService = require('../../utils/seedUserService.js');
 var tasteProfile = require('../../data/tasteProfile.js');
 var probeEngine = require('../../logic/probeEngine.js');
+var tracker = require('../../utils/tracker.js');
 
 /** 首页云图 fileID，需通过 getTempFileURL 转成 HTTPS 再显示（避免 simulator 把 cloud:// 当本地路径报 500） */
 var HOME_CLOUD_FILE_IDS = [
@@ -67,7 +68,9 @@ Page({
       spineSealIcon: _initSealIcon,    // 🔖 常规 / 🪔 深夜疲惫小油灯
       hasUnviewedCooks: false,         // 有新烹饪记录未查看 → 微光呼吸
       spineHighlight: false,           // 贴纸收下后短暂高亮
-      shakeBlur: false                 // 摇一摇触发时的模糊遮罩
+      shakeBlur: false,                // 摇一摇触发时的模糊遮罩
+      showProPaywall: false,
+      proPaywallFeature: ''
     };
   })(),
 
@@ -132,6 +135,15 @@ Page({
 
     // 冰箱提示：高级功能入口动态文案
     that._refreshFridgeHint();
+
+    // 从冰箱页"用这些食材做饭"跳回：自动打开生成面板
+    if (getApp().globalData._fromFridgeGenerate) {
+      getApp().globalData._fromFridgeGenerate = false;
+      that.setData({ showAdvanced: false });
+      setTimeout(function () {
+        that.onOpenSheet();
+      }, 300);
+    }
 
     // 摇一摇：启动加速计监听（仅首页前台）
     wx.startAccelerometer({ interval: 'normal' });
@@ -257,6 +269,7 @@ Page({
         recentDishNames: recentDishNames,
         dislikedDishNames: dislikedNames,
         fridgeExpiring: pref.fridgeExpiring || [],
+        fridgeAll: pref.fridgeAll || [],
         heroIngredient: pref.heroIngredient || null,
         candidates: candidates
       }
@@ -345,9 +358,13 @@ Page({
         try { return require('../../data/fridgeStore.js').getExpiringNames(2); }
         catch (e) { return []; }
       })(),
+      fridgeAll: (function () {
+        try { return require('../../data/fridgeStore.js').getAllSummary(); }
+        catch (e) { return []; }
+      })(),
       heroIngredient: tasteProfile.pickHeroIngredient(
         (function () {
-          try { return require('../../data/fridgeStore.js').getExpiringNames(2); }
+          try { return require('../../data/fridgeStore.js').getAllNames(); }
           catch (e) { return []; }
         })()
       ),
@@ -475,6 +492,9 @@ Page({
   /** 展开高级功能入口 */
   onShowAdvanced: function () {
     this.setData({ showAdvanced: true });
+    try {
+      tracker.trackEvent('advanced_panel_open', {});
+    } catch (e) {}
   },
 
   /** 返回 Zen Mode */
@@ -495,7 +515,30 @@ Page({
   },
 
   onGoFridge: function () {
+    try {
+      tracker.trackEvent('fridge_free_tap', { source: 'home_advanced' });
+    } catch (e) {}
     wx.navigateTo({ url: '/pages/fridge/fridge' });
+  },
+
+  /** Pro Fake Door：点击 Pro 功能入口 → 埋点 + 弹出付费墙 */
+  onProFeatureTap: function (e) {
+    var feature = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.feature) || '';
+    try {
+      tracker.trackEvent('pro_feature_tap', { feature: feature, source: 'home_advanced' });
+    } catch (err) {}
+    this.setData({ showProPaywall: true, proPaywallFeature: feature });
+    try {
+      tracker.trackEvent('pro_paywall_show', { feature: feature });
+    } catch (err2) {}
+  },
+
+  onProPaywallClose: function () {
+    this.setData({ showProPaywall: false, proPaywallFeature: '' });
+  },
+
+  onProRegistered: function () {
+    this.setData({ showProPaywall: false, proPaywallFeature: '' });
   },
 
   _refreshFridgeHint: function () {

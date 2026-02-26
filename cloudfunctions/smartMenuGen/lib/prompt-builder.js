@@ -287,7 +287,7 @@ recipeIds 顺序必须严格遵循：先所有荤菜 → 再所有素菜 → 最
  * @returns {string}
  */
 function buildUserMessage(opts) {
-  const { preference, mood, weather, recentDishNames, dislikedDishNames, fridgeExpiring, heroIngredient, candidates, basketItems, userTweak } = opts;
+  const { preference, mood, weather, recentDishNames, dislikedDishNames, fridgeExpiring, fridgeAll, heroIngredient, candidates, basketItems, userTweak } = opts;
   const meatCount = preference.meatCount || 1;
   const vegCount = preference.vegCount || 1;
   const soupCount = preference.soupCount || 0;
@@ -307,8 +307,23 @@ function buildUserMessage(opts) {
     parts.push('');
   }
 
-  // ── Section 0.5: 冰箱临期食材（高优先级消耗） ──
-  if (Array.isArray(fridgeExpiring) && fridgeExpiring.length > 0) {
+  // ── Section 0.5: 冰箱食材（全量 + 临期标注） ──
+  const hasFridgeAll = Array.isArray(fridgeAll) && fridgeAll.length > 0;
+  const hasFridgeExpiring = Array.isArray(fridgeExpiring) && fridgeExpiring.length > 0;
+  if (hasFridgeAll) {
+    parts.push('## 🧊 用户冰箱食材（核心约束：必须尽量全部用上）');
+    parts.push('用户已将以下食材录入冰箱，**本次菜单必须尽可能覆盖所有食材**，每种食材至少对应一道菜：');
+    const lines = fridgeAll.map(item => {
+      const urgent = item.daysLeft <= 2 ? ' ⚠️急' : '';
+      return `- ${item.name}（剩${item.daysLeft}天${urgent}）`;
+    });
+    parts.push(lines.join('\n'));
+    if (hasFridgeExpiring) {
+      parts.push(`\n其中【${fridgeExpiring.join('、')}】即将过期，请务必最优先安排。`);
+    }
+    parts.push('如果食材种类超过菜品道数，优先保证临期食材入选，其余尽量覆盖。');
+    parts.push('');
+  } else if (hasFridgeExpiring) {
     parts.push('## 🧊 冰箱临期食材（请务必优先使用）');
     parts.push(`以下食材即将过期，请在本次菜单中尽量安排使用：${fridgeExpiring.join('、')}`);
     parts.push('');

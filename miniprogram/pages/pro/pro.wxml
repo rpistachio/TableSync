@@ -1,0 +1,69 @@
+<view class="pro-page">
+  <scroll-view class="pro-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="pro-nav" style="padding-top: {{statusBarHeight}}px;">
+      <view class="pro-nav-inner">
+        <view class="pro-nav-back" bindtap="onBack">
+          <text class="pro-nav-back-icon">‹</text>
+        </view>
+        <text class="pro-nav-title">Pro</text>
+      </view>
+    </view>
+
+    <view class="pro-hero">
+      <view class="pro-hero-badge"></view>
+      <text class="pro-hero-title">解锁 TableSync Pro，把数字主厨带回家。</text>
+      <text class="pro-hero-subtitle">终结做饭内耗，从每一餐的懂你开始。</text>
+    </view>
+
+    <view class="pro-section">
+      <text class="pro-section-label">核心特权</text>
+      <scroll-view class="pro-privilege-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+        <view class="pro-privilege-list">
+          <view class="pro-privilege-card">
+            <text class="pro-privilege-icon">✨</text>
+            <text class="pro-privilege-title">主厨记忆与街区灵感</text>
+            <text class="pro-privilege-desc">滑动剔除不喜欢，AI 永久记住你的挑剔；融合 LBS 街区级味觉嗅探，越摇越懂你。</text>
+          </view>
+          <view class="pro-privilege-card">
+            <text class="pro-privilege-icon">📸</text>
+            <text class="pro-privilege-title">视觉与解析超能力</text>
+            <text class="pro-privilege-desc">冰箱拍照一键解析库存；小红书/抖音菜谱链接极速导入，自动转化为统筹时间轴。</text>
+          </view>
+          <view class="pro-privilege-card">
+            <text class="pro-privilege-icon">📊</text>
+            <text class="pro-privilege-title">家庭营养看板</text>
+            <text class="pro-privilege-desc">解锁本周营养分析雷达图，卡路里与微量元素一目了然，默默守护全家健康。</text>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <view class="pro-section pro-pricing-section">
+      <text class="pro-section-label">选择方案</text>
+      <view class="pro-pricing-cards">
+        <view
+          class="pro-pricing-card {{selectedPlan === item.id ? 'is-selected' : ''}}"
+          wx:for="{{pricingPlans}}"
+          wx:key="id"
+          data-plan="{{item.id}}"
+          bindtap="onSelectPlan"
+        >
+          <text class="pro-pricing-popular-tag" wx:if="{{item.popular}}">最受欢迎</text>
+          <text class="pro-pricing-name">{{item.name}}</text>
+          <view class="pro-pricing-price-row">
+            <text class="pro-pricing-price">{{item.price}}</text>
+            <text class="pro-pricing-unit">{{item.unit}}</text>
+          </view>
+          <text class="pro-pricing-subnote" wx:if="{{item.subNote}}">{{item.subNote}}</text>
+          <text class="pro-pricing-desc">{{item.desc}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="pro-bottom-spacer"></view>
+  </scroll-view>
+
+  <view class="pro-cta-bar">
+    <view class="pro-cta-btn" bindtap="onSubscribe">确认协议并解锁 Pro 特权</view>
+  </view>
+</view>

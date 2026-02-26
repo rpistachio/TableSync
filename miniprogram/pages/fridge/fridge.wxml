@@ -31,7 +31,10 @@
         <text class="fridge-item-icon">{{item.icon}}</text>
         <text class="fridge-item-name">{{item.name}}</text>
         <text class="fridge-item-storage">{{item.storageLabel}}</text>
+      </view>
+      <view class="fridge-item-expiry" catchtap="onEditExpiry" data-id="{{item.id}}" data-days="{{item.daysLeft}}" data-name="{{item.name}}">
         <text class="fridge-item-status">{{item.statusText}}</text>
+        <text class="fridge-item-edit-hint">✎</text>
       </view>
       <view class="fridge-item-delete" catchtap="onRemoveItem" data-id="{{item.id}}">
         <text class="fridge-item-delete-icon">×</text>
@@ -43,11 +46,27 @@
   <view class="fridge-empty" wx:if="{{isEmpty}}">
     <text class="fridge-empty-icon">🧊</text>
     <text class="fridge-empty-text">冰箱空空的</text>
-    <text class="fridge-empty-hint">添加点食材，让我帮你安排</text>
+    <text class="fridge-empty-hint">在上方输入食材，AI 会帮你优先安排临期的</text>
+  </view>
+
+  <!-- 临期摘要 -->
+  <view class="fridge-expiring-banner" wx:if="{{expiringCount > 0}}">
+    <text class="fridge-expiring-icon">⏰</text>
+    <text class="fridge-expiring-text">{{expiringNames}} 快过期了，做掉它们</text>
   </view>
 
   <!-- 底部提示 -->
   <view class="fridge-footer" wx:if="{{!isEmpty}}">
-    <text class="fridge-footer-text">点击食材可切换冷藏/冷冻 · 左边临期的优先排列</text>
+    <text class="fridge-footer-text">点食材切换冷藏/冷冻 · 点天数可自定义保质期</text>
+  </view>
+
+  <!-- 底部 CTA：生成菜谱 -->
+  <view class="fridge-cta-bar" wx:if="{{!isEmpty}}">
+    <view class="fridge-cta-btn" bindtap="onGoGenerate">
+      <text class="fridge-cta-text">用这些食材做饭</text>
+    </view>
+    <view class="fridge-cta-sub">
+      <text class="fridge-cta-sub-text">AI 会优先安排冰箱里的食材</text>
+    </view>
   </view>
 </view>

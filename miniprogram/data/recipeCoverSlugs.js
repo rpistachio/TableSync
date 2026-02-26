@@ -265,6 +265,10 @@ var RECIPE_NAME_TO_SLUG = {
   '微波蒜蓉蒸虾': 'microwave_garlic_steamed_shrimp.png',
   '微波鸡蛋羹': 'microwave_steamed_egg.png',
   '微波鸡蛋羹': 'microwave_steamed_egg.png',
+  '柠檬香煎羊排': 'lemon_pan_seared_lamb_chops.png',
+  '柠檬香煎羊排': 'lemon_pan_seared_lamb_chops.png',
+  '香辣羊腱子冷盘': 'spicy_cold_lamb_shank.png',
+  '话梅酸甜羊肉': 'prune_sweet_sour_lamb.png',
   /* 宝宝菜 */
   '板栗鲜鸡泥': 'chestnut_chicken_puree.png',
   '柠檬清蒸鳕鱼': 'lemon_steamed_cod.png',

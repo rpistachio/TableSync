@@ -26,8 +26,22 @@
     <text class="zen-advanced-back-icon">‹</text>
     <text class="zen-advanced-back-text">返回</text>
   </view>
-  <!-- 导入赛博菜谱入口 -->
-  <view class="feature-entry import-entry" bindtap="onGoImport">
+
+  <!-- Pro：本周高级营养分析（首位独立卡片） -->
+  <view class="feature-entry nutrition-card" bindtap="onProFeatureTap" data-feature="nutrition">
+    <view class="feature-icon-wrap nutrition-icon-wrap">
+      <text class="feature-icon">📊</text>
+    </view>
+    <view class="feature-text-wrap">
+      <text class="feature-title">本周高级营养分析</text>
+      <text class="feature-desc">蛋白质 / 碳水 / 膳食纤维一目了然</text>
+    </view>
+    <view class="pro-badge">Pro</view>
+    <text class="feature-arrow">›</text>
+  </view>
+
+  <!-- 导入赛博菜谱入口（Pro） -->
+  <view class="feature-entry import-entry pro-entry" bindtap="onProFeatureTap" data-feature="import">
     <view class="feature-icon-wrap import-icon-wrap">
       <text class="feature-icon">🔗</text>
     </view>
@@ -35,6 +49,7 @@
       <text class="feature-title">导入菜谱</text>
       <text class="feature-desc">截图小红书/抖音菜谱，秒变可执行食谱</text>
     </view>
+    <view class="pro-badge">Pro</view>
     <text class="feature-arrow">›</text>
   </view>
 
@@ -62,15 +77,29 @@
     <text class="feature-arrow">›</text>
   </view>
 
-  <!-- 我的冰箱入口 -->
-  <view class="feature-entry fridge-entry" bindtap="onGoFridge">
+  <!-- AI 扫描冰箱（Pro 拦截） -->
+  <view class="feature-entry fridge-entry pro-entry" bindtap="onProFeatureTap" data-feature="fridge_scan">
     <view class="feature-icon-wrap fridge-icon-wrap">
+      <text class="feature-icon">📸</text>
+    </view>
+    <view class="feature-text-wrap">
+      <text class="feature-title">AI 扫描冰箱</text>
+      <text class="feature-desc">拍照识别食材，智能推荐菜谱</text>
+    </view>
+    <view class="pro-badge">Pro</view>
+    <text class="feature-arrow">›</text>
+  </view>
+
+  <!-- 临期食材提醒（限时免费，直接进冰箱页） -->
+  <view class="feature-entry fridge-expire-entry" bindtap="onGoFridge">
+    <view class="feature-icon-wrap fridge-expire-icon-wrap">
       <text class="feature-icon">🧊</text>
     </view>
     <view class="feature-text-wrap">
-      <text class="feature-title">我的冰箱</text>
-      <text class="feature-desc">{{fridgeHint || '记录食材，AI 帮你优先消耗临期的'}}</text>
+      <text class="feature-title">冰箱临期食材提醒</text>
+      <text class="feature-desc">{{fridgeHint || '记录食材，优先消耗快过期的'}}</text>
     </view>
+    <view class="free-trial-badge">限时免费</view>
     <text class="feature-arrow">›</text>
   </view>
   </block>
@@ -101,6 +130,13 @@
   />
 
   <cooking-loading visible="{{showCookingLoading}}" />
+
+  <pro-paywall
+    visible="{{showProPaywall}}"
+    feature="{{proPaywallFeature}}"
+    bindclose="onProPaywallClose"
+    bindregistered="onProRegistered"
+  />
 
   <!-- Fixed Bottom Action Bar -->
   <view class="home-bottom-bar">

@@ -1353,7 +1353,8 @@
 /* 再摇一次：刷新过渡动画 */
 .omakase-polaroid,
 .omakase-micro-copy,
-.omakase-combo-text {
+.omakase-combo-text,
+.omakase-dish-list {
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
@@ -1363,8 +1364,101 @@
 }
 
 .omakase-micro-copy.is-refreshing,
-.omakase-combo-text.is-refreshing {
+.omakase-combo-text.is-refreshing,
+.omakase-dish-list.is-refreshing {
   opacity: 0;
   transform: translateY(8rpx);
+}
+
+/* Omakase 单道菜列表（手账菜单卡） */
+.omakase-dish-list {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  padding: 0 24rpx;
+  margin-bottom: 32rpx;
+  box-sizing: border-box;
+}
+
+.omakase-dish-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.omakase-dish-row:last-child {
+  margin-bottom: 0;
+}
+
+.omakase-dish-name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  flex: 1;
+  min-width: 0;
+  margin-right: 16rpx;
+}
+
+.omakase-role-badge {
+  font-size: 20rpx;
+  font-weight: 500;
+  line-height: 1;
+  padding: 4rpx 10rpx;
+  border-radius: 6rpx;
+  flex-shrink: 0;
+}
+
+.omakase-role-meat {
+  color: rgba(158, 62, 50, 0.7);
+  background: rgba(158, 62, 50, 0.08);
+}
+
+.omakase-role-veg {
+  color: rgba(90, 155, 110, 0.8);
+  background: rgba(90, 155, 110, 0.1);
+}
+
+.omakase-role-soup {
+  color: rgba(184, 151, 106, 0.8);
+  background: rgba(184, 151, 106, 0.1);
+}
+
+.omakase-dish-name {
+  font-size: 28rpx;
+  font-weight: 300;
+  color: #3a3a3a;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.omakase-reject-btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6rpx;
+  font-size: 22rpx;
+  color: rgba(27, 61, 47, 0.4);
+  flex-shrink: 0;
+  padding: 8rpx 0;
+}
+
+.omakase-reject-btn:active {
+  opacity: 0.6;
+}
+
+.omakase-reject-icon {
+  font-size: 24rpx;
+  color: rgba(27, 61, 47, 0.4);
+  line-height: 1;
+}
+
+.omakase-reject-text {
+  font-size: 22rpx;
+  color: rgba(27, 61, 47, 0.4);
+  line-height: 1;
 }
 

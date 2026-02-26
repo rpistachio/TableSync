@@ -1,4 +1,4 @@
-# TableSync 技术规格与 2026 需求实现状态 (v4.9)
+# TableSync 技术规格与 2026 需求实现状态 (v5.0)
 
 本文档为 TableSync 微信小程序的核心技术规格与 2026 版需求落地状态说明。需求原文见 [TableSync-核心逻辑与用户体验优化需求-2026.md](./TableSync-核心逻辑与用户体验优化需求-2026.md)。
 
@@ -83,6 +83,12 @@ flowchart TD
 | 做过的菜 Tab | 已完成 | 我的菜谱库新增「做过的菜」Tab，展示烹饪日志/反馈/再做一次/改评价。详见 §11.8。 |
 | 电饭煲/微波炉设备支持 | 已完成 | 设备模型扩展 rice_cooker + microwave，全链路适配（设备追踪/探针/kitchenConfig）。详见 §11.8。 |
 | 口味驱动加权选菜 | 已完成 | _affinityWeight 加权随机 + FLAVOR_COMPLEMENT 互补矩阵；用户越做越合口味。详见 §11.8。 |
+| 商业化基础设施（微信支付与订阅） | 已完成 | Pro Fake Door 落地页 + Pro/VIP 付费墙组件 + 3 个支付云函数（create_order / create_wechat_order / wechat_pay_callback）；iOS 合规隔离；VIP 解锁甘特图。详见 §11.9。 |
+| 甘特图真实实现与付费拦截 | 已完成 | 横向泳道图（设备泳道 + 步骤 bar + 点击跳转）/ 降级列表（按菜品分组进度条）；非 VIP 弹付费引导。详见 §11.9。 |
+| Omakase 单道换菜 | 已完成 | 揭菜区结构化菜品列表（荤/素/汤角标 + 换掉按钮）；每天免费 2 次，超限弹 Pro 引导。详见 §11.9。 |
+| 冰箱全量食材注入 AI | 已完成 | fridgeStore getAllNames/getAllSummary；smartMenuGen prompt 全量食材 + 临期标注 + "必须尽量全部用上"约束。详见 §11.9。 |
+| 菜单忌口过滤增强 | 已完成 | getTodayMenusByCombo 模板忌口校验 + 汤品忌口过滤 + pickReplacementFromCache 忌口过滤。详见 §11.9。 |
+| 菜谱批量规划与相似度分析 | 已完成 | batch-planner 覆盖矩阵分析 + recipe-similarity 语义去重 + generate.js 集成预警。详见 §11.9。 |
 | stressWeight 评分因子 | 待扩展 | 当前 isTimeSave 已驱动过滤与空气炸锅优先，未单独暴露 stressWeight 数值。 |
 
 ---
@@ -315,6 +321,8 @@ flowchart TD
 |------|------|------|
 | helper-card | components/helper-card/helper-card | 「别人做」模式下的纸条化菜单（The Prep / The Action / The Heart）。 |
 | sticker-drop | components/sticker-drop/sticker-drop | 贴纸掉落弹层，从 steps 完成回首页时展示。 |
+| pro-paywall | components/pro-paywall/pro-paywall | Pro 付费墙底部 Sheet（按 feature 差异化文案 + 埋点 + 跳转 Pro 落地页）。 |
+| vip-paywall | components/vip-paywall/vip-paywall | VIP 付费墙底部 Sheet（真实微信支付流程；Android 启用/iOS 合规禁用）。 |
 
 ---
 
@@ -407,6 +415,20 @@ flowchart TD
 - **menuHistory.getWeekDishNames(maxItems, days)**  
   - 位置：`miniprogram/utils/menuHistory.js`  
   - 获取过去 N 天吃过的菜品名称列表（去重）。days 参数新增（v4.9），默认 7；Omakase 模式传 14 增大防重复窗口。
+
+- **fridgeStore.getAllNames() / getAllSummary() / updateExpiry(id, newDays)**  
+  - 位置：`miniprogram/data/fridgeStore.js`  
+  - `getAllNames()`：返回所有冰箱食材名称列表，供 AI 菜谱生成用。  
+  - `getAllSummary()`：返回 `[{name, daysLeft}]`，供 AI 理解优先级。  
+  - `updateExpiry(id, newDays)`：手动修改保质期，标记 `_manualExpiry` 防止 `toggleStorage` 覆盖。
+
+- **getApp().setVip(val) / getApp().globalData.isVip**  
+  - 位置：`miniprogram/app.js`  
+  - VIP 状态管理，持久化到 `tablesync_user_vip` Storage Key；甘特图等付费功能据此拦截。
+
+- **checkConflicts(newRecipes, existingRecipes, threshold)**  
+  - 位置：`tools/lib/recipe-similarity.js`  
+  - 语义相似度冲突检测：多信号加权（菜名 bigram 35% + 食材重叠 35% + 维度匹配 30%）；设备变体检测。
 
 ---
 
@@ -924,6 +946,120 @@ flowchart TD
 | tools/lib/recipe-formatter.js | 字段扩展 |
 | tools/lib/cloud-db.js | fetchExistingNames |
 | tools/audit-covers.js | 评分维度扩展 |
+
+### 11.9 2026-02-27 变更（商业化基础设施、甘特图真实实现、Omakase 单道换菜、冰箱全量注入）
+
+> **本次为 v5.0 更新**，核心变化：商业化基础设施落地（Pro Fake Door + VIP 微信支付 + iOS 合规隔离）；甘特图从占位实现为真实横向泳道图 + 付费拦截；Omakase 揭菜区升级为结构化菜品列表 + 单道换菜；冰箱全量食材注入 AI 推荐；菜单忌口过滤增强；工具链新增批量规划与语义相似度分析。
+
+#### 商业化基础设施
+
+| 维度 | 说明 |
+|------|------|
+| Pro 订阅落地页 | `pages/pro/pro`：Fake Door 模式，三档定价（试用 ¥0.99 / 月付 ¥15 / 年付 ¥128）；追踪埋点 + 本地标记创始会员/早鸟；暂不接真实支付 |
+| Pro 付费墙组件 | `components/pro-paywall`：底部 Sheet，按 `feature` 属性差异化展示（nutrition / import / fridge_scan）；埋点 view/close + 停留时长；点击跳转 Pro 落地页 |
+| VIP 付费墙组件 | `components/vip-paywall`：底部 Sheet，真实微信支付流程（Android 启用）；iOS 合规禁用（灰色提示）；支付成功 → `getApp().setVip(true)` + 触发 unlock 事件 |
+| 支付云函数 × 3 | `create_order`：创建 `orders` 集合订单（outTradeNo + PENDING）；`create_wechat_order`：校验订单 + 调用 `cloud.cloudPay.unifiedOrder` 返回支付参数；`wechat_pay_callback`：幂等回调处理 + 金额校验 + 权益发放（isVip + vipExpireAt 30天） |
+| VIP 状态管理 | `app.js` 新增 `globalData.isVip` + `globalData.platformInfo` + `setVip(val)` 方法；启动时从 Storage 恢复 |
+| 首页 Pro 化 | 导入菜谱 / AI 扫描冰箱改为 Pro 功能入口（点击弹 pro-paywall）；新增「本周高级营养分析」Pro 卡片；冰箱入口改为「冰箱临期食材提醒」(限时免费)；标题改为"点食 TableSync" |
+
+#### 甘特图真实实现
+
+| 维度 | 说明 |
+|------|------|
+| 付费拦截 | 非 VIP 点击甘特图/浮动状态栏 → 弹出 vip-paywall；VIP 解锁后直接打开甘特图 |
+| 数据传递 | `processStepsForView` 透传 device / pipelineStage / startAt / endAt / phaseTimeline |
+| 横向泳道模式 | 有 startAt/endAt 时：9 种设备为泳道，每步为 bar（宽度/位置百分比），显示总时间/节省时间/时间刻度尺；bar 可点击跳转步骤 |
+| 降级列表模式 | 无时间轴时：按菜品分组，显示完成进度条 + 步骤列表 |
+| 设备定义 | `GANTT_DEVICE_LABELS` / `GANTT_DEVICE_COLORS`：wok / stove_long / steamer / pot / air_fryer / rice_cooker / oven / microwave / none |
+
+#### Omakase 揭菜升级
+
+| 维度 | 说明 |
+|------|------|
+| 结构化菜品列表 | 从纯文本 `omakaseComboText` 升级为 `omakaseDishList`（id + name + role 荤/素/汤） |
+| 单道换菜 | `onRejectSingleDish`：点击「换掉」按钮替换指定菜品；每天免费 2 次（todayKey = `omakase_reject_{date}`）；超限弹 Pro 付费引导（Modal → 跳转 Pro 落地页） |
+| 创始会员 | `pro_founding_member` Storage 标记 → 不限换菜次数 |
+| 数据同步 | 换菜后同步更新 globalData.menuPreview / todayMenus / previewMenuRows / omakaseDishList / schedulePreview |
+
+#### 冰箱全量食材注入 AI 推荐
+
+| 维度 | 说明 |
+|------|------|
+| fridgeStore 新 API | `getAllNames()`：全部食材名；`getAllSummary()`：名称+剩余天数；`updateExpiry(id, days)`：手动修改保质期 + `_manualExpiry` 标记 |
+| toggleStorage | 切换冷藏/冷冻时，若 `_manualExpiry` 则不重算保质期 |
+| preference 新字段 | `fridgeAll`：全量食材摘要列表（供 smartMenuGen prompt） |
+| smartMenuGen prompt | 全量食材注入：「🧊 用户冰箱食材（核心约束：必须尽量全部用上）」段落；按 daysLeft 标注 ⚠️急；临期最优先安排 |
+| heroIngredient | 从仅临期食材改为从全部食材中选取 |
+| 冰箱页联动 | "用这些食材做饭"跳回首页 → 自动打开 Context Sheet（通过 `_fromFridgeGenerate` 标记） |
+
+#### 菜单忌口过滤增强
+
+| 维度 | 说明 |
+|------|------|
+| 模板校验 | `getTodayMenusByCombo` 中，固定模板匹配后增加忌口校验（`recipeContainsAvoid`），含忌口食材的模板视为无效跳过 |
+| 汤品过滤 | 汤品候选池增加忌口过滤，避免推荐含忌口食材的汤 |
+| 换菜过滤 | `pickReplacementFromCache` 新增 `userPreference` 参数，替换池过滤忌口食材 |
+| 调用点 | preview.js 的 `handleReplaceUnchecked` / `onRejectSingleDish` 传入 `pref` 启用忌口过滤 |
+
+#### 菜谱数据
+
+- `recipes.js`：新增 3 道羊肉菜谱（柠檬香煎羊排、糖醋羊肉卷、话梅酸甜羊肉/香辣羊腱子冷盘）
+- `recipeCoverSlugs.js`：新增 3 个封面映射
+
+#### 工具链增强
+
+| 工具 | 变更 |
+|------|------|
+| batch-planner.js | 新建：分析 meat × taste × flavor_profile 覆盖矩阵，识别空白/稀疏单元格 + cook_type 多样性 + 宝宝菜覆盖；自动生成 generate.js 命令；支持 --cloud / --baby / --cook / --json |
+| recipe-similarity.js | 新建：多信号加权语义相似度（菜名 bigram 35% + 食材重叠 35% + 维度匹配 30%）；设备变体检测；Union-Find 聚类；CLI 报告 + --json 输出 |
+| generate.js | 集成 `checkConflicts`：新菜谱 vs 已有菜谱语义相似度预警，80%+ 红色，55%+ 黄色 |
+| cloud-db.js | 新增 `fetchRecipesForAnalysis()`：分页拉取精简分析字段 |
+| llm-client.js | 修复中文数字/分数代替数值（半→0.5、适量→0、少许→0）|
+| package.json | 新增 plan / similarity 系列 npm scripts |
+
+#### 涉及文件一览（§11.9）
+
+| 文件 | 变更摘要 |
+|------|----------|
+| miniprogram/app.js | isVip / platformInfo / setVip(val)；启动时恢复 VIP 状态 |
+| miniprogram/app.json | 注册 pro 页；标题改为"点食 TableSync" |
+| miniprogram/pages/pro/pro.* | 新建：Pro 订阅落地页（Fake Door，三档定价，暗金主题） |
+| miniprogram/components/pro-paywall/pro-paywall.* | 新建：Pro 付费墙底部 Sheet（按 feature 差异化） |
+| miniprogram/components/vip-paywall/vip-paywall.* | 新建：VIP 付费墙底部 Sheet（真实微信支付，iOS 禁用） |
+| cloudfunctions/create_order/index.js | 新建：创建订单（orders 集合） |
+| cloudfunctions/create_wechat_order/index.js | 新建：调用微信支付统一下单 + 金额校验 |
+| cloudfunctions/wechat_pay_callback/index.js | 新建：幂等回调 + 权益发放（isVip + vipExpireAt） |
+| miniprogram/pages/home/home.js | Pro 入口逻辑 + pro-paywall 弹窗 + 冰箱跳回自动打开 Sheet + fridgeAll 注入 + tracker 引入 |
+| miniprogram/pages/home/home.json | 注册 pro-paywall 组件；标题改为"点食 TableSync" |
+| miniprogram/pages/home/home.wxml | Pro 营养卡片 + 导入/扫描 Pro 化 + 冰箱改为限时免费 + pro-paywall 组件 |
+| miniprogram/pages/home/home.wxss | Pro 角标/营养卡片/限时免费角标 样式 |
+| miniprogram/pages/preview/preview.js | omakaseDishList 构建 + onRejectSingleDish + 换菜次数限制 + pickReplacementFromCache 传 pref |
+| miniprogram/pages/preview/preview.wxml | Omakase 菜品列表结构化（角标 + 换掉按钮） |
+| miniprogram/pages/preview/preview.wxss | Omakase dish-list / role-badge / reject-btn 样式 |
+| miniprogram/pages/steps/steps.js | 甘特图数据计算（泳道 + 降级列表） + VIP 拦截 + onGanttBarTap + GANTT_DEVICE_LABELS/COLORS |
+| miniprogram/pages/steps/steps.json | 注册 vip-paywall 组件 |
+| miniprogram/pages/steps/steps.wxml | 甘特图泳道视图 + 降级列表 + VIP 付费弹窗 + 甘特图入口按钮 |
+| miniprogram/pages/steps/steps.wxss | 甘特图泳道/bar/标尺/统计/降级列表样式 |
+| miniprogram/data/fridgeStore.js | getAllNames / getAllSummary / updateExpiry / toggleStorage 尊重 _manualExpiry |
+| miniprogram/data/menuData.js | getTodayMenusByCombo 忌口过滤 + 汤品忌口过滤 + pickReplacementFromCache 增加 pref 参数 |
+| miniprogram/data/recipeCoverSlugs.js | 新增 3 个羊肉菜封面映射 |
+| miniprogram/data/recipes.js | 新增 3 道羊肉菜谱 |
+| miniprogram/pages/fridge/fridge.js | 手动修改保质期 + "用这些食材做饭"跳转 |
+| miniprogram/pages/fridge/fridge.wxml | 保质期编辑 UI + 做饭按钮 |
+| miniprogram/pages/fridge/fridge.wxss | 保质期编辑与做饭按钮样式 |
+| miniprogram/utils/seedUserService.js | 微调 |
+| cloudfunctions/smartMenuGen/index.js | 新增 fridgeAll 参数接收与传递 |
+| cloudfunctions/smartMenuGen/lib/prompt-builder.js | 全量冰箱食材 prompt 段落 + 临期标注 |
+| tools/batch-planner.js | 新建：覆盖矩阵分析 + 批次规划 |
+| tools/recipe-similarity.js | 新建：语义相似度 CLI |
+| tools/lib/recipe-similarity.js | 新建：相似度引擎核心 |
+| tools/generate.js | 集成相似度预警 |
+| tools/lib/cloud-db.js | fetchRecipesForAnalysis |
+| tools/lib/llm-client.js | 中文数字 JSON 修复 |
+| tools/package.json | plan / similarity npm scripts |
+| docs/小程序支付调用链路.md | 新建：支付链路技术文档 |
+
+---
 
 ### 11.6 2026-02-14 变更（导入极速解析、宝宝占位符、封面直链、统筹空气炸锅）
 

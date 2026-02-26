@@ -11,6 +11,30 @@ var KEY_ACTIONS_RE = new RegExp('(' + KEY_ACTIONS.join('|') + ')', 'g');
 // 购物清单勾选状态存储 Key（与 shopping.js 保持一致）
 var STORAGE_KEY_TODAY_SHOPPING = 'tablesync_shopping_checked_today';
 
+/** 甘特图设备标签与颜色（与 menuGenerator.DEVICE_GANTT_COLORS 对齐） */
+var GANTT_DEVICE_LABELS = {
+  wok: '灶台',
+  stove_long: '炖煮灶',
+  steamer: '蒸锅',
+  pot: '汤锅',
+  none: '—',
+  air_fryer: '空气炸锅',
+  rice_cooker: '电饭煲',
+  oven: '烤箱',
+  microwave: '微波炉'
+};
+var GANTT_DEVICE_COLORS = {
+  wok: '#ff9800',
+  stove_long: '#e65100',
+  steamer: '#2196f3',
+  pot: '#9c27b0',
+  none: '#9e9e9e',
+  air_fryer: '#4caf50',
+  rice_cooker: '#795548',
+  oven: '#795548',
+  microwave: '#9e9e9e'
+};
+
 function getStepsPreference() {
   var app = getApp();
   var p = app.globalData.preference || {};
@@ -518,7 +542,13 @@ function processStepsForView(steps) {
       phaseTitle: phaseTitle,
       phaseSubtitle: phaseSubtitle,
       // 并行上下文提示
-      parallelContext: parallelContext
+      parallelContext: parallelContext,
+      // 甘特图时间轴（透传自 generateUnifiedSteps）
+      device: s.device || null,
+      pipelineStage: s.pipelineStage || null,
+      startAt: s.startAt != null ? s.startAt : (s.gapStartAt != null ? s.gapStartAt : null),
+      endAt: s.endAt != null ? s.endAt : (s.gapEndAt != null ? s.gapEndAt : null),
+      phaseTimeline: s.phaseTimeline || null
     };
   });
 }
@@ -669,6 +699,10 @@ Page({
     activeParallelTasks: [],   // 浮动并行状态条数据
     showStepList: false,       // 步骤列表 sheet
     showGanttSheet: false,     // 甘特图 sheet
+    showVipPaywall: false,    // VIP 付费引导抽屉（非 VIP 点击甘特图时弹出）
+    showPaywallEntry: false,  // 付费入口显隐开关（暂时隐藏，后续可改）
+    ganttData: { totalMinutes: 0, sequentialMinutes: 0, savedMinutes: 0, maxEnd: 0, lanes: [] },
+    ganttRecipes: [],         // 甘特图降级：按菜品分组的步骤列表（无泳道时用）
     // 并行统筹与阶段高亮相关
     currentPhase: '',
     parallelTasks: [],
@@ -1183,6 +1217,117 @@ Page({
       if (hn) secondaryHint = hn + (ft.remainingMinutes != null ? ' · ' + ft.remainingMinutes + ' 分钟' : '');
     }
 
+    // ── 甘特图数据：横向泳道（有 startAt/endAt 时）或降级为按菜品分组列表 ──
+    var rawBars = [];
+    var sequentialSum = 0;
+    for (var gi = 0; gi < viewSteps.length; gi++) {
+      var gvs = viewSteps[gi];
+      var startT = gvs.startAt != null ? Number(gvs.startAt) : null;
+      var endT = gvs.endAt != null ? Number(gvs.endAt) : null;
+      var dur = Number(gvs.duration) || 0;
+      sequentialSum += dur > 0 ? dur : 1;
+      if (startT != null && endT != null && !isNaN(startT) && !isNaN(endT)) {
+        var dev = (gvs.device && String(gvs.device)) || 'wok';
+        rawBars.push({
+          stepIndex: gi,
+          name: (gvs.recipeName || gvs.title || ('步骤 ' + (gi + 1))).replace(/^步骤\s*\d+[：:]\s*/, ''),
+          device: dev,
+          start: startT,
+          end: endT,
+          completed: !!gvs.completed,
+          isCurrent: gi === currentIndex,
+          color: GANTT_DEVICE_COLORS[dev] || '#757575'
+        });
+      }
+    }
+    var ganttData = { totalMinutes: 0, sequentialMinutes: sequentialSum, savedMinutes: 0, maxEnd: 0, lanes: [] };
+    var ganttRecipes = [];
+    if (rawBars.length > 0) {
+      var minStart = Infinity;
+      var maxEnd = -Infinity;
+      for (var rb = 0; rb < rawBars.length; rb++) {
+        if (rawBars[rb].start < minStart) minStart = rawBars[rb].start;
+        if (rawBars[rb].end > maxEnd) maxEnd = rawBars[rb].end;
+      }
+      var range = Math.max(maxEnd - minStart, 1);
+      ganttData.totalMinutes = Math.round(maxEnd - minStart);
+      ganttData.sequentialMinutes = sequentialSum;
+      ganttData.savedMinutes = Math.max(0, sequentialSum - ganttData.totalMinutes);
+      ganttData.maxEnd = maxEnd;
+      var laneOrder = ['wok', 'stove_long', 'steamer', 'pot', 'air_fryer', 'rice_cooker', 'oven', 'microwave', 'none'];
+      var laneMap = Object.create(null);
+      for (var b = 0; b < rawBars.length; b++) {
+        var bar = rawBars[b];
+        var leftPercent = ((bar.start - minStart) / range * 100).toFixed(2) + '%';
+        var widthPercent = ((bar.end - bar.start) / range * 100).toFixed(2) + '%';
+        var lane = laneMap[bar.device];
+        if (!lane) {
+          lane = {
+            device: bar.device,
+            label: GANTT_DEVICE_LABELS[bar.device] || bar.device,
+            color: bar.color,
+            bars: []
+          };
+          laneMap[bar.device] = lane;
+        }
+        lane.bars.push({
+          stepIndex: bar.stepIndex,
+          name: bar.name,
+          start: bar.start,
+          end: bar.end,
+          isCurrent: bar.isCurrent,
+          completed: bar.completed,
+          widthPercent: widthPercent,
+          leftPercent: leftPercent,
+          color: bar.color
+        });
+      }
+      for (var lo = 0; lo < laneOrder.length; lo++) {
+        if (laneMap[laneOrder[lo]]) ganttData.lanes.push(laneMap[laneOrder[lo]]);
+      }
+      for (var devKey in laneMap) {
+        if (laneOrder.indexOf(devKey) === -1) ganttData.lanes.push(laneMap[devKey]);
+      }
+    } else {
+      var ganttRecipeMap = Object.create(null);
+      var ganttRecipeOrder = [];
+      for (var gii = 0; gii < viewSteps.length; gii++) {
+        var gv = viewSteps[gii];
+        var gName = (gv && gv.recipeName) ? gv.recipeName : '全局步骤';
+        if (!ganttRecipeMap[gName]) {
+          ganttRecipeMap[gName] = { name: gName, steps: [], completedCount: 0, totalCount: 0, totalMinutes: 0 };
+          ganttRecipeOrder.push(gName);
+        }
+        var grp = ganttRecipeMap[gName];
+        grp.totalCount++;
+        if (gv.completed) grp.completedCount++;
+        var gdur = Number(gv.duration) || 0;
+        grp.totalMinutes += gdur;
+        grp.steps.push({
+          id: gv.id,
+          title: gv.title || ('步骤 ' + (gii + 1)),
+          duration: gdur,
+          completed: !!gv.completed,
+          isCurrent: gii === currentIndex,
+          phaseType: gv.phaseType || gv.stepType || '',
+          stepIndex: gii
+        });
+      }
+      ganttRecipes = ganttRecipeOrder.map(function (name) {
+        var g = ganttRecipeMap[name];
+        var pct = g.totalCount > 0 ? Math.round((g.completedCount / g.totalCount) * 100) : 0;
+        return {
+          name: g.name,
+          steps: g.steps,
+          completedCount: g.completedCount,
+          totalCount: g.totalCount,
+          totalMinutes: g.totalMinutes,
+          percent: pct,
+          barWidthStyle: 'width:' + pct + '%'
+        };
+      });
+    }
+
     var rhythmRings = buildRhythmRings(viewSteps, currentIndex);
     var showOfflineHint = total === 1 && steps[0]._isOfflineHint === true;
 
@@ -1217,6 +1362,8 @@ Page({
       currentPhaseLabel: currentPhaseLabel,
       currentPhaseType: currentPhase,
       activeParallelTasks: activeParallelTasks,
+      ganttData: ganttData,
+      ganttRecipes: ganttRecipes,
       currentStepSubtitle: subtitle,
       rhythmRings: rhythmRings,
       secondaryHint: secondaryHint,
@@ -1557,9 +1704,24 @@ Page({
     this.setData({ showStepList: !this.data.showStepList, showGanttSheet: false });
   },
 
-  /** 甘特图 Bottom Sheet 开关 */
+  /** 甘特图 Bottom Sheet 开关（非 VIP 先弹付费引导） */
   toggleGanttSheet: function () {
+    var app = getApp();
+    if (!app.globalData.isVip) {
+      this.setData({ showVipPaywall: true });
+      return;
+    }
     this.setData({ showGanttSheet: !this.data.showGanttSheet, showStepList: false });
+  },
+
+  /** VIP 付费引导关闭 */
+  onPaywallClose: function () {
+    this.setData({ showVipPaywall: false });
+  },
+
+  /** VIP 解锁后关闭付费弹窗并打开甘特图 */
+  onPaywallUnlock: function () {
+    this.setData({ showVipPaywall: false, showGanttSheet: true, showStepList: false });
   },
 
   /** 从步骤列表 sheet 跳转到指定步骤 */
@@ -1569,6 +1731,15 @@ Page({
     if (isNaN(index)) return;
     this.setData({ showStepList: false });
     this._jumpToIndex(index);
+  },
+
+  /** 甘特图 bar 点击：跳转到该步骤，甘特图不关闭，刷新高亮 */
+  onGanttBarTap: function (e) {
+    var index = e.currentTarget.dataset.stepIndex;
+    if (typeof index !== 'number') index = Number(index);
+    if (isNaN(index) || index < 0) return;
+    this._jumpToIndex(index);
+    this._updateView(this._stepsRaw);
   },
 
   /**

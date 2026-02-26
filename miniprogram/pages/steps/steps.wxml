@@ -57,7 +57,7 @@
   </view>
 
   <!-- Layer 2: 浮动并行状态条 -->
-  <view wx:if="{{!isAyiMode && activeParallelTasks.length > 0}}" class="parallel-float-bar" bindtap="toggleGanttSheet">
+  <view wx:if="{{showPaywallEntry && !isAyiMode && activeParallelTasks.length > 0}}" class="parallel-float-bar" bindtap="toggleGanttSheet">
     <scroll-view scroll-x class="parallel-scroll" enhanced show-scrollbar="{{false}}">
       <view class="parallel-chip-row">
         <view wx:for="{{activeParallelTasks}}" wx:key="stepId" class="parallel-chip">
@@ -157,6 +157,9 @@
     >
       <text class="action-main-text">{{isAyiMode ? '做好了，下一步' : (currentStep.completed ? '✓ 已完成' : '完成此步')}}</text>
     </button>
+    <view wx:if="{{showPaywallEntry && !isAyiMode}}" class="action-gantt" bindtap="toggleGanttSheet">
+      <text class="action-gantt-icon">⏱</text>
+    </view>
     <view class="action-list" bindtap="toggleStepList">
       <text class="action-list-icon">☰</text>
     </view>
@@ -191,6 +194,9 @@
     </view>
   </view>
 
+  <!-- VIP 付费引导（非 VIP 点击甘特图时弹出，设备隔离） -->
+  <vip-paywall visible="{{showVipPaywall}}" bindclose="onPaywallClose" bindunlock="onPaywallUnlock" />
+
   <!-- 甘特图 Bottom Sheet -->
   <view wx:if="{{!isAyiMode && showGanttSheet}}" class="sheet-mask" bindtap="toggleGanttSheet"></view>
   <view wx:if="{{!isAyiMode}}" class="bottom-sheet gantt-sheet {{showGanttSheet ? 'is-open' : ''}}">
@@ -199,17 +205,66 @@
       <text class="sheet-close" bindtap="toggleGanttSheet">收起</text>
     </view>
     <scroll-view scroll-y class="sheet-scroll">
-      <view wx:if="{{activeParallelTasks.length > 0}}" class="gantt-section">
-        <view wx:for="{{activeParallelTasks}}" wx:key="stepId" class="gantt-task-row">
-          <text class="gantt-task-name">{{item.activeTaskName}}</text>
-          <view class="gantt-bar-track">
-            <view class="gantt-bar-fill" style="{{item.barWidthStyle}}"></view>
-          </view>
-          <text class="gantt-task-time">{{item.remainingMinutes}}'</text>
+      <!-- 横向泳道图（多菜并行时有 startAt/endAt） -->
+      <block wx:if="{{ganttData.lanes && ganttData.lanes.length > 0}}">
+        <view class="gantt-stats">
+          <text class="gantt-stats-text">预计 {{ganttData.totalMinutes}} 分钟完成</text>
+          <text wx:if="{{ganttData.savedMinutes > 0}}" class="gantt-stats-saved">比串行节省 {{ganttData.savedMinutes}} 分钟</text>
         </view>
-      </view>
-      <view wx:if="{{activeParallelTasks.length === 0}}" class="gantt-empty">
-        <text class="gantt-empty-text">当前没有并行进行的任务</text>
+        <view class="gantt-timeline-wrap">
+          <view class="gantt-time-ruler">
+            <text wx:for="{{5}}" wx:key="*this" class="gantt-time-tick">{{ganttData.totalMinutes * index / 4}}'</text>
+          </view>
+          <scroll-view scroll-x class="gantt-lanes-scroll" enhanced show-scrollbar="{{false}}">
+            <view class="gantt-lanes-inner" style="min-width: {{ganttData.totalMinutes * 12}}rpx;">
+              <view wx:for="{{ganttData.lanes}}" wx:key="device" class="gantt-lane">
+                <view class="gantt-lane-label">
+                  <view class="gantt-lane-dot" style="background: {{item.color}}"></view>
+                  <text class="gantt-lane-name">{{item.label}}</text>
+                </view>
+                <view class="gantt-lane-bars">
+                  <view
+                    wx:for="{{item.bars}}"
+                    wx:for-item="bar"
+                    wx:key="stepIndex"
+                    class="gantt-bar {{bar.isCurrent ? 'gantt-bar-current' : ''}} {{bar.completed ? 'gantt-bar-done' : ''}}"
+                    style="left: {{bar.leftPercent}}; width: {{bar.widthPercent}}; background: {{bar.color}};"
+                    data-step-index="{{bar.stepIndex}}"
+                    catchtap="onGanttBarTap"
+                  >
+                    <text class="gantt-bar-name">{{bar.name}}</text>
+                    <text wx:if="{{bar.completed}}" class="gantt-bar-check">✓</text>
+                  </view>
+                </view>
+              </view>
+            </view>
+          </scroll-view>
+        </view>
+      </block>
+      <!-- 降级：按菜品分组的步骤列表（无泳道时，可点击跳转） -->
+      <block wx:elif="{{ganttRecipes.length > 0}}">
+        <view class="gantt-section">
+          <view wx:for="{{ganttRecipes}}" wx:key="name" class="gantt-recipe-group">
+            <view class="gantt-recipe-header">
+              <text class="gantt-recipe-name">{{item.name}}</text>
+              <text class="gantt-recipe-progress">{{item.completedCount}}/{{item.totalCount}}</text>
+              <text wx:if="{{item.totalMinutes > 0}}" class="gantt-recipe-time">约{{item.totalMinutes}}'</text>
+            </view>
+            <view class="gantt-bar-track">
+              <view class="gantt-bar-fill" style="{{item.barWidthStyle}}"></view>
+            </view>
+            <view class="gantt-step-list">
+              <view wx:for="{{item.steps}}" wx:for-item="step" wx:key="id" class="gantt-step-item {{step.completed ? 'is-done' : ''}} {{step.isCurrent ? 'is-current' : ''}}" data-step-index="{{step.stepIndex}}" catchtap="onGanttBarTap">
+                <text class="gantt-step-dot">{{step.completed ? '✓' : (step.isCurrent ? '●' : '○')}}</text>
+                <text class="gantt-step-title">{{step.title}}</text>
+                <text wx:if="{{step.duration}}" class="gantt-step-dur">{{step.duration}}'</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </block>
+      <view wx:if="{{!(ganttData.lanes && ganttData.lanes.length > 0) && ganttRecipes.length === 0}}" class="gantt-empty">
+        <text class="gantt-empty-text">暂无步骤数据</text>
       </view>
     </scroll-view>
   </view>

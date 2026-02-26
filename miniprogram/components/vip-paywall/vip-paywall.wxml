@@ -1,0 +1,30 @@
+<view wx:if="{{visible}}" class="vip-paywall">
+  <view class="paywall-mask" bindtap="onMaskTap"></view>
+  <view class="paywall-sheet {{visible ? 'is-open' : ''}}">
+    <view class="paywall-header">
+      <text class="paywall-icon">👑</text>
+      <text class="paywall-title">解锁高级甘特图，掌控厨房全局</text>
+    </view>
+    <view class="paywall-bullets">
+      <text class="paywall-bullet">⏱️ 多灶台/烤箱/空气炸锅并行动画推演</text>
+      <text class="paywall-bullet">统筹最优解，节约 50% 烹饪等待时间</text>
+      <text class="paywall-bullet">AI 无限次调用特权</text>
+    </view>
+    <view class="paywall-actions">
+      <block wx:if="{{!isIOS}}">
+        <view class="paywall-price">
+          <text class="paywall-price-old">¥39/月</text>
+          <text class="paywall-price-now">¥19.9/月</text>
+        </view>
+        <button class="paywall-btn paywall-btn-primary {{paying ? 'paywall-btn-loading' : ''}}" disabled="{{paying}}" bindtap="onPayTap">{{paying ? '支付中...' : '微信安全支付'}}</button>
+      </block>
+      <block wx:else>
+        <text class="paywall-ios-label">VIP专属权益</text>
+        <button class="paywall-btn paywall-btn-disabled" disabled>iOS 暂不支持在小程序内购买</button>
+      </block>
+    </view>
+    <view class="paywall-footer">
+      <text class="paywall-close" bindtap="onCloseTap">关闭</text>
+    </view>
+  </view>
+</view>
