@@ -347,6 +347,25 @@ var COOK_TYPE_TO_DEVICE = {
   microwave: 'microwave'     // 微波炉 → 独立设备，不占灶
 };
 
+/** cook_type → 心智负载（焦点等级）：high 需全程盯，同一分钟不能排两个 high */
+var COOK_TYPE_FOCUS_LEVEL = {
+  stir_fry: 'high',
+  quick_stir_fry: 'high',
+  fry: 'high',
+  braise: 'medium',
+  stew: 'low',
+  steam: 'low',
+  bake: 'low',
+  oven: 'low',
+  cold: 'none',
+  cold_dress: 'none',
+  salad: 'none',
+  boil: 'low',
+  air_fryer: 'low',
+  rice_cooker: 'low',
+  microwave: 'low'
+};
+
 /** 设备数量限制（普通家庭厨房配置，fallback 用） */
 var DEVICE_LIMITS = {
   wok: 2,
@@ -412,6 +431,19 @@ function getRecipeDevice(recipe) {
 }
 
 /**
+ * 获取步骤的焦点等级（心智负载）：high=需全程盯，同一时段不能排两个 high
+ * @param {Object} step - 步骤对象，可有 recipe 或 device
+ * @returns {String} 'high' | 'medium' | 'low' | 'none'
+ */
+function getStepFocusLevel(step) {
+  if (!step) return 'low';
+  if (step.step_type === 'prep') return 'none';
+  var recipe = step.recipe || null;
+  var cookType = recipe ? (recipe.cook_type || recipe.cook_method || 'stir_fry') : 'stir_fry';
+  return COOK_TYPE_FOCUS_LEVEL[cookType] || 'low';
+}
+
+/**
  * 初始化设备计数器
  * @returns {Object} { wok: 0, stove_long: 0, steamer: 0, pot: 0, none: 0 }
  */
@@ -462,13 +494,18 @@ function createDeviceTracker(kitchenConfig) {
 
   /** 分配设备，返回建议的 startAt（分钟），并记录占用至 startAt + duration */
   function allocate(device, duration) {
-    if (device === 'none') return 0;
+    return allocateAtOrAfter(device, duration, 0);
+  }
+
+  /** 在不少于 minStart 的时刻分配设备（用于心智负载约束：避免两个 high-focus 重叠） */
+  function allocateAtOrAfter(device, duration, minStart) {
+    if (device === 'none') return minStart;
+    var nextFree = getNextFreeTime(device);
+    var startAt = Math.max(nextFree, minStart);
+    var endAt = startAt + duration;
     if (burnerPool != null && needsBurner && needsBurner[device]) {
-      var cap = totalBurners;
       burnerPool.sort(function (a, b) { return a - b; });
-      var startAt = burnerPool.length < cap ? 0 : (burnerPool[0] || 0);
-      var endAt = startAt + duration;
-      if (burnerPool.length < cap) {
+      if (burnerPool.length < totalBurners) {
         burnerPool.push(endAt);
       } else {
         burnerPool[0] = endAt;
@@ -479,8 +516,6 @@ function createDeviceTracker(kitchenConfig) {
     var list = reservations[device] || [];
     var cap = getLimit(device);
     list.sort(function (a, b) { return a - b; });
-    var startAt = list.length < cap ? 0 : (list[0] || 0);
-    var endAt = startAt + duration;
     if (list.length < cap) {
       list.push(endAt);
     } else {
@@ -493,6 +528,7 @@ function createDeviceTracker(kitchenConfig) {
   return {
     canAllocate: canAllocate,
     allocate: allocate,
+    allocateAtOrAfter: allocateAtOrAfter,
     getNextFreeTime: getNextFreeTime,
     reservations: reservations
   };
@@ -2199,6 +2235,9 @@ function cloneStep(step) {
   return out;
 }
 
+/** Mise en place：cook 步骤若以备菜动作开头，重分类为 prep，确保备菜前置 */
+var PREP_ACTION_PATTERN = /^(切|洗|腌|泡|剥|去皮|去筋膜|调[酱汁]|拌[匀好]|搅拌|打散|解冻|浸泡|沥干)/;
+
 /**
  * 规范化步骤结构，补全 step_type / actionType / duration_num / waitTime 等字段，
  * 便于后续统一排序。
@@ -2219,7 +2258,15 @@ function normalizeStepForPipeline(step, recipe) {
     else s.step_type = 'cook';
   }
 
-  // 推断 actionType
+  // Mise en place：cook 步骤若以备菜动作开头，强制归类为 prep
+  var text = getStepText(s);
+  if (s.step_type === 'cook' && text && PREP_ACTION_PATTERN.test(text.trim())) {
+    s.step_type = 'prep';
+    s.actionType = 'idle_prep';
+    s._reclassified = true;
+  }
+
+  // 推断 actionType（若未因备菜重分类而已设置）
   if (!s.actionType) {
     s.actionType = inferActionType(s, recipe || s.recipe || null);
   }
@@ -2245,6 +2292,8 @@ function normalizeStepForPipeline(step, recipe) {
     var r = recipe || s.recipe || null;
     s.device = r ? getRecipeDevice(r) : 'wok';
   }
+
+  s.focusLevel = getStepFocusLevel(s);
 
   return s;
 }
@@ -2274,6 +2323,7 @@ function mergeEssentialPrep(prepSteps) {
 
     var type = 'other';
     if (/[洗冲清理去泥]/.test(cleaned)) type = 'wash';
+    else if (/[腌泡调酱汁拌匀搅拌打散浸泡]/.test(cleaned)) type = 'marinate';
     else if (/[切剁改刀块片丝丁段]/.test(cleaned)) type = 'cut';
 
     var key = type + '|' + cleaned;
@@ -2281,10 +2331,17 @@ function mergeEssentialPrep(prepSteps) {
       map[key] = cloneStep(step) || { text: cleaned };
       map[key].text = cleaned;
       map[key].pipelineStage = 'prep';
+      map[key]._prepType = type;
       orderedKeys.push(key);
     }
   }
 
+  var PREP_TYPE_WEIGHT = { wash: 0, cut: 1, marinate: 2, other: 1.5 };
+  orderedKeys.sort(function (a, b) {
+    var wa = PREP_TYPE_WEIGHT[map[a]._prepType] ?? 1.5;
+    var wb = PREP_TYPE_WEIGHT[map[b]._prepType] ?? 1.5;
+    return wa - wb;
+  });
   return orderedKeys.map(function (k) { return map[k]; });
 }
 
@@ -2309,7 +2366,16 @@ function buildTimeline(longTermSteps, kitchenConfig) {
     var s = sorted[i];
     var w = typeof s.waitTime === 'number' ? s.waitTime : s.duration_num || 0;
     var device = s.device || getRecipeDevice(s.recipe) || 'wok';
-    var startAt = tracker.allocate(device, w);
+    var focusLevel = s.focusLevel || getStepFocusLevel(s);
+    var minStart = 0;
+    if (focusLevel === 'high') {
+      for (var k = 0; k < timeline.length; k++) {
+        if ((timeline[k].focusLevel || getStepFocusLevel(timeline[k])) === 'high' && timeline[k].endAt > minStart) {
+          minStart = timeline[k].endAt;
+        }
+      }
+    }
+    var startAt = tracker.allocateAtOrAfter ? tracker.allocateAtOrAfter(device, w, minStart) : tracker.allocate(device, w);
     var node = cloneStep(s);
     node.startAt = startAt;
     node.endAt = startAt + w;
@@ -2440,7 +2506,9 @@ function fillGaps(timeline, activeSteps, kitchenConfig) {
     var longDevice = longTask.device || getRecipeDevice(longTask.recipe) || 'wok';
     if (windowDeviceCounts[longDevice] != null) windowDeviceCounts[longDevice]++;
 
-    // Stage 3：在等待窗口内穿插 active / idle_prep（尊重步骤依赖与设备上限）
+    var windowHighFocusCount = 0;
+
+    // Stage 3：在等待窗口内穿插 active / idle_prep（尊重步骤依赖与设备上限 + 心智负载）
     if (!Array.isArray(activeSteps) || activeSteps.length === 0 || windowSize <= 0) {
       continue;
     }
@@ -2455,6 +2523,9 @@ function fillGaps(timeline, activeSteps, kitchenConfig) {
       var dev = step.device || getRecipeDevice(step.recipe) || 'wok';
       var limit = limits[dev] != null ? limits[dev] : 1;
       if ((windowDeviceCounts[dev] || 0) >= limit) continue;
+
+      var focusLevel = step.focusLevel || getStepFocusLevel(step);
+      if (focusLevel === 'high' && windowHighFocusCount >= 1) continue;
 
       var dur = typeof step.duration_num === 'number'
         ? step.duration_num
@@ -2474,6 +2545,7 @@ function fillGaps(timeline, activeSteps, kitchenConfig) {
       usedTime += dur;
       scheduledStepKeys[s.stepKey] = true;
       if (windowDeviceCounts[dev] != null) windowDeviceCounts[dev]++;
+      if (focusLevel === 'high') windowHighFocusCount++;
     }
   }
 
@@ -2528,6 +2600,85 @@ function fillGaps(timeline, activeSteps, kitchenConfig) {
       out.push(curr);
     }
     result = out;
+  }
+
+  // 洗碗缝隙填充 (Clean-as-you-go)：在空闲期 >= 5 分钟时插入微指令
+  var CLEAN_HINTS = [
+    { minIdle: 3, text: '顺手把刚才的砧板冲一下' },
+    { minIdle: 5, text: '可以把用过的碗筷洗掉，顺便拿出盛菜的盘子' },
+    { minIdle: 8, text: '趁这个空档把厨房台面擦一下，等会上菜更从容' },
+    { minIdle: 10, text: '所有锅都在忙，喝口水休息一下吧' }
+  ];
+  var busy = [];
+  var minT = Infinity;
+  var maxT = -Infinity;
+  for (var ri = 0; ri < result.length; ri++) {
+    var r = result[ri];
+    var stage = r.pipelineStage || '';
+    var start = r.gapStartAt != null ? r.gapStartAt : null;
+    var end = r.gapEndAt != null ? r.gapEndAt : null;
+    if ((stage === 'active_gap' || stage === 'idle_gap') && start != null && end != null && typeof start === 'number' && typeof end === 'number') {
+      busy.push([start, end]);
+      if (start < minT) minT = start;
+      if (end > maxT) maxT = end;
+    }
+    if (r.startAt != null && r.endAt != null && (r.pipelineStage === 'long_term' || stage === 'long_term')) {
+      if (minT === Infinity) minT = r.startAt;
+      if (r.startAt < minT) minT = r.startAt;
+      if (r.endAt > maxT) maxT = r.endAt;
+    }
+  }
+  if (busy.length > 0 && minT !== Infinity && maxT !== -Infinity && maxT > minT) {
+    busy.sort(function (a, b) { return a[0] - b[0]; });
+    var merged = [busy[0].slice()];
+    for (var bi = 1; bi < busy.length; bi++) {
+      if (busy[bi][0] <= merged[merged.length - 1][1]) {
+        if (busy[bi][1] > merged[merged.length - 1][1]) merged[merged.length - 1][1] = busy[bi][1];
+      } else {
+        merged.push(busy[bi].slice());
+      }
+    }
+    var idleList = [];
+    var cur = minT;
+    for (var mi = 0; mi < merged.length; mi++) {
+      if (cur < merged[mi][0]) idleList.push([cur, merged[mi][0]]);
+      if (merged[mi][1] > cur) cur = merged[mi][1];
+    }
+    if (cur < maxT) idleList.push([cur, maxT]);
+    var cleanSteps = [];
+    for (var ii = 0; ii < idleList.length; ii++) {
+      var dur = idleList[ii][1] - idleList[ii][0];
+      if (dur < 5) continue;
+      var hint = CLEAN_HINTS[0];
+      for (var hi = CLEAN_HINTS.length - 1; hi >= 0; hi--) {
+        if (CLEAN_HINTS[hi].minIdle <= dur) {
+          hint = CLEAN_HINTS[hi];
+          break;
+        }
+      }
+      cleanSteps.push({
+        gapStartAt: idleList[ii][0],
+        gapEndAt: idleList[ii][1],
+        text: hint.text,
+        duration_num: Math.round(dur),
+        step_type: 'cook',
+        actionType: 'active',
+        device: 'none',
+        pipelineStage: 'clean_gap',
+        stepKey: 'clean_gap_' + ii
+      });
+    }
+    if (cleanSteps.length > 0) {
+      for (var ci = 0; ci < cleanSteps.length; ci++) {
+        var c = cleanSteps[ci];
+        var insertAfter = -1;
+        for (var ai = 0; ai < result.length; ai++) {
+          var endVal = result[ai].gapEndAt != null ? result[ai].gapEndAt : (result[ai].endAt != null ? result[ai].endAt : -1);
+          if (endVal <= c.gapStartAt) insertAfter = ai;
+        }
+        result.splice(insertAfter + 1, 0, c);
+      }
+    }
   }
 
   // 设备溢出检测：标记峰值灶台超过用户设定值的步骤
@@ -2927,6 +3078,15 @@ function annotatePhases(steps) {
   var prepEnd = firstLong !== -1 ? firstLong - 1 : (firstGap !== -1 ? firstGap - 1 : steps.length - 1);
   var cookEnd = firstFinish !== -1 ? firstFinish - 1 : steps.length - 1;
 
+  var milestoneStep = {
+    text: '所有食材已准备就绪，我们正式开火！',
+    step_type: 'milestone',
+    pipelineStage: 'milestone',
+    duration_num: 0,
+    isMilestone: true,
+    stepKey: 'mise-en-place-done'
+  };
+
   var out = [];
   for (var j = 0; j < steps.length; j++) {
     var orig = steps[j];
@@ -2964,6 +3124,9 @@ function annotatePhases(steps) {
     }
 
     out.push(step);
+    if (j === prepEnd && firstPrep !== -1 && prepEnd < steps.length - 1) {
+      out.push(cloneStep(milestoneStep));
+    }
   }
 
   return out;
@@ -3210,20 +3373,28 @@ function generateUnifiedSteps(menus, shoppingList, options) {
   for (var si = 0; si < annotated.length; si++) {
     var s = annotated[si];
     var text = getStepText(s);
-    if (!text) continue;
+    if (!text && !s.isMilestone) continue;
+
+    var stepType = s.step_type || 'cook';
+    if (stepType === 'milestone') {
+      text = text || '所有食材已准备就绪，我们正式开火！';
+    }
 
     var role = s.role || (s.step_type === 'prep' ? 'both' : 'adult');
+    if (stepType === 'milestone') role = 'both';
     var prefix = role === 'baby' ? '👶 ' : (role === 'adult' ? '👨 ' : '');
     var detailLine = prefix + text;
 
-    var stepType = s.step_type || 'cook';
     var actionType = s.actionType || inferActionType(s, s.recipe || null);
     
     // 简化步骤标题：阶段横幅已说明烹饪类型，步骤标题只需显示菜名
     var dishName = s.recipeName || '';
     var title;
-    if (dishName) {
-      // 有菜名时：直接显示菜名
+    if (stepType === 'milestone') {
+      title = '准备就绪，正式开火';
+    } else if (s.pipelineStage === 'clean_gap') {
+      title = '顺手收拾';
+    } else if (dishName) {
       title = '步骤 ' + id + '：' + dishName;
     } else if (stepType === 'prep') {
       title = '步骤 ' + id + '：备菜';
@@ -3247,10 +3418,10 @@ function generateUnifiedSteps(menus, shoppingList, options) {
       details: [detailLine],
       role: role,
       completed: false,
-      duration: duration,
+      duration: stepType === 'milestone' ? 0 : duration,
       step_type: stepType,
       recipeName: dishName,
-      // 为后续 UI 扩展预留字段（当前 steps.js 不强依赖）
+      isMilestone: s.isMilestone || false,
       actionType: actionType,
       pipelineStage: s.pipelineStage,
       parallelContext: s.parallelContext || null,
@@ -3258,7 +3429,14 @@ function generateUnifiedSteps(menus, shoppingList, options) {
       phaseType: s.phaseType || null,
       phaseTitle: s.phaseTitle || '',
       phaseSubtitle: s.phaseSubtitle || '',
-      phaseTimeline: s.phaseTimeline || null
+      phaseTimeline: s.phaseTimeline || null,
+      startAt: s.startAt,
+      endAt: s.endAt,
+      gapStartAt: s.gapStartAt,
+      gapEndAt: s.gapEndAt,
+      stepKey: s.stepKey || null,
+      dependsOn: s.dependsOn || null,
+      device: s.device || null
     });
   }
 
@@ -3360,14 +3538,13 @@ function formatForHelper(menus, preference, shoppingList) {
 
   multiDish = menus.length > 1;
 
+  // 收集食材清单（与原先一致）
   for (var i = 0; i < menus.length; i++) {
     var menu = menus[i];
     var adult = menu && menu.adultRecipe;
     var baby = menu && menu.babyRecipe;
     var dishName = (adult && adult.name) || (baby && baby.name) || '一道菜';
     dishNames.push(dishName);
-    var shortName = _dishShortName(dishName);
-
     var prepItems = [];
     function addPrepFromList(ingList) {
       if (!Array.isArray(ingList)) return;
@@ -3387,21 +3564,83 @@ function formatForHelper(menus, preference, shoppingList) {
     addPrepFromList(adult && adult.ingredients);
     addPrepFromList(baby && baby.ingredients);
     for (var pi = 0; pi < prepItems.length; pi++) combinedPrepItems.push(prepItems[pi]);
+  }
 
-    var singleSteps = generateSteps(adult || null, baby || null, list) || [];
-    for (var j = 0; j < singleSteps.length; j++) {
-      var t = (singleSteps[j].title || '').toString();
-      if (t) {
-        combinedActions.push({
-          text: t,
-          dishShortName: multiDish ? shortName : undefined
-        });
+  // 统筹排序：收集原子步骤 → 重排 → 并行上下文 → 映射为 combinedActions
+  var rawPipelineSteps = [];
+  for (var m = 0; m < menus.length; m++) {
+    var mMenu = menus[m];
+    var mAdult = mMenu && mMenu.adultRecipe;
+    var mBaby = mMenu && mMenu.babyRecipe;
+    if (mAdult && Array.isArray(mAdult.steps)) {
+      var adultRecipeId = 'adult_' + m + '_' + (mAdult.name || mAdult.id || 'r');
+      for (var ai = 0; ai < mAdult.steps.length; ai++) {
+        var aStep = mAdult.steps[ai];
+        var aTextRaw = getStepText(aStep);
+        if (!aTextRaw) continue;
+        var aText = replaceStepPlaceholders(aTextRaw, mAdult, list, '');
+        if (!aText) continue;
+        var aObj = typeof aStep === 'object' ? cloneStep(aStep) : {};
+        aObj.text = aText;
+        if (!aObj.step_type) aObj.step_type = aObj.action === 'prep' ? 'prep' : 'cook';
+        aObj.role = 'adult';
+        aObj.recipeName = mAdult.name || '';
+        aObj.recipe = mAdult;
+        aObj.recipeId = adultRecipeId;
+        aObj.intraRecipeOrder = ai;
+        aObj.stepKey = adultRecipeId + '_' + ai;
+        aObj.dependsOn = ai > 0 ? adultRecipeId + '_' + (ai - 1) : null;
+        rawPipelineSteps.push(aObj);
       }
     }
-    if (singleSteps.length === 0) {
+    if (mBaby && Array.isArray(mBaby.steps)) {
+      var babyRecipeId = 'baby_' + m + '_' + (mBaby.name || mBaby.id || 'r');
+      for (var bi = 0; bi < mBaby.steps.length; bi++) {
+        var bStep = mBaby.steps[bi];
+        var bTextRaw = getStepText(bStep);
+        if (!bTextRaw) continue;
+        var bText = replaceStepPlaceholders(bTextRaw, mBaby, list, '');
+        if (!bText) continue;
+        var bObj = typeof bStep === 'object' ? cloneStep(bStep) : {};
+        bObj.text = bText;
+        if (!bObj.step_type) bObj.step_type = bObj.action === 'prep' ? 'prep' : 'cook';
+        bObj.role = 'baby';
+        bObj.recipeName = mBaby.name || '';
+        bObj.recipe = mBaby;
+        bObj.recipeId = babyRecipeId;
+        bObj.intraRecipeOrder = bi;
+        bObj.stepKey = babyRecipeId + '_' + bi;
+        bObj.dependsOn = bi > 0 ? babyRecipeId + '_' + (bi - 1) : null;
+        rawPipelineSteps.push(bObj);
+      }
+    }
+  }
+
+  if (rawPipelineSteps.length > 0) {
+    var reordered = reorderStepsForPipeline(rawPipelineSteps, menus, null);
+    var withContext = buildParallelContext(reordered);
+    for (var si = 0; si < withContext.length; si++) {
+      var s = withContext[si];
+      var stepText = (s.text != null ? s.text : getStepText(s)) || '';
+      if (!stepText) continue;
+      var pc = s.parallelContext;
+      var hintStr = pc && pc.hint
+        ? (pc.hint + (pc.remainingMinutes != null ? '，约 ' + pc.remainingMinutes + ' 分钟' : ''))
+        : undefined;
+      combinedActions.push({
+        text: stepText,
+        dishShortName: multiDish ? _dishShortName(s.recipeName || '') : undefined,
+        hint: hintStr
+      });
+    }
+  }
+
+  if (combinedActions.length === 0) {
+    for (var k = 0; k < menus.length; k++) {
+      var dName = (menus[k] && menus[k].adultRecipe && menus[k].adultRecipe.name) || (menus[k] && menus[k].babyRecipe && menus[k].babyRecipe.name) || '一道菜';
       combinedActions.push({
         text: '按步骤操作即可',
-        dishShortName: multiDish ? shortName : undefined
+        dishShortName: multiDish ? _dishShortName(dName) : undefined
       });
     }
   }

@@ -1061,6 +1061,86 @@ flowchart TD
 
 ---
 
+### 11.10 2026-02-27 变更（心智负载调度、里程碑卡片、延后按钮、Clean-as-you-go、帮厨增强）
+
+> **本次为 v5.1 更新**，核心变化：流水线调度引入心智负载（focus level）约束，避免两个高注意力步骤同时进行；备菜步骤自动重分类与合理排序（洗→切→腌）；新增「备菜完成」里程碑过渡卡片与「延后 3 分钟」动态防崩盘按钮；空闲间隙插入 Clean-as-you-go 顺手收拾微指令；帮厨模式信息展示更完整；云初始化时序修复。
+
+#### 流水线调度——心智负载约束
+
+| 维度 | 说明 |
+|------|------|
+| COOK_TYPE_FOCUS_LEVEL | 新增 cook_type → 焦点等级映射：stir_fry/quick_stir_fry/fry = `high`（需全程盯）；braise = `medium`；stew/steam/bake/boil 等 = `low`；cold/salad = `none` |
+| getStepFocusLevel | 新增工具函数：根据步骤所属菜谱的 cook_type 返回焦点等级 |
+| buildTimeline | high-focus 步骤不与其他 high-focus 重叠——分配设备时 `minStart` 取所有已排 high 步骤的最大 endAt |
+| fillGaps | 间隙填充时，同一等待窗口内最多插入 1 个 high-focus 步骤 |
+| allocateAtOrAfter | 设备追踪器新增方法：在不早于 `minStart` 的时刻分配设备，供心智负载约束使用 |
+
+#### 备菜智能重分类与排序（Mise en place）
+
+| 维度 | 说明 |
+|------|------|
+| PREP_ACTION_PATTERN | 正则识别备菜动作前缀（切/洗/腌/泡/剥/去皮/调酱/拌匀/搅拌/打散/解冻/浸泡/沥干） |
+| normalizeStepForPipeline | cook 步骤若匹配备菜动作前缀，自动重分类为 prep（`_reclassified = true`） |
+| mergeEssentialPrep | 新增 `marinate` 备菜类型；排序权重：wash(0) → cut(1) → marinate(2) → other(1.5) |
+
+#### Clean-as-you-go 顺手收拾微指令
+
+| 维度 | 说明 |
+|------|------|
+| 插入时机 | 空闲间隙 ≥ 3 分钟时，在步骤序列中插入收拾提示 |
+| 提示内容 | 按空闲时长分级：3 分钟→冲砧板；5 分钟→洗碗筷/拿盛菜盘子；8 分钟→擦台面/整理 |
+| phaseType | `clean_gap`，步骤页显示「顺手收拾」阶段标签（绿色） |
+
+#### 里程碑过渡卡片
+
+| 维度 | 说明 |
+|------|------|
+| 触发条件 | 步骤 `isMilestone = true`（备菜→烹饪阶段转换点） |
+| UI | 全屏过渡卡片——标题「准备就绪」+ 描述「所有食材已就绪，我们正式开火」+ CTA「开始烹饪」 |
+| 样式 | 暖白渐变背景、大圆角、居中排版；完成后 opacity 降低 |
+
+#### 延后 3 分钟（动态防崩盘）
+
+| 维度 | 说明 |
+|------|------|
+| 入口 | 底部操作栏新增「等我一下 +3'」按钮 |
+| onDelayCurrentStep | 当前步骤及所有依赖其后步骤（通过 dependsOn 链路追踪）的 startAt/endAt/gapStartAt/gapEndAt 整体后移 3 分钟 |
+| 反馈 | 震动 + Toast「已为你延后 3 分钟」；甘特图实时更新 |
+
+#### 帮厨模式增强
+
+| 维度 | 说明 |
+|------|------|
+| 信息展示 | helper 角色现在显示阶段标签（phase-chip）、并行节拍提示（secondaryHint）、预计时长 |
+| helper-card | 操作项支持 `hint` 子文本（如「注意火候」），独立行展示，字号 22rpx、柔灰色 |
+| 步骤来源 | helper 模式若云端已有预计算步骤（result.steps），直接使用而不重新生成 |
+
+#### 云初始化修复
+
+| 维度 | 说明 |
+|------|------|
+| app.js | `wx.cloud.init` 从 `setTimeout` 异步改为同步执行，确保页面 `onLoad` 中云服务可用 |
+
+#### 其他改动
+
+- `processStepsForView` 透传 `isMilestone` / `stepKey` / `dependsOn` 字段
+- phaseMap 新增 `clean_gap: '顺手收拾'` 映射
+- 底部操作栏按钮文字适配里程碑状态；阿姨模式字号从 38rpx 调整为 32rpx
+
+#### 涉及文件一览（§11.10）
+
+| 文件 | 变更摘要 |
+|------|----------|
+| miniprogram/app.js | cloud.init 从 setTimeout 异步改为同步执行 |
+| miniprogram/data/menuGenerator.js | COOK_TYPE_FOCUS_LEVEL + getStepFocusLevel + PREP_ACTION_PATTERN + allocateAtOrAfter + buildTimeline 心智负载约束 + fillGaps focus 限制 + mergeEssentialPrep marinate 类型与排序 + Clean-as-you-go 插入 + normalizeStepForPipeline 备菜重分类 |
+| miniprogram/pages/steps/steps.js | 里程碑卡片渲染 + onDelayCurrentStep + phaseMap 新增 clean_gap + processStepsForView 透传 isMilestone/stepKey/dependsOn + helper 步骤来源优化 + 阶段标签/并行提示/时长在 helper 模式下显示 |
+| miniprogram/pages/steps/steps.wxml | 里程碑卡片 UI + 延后按钮 + helper 模式阶段标签/并行提示/时长条件调整 |
+| miniprogram/pages/steps/steps.wxss | 里程碑卡片样式 + clean_gap 阶段标签样式 + 延后按钮样式 + helper 模式样式协调 + 按钮文字溢出处理 |
+| miniprogram/components/helper-card/helper-card.wxml | 操作项新增 hint 子文本展示 |
+| miniprogram/components/helper-card/helper-card.wxss | helper-action-body 列式布局 + helper-action-hint 样式 |
+
+---
+
 ### 11.6 2026-02-14 变更（导入极速解析、宝宝占位符、封面直链、统筹空气炸锅）
 
 - **云函数 recipeImport**

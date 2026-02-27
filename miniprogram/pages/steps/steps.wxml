@@ -77,10 +77,19 @@
       <text class="peek-text">{{prevStep.title}}</text>
     </view>
 
-    <!-- 当前步骤聚焦卡 -->
-    <view class="focus-card {{currentStep.completed ? 'is-done' : ''}}">
+    <!-- 里程碑：备菜完成 → 正式开火（全屏过渡卡片） -->
+    <view wx:if="{{currentStep.isMilestone}}" class="milestone-card {{currentStep.completed ? 'is-done' : ''}}">
+      <text class="milestone-title">准备就绪</text>
+      <text class="milestone-desc">所有食材已就绪，我们正式开火</text>
+      <view wx:if="{{!currentStep.completed}}" class="milestone-action" bindtap="markCurrentCompleted">
+        <text class="milestone-btn-text">开始烹饪</text>
+      </view>
+    </view>
+
+    <!-- 当前步骤聚焦卡（非里程碑） -->
+    <view wx:if="{{!currentStep.isMilestone}}" class="focus-card {{currentStep.completed ? 'is-done' : ''}}">
       <!-- 阶段纤细标签 -->
-      <text wx:if="{{!isAyiMode && currentPhaseLabel}}" class="phase-chip {{currentPhaseType}}">{{currentPhaseLabel}}</text>
+      <text wx:if="{{(!isAyiMode || isHelperRole) && currentPhaseLabel}}" class="phase-chip {{currentPhaseType}}">{{currentPhaseLabel}}</text>
       <!-- 疲惫模式：空气炸锅步骤设备标识 -->
       <view wx:if="{{isTiredMode && currentStepDevice === 'air_fryer'}}" class="device-chip device-chip-airfryer">空气炸锅</view>
 
@@ -88,7 +97,7 @@
       <text class="focus-title">{{currentStep.title}}</text>
 
       <!-- 次动作提示 -->
-      <view wx:if="{{!isAyiMode && secondaryHint}}" class="focus-secondary">
+      <view wx:if="{{(!isAyiMode || isHelperRole) && secondaryHint}}" class="focus-secondary">
         <text class="secondary-label">并行节拍</text>
         <text class="secondary-text">{{secondaryHint}}</text>
       </view>
@@ -126,7 +135,7 @@
       </view>
 
       <!-- 时长提示 -->
-      <view wx:if="{{!isAyiMode && currentStep.duration}}" class="focus-duration">
+      <view wx:if="{{(!isAyiMode || isHelperRole) && currentStep.duration}}" class="focus-duration">
         <text class="duration-icon">⏱</text>
         <text class="duration-text">约 {{currentStep.duration}} 分钟</text>
       </view>
@@ -155,8 +164,11 @@
       class="action-main {{currentStep.completed ? 'is-done' : ''}}"
       catchtap="markCurrentCompleted"
     >
-      <text class="action-main-text">{{isAyiMode ? '做好了，下一步' : (currentStep.completed ? '✓ 已完成' : '完成此步')}}</text>
+      <text class="action-main-text">{{currentStep.isMilestone && !currentStep.completed ? '开始烹饪' : (isAyiMode ? '做好了，下一步' : (currentStep.completed ? '✓ 已完成' : '完成此步'))}}</text>
     </button>
+    <view class="action-delay" catchtap="onDelayCurrentStep">
+      <text class="action-delay-text">等我一下 +3'</text>
+    </view>
     <view wx:if="{{showPaywallEntry && !isAyiMode}}" class="action-gantt" bindtap="toggleGanttSheet">
       <text class="action-gantt-icon">⏱</text>
     </view>

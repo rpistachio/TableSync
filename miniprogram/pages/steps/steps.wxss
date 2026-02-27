@@ -9,6 +9,15 @@
   background: linear-gradient(180deg, rgba(253, 248, 236, 0.4) 0%, var(--bg) 20%);
 }
 
+/* helper 模式下阶段标签与并行提示与暖色氛围协调 */
+.steps-container.helper-role .phase-chip {
+  margin-top: 4rpx;
+}
+.steps-container.helper-role .focus-parallel-hint {
+  background: rgba(253, 248, 236, 0.95);
+  border-color: rgba(193, 102, 62, 0.22);
+}
+
 .steps-container.cook-mode {
   padding-bottom: 180rpx;
 }
@@ -466,6 +475,56 @@
   white-space: nowrap;
 }
 
+/* --- 里程碑过渡卡片（备菜完成 → 正式开火） --- */
+.milestone-card {
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(255, 252, 247, 0.98) 0%, rgba(249, 243, 236, 0.96) 100%);
+  border-radius: 32rpx;
+  padding: 64rpx 48rpx;
+  border: 1rpx solid var(--accent-soft);
+  box-shadow: 0 18rpx 54rpx rgba(74, 69, 64, 0.14);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 320rpx;
+}
+
+.milestone-title {
+  font-size: 44rpx;
+  font-weight: 700;
+  color: #5a544f;
+  letter-spacing: 4rpx;
+  margin-bottom: 16rpx;
+}
+
+.milestone-desc {
+  font-size: 28rpx;
+  color: #8e857e;
+  margin-bottom: 48rpx;
+}
+
+.milestone-action {
+  padding: 24rpx 56rpx;
+  background: linear-gradient(135deg, #e8a87c 0%, #d4956a 100%);
+  border-radius: 999rpx;
+  box-shadow: 0 8rpx 24rpx rgba(232, 168, 124, 0.35);
+}
+
+.milestone-btn-text {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 2rpx;
+}
+
+.milestone-card.is-done {
+  opacity: 0.5;
+  filter: grayscale(0.6);
+}
+
 /* --- 聚焦卡片 --- */
 .focus-card {
   position: relative;
@@ -523,6 +582,12 @@
   background: rgba(209, 196, 233, 0.5);
   color: #311b92;
   border-left-color: #673ab7;
+}
+
+.phase-chip.clean_gap {
+  background: rgba(200, 230, 201, 0.6);
+  color: #2e7d32;
+  border-left-color: #66bb6a;
 }
 
 .device-chip {
@@ -827,6 +892,7 @@
 
 .action-main {
   flex: 1;
+  min-width: 0;
   height: 88rpx;
   border-radius: 24rpx;
   background: var(--text);
@@ -834,8 +900,9 @@
   align-items: center;
   justify-content: center;
   border: none;
-  padding: 0;
+  padding: 0 16rpx;
   line-height: 88rpx;
+  overflow: hidden;
 }
 
 .action-main.is-done {
@@ -847,6 +914,27 @@
   font-weight: 600;
   color: var(--text-inverse);
   letter-spacing: 2rpx;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.action-delay {
+  min-width: 140rpx;
+  height: 88rpx;
+  padding: 0 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20rpx;
+  background: rgba(232, 168, 124, 0.2);
+  border: 1rpx solid rgba(232, 168, 124, 0.4);
+}
+
+.action-delay-text {
+  font-size: 24rpx;
+  color: var(--accent);
+  font-weight: 500;
 }
 
 .action-gantt {
@@ -1314,12 +1402,13 @@
 
 .cook-mode.ayi-mode .action-main {
   height: 120rpx;
-  font-size: 38rpx;
+  font-size: 32rpx;
   line-height: 120rpx;
 }
 
 .cook-mode.ayi-mode .action-main-text {
-  font-size: 38rpx;
+  font-size: 32rpx;
+  letter-spacing: 1rpx;
 }
 
 /* ============ 做完饭后隐式反馈 ============ */

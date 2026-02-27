@@ -496,6 +496,7 @@ function processStepsForView(steps) {
     // - 若未提供，则回退到「首个备菜步骤 + 首个烹饪步骤」的简单分段逻辑
     var isPhaseStart = typeof s.isPhaseStart === 'boolean' ? s.isPhaseStart : false;
     var phaseType = s.phaseType || stepType;
+    if (s.pipelineStage === 'clean_gap') phaseType = 'clean_gap';
     if (!s.isPhaseStart) {
       if (hasPrepPhase && stepType === 'prep' && index === 0) {
         isPhaseStart = true;
@@ -516,6 +517,9 @@ function processStepsForView(steps) {
       } else if (phaseType === 'cook') {
         phaseTitle = '集中烹饪阶段';
         phaseSubtitle = phaseSubtitle || '多道菜同步推进，注意火候顺序';
+      } else if (phaseType === 'clean_gap') {
+        phaseTitle = '顺手收拾';
+        phaseSubtitle = phaseSubtitle || '利用空档收拾台面';
       }
     }
 
@@ -548,7 +552,10 @@ function processStepsForView(steps) {
       pipelineStage: s.pipelineStage || null,
       startAt: s.startAt != null ? s.startAt : (s.gapStartAt != null ? s.gapStartAt : null),
       endAt: s.endAt != null ? s.endAt : (s.gapEndAt != null ? s.gapEndAt : null),
-      phaseTimeline: s.phaseTimeline || null
+      phaseTimeline: s.phaseTimeline || null,
+      isMilestone: !!s.isMilestone,
+      stepKey: s.stepKey || null,
+      dependsOn: s.dependsOn || null
     };
   });
 }
@@ -813,7 +820,11 @@ Page({
         if (appAyi && appAyi.globalData && Array.isArray(result.menus) && result.menus.length > 0) {
           appAyi.globalData.todayMenus = result.menus;
         }
-        steps = menuData.generateSteps(ayiPref, { forceLinear: true });
+        if (that._isHelperRole && Array.isArray(result.steps) && result.steps.length > 0) {
+          steps = result.steps;
+        } else {
+          steps = menuData.generateSteps(ayiPref, { forceLinear: true });
+        }
         if (that._isHelperRole && result.menus && result.menus.length > 0) {
           // 构建 helper 模式标题
           var menuNames = result.menus.map(function (m) {
@@ -1183,7 +1194,7 @@ Page({
     var prevStep = currentIndex > 0 ? viewSteps[currentIndex - 1] : null;
     var nextStep = currentIndex < viewSteps.length - 1 ? viewSteps[currentIndex + 1] : null;
     var currentPhase = currentStep.phaseType || currentStep.stepType || '';
-    var phaseMap = { prep: '备菜', long_term: '炖煮', gap: '间隙利用', cook: '快炒', finish: '收尾' };
+    var phaseMap = { prep: '备菜', long_term: '炖煮', gap: '间隙利用', cook: '快炒', finish: '收尾', clean_gap: '顺手收拾' };
     var currentPhaseLabel = phaseMap[currentPhase] || currentStep.phaseTitle || '';
 
     // ── 并行任务 ──
@@ -1629,7 +1640,7 @@ Page({
     var prevStep = index > 0 ? viewSteps[index - 1] : null;
     var nextStep = index < viewSteps.length - 1 ? viewSteps[index + 1] : null;
     var currentPhase = currentStep.phaseType || currentStep.stepType || '';
-    var phaseMap = { prep: '备菜', long_term: '炖煮', gap: '间隙利用', cook: '快炒', finish: '收尾' };
+    var phaseMap = { prep: '备菜', long_term: '炖煮', gap: '间隙利用', cook: '快炒', finish: '收尾', clean_gap: '顺手收拾' };
     var currentPhaseLabel = phaseMap[currentPhase] || currentStep.phaseTitle || '';
     var subtitle = currentStep.recipeName || '跟随步骤，轻松完成美味';
 
@@ -1691,6 +1702,54 @@ Page({
     if (step.id === lastId) {
       this._onAllStepsCompleted();
     }
+  },
+
+  /** 动态防崩盘：当前步骤及依赖其后步骤整体后移 3 分钟，甘特图实时更新 */
+  onDelayCurrentStep: function () {
+    var steps = this._stepsRaw;
+    if (!Array.isArray(steps) || steps.length === 0) return;
+    var idx = this._currentStepIndex;
+    var current = steps[idx];
+    if (!current) return;
+
+    var shiftSet = { };
+    shiftSet[idx] = true;
+    var changed = true;
+    while (changed) {
+      changed = false;
+      for (var j = 0; j < steps.length; j++) {
+        if (shiftSet[j]) continue;
+        var dep = steps[j].dependsOn;
+        if (!dep) continue;
+        for (var i in shiftSet) {
+          if (steps[i].stepKey === dep) {
+            shiftSet[j] = true;
+            changed = true;
+            break;
+          }
+        }
+      }
+    }
+
+    var DELAY_MIN = 3;
+    for (var k = 0; k < steps.length; k++) {
+      if (!shiftSet[k]) continue;
+      var s = steps[k];
+      if (typeof s.startAt === 'number') s.startAt += DELAY_MIN;
+      if (typeof s.endAt === 'number') s.endAt += DELAY_MIN;
+      if (typeof s.gapStartAt === 'number') s.gapStartAt += DELAY_MIN;
+      if (typeof s.gapEndAt === 'number') s.gapEndAt += DELAY_MIN;
+    }
+
+    this._lastProcessedStepsRef = null;
+    this._cachedViewSteps = null;
+    this._updateView(steps);
+    this._updateHeaderImage(steps, this._currentStepIndex);
+
+    try {
+      wx.vibrateShort && wx.vibrateShort({ type: 'light' });
+    } catch (e) {}
+    wx.showToast({ title: '已为你延后 3 分钟', icon: 'none' });
   },
 
   /** helper 模式食材清单折叠开关 */

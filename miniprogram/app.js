@@ -79,23 +79,17 @@ App({
       seedUserService.saveChannel(channel);
     }
 
-    // 初始化云开发环境（延后到下一帧，避免 SDK 未就绪报错）
+    // 初始化云开发环境（同步执行，确保页面 onLoad 中可用）
     // 若控制台报 access_token missing：多为模拟器未登录，请用「真机预览」扫码或「真机调试」获得登录态
-    function doCloudInit() {
-      if (typeof wx === 'undefined' || !wx.cloud) return;
+    if (typeof wx !== 'undefined' && wx.cloud) {
       try {
         wx.cloud.init({
           env: cloudInit.DEFAULT_ENV,
           traceUser: true
         });
       } catch (e) {
-        // 同步异常静默处理
+        // 同步异常静默处理（重复 init 等场景）
       }
-    }
-    if (typeof setTimeout !== 'undefined') {
-      setTimeout(doCloudInit, 0);
-    } else {
-      doCloudInit();
     }
 
     // 种子用户注册（异步，在云 init 之后执行，避免触发未初始化的 cloud）

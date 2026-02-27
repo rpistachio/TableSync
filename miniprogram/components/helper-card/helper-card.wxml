@@ -22,7 +22,10 @@
       <view class="helper-action-list">
         <view wx:for="{{combinedActions}}" wx:key="index" class="helper-action-item">
           <text class="helper-action-num">{{index + 1}}</text>
-          <text class="helper-action-text"><text wx:if="{{item.dishShortName}}" class="helper-action-prefix">[{{item.dishShortName}}] </text>{{item.text}}</text>
+          <view class="helper-action-body">
+            <text class="helper-action-text"><text wx:if="{{item.dishShortName}}" class="helper-action-prefix">[{{item.dishShortName}}] </text>{{item.text}}</text>
+            <text wx:if="{{item.hint}}" class="helper-action-hint">· {{item.hint}}</text>
+          </view>
         </view>
       </view>
     </view>
