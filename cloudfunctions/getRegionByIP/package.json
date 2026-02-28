@@ -1,0 +1,11 @@
+{
+  "name": "getRegionByIP",
+  "version": "1.0.0",
+  "description": "根据 CLIENTIP 调用腾讯位置服务 IP 定位，返回省市区",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  },
+  "author": "",
+  "license": "ISC"
+}
