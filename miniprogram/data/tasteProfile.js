@@ -71,7 +71,14 @@ function createEmpty() {
     dislikedRecipes: [],
     totalCooks: 0,
     visitCount: 0,
-    version: 1
+    version: 1,
+    combinationRejections: [],
+    lockSignals: {},
+    regionPreference: {
+      detected: null,
+      manual: null,
+      lastDetectedAt: null
+    }
   };
 }
 
@@ -778,8 +785,21 @@ var SEASONAL_INGREDIENTS = {
   12: ['冬笋', '大白菜', '羊肉']
 };
 
+/** 地域 × 月份 时令食材（优先于通用 SEASONAL_INGREDIENTS） */
+var REGIONAL_SEASONAL_INGREDIENTS = {
+  cantonese: { 1: ['菜心', '白萝卜', '腊味'], 6: ['丝瓜', '冬瓜', '荔枝'], 9: ['芋头', '大闸蟹'], 12: ['芥兰', '生蚝'] },
+  dongbei:   { 1: ['酸菜', '白菜', '粉条'], 6: ['茄子', '豆角', '玉米'], 9: ['土豆', '南瓜'], 12: ['大白菜', '冻豆腐'] },
+  sichuan:   { 1: ['白萝卜', '莴笋', '豌豆尖'], 6: ['豆角', '茄子', '藤椒'], 9: ['莲藕', '毛豆'], 12: ['儿菜', '冬笋'] },
+  jiangzhe:  { 1: ['冬笋', '大白菜', '荸荠'], 6: ['蚕豆', '杨梅', '黄鱼'], 9: ['芋头', '大闸蟹', '桂花'], 12: ['冬笋', '茨菰'] },
+  hunan:     { 1: ['白菜苔', '腊肉'], 6: ['小龙虾', '莲藕'], 9: ['板栗', '芋头'], 12: ['冬笋', '腊味'] },
+  minyue:    { 1: ['芥菜', '白萝卜'], 6: ['丝瓜', '芒果', '龙眼'], 9: ['芋头', '番薯'], 12: ['菠菜', '牡蛎'] },
+  yungui:    { 1: ['豌豆尖', '折耳根'], 6: ['菌子', '酸笋'], 9: ['板栗', '毛豆'], 12: ['萝卜', '腊肉'] },
+  xibei:     { 1: ['土豆', '羊肉', '白菜'], 6: ['番茄', '辣椒', '羊肉'], 9: ['土豆', '南瓜'], 12: ['萝卜', '羊肉'] },
+  huaiyang:  { 1: ['大白菜', '萝卜', '山药'], 6: ['蚕豆', '苋菜'], 9: ['芋头', '菱角'], 12: ['冬笋', '白菜'] }
+};
+
 /**
- * 选取今日主角食材：冰箱临期 > 时令 > 用户高频偏好
+ * 选取今日主角食材：冰箱临期 > 地域时令 > 通用时令 > 用户高频偏好
  * @param {Array<string>} fridgeExpiringNames
  * @returns {string|null}
  */
@@ -788,7 +808,18 @@ function pickHeroIngredient(fridgeExpiringNames) {
     return fridgeExpiringNames[0];
   }
   var month = new Date().getMonth() + 1;
-  var seasonal = SEASONAL_INGREDIENTS[month] || [];
+  var seasonal = [];
+  try {
+    var activeRegion = typeof getActiveRegion === 'function' ? getActiveRegion() : null;
+    var regionCuisineMap = require('./regionCuisineMap.js');
+    var cuisineKey = activeRegion
+      ? (activeRegion.manual ? regionCuisineMap.getCuisineKeyByCity(activeRegion.manual) : regionCuisineMap.getCuisineKeyByCity(activeRegion.city, activeRegion.province))
+      : null;
+    if (cuisineKey && REGIONAL_SEASONAL_INGREDIENTS[cuisineKey] && REGIONAL_SEASONAL_INGREDIENTS[cuisineKey][month]) {
+      seasonal = REGIONAL_SEASONAL_INGREDIENTS[cuisineKey][month];
+    }
+  } catch (e) {}
+  if (seasonal.length === 0) seasonal = SEASONAL_INGREDIENTS[month] || [];
   if (seasonal.length > 0) {
     var dayOfMonth = new Date().getDate();
     return seasonal[dayOfMonth % seasonal.length];
@@ -805,6 +836,133 @@ function pickHeroIngredient(fridgeExpiringNames) {
     }
   }
   return topKey ? (LABELS[topKey] || null) : null;
+}
+
+// ============ 组合排斥矩阵 & 锁菜信号 ============
+
+var MAX_COMBINATION_REJECTIONS = 50;
+
+/**
+ * 记录「锁住 A+B 划走 C」的组合排斥关系
+ * @param {Array<string>} keptIds - 锁定保留的 recipe ID 列表
+ * @param {string} rejectedId - 被换掉的 recipe ID
+ */
+function recordCombinationRejection(keptIds, rejectedId) {
+  if (!rejectedId || !Array.isArray(keptIds)) return;
+  var profile = get();
+  if (!Array.isArray(profile.combinationRejections)) profile.combinationRejections = [];
+  profile.combinationRejections.push({
+    kept: keptIds.slice().sort(),
+    rejected: rejectedId,
+    ts: Date.now()
+  });
+  if (profile.combinationRejections.length > MAX_COMBINATION_REJECTIONS) {
+    profile.combinationRejections = profile.combinationRejections.slice(-MAX_COMBINATION_REJECTIONS);
+  }
+  save(profile);
+}
+
+/**
+ * 锁菜正向信号 +1
+ * @param {string} recipeId
+ */
+function recordLockSignal(recipeId) {
+  if (!recipeId) return;
+  var profile = get();
+  if (!profile.lockSignals || typeof profile.lockSignals !== 'object') profile.lockSignals = {};
+  profile.lockSignals[recipeId] = (profile.lockSignals[recipeId] || 0) + 1;
+  save(profile);
+}
+
+/**
+ * 返回候选菜与当前菜单（锁定菜）的排斥惩罚分，供 menuGenerator 降权
+ * 命中「曾与当前锁定菜一起时用户划走该候选」则返回惩罚系数
+ * @param {string} candidateId - 候选菜 ID
+ * @param {Array<string>} currentMenuIds - 当前锁定/保留的菜 ID 列表
+ * @returns {number} 0~1，1 表示无惩罚，越小惩罚越重（建议乘以 0.3 等）
+ */
+function getCombinationPenalties(candidateId, currentMenuIds) {
+  if (!candidateId || !Array.isArray(currentMenuIds) || currentMenuIds.length === 0) return 1;
+  var profile = get();
+  var list = profile.combinationRejections || [];
+  var keptSet = {};
+  for (var i = 0; i < currentMenuIds.length; i++) keptSet[currentMenuIds[i]] = true;
+  for (var j = 0; j < list.length; j++) {
+    var item = list[j];
+    if (item.rejected !== candidateId) continue;
+    var kept = item.kept || [];
+    var matchCount = 0;
+    for (var k = 0; k < kept.length; k++) {
+      if (keptSet[kept[k]]) matchCount++;
+    }
+    if (matchCount > 0) return 0.3;
+  }
+  return 1;
+}
+
+/**
+ * 返回高频锁定的菜 ID 列表（用于正向加权），按次数降序取前 N 个
+ * @param {number} [limit=10]
+ * @returns {Array<string>}
+ */
+function getLockBoostedRecipeIds(limit) {
+  var cap = typeof limit === 'number' ? limit : 10;
+  var profile = get();
+  var signals = profile.lockSignals || {};
+  var arr = [];
+  for (var id in signals) {
+    if (signals.hasOwnProperty(id) && signals[id] > 0) {
+      arr.push({ id: id, count: signals[id] });
+    }
+  }
+  arr.sort(function (a, b) { return b.count - a.count; });
+  return arr.slice(0, cap).map(function (x) { return x.id; });
+}
+
+// ============ 地域偏好（IP 检测 + 许愿池手动） ============
+
+/**
+ * 写入 IP 检测到的地域
+ * @param {Object} regionData - { city, province, district, nation }
+ */
+function setDetectedRegion(regionData) {
+  var profile = get();
+  if (!profile.regionPreference || typeof profile.regionPreference !== 'object') {
+    profile.regionPreference = { detected: null, manual: null, lastDetectedAt: null };
+  }
+  profile.regionPreference.detected = regionData && typeof regionData === 'object' ? regionData : null;
+  profile.regionPreference.lastDetectedAt = _dateKey();
+  save(profile);
+}
+
+/**
+ * 写入用户手动许愿的地域（许愿池输入）
+ * @param {string|null} regionText - 如 '成都'、'粤港'、'黄大仙'
+ */
+function setManualRegion(regionText) {
+  var profile = get();
+  if (!profile.regionPreference || typeof profile.regionPreference !== 'object') {
+    profile.regionPreference = { detected: null, manual: null, lastDetectedAt: null };
+  }
+  profile.regionPreference.manual = typeof regionText === 'string' && regionText.trim() ? regionText.trim() : null;
+  save(profile);
+}
+
+/**
+ * 优先返回用户手动许愿地域，其次 IP 检测结果（用于文案与菜系匹配）
+ * @returns {{ city?: string, province?: string, district?: string, nation?: string, manual?: string }|null}
+ */
+function getActiveRegion() {
+  var profile = get();
+  var rp = profile.regionPreference;
+  if (!rp || typeof rp !== 'object') return null;
+  if (rp.manual) {
+    return { manual: rp.manual, city: rp.manual, province: rp.manual };
+  }
+  if (rp.detected && typeof rp.detected === 'object') {
+    return rp.detected;
+  }
+  return null;
 }
 
 // ============ 导出 ============
@@ -845,5 +1003,12 @@ module.exports = {
   pickHeroIngredient: pickHeroIngredient,
   recordRecipeFeedback: recordRecipeFeedback,
   getRecipeCookLog: getRecipeCookLog,
-  updateRecipeFeedback: updateRecipeFeedback
+  updateRecipeFeedback: updateRecipeFeedback,
+  recordCombinationRejection: recordCombinationRejection,
+  recordLockSignal: recordLockSignal,
+  getCombinationPenalties: getCombinationPenalties,
+  getLockBoostedRecipeIds: getLockBoostedRecipeIds,
+  setDetectedRegion: setDetectedRegion,
+  setManualRegion: setManualRegion,
+  getActiveRegion: getActiveRegion
 };

@@ -19,7 +19,9 @@
     "similarity": "node recipe-similarity.js",
     "similarity:cloud": "node recipe-similarity.js --cloud",
     "similarity:strict": "node recipe-similarity.js --threshold 0.7",
-    "similarity:json": "node recipe-similarity.js --json"
+    "similarity:json": "node recipe-similarity.js --json",
+    "auto-grow": "node recipe-fusion-spider.js",
+    "fuse": "node recipe-fusion-spider.js --single"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "latest",

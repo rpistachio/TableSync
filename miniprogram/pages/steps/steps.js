@@ -1010,9 +1010,12 @@ Page({
       // Part 3: scan 来源 —— 直接使用 _scanMenus 构建菜品列表
       if (that._source === 'scan' && Array.isArray(that._scanMenus) && that._scanMenus.length > 0) {
         that._menuRecipes = that._scanMenus.map(function (m) {
+          var r = m.adultRecipe || {};
           return {
-            name: (m.adultRecipe && m.adultRecipe.name) || '',
-            type: 'adult'
+            name: r.name || '',
+            type: 'adult',
+            meat: m.meat || r.meat || '',
+            ingredients: r.ingredients || r.main_ingredients || []
           };
         }).filter(function (r) { return r.name; });
         return;
@@ -1021,9 +1024,12 @@ Page({
       // 混合组餐来源 —— 使用 _mixMenus 构建菜品列表
       if (that._source === 'mix' && Array.isArray(that._mixMenus) && that._mixMenus.length > 0) {
         that._menuRecipes = that._mixMenus.map(function (m) {
+          var r = m.adultRecipe || {};
           return {
-            name: (m.adultRecipe && m.adultRecipe.name) || '',
-            type: 'adult'
+            name: r.name || '',
+            type: 'adult',
+            meat: m.meat || r.meat || '',
+            ingredients: r.ingredients || r.main_ingredients || []
           };
         }).filter(function (r) { return r.name; });
         return;
@@ -1031,9 +1037,12 @@ Page({
 
       // 外部导入来源 —— 使用 _importedRecipe 构建菜品列表
       if (that._source === 'import' && that._importedRecipe) {
+        var ir = that._importedRecipe;
         that._menuRecipes = [{
-          name: that._importedRecipe.name || '',
-          type: 'adult'
+          name: ir.name || '',
+          type: 'adult',
+          meat: ir.meat || '',
+          ingredients: ir.ingredients || ir.main_ingredients || []
         }];
         return;
       }
@@ -1060,12 +1069,15 @@ Page({
         }
       }
       
-      // 提取菜品名称列表
+      // 提取菜品名称列表（含 meat、ingredients 供冰箱扣减）
       if (Array.isArray(todayMenus)) {
         that._menuRecipes = todayMenus.map(function (m) {
+          var r = m.adultRecipe || {};
           return {
-            name: (m.adultRecipe && m.adultRecipe.name) || '',
-            type: 'adult'
+            name: r.name || '',
+            type: 'adult',
+            meat: m.meat || r.meat || '',
+            ingredients: r.ingredients || r.main_ingredients || []
           };
         }).filter(function (r) { return r.name; });
       }
@@ -1987,24 +1999,27 @@ Page({
     var tasteProfile = require('../../data/tasteProfile.js');
     tasteProfile.recordCookComplete();
 
-    // 按菜谱 meat 类型自动扣减冰箱食材
+    // 按菜谱 ingredients 精准扣减冰箱食材（跳过调料、干货）
     try {
       var fridgeStore = require('../../data/fridgeStore.js');
       var recipes = this._menuRecipes || [];
-      var deducted = {};
+      var SKIP_CATEGORIES = ['调料', '干货'];
+      var ingredientNames = [];
       for (var i = 0; i < recipes.length; i++) {
-        var meatType = recipes[i] && recipes[i].meat;
-        if (!meatType || deducted[meatType]) continue;
-        var MEAT_TO_CATEGORY = {
-          '猪肉': 'pork', '牛肉': 'beef', '羊肉': 'beef',
-          '鸡肉': 'chicken', '鱼': 'fish', '虾': 'shrimp',
-          '海鲜': 'shrimp', '蔬菜': 'vegetable', '豆腐': 'tofu'
-        };
-        var cat = MEAT_TO_CATEGORY[meatType] || null;
-        if (cat) {
-          fridgeStore.consumeByCategory(cat);
-          deducted[meatType] = true;
+        var ings = recipes[i] && recipes[i].ingredients;
+        if (!Array.isArray(ings)) continue;
+        for (var j = 0; j < ings.length; j++) {
+          var ing = ings[j];
+          var cat = (ing && ing.category) || '';
+          if (SKIP_CATEGORIES.indexOf(cat) !== -1) continue;
+          var name = (ing && ing.name) || (typeof ing === 'string' ? ing : '');
+          if (name && ingredientNames.indexOf(name) === -1) {
+            ingredientNames.push(name);
+          }
         }
+      }
+      if (ingredientNames.length > 0 && fridgeStore.consumeByNames) {
+        fridgeStore.consumeByNames(ingredientNames);
       }
     } catch (e) {}
 

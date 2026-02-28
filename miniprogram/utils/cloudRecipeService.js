@@ -64,7 +64,7 @@ function normalizeCloudRecipe(cloudRecipe) {
     'cover_image_url', 'is_baby_friendly', 'can_share_base', 'common_allergens',
     'flavor_profile', 'cook_type', 'cook_method', 'recommend_reason', 'cook_minutes',
     'base_serving', 'tags', 'main_ingredients', 'difficulty', 'dish_type',
-    'baby_variant', 'updateTime', 'createTime'
+    'cuisine', 'baby_variant', 'variants', 'updateTime', 'createTime'
   ];
   
   for (var i = 0; i < basicFields.length; i++) {

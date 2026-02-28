@@ -32,10 +32,12 @@
         <text class="fridge-item-name">{{item.name}}</text>
         <text class="fridge-item-storage">{{item.storageLabel}}</text>
       </view>
-      <view class="fridge-item-expiry" catchtap="onEditExpiry" data-id="{{item.id}}" data-days="{{item.daysLeft}}" data-name="{{item.name}}">
-        <text class="fridge-item-status">{{item.statusText}}</text>
-        <text class="fridge-item-edit-hint">✎</text>
-      </view>
+      <picker mode="selector" range="{{item.expiryRange}}" value="{{item.expiryValue}}" bindchange="onExpiryPickerChange" data-id="{{item.id}}" data-name="{{item.name}}">
+        <view class="fridge-item-expiry">
+          <text class="fridge-item-status">{{item.statusText}}</text>
+          <text class="fridge-item-edit-hint">✎</text>
+        </view>
+      </picker>
       <view class="fridge-item-delete" catchtap="onRemoveItem" data-id="{{item.id}}">
         <text class="fridge-item-delete-icon">×</text>
       </view>

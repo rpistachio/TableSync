@@ -310,6 +310,69 @@ function getAllSummary() {
 }
 
 /**
+ * 名称模糊匹配：判断冰箱食材名与清单/菜谱食材名是否匹配
+ * 精确匹配 > 包含匹配（如 冰箱"鸡肉" 匹配 清单"鸡胸肉"）
+ * @param {string} fridgeName - 冰箱中的食材名
+ * @param {string} targetName - 清单或菜谱中的食材名
+ * @returns {boolean}
+ */
+function matchesIngredientName(fridgeName, targetName) {
+  if (!fridgeName || !targetName) return false;
+  var f = String(fridgeName).trim();
+  var t = String(targetName).trim();
+  if (!f || !t) return false;
+  if (f === t) return true;
+  if (t.indexOf(f) !== -1) return true;
+  if (f.indexOf(t) !== -1) return true;
+  return false;
+}
+
+/**
+ * 获取冰箱中与给定食材名匹配的未消耗项（按临期优先）
+ * @param {string} ingredientName - 食材名（如清单或菜谱中的 "鸡胸肉"）
+ * @returns {Array} 匹配的 fridge 项数组
+ */
+function getMatchingItems(ingredientName) {
+  if (!ingredientName) return [];
+  var items = getAll();
+  return items.filter(function (it) {
+    return matchesIngredientName(it.name, ingredientName);
+  });
+}
+
+/**
+ * 按食材名称列表精准扣减冰箱库存（做完饭调用）
+ * 每个 recipe 食材名最多扣减一项，优先扣减最临期的
+ * @param {Array<string>} nameList - 食材名称列表（如菜谱 ingredients 中的 name）
+ * @returns {Array} 被消耗的 fridge 项数组
+ */
+function consumeByNames(nameList) {
+  if (!Array.isArray(nameList) || nameList.length === 0) return [];
+  var items = _load();
+  var consumed = [];
+  for (var n = 0; n < nameList.length; n++) {
+    var target = nameList[n];
+    var name = typeof target === 'string' ? target : (target && target.name) || '';
+    if (!name) continue;
+    var bestIdx = -1;
+    var bestExpires = Infinity;
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].consumed) continue;
+      if (matchesIngredientName(items[i].name, name) && items[i].expiresAt < bestExpires) {
+        bestIdx = i;
+        bestExpires = items[i].expiresAt;
+      }
+    }
+    if (bestIdx >= 0) {
+      items[bestIdx].consumed = true;
+      consumed.push(items[bestIdx]);
+    }
+  }
+  if (consumed.length > 0) _save(items);
+  return consumed;
+}
+
+/**
  * 手动修改某食材的保质期天数
  * @param {string} id - 食材 ID
  * @param {number} newDays - 从今天起算的新剩余天数
@@ -341,7 +404,10 @@ module.exports = {
   getExpiringNames: getExpiringNames,
   getAllNames: getAllNames,
   getAllSummary: getAllSummary,
+  matchesIngredientName: matchesIngredientName,
+  getMatchingItems: getMatchingItems,
   consumeByCategory: consumeByCategory,
+  consumeByNames: consumeByNames,
   removeItem: removeItem,
   toggleStorage: toggleStorage,
   getDaysLeft: getDaysLeft,

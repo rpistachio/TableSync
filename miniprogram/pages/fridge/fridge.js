@@ -29,6 +29,11 @@ Page({
       else if (daysLeft === 0) statusText = '今天到期!';
       else statusText = '还剩' + daysLeft + '天';
 
+      var maxDays = item.storage === 'freezer' ? 90 : 30;
+      var expiryRange = [];
+      for (var d = 1; d <= maxDays; d++) expiryRange.push(d + '天');
+      var expiryValue = Math.min(Math.max(daysLeft > 0 ? daysLeft - 1 : 0, 0), maxDays - 1);
+
       return {
         id: item.id,
         name: item.name,
@@ -37,7 +42,9 @@ Page({
         storageLabel: item.storage === 'freezer' ? '冷冻' : '冷藏',
         statusText: statusText,
         urgency: urgency,
-        daysLeft: daysLeft
+        daysLeft: daysLeft,
+        expiryRange: expiryRange,
+        expiryValue: expiryValue
       };
     });
 
@@ -95,27 +102,19 @@ Page({
     this._refresh();
   },
 
-  onEditExpiry: function (e) {
+  onExpiryPickerChange: function (e) {
     var id = e.currentTarget.dataset.id;
-    var currentDays = e.currentTarget.dataset.days || 0;
     var name = e.currentTarget.dataset.name || '食材';
-    var that = this;
-
-    var options = ['1天', '2天', '3天', '5天', '7天', '10天', '14天', '30天'];
-    var dayValues = [1, 2, 3, 5, 7, 10, 14, 30];
-
-    wx.showActionSheet({
-      itemList: options,
-      success: function (res) {
-        var newDays = dayValues[res.tapIndex];
-        fridgeStore.updateExpiry(id, newDays);
-        that._refresh();
-        wx.showToast({
-          title: name + ' 改为' + newDays + '天',
-          icon: 'none'
-        });
-      }
-    });
+    var idx = parseInt(e.detail.value, 10);
+    if (isNaN(idx) || !id) return;
+    var items = this.data.items || [];
+    var item = items.find(function (it) { return it.id === id; });
+    if (!item || !item.expiryRange || !item.expiryRange[idx]) return;
+    var label = item.expiryRange[idx];
+    var newDays = parseInt(label.replace(/[^\d]/g, ''), 10) || 1;
+    fridgeStore.updateExpiry(id, newDays);
+    this._refresh();
+    wx.showToast({ title: name + ' 改为' + newDays + '天', icon: 'none' });
   },
 
   onGoGenerate: function () {

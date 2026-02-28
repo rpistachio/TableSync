@@ -70,7 +70,8 @@ Page({
       spineHighlight: false,           // 贴纸收下后短暂高亮
       shakeBlur: false,                // 摇一摇触发时的模糊遮罩
       showProPaywall: false,
-      proPaywallFeature: ''
+      proPaywallFeature: '',
+      showUpdateModal: false           // V2.0 新老用户首次进入均弹一次
     };
   })(),
 
@@ -133,6 +134,12 @@ Page({
       that._refreshSpineAndUnviewed();
     }, 0);
 
+    // V2.0 更新弹窗：新老用户首次进入都显示，关闭后写 2.0.0 不再弹
+    var version = wx.getStorageSync('tableSync_version') || '';
+    if (version !== '2.0.0') {
+      that.setData({ showUpdateModal: true });
+    }
+
     // 冰箱提示：高级功能入口动态文案
     that._refreshFridgeHint();
 
@@ -172,9 +179,55 @@ Page({
     }
   },
 
+  /** 调试：连续点击品牌水印 5 次，弹出当前 LBS 嗅探结果 */
+  onBrandWatermarkTap: function () {
+    var now = Date.now();
+    if (!this._regionTapCount || now - this._regionTapLast > 2000) {
+      this._regionTapCount = 0;
+    }
+    this._regionTapCount++;
+    this._regionTapLast = now;
+    if (this._regionTapCount < 5) return;
+    this._regionTapCount = 0;
+    var app = getApp();
+    var region = app.globalData.userRegion;
+    var active = tasteProfile.getActiveRegion && tasteProfile.getActiveRegion();
+    var msg = '当前无地域';
+    if (active && (active.manual || active.city || active.province)) {
+      msg = active.manual ? ('许愿: ' + active.manual) : ('IP: ' + (active.province || '') + (active.city || ''));
+    } else if (region && (region.city || region.province)) {
+      msg = 'IP: ' + (region.province || '') + (region.city || '');
+    }
+    wx.showModal({ title: 'LBS 嗅探', content: msg, showCancel: false });
+  },
+
   /** 摇一摇检测到：震动 + 模糊转场 + 触发 Omakase 版 onZenGo（跳过 Sheet） */
   _onShakeDetected: function () {
     if (this._zenGenerating) return;
+    var FREE_SHAKE_LIMIT = 3;
+    var d = new Date();
+    var y = d.getFullYear();
+    var m = String(d.getMonth() + 1);
+    var day = String(d.getDate());
+    var todayKey = 'omakase_shake_' + y + '-' + (m.length < 2 ? '0' + m : m) + '-' + (day.length < 2 ? '0' + day : day);
+    var count = 0;
+    try { count = parseInt(wx.getStorageSync(todayKey), 10) || 0; } catch (e) {}
+    if (count >= FREE_SHAKE_LIMIT && !getApp().globalData.isVip) {
+      wx.showModal({
+        title: '今日灵感已用完',
+        content: '解锁 Pro 特权，无限次摇出惊喜，还能享受街区级风味匹配。',
+        confirmText: '了解 Pro',
+        cancelText: '明天再来',
+        confirmColor: '#B8976A',
+        success: function (res) {
+          if (res.confirm) {
+            wx.navigateTo({ url: '/pages/pro/pro?source=omakase_shake' });
+          }
+        }
+      });
+      return;
+    }
+    try { wx.setStorageSync(todayKey, count + 1); } catch (e) {}
     this._isOmakase = true;
     wx.vibrateLong();
     wx.setStorageSync('omakase_hint_seen', true);
@@ -495,6 +548,16 @@ Page({
     try {
       tracker.trackEvent('advanced_panel_open', {});
     } catch (e) {}
+  },
+
+  onCloseUpdateModal: function () {
+    wx.setStorageSync('tableSync_version', '2.0.0');
+    this.setData({ showUpdateModal: false });
+  },
+
+  onConfirmUpdateModal: function () {
+    wx.setStorageSync('tableSync_version', '2.0.0');
+    this.setData({ showUpdateModal: false });
   },
 
   /** 返回 Zen Mode */

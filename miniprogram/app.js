@@ -52,7 +52,9 @@ App({
       syncing: false,
       lastSync: null,
       error: null
-    }
+    },
+    // IP 静默粗定位结果（6h 缓存），供地域文案等使用
+    userRegion: null
   },
 
   onLaunch: function(options) {
@@ -103,6 +105,9 @@ App({
       });
     }
     setTimeout(runSeedUserRegister, 100);
+
+    // IP 静默粗定位（异步，不阻塞启动，6h 缓存）
+    self._silentDetectRegion();
 
     // 初始化云端菜谱服务（异步，不阻塞启动）
     cloudRecipeService.init({
@@ -184,6 +189,45 @@ App({
    */
   clearRecipeCache: function() {
     cloudRecipeService.clearCache();
+  },
+
+  /**
+   * 静默调用 getRegionByIP 云函数，缓存到 globalData.userRegion 与 storage（6h TTL）
+   */
+  _silentDetectRegion: function() {
+    var self = this;
+    var CACHE_KEY = 'user_region';
+    var TTL_MS = 6 * 60 * 60 * 1000;
+    try {
+      var cached = wx.getStorageSync(CACHE_KEY);
+      if (cached && cached.ts && (Date.now() - cached.ts < TTL_MS) && cached.data) {
+        self.globalData.userRegion = cached.data;
+        var tasteProfile = require('./data/tasteProfile.js');
+        if (tasteProfile && tasteProfile.setDetectedRegion) tasteProfile.setDetectedRegion(cached.data);
+        console.log('[LBS] 使用缓存地域', cached.data);
+        return;
+      }
+    } catch (e) {}
+    if (typeof wx === 'undefined' || !wx.cloud || !wx.cloud.callFunction) {
+      console.warn('[LBS] 无云能力，跳过 IP 嗅探');
+      return;
+    }
+    wx.cloud.callFunction({ name: 'getRegionByIP' }).then(function(res) {
+      var result = res.result;
+      if (result && result.code === 0 && result.data) {
+        self.globalData.userRegion = result.data;
+        try {
+          wx.setStorageSync(CACHE_KEY, { data: result.data, ts: Date.now() });
+        } catch (e) {}
+        var tasteProfile = require('./data/tasteProfile.js');
+        if (tasteProfile && tasteProfile.setDetectedRegion) tasteProfile.setDetectedRegion(result.data);
+        console.log('[LBS] IP 嗅探成功', result.data);
+      } else {
+        console.warn('[LBS] 云函数返回无地域', result ? result.message : '');
+      }
+    }).catch(function(err) {
+      console.warn('[LBS] getRegionByIP 调用失败', err && err.errMsg ? err.errMsg : err);
+    });
   },
 
   /**

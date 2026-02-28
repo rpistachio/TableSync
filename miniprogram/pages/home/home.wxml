@@ -1,6 +1,6 @@
 <view class="home-container {{cookStatus === 'tired' ? 'mood-tired' : ''}}">
   <view class="brand-header">
-    <view class="header-content">
+    <view class="header-content" bindtap="onBrandWatermarkTap">
       <text class="brand-watermark">TableSync</text>
     </view>
   </view>
@@ -27,29 +27,16 @@
     <text class="zen-advanced-back-text">返回</text>
   </view>
 
-  <!-- Pro：本周高级营养分析（首位独立卡片） -->
-  <view class="feature-entry nutrition-card" bindtap="onProFeatureTap" data-feature="nutrition">
-    <view class="feature-icon-wrap nutrition-icon-wrap">
-      <text class="feature-icon">📊</text>
+  <!-- 临期食材提醒（限时免费，直接进冰箱页） -->
+  <view class="feature-entry fridge-expire-entry" bindtap="onGoFridge">
+    <view class="feature-icon-wrap fridge-expire-icon-wrap">
+      <text class="feature-icon">🧊</text>
     </view>
     <view class="feature-text-wrap">
-      <text class="feature-title">本周高级营养分析</text>
-      <text class="feature-desc">蛋白质 / 碳水 / 膳食纤维一目了然</text>
+      <text class="feature-title">冰箱临期食材提醒</text>
+      <text class="feature-desc">{{fridgeHint || '记录食材，优先消耗快过期的'}}</text>
     </view>
-    <view class="pro-badge">Pro</view>
-    <text class="feature-arrow">›</text>
-  </view>
-
-  <!-- 导入赛博菜谱入口（Pro） -->
-  <view class="feature-entry import-entry pro-entry" bindtap="onProFeatureTap" data-feature="import">
-    <view class="feature-icon-wrap import-icon-wrap">
-      <text class="feature-icon">🔗</text>
-    </view>
-    <view class="feature-text-wrap">
-      <text class="feature-title">导入菜谱</text>
-      <text class="feature-desc">截图小红书/抖音菜谱，秒变可执行食谱</text>
-    </view>
-    <view class="pro-badge">Pro</view>
+    <view class="free-trial-badge">限时免费</view>
     <text class="feature-arrow">›</text>
   </view>
 
@@ -77,6 +64,32 @@
     <text class="feature-arrow">›</text>
   </view>
 
+  <!-- Pro：本周高级营养分析 -->
+  <view class="feature-entry nutrition-card" bindtap="onProFeatureTap" data-feature="nutrition">
+    <view class="feature-icon-wrap nutrition-icon-wrap">
+      <text class="feature-icon">📊</text>
+    </view>
+    <view class="feature-text-wrap">
+      <text class="feature-title">本周高级营养分析</text>
+      <text class="feature-desc">蛋白质 / 碳水 / 膳食纤维一目了然</text>
+    </view>
+    <view class="pro-badge">Pro</view>
+    <text class="feature-arrow">›</text>
+  </view>
+
+  <!-- 导入赛博菜谱入口（Pro） -->
+  <view class="feature-entry import-entry pro-entry" bindtap="onProFeatureTap" data-feature="import">
+    <view class="feature-icon-wrap import-icon-wrap">
+      <text class="feature-icon">🔗</text>
+    </view>
+    <view class="feature-text-wrap">
+      <text class="feature-title">导入菜谱</text>
+      <text class="feature-desc">截图小红书/抖音菜谱，秒变可执行食谱</text>
+    </view>
+    <view class="pro-badge">Pro</view>
+    <text class="feature-arrow">›</text>
+  </view>
+
   <!-- AI 扫描冰箱（Pro 拦截） -->
   <view class="feature-entry fridge-entry pro-entry" bindtap="onProFeatureTap" data-feature="fridge_scan">
     <view class="feature-icon-wrap fridge-icon-wrap">
@@ -87,19 +100,6 @@
       <text class="feature-desc">拍照识别食材，智能推荐菜谱</text>
     </view>
     <view class="pro-badge">Pro</view>
-    <text class="feature-arrow">›</text>
-  </view>
-
-  <!-- 临期食材提醒（限时免费，直接进冰箱页） -->
-  <view class="feature-entry fridge-expire-entry" bindtap="onGoFridge">
-    <view class="feature-icon-wrap fridge-expire-icon-wrap">
-      <text class="feature-icon">🧊</text>
-    </view>
-    <view class="feature-text-wrap">
-      <text class="feature-title">冰箱临期食材提醒</text>
-      <text class="feature-desc">{{fridgeHint || '记录食材，优先消耗快过期的'}}</text>
-    </view>
-    <view class="free-trial-badge">限时免费</view>
     <text class="feature-arrow">›</text>
   </view>
   </block>
@@ -221,6 +221,32 @@
 
     <view class="sheet-confirm-btn" bindtap="onSheetConfirm">
       <text class="sheet-confirm-text">生成推荐</text>
+    </view>
+  </view>
+
+  <!-- V2.0 更新弹窗（仅弹一次，晨雾粗陶） -->
+  <view class="update-modal-mask {{showUpdateModal ? 'is-visible' : ''}}" catchtap="onCloseUpdateModal"></view>
+  <view class="update-modal-panel {{showUpdateModal ? 'is-visible' : ''}}">
+    <view class="update-modal-close" catchtap="onCloseUpdateModal">
+      <text class="update-modal-close-icon">×</text>
+    </view>
+    <text class="update-modal-title">点食TableSync 2.0 找回厨房的从容</text>
+    <view class="update-modal-list">
+      <view class="update-modal-item">
+        <text class="update-modal-item-title">🥢 恰到好处的锅气</text>
+        <text class="update-modal-item-desc">不再手忙脚乱。热菜精准倒推开火时间，保证所有美味热腾腾地上桌。</text>
+      </view>
+      <view class="update-modal-item">
+        <text class="update-modal-item-title">🎛️ 顺应你的厨房</text>
+        <text class="update-modal-item-desc">只有微波炉或电饭煲？没关系。拨动面板配置厨电，我们会默默为你切换最合适的方案。</text>
+      </view>
+      <view class="update-modal-item">
+        <text class="update-modal-item-title">💧骨子里的干净</text>
+        <text class="update-modal-item-desc">更懂厨房达人的卫生直觉。切完生肉，统筹表会为你留出洗手与冲洗砧板的时间。</text>
+      </view>
+    </view>
+    <view class="update-modal-btn" catchtap="onConfirmUpdateModal">
+      <text class="update-modal-btn-text">开启新厨房</text>
     </view>
   </view>
 </view>

@@ -150,6 +150,7 @@ function listDraftFiles() {
 
 const generateJobs = new Map();
 const reviewJobs = new Map();
+const spiderJobs = new Map();
 
 function sendGenerateJobEvent(jobId, event) {
   const job = generateJobs.get(jobId);
@@ -162,6 +163,15 @@ function sendGenerateJobEvent(jobId, event) {
 
 function sendReviewJobEvent(jobId, event) {
   const job = reviewJobs.get(jobId);
+  if (!job) return;
+  job.events.push(event);
+  if (job.res && !job.res.writableEnded) {
+    job.res.write(`data: ${JSON.stringify(event)}\n\n`);
+  }
+}
+
+function sendSpiderJobEvent(jobId, event) {
+  const job = spiderJobs.get(jobId);
   if (!job) return;
   job.events.push(event);
   if (job.res && !job.res.writableEnded) {
@@ -989,6 +999,390 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (url === '/api/spider/gaps' && req.method === 'GET') {
+    setCors();
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    try {
+      const {
+        loadRecipes,
+        buildMatrix,
+        findMatrixGaps,
+        findCookTypeGaps,
+        MEATS,
+        ADULT_TASTES,
+        FLAVORS,
+      } = await import('./batch-planner.js');
+      const { adults } = await loadRecipes(false);
+      const seen = new Set();
+      const unique = adults.filter((r) => {
+        if (!r || !r.name || seen.has(r.name)) return false;
+        seen.add(r.name);
+        return true;
+      });
+      const { matrix, cookMatrix } = buildMatrix(unique);
+      const matrixGaps = findMatrixGaps(matrix);
+      const cookTypeGaps = findCookTypeGaps(cookMatrix);
+      const totalCells = MEATS.length * ADULT_TASTES.length * FLAVORS.length;
+      const emptyCells = matrixGaps.filter((g) => g.count === 0).length;
+      const sparseCells = matrixGaps.filter((g) => g.count === 1).length;
+      const covered = totalCells - emptyCells;
+      res.writeHead(200);
+      res.end(
+        JSON.stringify({
+          ok: true,
+          gaps: matrixGaps.filter((g) => g.priority > 0),
+          cook_type_gaps: cookTypeGaps.filter((g) => g.count === 0),
+          stats: {
+            total: unique.length,
+            totalCells,
+            covered,
+            empty: emptyCells,
+            sparse: sparseCells,
+          },
+        })
+      );
+    } catch (e) {
+      res.writeHead(500);
+      res.end(JSON.stringify({ ok: false, error: e.message }));
+    }
+    return;
+  }
+
+  if (url === '/api/spider/fuse' && req.method === 'POST') {
+    setCors();
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    req.setTimeout(120000);
+    res.setTimeout(120000);
+    try {
+      const raw = await readBody(req);
+      const body = JSON.parse(raw || '{}');
+      const { dishHint, constraints } = body;
+      if (!dishHint || typeof dishHint !== 'string') {
+        res.writeHead(400);
+        res.end(JSON.stringify({ ok: false, error: '请传 dishHint' }));
+        return;
+      }
+      const { fuseOneRecipe } = await import('./recipe-fusion-spider.js');
+      const result = await fuseOneRecipe(dishHint, constraints || {}, { autoReview: true });
+      const recipe = result.recipe;
+
+      if (!recipe.id) {
+        const meat = recipe.meat || 'vegetable';
+        const prefixMap = { chicken: 'a-chi', pork: 'a-pork', beef: 'a-beef', fish: 'a-fish', shrimp: 'a-shrimp', lamb: 'a-lamb', duck: 'a-duck', shellfish: 'a-shell', vegetable: 'a-veg' };
+        const prefix = prefixMap[meat] || 'a-veg';
+        recipe.id = `${prefix}-fuse-${Date.now()}`;
+      }
+      if (!recipe.type) recipe.type = 'adult';
+
+      const recipeName = recipe.name || dishHint;
+      const slugFileName = recipeName.replace(/\s+/g, '_') + '.png';
+      const slug = { [recipeName]: slugFileName };
+
+      let mj_prompts = [];
+      try {
+        const { buildPromptsForItem } = await import('./lib/mj-prompt-builder.js');
+        mj_prompts = buildPromptsForItem({ recipe, mj_prompts: [] });
+      } catch (_) {}
+
+      const draft = {
+        status: 'pending_review',
+        recipe,
+        slug,
+        mj_prompts,
+        selected_prompt_index: null,
+        image_file: null,
+        ref_recipes: result.refRecipes,
+        review: result.review,
+        fusedAt: result.fusedAt,
+      };
+      const draftsPath = path.join(getDraftsDir(), 'draft_recipes.json');
+      let drafts = [];
+      if (fs.existsSync(draftsPath)) {
+        try {
+          drafts = JSON.parse(fs.readFileSync(draftsPath, 'utf8'));
+        } catch (_) {}
+      }
+      if (!Array.isArray(drafts)) drafts = [];
+      drafts.push(draft);
+      if (!fs.existsSync(getDraftsDir())) fs.mkdirSync(getDraftsDir(), { recursive: true });
+      fs.writeFileSync(draftsPath, JSON.stringify(drafts, null, 2), 'utf8');
+      res.writeHead(200);
+      res.end(
+        JSON.stringify({
+          ok: true,
+          message: `${result.recipe.name} 融合完毕，已入草稿箱`,
+          data: { recipe: result.recipe, review: result.review },
+        })
+      );
+    } catch (e) {
+      res.writeHead(500);
+      res.end(JSON.stringify({ ok: false, error: e.message }));
+    }
+    return;
+  }
+
+  if (url === '/api/spider/batch' && req.method === 'POST') {
+    setCors();
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    try {
+      const raw = await readBody(req);
+      const body = JSON.parse(raw || '{}');
+      const count = Math.max(1, Math.min(50, parseInt(body.count, 10) || 10));
+      const intervalMs = body.intervalMs || 120000;
+      const autoReview = body.autoReview !== false;
+      const focus = body.focus || 'all';
+      const jobId = `spider-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      spiderJobs.set(jobId, { events: [], res: null, status: 'running' });
+      setImmediate(async () => {
+        try {
+          const {
+            loadRecipes,
+            buildMatrix,
+            findMatrixGaps,
+            findCookTypeGaps,
+            generateBatchPlan,
+            MEAT_CN,
+            TASTE_CN,
+            FLAVOR_CN,
+            COOK_CN,
+          } = await import('./batch-planner.js');
+          const { fuseBatch, gapToSlot } = await import('./recipe-fusion-spider.js');
+          const { adults } = await loadRecipes(false);
+          const seen = new Set();
+          const unique = adults.filter((r) => {
+            if (!r || !r.name || seen.has(r.name)) return false;
+            seen.add(r.name);
+            return true;
+          });
+          const { matrix, cookMatrix } = buildMatrix(unique);
+          const matrixGaps = findMatrixGaps(matrix);
+          const cookTypeGaps = findCookTypeGaps(cookMatrix);
+          const babyGaps = [];
+          const batches = generateBatchPlan(matrixGaps, cookTypeGaps, babyGaps, {
+            batchSize: Math.max(count, 20),
+            maxBatches: 6,
+            focus,
+          });
+          const labelMap = { MEAT_CN, TASTE_CN, FLAVOR_CN, COOK_CN };
+          const slots = [];
+          for (const batch of batches) {
+            for (const s of batch.slots || []) {
+              slots.push(
+                gapToSlot(
+                  {
+                    meat: s.meat,
+                    taste: s.taste,
+                    flavor: s.flavor_profile,
+                    cook_type: s.cook_type,
+                    hint: s.hint,
+                  },
+                  labelMap
+                )
+              );
+              if (slots.length >= count) break;
+            }
+            if (slots.length >= count) break;
+          }
+          const toRun = slots.slice(0, count);
+          const result = await fuseBatch(toRun, {
+            intervalMs,
+            autoReview,
+            draftsDir: getDraftsDir(),
+            onProgress: (ev) => {
+              sendSpiderJobEvent(jobId, {
+                type: 'progress',
+                done: ev.done,
+                total: ev.total,
+                currentDish: ev.currentDish,
+                recipe: ev.recipe,
+                error: ev.error,
+              });
+            },
+          });
+          sendSpiderJobEvent(jobId, { type: 'done', filename: result.filename, stats: result.stats });
+        } catch (err) {
+          sendSpiderJobEvent(jobId, { type: 'done', ok: false, error: err.message });
+        }
+        const job = spiderJobs.get(jobId);
+        if (job) {
+          job.status = 'done';
+          if (job.res && !job.res.writableEnded) job.res.end();
+        }
+      });
+      res.writeHead(202);
+      res.end(JSON.stringify({ ok: true, jobId }));
+    } catch (e) {
+      res.writeHead(500);
+      res.end(JSON.stringify({ ok: false, error: e.message }));
+    }
+    return;
+  }
+
+  if (url === '/api/spider/batch/stream' && req.method === 'GET') {
+    setCors();
+    const query = (req.url || '').split('?')[1] || '';
+    const params = new URLSearchParams(query);
+    const jobId = params.get('jobId') || '';
+    const job = spiderJobs.get(jobId);
+    if (!job) {
+      res.writeHead(404);
+      res.end('Job not found');
+      return;
+    }
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    });
+    job.events.forEach((ev) => res.write(`data: ${JSON.stringify(ev)}\n\n`));
+    if (job.status === 'done') {
+      res.end();
+      return;
+    }
+    job.res = res;
+    return;
+  }
+
+  if (url === '/api/spider/draft-recipes' && req.method === 'GET') {
+    setCors();
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    try {
+      const draftsPath = path.join(getDraftsDir(), 'draft_recipes.json');
+      let drafts = [];
+      if (fs.existsSync(draftsPath)) {
+        try {
+          drafts = JSON.parse(fs.readFileSync(draftsPath, 'utf8'));
+        } catch (_) {}
+      }
+      if (!Array.isArray(drafts)) drafts = [];
+      res.writeHead(200);
+      res.end(JSON.stringify({ ok: true, data: drafts }));
+    } catch (e) {
+      res.writeHead(500);
+      res.end(JSON.stringify({ ok: false, error: e.message }));
+    }
+    return;
+  }
+
+  if (url === '/api/spider/approve-draft' && req.method === 'POST') {
+    setCors();
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    req.setTimeout(120000);
+    res.setTimeout(120000);
+    try {
+      const raw = await readBody(req);
+      const body = JSON.parse(raw || '{}');
+      const index = body.index;
+      const withCover = !!body.withCover;
+      if (typeof index !== 'number' || index < 0) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ ok: false, error: '请传 index（数字）' }));
+        return;
+      }
+      const draftsPath = path.join(getDraftsDir(), 'draft_recipes.json');
+      if (!fs.existsSync(draftsPath)) {
+        res.writeHead(404);
+        res.end(JSON.stringify({ ok: false, error: '草稿箱为空' }));
+        return;
+      }
+      let drafts = JSON.parse(fs.readFileSync(draftsPath, 'utf8'));
+      if (!Array.isArray(drafts) || !drafts[index]) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ ok: false, error: '无效 index' }));
+        return;
+      }
+      const item = drafts[index];
+      const recipe = item.recipe;
+      if (!recipe || !recipe.name) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ ok: false, error: '草稿项缺少 recipe 或 name' }));
+        return;
+      }
+      if (!recipe.id) {
+        const meat = recipe.meat || 'vegetable';
+        const prefixMap = { chicken: 'a-chi', pork: 'a-pork', beef: 'a-beef', fish: 'a-fish', shrimp: 'a-shrimp', lamb: 'a-lamb', duck: 'a-duck', shellfish: 'a-shell', vegetable: 'a-veg' };
+        const prefix = prefixMap[meat] || 'a-veg';
+        recipe.id = `${prefix}-fuse-${Date.now()}`;
+      }
+      if (!recipe.type) recipe.type = 'adult';
+      const slugMap = item.slug || { [recipe.name]: `${(recipe.name || '').replace(/\s+/g, '_')}.png` };
+
+      let fileID = null;
+      if (withCover) {
+        if (!item.mj_prompts || !Array.isArray(item.mj_prompts) || item.mj_prompts.length === 0) {
+          const { buildPromptsForItem } = await import('./lib/mj-prompt-builder.js');
+          item.mj_prompts = buildPromptsForItem({ recipe, mj_prompts: [] });
+        }
+        const promptIndex = item.selected_prompt_index != null ? item.selected_prompt_index : 0;
+        const prompt = item.mj_prompts[promptIndex] || item.mj_prompts[0];
+        const apiKey = (CONFIG.minimaxApiKey || '').trim();
+        if (!apiKey) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ ok: false, error: '未配置 MINIMAX_API_KEY，无法生成封面' }));
+          return;
+        }
+        const { generateImage } = await import('./lib/minimax-image.js');
+        const host = (CONFIG.minimaxHost === 'api.minimax.io' || CONFIG.minimaxHost === 'api.minimaxi.com') ? CONFIG.minimaxHost : 'api.minimax.io';
+        const buffer = await generateImage(apiKey, prompt, { host, model: CONFIG.minimaxModel });
+        const imagesDir = getImagesDir();
+        if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
+        const slugFileName = Object.values(slugMap)[0] || `${recipe.name}.png`;
+        const baseName = slugFileName.replace(/\.(png|jpg|jpeg)$/i, '');
+        const imagePath = path.join(imagesDir, `${baseName}.jpg`);
+        fs.writeFileSync(imagePath, buffer);
+        fileID = await uploadAdultRecipeImage(imagePath, slugFileName);
+      }
+
+      const doc = fileID ? { ...recipe, coverFileID: fileID } : recipe;
+      await insertAdultRecipeToCloud(doc);
+      applyLocalPatches({ recipe: doc, slug: slugMap });
+      drafts.splice(index, 1);
+      fs.writeFileSync(draftsPath, JSON.stringify(drafts, null, 2), 'utf8');
+      const msg = withCover ? '已生成封面、入库并更新本地' : '已入库并更新本地';
+      res.writeHead(200);
+      res.end(JSON.stringify({ ok: true, message: msg }));
+    } catch (e) {
+      res.writeHead(500);
+      res.end(JSON.stringify({ ok: false, error: e.message }));
+    }
+    return;
+  }
+
+  if (url === '/api/spider/discard-draft' && req.method === 'POST') {
+    setCors();
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    try {
+      const raw = await readBody(req);
+      const body = JSON.parse(raw || '{}');
+      const index = body.index;
+      if (typeof index !== 'number' || index < 0) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ ok: false, error: '请传 index' }));
+        return;
+      }
+      const draftsPath = path.join(getDraftsDir(), 'draft_recipes.json');
+      if (!fs.existsSync(draftsPath)) {
+        res.writeHead(200);
+        res.end(JSON.stringify({ ok: true }));
+        return;
+      }
+      let drafts = JSON.parse(fs.readFileSync(draftsPath, 'utf8'));
+      if (!Array.isArray(drafts) || !drafts[index]) {
+        res.writeHead(200);
+        res.end(JSON.stringify({ ok: true }));
+        return;
+      }
+      drafts.splice(index, 1);
+      fs.writeFileSync(draftsPath, JSON.stringify(drafts, null, 2), 'utf8');
+      res.writeHead(200);
+      res.end(JSON.stringify({ ok: true }));
+    } catch (e) {
+      res.writeHead(500);
+      res.end(JSON.stringify({ ok: false, error: e.message }));
+    }
+    return;
+  }
+
   if (url === '/api/import-ref' && req.method === 'POST') {
     setCors();
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -1200,11 +1594,22 @@ const server = http.createServer(async (req, res) => {
       }
       const payload = JSON.parse(fs.readFileSync(draftPath, 'utf8'));
       const it = payload.items && payload.items[itemIndex];
-      if (!it || !it.slug || !it.mj_prompts || it.mj_prompts.length === 0) {
+      if (!it || !it.recipe) {
         res.writeHead(400);
-        res.end(JSON.stringify({ ok: false, error: '该项无 slug 或 mj_prompts' }));
+        res.end(JSON.stringify({ ok: false, error: '该项无 recipe' }));
         return;
       }
+      // 融合车间生成的草稿可能无 slug/mj_prompts，在此补全
+      if (!it.slug || typeof it.slug !== 'object' || Object.keys(it.slug).length === 0) {
+        const recipeName = it.recipe.name || '未命名';
+        const fileName = `${String(recipeName).replace(/\s+/g, '_')}.png`;
+        it.slug = { [recipeName]: fileName };
+      }
+      if (!it.mj_prompts || !Array.isArray(it.mj_prompts) || it.mj_prompts.length === 0) {
+        const { buildPromptsForItem } = await import('./lib/mj-prompt-builder.js');
+        it.mj_prompts = buildPromptsForItem({ recipe: it.recipe, mj_prompts: [] });
+      }
+      fs.writeFileSync(draftPath, JSON.stringify(payload, null, 2), 'utf8');
       const slugFileName = Object.values(it.slug)[0];
       const baseName = (slugFileName || '').replace(/\.(png|jpg|jpeg)$/i, '');
       const promptIndex = it.selected_prompt_index != null ? it.selected_prompt_index : 0;
@@ -1256,10 +1661,15 @@ const server = http.createServer(async (req, res) => {
       }
       const payload = JSON.parse(fs.readFileSync(draftPath, 'utf8'));
       const it = payload.items && payload.items[itemIndex];
-      if (!it || !it.recipe || !it.slug) {
+      if (!it || !it.recipe) {
         res.writeHead(400);
-        res.end(JSON.stringify({ ok: false, error: '该项无 recipe 或 slug' }));
+        res.end(JSON.stringify({ ok: false, error: '该项无 recipe' }));
         return;
+      }
+      // 融合车间生成的草稿可能无 slug，在此补全
+      if (!it.slug || typeof it.slug !== 'object' || Object.keys(it.slug).length === 0) {
+        const recipeName = it.recipe.name || '未命名';
+        it.slug = { [recipeName]: `${String(recipeName).replace(/\s+/g, '_')}.png` };
       }
       const recipe = it.recipe;
       const slugMap = it.slug;
@@ -1855,7 +2265,7 @@ server.listen(PORT, () => {
     fs.writeFileSync(path.join(fixedDir, 'README.md'), FIXED_README, 'utf8');
   }
   console.log(`统一菜谱管理: http://localhost:${PORT}`);
-  console.log('API: /api/recipes, /api/drafts, /api/draft/:file, /api/generate, /api/crawl, /api/import-ref, /api/ref-recipes, /api/review, /api/approve');
+  console.log('API: /api/recipes, /api/drafts, /api/draft/:file, /api/generate, /api/crawl, /api/spider/gaps, /api/spider/fuse, /api/spider/batch, /api/spider/batch/stream, /api/spider/draft-recipes, /api/import-ref, /api/ref-recipes, /api/review, /api/approve');
   console.log('总览: GET /api/all-recipes, POST /api/delete-recipes, GET /api/cloud-recipe, POST /api/update-cloud-recipe');
   console.log('封面: POST /api/regen, /api/upload, /api/audit');
   console.log(`固定图目录: ${fixedDir}`);

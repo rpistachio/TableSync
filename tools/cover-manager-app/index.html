@@ -80,6 +80,7 @@
 <body>
   <h1>封面图管理</h1>
   <div class="toolbar">
+    <button type="button" class="secondary" id="btnRefresh" title="重新加载菜谱列表，显示最新入库的菜谱">🔄 刷新</button>
     <button type="button" class="secondary" id="btnSelectAll">全选</button>
     <button type="button" class="secondary" id="btnSelectNone">取消全选</button>
     <button type="button" class="secondary" id="btnSelectFail" title="勾选所有审计为 Fail 的项">一键选中 Fail</button>
@@ -525,6 +526,21 @@
 
     document.getElementById('lightbox').addEventListener('click', function () {
       this.classList.remove('show');
+    });
+
+    document.getElementById('btnRefresh').addEventListener('click', async () => {
+      const btn = document.getElementById('btnRefresh');
+      btn.disabled = true;
+      setStatus('正在刷新…', 'loading');
+      try {
+        recipes = await fetchRecipes();
+        renderGrid();
+        renderComparePanel();
+        setStatus(`已刷新，共 ${recipes.length} 道成人菜封面。`, 'ok');
+      } catch (e) {
+        setStatus('刷新失败: ' + e.message, 'err');
+      }
+      btn.disabled = false;
     });
 
     btnSelectAll.addEventListener('click', () => {

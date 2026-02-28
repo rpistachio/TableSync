@@ -68,32 +68,106 @@ var OMAKASE_COPY_POOL = {
     '缘分摇出来的菜，通常都不会差',
     '别纠结了，这道菜肯定对你胃口',
     '随机的惊喜，往往是最优解'
-  ]
+  ],
+  regional: {
+    cantonese: [
+      '主厨嗅探到{region}的气息，今晚来一顿地道的{dish}，熨帖肠胃',
+      '靓汤已经在心里煲上了，{region}的夜晚值得一碗好汤',
+      '一份{region}味道，抚慰街角熟悉的胃口'
+    ],
+    sichuan: [
+      '想念{region}的麻辣？主厨懂你，今晚微辣刚刚好',
+      '一道{dish}，唤醒{region}街巷深处的记忆',
+      '今晚用{region}的烟火气，叫醒味蕾'
+    ],
+    jiangzhe: [
+      '主厨为你选了{region}的清淡本味，{dish}刚刚好',
+      '{region}的鲜甜，都在这道{dish}里'
+    ],
+    dongbei: [
+      '主厨嗅到{region}的豪迈，{dish}管饱又暖心',
+      '一份{region}的实在，今晚吃得踏实'
+    ],
+    minyue: [
+      '主厨为你选了{region}的鲜甜清淡，{dish}刚刚好',
+      '{region}的汤汤水水，今晚慰劳你的胃'
+    ],
+    yungui: [
+      '酸辣鲜香，{region}的烟火气都在{dish}里',
+      '主厨嗅到{region}的酸汤味，今晚来一道'
+    ],
+    xibei: [
+      '主厨嗅到{region}的豪迈，{dish}管饱又香',
+      '一份{region}的扎实风味，今晚吃得过瘾'
+    ],
+    huaiyang: [
+      '主厨为你选了{region}的家常咸鲜，{dish}下饭又熨帖',
+      '{region}的踏实味道，今晚好好吃一顿'
+    ],
+    generic: [
+      '主厨嗅探到你想念{region}的风味，这份菜单是最好的回应',
+      '今晚用一桌{region}味道，治愈漂泊的胃',
+      '身在{region}，主厨为你选了最对味的一道'
+    ]
+  }
 };
 
 function pickOmakaseCopy(context) {
   if (!context) context = {};
   var pool = OMAKASE_COPY_POOL.random;
   var key = 'random';
-  if (context.isTired) {
-    pool = OMAKASE_COPY_POOL.tired;
-    key = 'tired';
-  } else if (context.hasExpiringIngredient && context.heroIngredient) {
-    pool = OMAKASE_COPY_POOL.expiring;
-    key = 'expiring';
-  } else if (context.heroFlavor === 'spicy' || context.heroCookType === 'braise' || context.heroCookType === 'fry') {
-    pool = OMAKASE_COPY_POOL.heavy;
-    key = 'heavy';
-  } else if (context.heroFlavor === 'light' || context.heroCookType === 'steam' || context.heroCookType === 'boil') {
-    pool = OMAKASE_COPY_POOL.light;
-    key = 'light';
+  var regionTriggered = false;
+  try { regionTriggered = (typeof getApp === 'function' && getApp() && getApp().globalData && getApp().globalData.lastRegionWeightTriggered) === true; } catch (e) {}
+  if (context.regionLabel && context.regionCuisineKey && OMAKASE_COPY_POOL.regional && regionTriggered) {
+    var regionalPool = OMAKASE_COPY_POOL.regional[context.regionCuisineKey] || OMAKASE_COPY_POOL.regional.generic;
+    if (Array.isArray(regionalPool) && regionalPool.length > 0) {
+      pool = regionalPool;
+      key = 'regional';
+    }
+  }
+  if (key !== 'regional') {
+    if (context.isTired) {
+      pool = OMAKASE_COPY_POOL.tired;
+      key = 'tired';
+    } else if (context.hasExpiringIngredient && context.heroIngredient) {
+      pool = OMAKASE_COPY_POOL.expiring;
+      key = 'expiring';
+    } else if (context.heroFlavor === 'spicy' || context.heroCookType === 'braise' || context.heroCookType === 'fry') {
+      pool = OMAKASE_COPY_POOL.heavy;
+      key = 'heavy';
+    } else if (context.heroFlavor === 'light' || context.heroCookType === 'steam' || context.heroCookType === 'boil') {
+      pool = OMAKASE_COPY_POOL.light;
+      key = 'light';
+    }
   }
   if (!Array.isArray(pool) || pool.length === 0) pool = OMAKASE_COPY_POOL.random;
   var line = pool[Math.floor(Math.random() * pool.length)];
   if (key === 'expiring' && context.heroIngredient) {
     line = line.replace(/\{ingredient\}/g, context.heroIngredient);
   }
+  if (key === 'regional' && context.regionLabel) {
+    line = line.replace(/\{region\}/g, context.regionLabel);
+    line = line.replace(/\{dish\}/g, context.heroName || '这道菜');
+  }
   return line;
+}
+
+function injectRegionCopyContext(context, heroName) {
+  if (!context) return context;
+  if (context.heroName == null && heroName) context.heroName = heroName;
+  try {
+    var activeRegion = tasteProfile.getActiveRegion();
+    if (activeRegion) {
+      var regionCuisineMap = require('../../data/regionCuisineMap.js');
+      var regionLabel = activeRegion.manual || activeRegion.city || activeRegion.province || '你所在的城市';
+      var regionCuisineKey = activeRegion.manual
+        ? (regionCuisineMap.getCuisineKeyByCity(activeRegion.manual) || 'generic')
+        : regionCuisineMap.getCuisineKeyByCity(activeRegion.city, activeRegion.province);
+      context.regionLabel = regionLabel;
+      context.regionCuisineKey = regionCuisineKey || 'generic';
+    }
+  } catch (e) {}
+  return context;
 }
 
 var COOK_TYPE_HINTS = {
@@ -187,6 +261,12 @@ Page({
     pickerFilteredNativeRecipes: [],
     pickerImportedRecipes: [],
     tweakText: '',
+    kitchenBurners: 2,
+    kitchenHasMicrowave: false,
+    kitchenHasAirFryer: false,
+    kitchenHasSteamer: false,
+    kitchenHasOven: false,
+    isRecalculating: false,
     schedulePreview: { totalTime: 0, serialTime: 0, savedTime: 0, efficiency: 0, cookingOrder: [], parallelPercent: 0 },
     isOmakase: false,
     omakaseVisible: false,
@@ -197,7 +277,12 @@ Page({
     omakaseHeroName: '',
     omakaseComboText: '',
     omakaseDishList: [],
-    omakaseRefreshing: false
+    omakaseRefreshing: false,
+    isVip: false,
+    vibeRegionLocked: false,
+    vibeRegion: '',
+    showVibeCustomInput: false,
+    vibeCustomText: ''
   },
 
   onShareAppMessage: function () {
@@ -277,8 +362,20 @@ Page({
       var pref = getApp().globalData.preference || {};
       var hasBaby = !!(pref && pref.hasBaby);
       if (!hasBaby) menus.forEach(function (m) { m.babyRecipe = null; });
-      var who = 'self'; // cookWho 始终为 self，不再从 Storage 读取
+      var who = 'self';
       var isTimeSave = pref.isTimeSave === true || pref.is_time_save === true || (wx.getStorageSync('zen_cook_status') === 'tired');
+
+      // 从 tasteProfile 读取厨房配置，初始化火力面板
+      var tpKc = (tasteProfile.get() && tasteProfile.get().kitchenConfig) || {};
+      var prefKc = (pref && pref.kitchenConfig) || {};
+      var initBurners = prefKc.burners || tpKc.burners || 2;
+      that._kitchenConfig = {
+        burners: initBurners,
+        hasSteamer: !!(prefKc.hasSteamer || tpKc.hasSteamer),
+        hasAirFryer: !!(prefKc.hasAirFryer || tpKc.hasAirFryer),
+        hasOven: !!(prefKc.hasOven || tpKc.hasOven),
+        hasMicrowave: !!(prefKc.hasMicrowave || tpKc.hasMicrowave)
+      };
       var isHelperMode = false; // 本机始终为标准视图；分享链接通过 role=helper 进入纸条模式
       var isTiredMode = isTimeSave;
 
@@ -355,7 +452,8 @@ Page({
           return {
             id: ar ? (ar.id || ar._id || '') : '',
             name: ar ? (ar.name || '') : '',
-            role: role
+            role: role,
+            locked: false
           };
         }).filter(function (d) { return d.name; });
         var copyContext = {
@@ -365,6 +463,7 @@ Page({
           heroFlavor: (heroMenu.adultRecipe && heroMenu.adultRecipe.flavor_profile) || '',
           heroCookType: (heroMenu.adultRecipe && heroMenu.adultRecipe.cook_type) || ''
         };
+        injectRegionCopyContext(copyContext, heroName);
         var aiCopy = (getApp().globalData && getApp().globalData.omakaseCopy) ? String(getApp().globalData.omakaseCopy).trim() : '';
         var microCopy = (aiCopy && aiCopy.length <= 15) ? aiCopy : pickOmakaseCopy(copyContext);
         omakasePayload = {
@@ -415,7 +514,13 @@ Page({
         omakaseHeroImage: omakasePayload.omakaseHeroImage,
         omakaseHeroName: omakasePayload.omakaseHeroName || '',
         omakaseComboText: omakasePayload.omakaseComboText || '',
-        omakaseDishList: omakasePayload.omakaseDishList || []
+        omakaseDishList: omakasePayload.omakaseDishList || [],
+        isVip: !!getApp().globalData.isVip,
+        kitchenBurners: that._kitchenConfig.burners,
+        kitchenHasSteamer: that._kitchenConfig.hasSteamer,
+        kitchenHasMicrowave: that._kitchenConfig.hasMicrowave,
+        kitchenHasAirFryer: that._kitchenConfig.hasAirFryer,
+        kitchenHasOven: that._kitchenConfig.hasOven
       }, function () {
         // rows 真正进入视图层后，再按 onReady 规则触发图片解析
         if (that._pageReady) that._resolvePreviewImages();
@@ -474,6 +579,7 @@ Page({
   
   onShow: function () {
     this._pageAlive = true;
+    this.setData({ isVip: !!getApp().globalData.isVip });
     if (this.data.isOmakase) this._startOmakaseShake();
   },
 
@@ -660,6 +766,119 @@ Page({
 
     setTimeout(function () {
       if (!that._pageAlive) return;
+      var currentDishList = that.data.omakaseDishList || [];
+      var currentMenus = getApp().globalData.todayMenus || [];
+      var lockedIndices = [];
+      var lockedNames = [];
+      for (var li = 0; li < currentDishList.length; li++) {
+        if (currentDishList[li].locked) {
+          lockedIndices.push(li);
+          lockedNames.push(currentDishList[li].name || (currentMenus[li] && currentMenus[li].adultRecipe && currentMenus[li].adultRecipe.name) || '');
+        }
+      }
+
+      if (lockedIndices.length > 0 && currentMenus.length > 0) {
+        try {
+          var menuService = require('../../data/menuData.js');
+          var payload = getApp().globalData.menuPreview;
+          var pref = Object.assign(
+            {},
+            payload && payload.preference ? payload.preference : that._defaultPreference(),
+            { adultCount: that.data.adultCount, avoidList: that._getActiveAvoidList() }
+          );
+          var currentNames = (that.data.previewMenuRows || []).map(function (r) { return r.adultName || ''; }).filter(Boolean);
+          var history = Array.isArray(that._shuffleExcludeHistory) ? that._shuffleExcludeHistory : [];
+          var seen = {};
+          var mergedExclude = [];
+          currentNames.concat(history).forEach(function (n) { if (n && !seen[n]) { seen[n] = true; mergedExclude.push(n); } });
+          lockedNames.forEach(function (n) { if (n && !seen[n]) { seen[n] = true; mergedExclude.push(n); } });
+          pref.excludeRecipeNames = mergedExclude;
+          var result = menuService.getTodayMenusByCombo(pref);
+          var rawMenus = result.menus || result;
+          var hasBaby = pref.hasBaby === true;
+          if (!hasBaby) rawMenus.forEach(function (m) { m.babyRecipe = null; });
+          var newMenus = rawMenus.map(function (m) { return Object.assign({}, m, { checked: true }); });
+          for (var o = 0; o < lockedIndices.length; o++) {
+            newMenus[lockedIndices[o]] = currentMenus[lockedIndices[o]];
+          }
+          var newRows = [];
+          for (var idx = 0; idx < newMenus.length; idx++) {
+            var m = newMenus[idx];
+            var ar = m.adultRecipe;
+            var adultName = (ar && ar.name) ? ar.name : '—';
+            var stage = hasBaby && menuService.getBabyVariantByAge && menuService.getBabyVariantByAge(ar, pref.babyMonth);
+            var babyName = hasBaby ? ((stage && stage.name) || (m.babyRecipe && m.babyRecipe.name) || '') : '';
+            var reason = (ar && ar.recommend_reason) ? ar.recommend_reason : buildReasonFallback(ar);
+            var sameAsAdultHint = (stage && stage.same_as_adult_hint) ? '与大人同款，分装即可' : '';
+            newRows.push({
+              adultName: adultName,
+              babyName: babyName,
+              showSharedHint: hasBaby && babyName && idx === 0,
+              checked: true,
+              recommendReason: reason,
+              sameAsAdultHint: sameAsAdultHint,
+              cookType: (ar && ar.cook_type) || '',
+              coverUrl: coverService.getRecipeCoverImageUrl(adultName),
+              coverTempUrl: '',
+              hasCover: true
+            });
+          }
+          var newDishList = newMenus.map(function (m, idx) {
+            var ar = m.adultRecipe;
+            var dishType = ar ? (ar.dish_type || '') : '';
+            var meat = ar ? (ar.meat || '') : '';
+            var role = dishType === 'soup' ? '汤' : (meat === 'vegetable' ? '素' : '荤');
+            var isLocked = lockedIndices.indexOf(idx) !== -1;
+            return {
+              id: ar ? (ar.id || ar._id || '') : '',
+              name: ar ? (ar.name || '') : '',
+              role: role,
+              locked: isLocked
+            };
+          }).filter(function (d) { return d.name; });
+          var dashboard = that._computePreviewDashboard(newMenus, pref);
+          var schedulePreview = that._computeSchedulePreview(newMenus);
+          var heroMenu = newMenus.filter(function (m) { return m.meat && m.meat !== 'vegetable'; })[0] || newMenus[0];
+          var heroName = (heroMenu.adultRecipe && heroMenu.adultRecipe.name) || '这道菜';
+          var otherNames = newMenus.filter(function (m) { return m !== heroMenu; }).map(function (m) {
+            return (m.adultRecipe && m.adultRecipe.name) || '';
+          }).filter(Boolean);
+          if (getApp().globalData.menuPreview) {
+            getApp().globalData.menuPreview.menus = newMenus;
+            getApp().globalData.menuPreview.rows = newRows;
+            getApp().globalData.menuPreview.preference = pref;
+            getApp().globalData.menuPreview.dashboard = dashboard;
+          }
+          getApp().globalData.preference = pref;
+          getApp().globalData.todayMenus = newMenus;
+          that._omakaseHeroRowIndex = newMenus.indexOf(heroMenu);
+          var copyContext = {
+            isTired: pref.isTimeSave === true || pref.is_time_save === true || (wx.getStorageSync('zen_cook_status') === 'tired'),
+            hasExpiringIngredient: !!(pref.heroIngredient || (Array.isArray(pref.fridgeExpiring) && pref.fridgeExpiring.length > 0)),
+            heroIngredient: pref.heroIngredient || (Array.isArray(pref.fridgeExpiring) && pref.fridgeExpiring[0]) || '',
+            heroFlavor: (heroMenu.adultRecipe && heroMenu.adultRecipe.flavor_profile) || '',
+            heroCookType: (heroMenu.adultRecipe && heroMenu.adultRecipe.cook_type) || ''
+          };
+          injectRegionCopyContext(copyContext, heroName);
+          that.setData({
+            previewMenuRows: newRows,
+            previewDashboard: dashboard,
+            schedulePreview: schedulePreview,
+            omakaseDishList: newDishList,
+            omakaseHeroName: heroName,
+            omakaseComboText: otherNames.join(' · '),
+            omakaseCopy: pickOmakaseCopy(copyContext),
+            omakaseHeroImage: '',
+            omakaseRefreshing: false,
+            isImageReady: false
+          }, function () { if (that._pageReady) that._resolvePreviewImages(); });
+        } catch (err) {
+          console.error('onOmakaseReshuffle merge failed:', err);
+          that.setData({ omakaseRefreshing: false });
+        }
+        return;
+      }
+
       that.handleShuffle();
 
       var menus = getApp().globalData.todayMenus || [];
@@ -678,8 +897,9 @@ Page({
           heroFlavor: (heroMenu.adultRecipe && heroMenu.adultRecipe.flavor_profile) || '',
           heroCookType: (heroMenu.adultRecipe && heroMenu.adultRecipe.cook_type) || ''
         };
+        injectRegionCopyContext(copyContext, heroName);
         that._omakaseHeroRowIndex = menus.indexOf(heroMenu);
-        var dishList = menus.map(function (m) {
+        var dishList = menus.map(function (m, idx) {
           var ar = m.adultRecipe;
           var dishType = ar ? (ar.dish_type || '') : '';
           var meat = ar ? (ar.meat || '') : '';
@@ -687,12 +907,13 @@ Page({
           return {
             id: ar ? (ar.id || ar._id || '') : '',
             name: ar ? (ar.name || '') : '',
-            role: role
+            role: role,
+            locked: false
           };
         }).filter(function (d) { return d.name; });
         that.setData({
           omakaseHeroName: heroName,
-          omakaseComboText: otherNames.join(' \u00b7 '),
+          omakaseComboText: otherNames.join(' · '),
           omakaseDishList: dishList,
           omakaseCopy: pickOmakaseCopy(copyContext),
           omakaseHeroImage: '',
@@ -702,6 +923,57 @@ Page({
         that.setData({ omakaseRefreshing: false });
       }
     }, 220);
+  },
+
+  onToggleLockDish: function (e) {
+    var index = parseInt(e.currentTarget.dataset.index, 10);
+    if (isNaN(index) || index < 0) return;
+    var list = (this.data.omakaseDishList || []).slice();
+    if (!list[index]) return;
+    var willLock = !list[index].locked;
+    if (willLock && !getApp().globalData.isVip) {
+      wx.showModal({
+        title: '解锁主厨记忆',
+        content: '想要锁住喜欢的菜、只换掉不想要的？解锁 Pro 特权，让我记住你的每一次挑剔。',
+        confirmText: '了解 Pro',
+        confirmColor: '#B8976A',
+        cancelText: '暂不需要',
+        success: function (res) {
+          if (res.confirm) {
+            wx.navigateTo({ url: '/pages/pro/pro?source=omakase_lock' });
+          }
+        }
+      });
+      return;
+    }
+    list[index].locked = willLock;
+    this.setData({ omakaseDishList: list });
+    if (list[index].locked && list[index].id) {
+      tasteProfile.recordLockSignal(list[index].id);
+    }
+  },
+
+  onVibeTagSelect: function (e) {
+    var key = e.currentTarget.dataset.region;
+    if (!key) return;
+    var regionCuisineMap = require('../../data/regionCuisineMap.js');
+    var label = regionCuisineMap.getLabelByCuisineKey(key) || key;
+    tasteProfile.setManualRegion(label);
+    this.setData({ vibeRegion: key, showVibeCustomInput: false, vibeCustomText: '' });
+  },
+
+  onVibeCustomInput: function () {
+    this.setData({ showVibeCustomInput: true, vibeRegion: 'custom' });
+  },
+
+  onVibeCustomTextInput: function (e) {
+    this.setData({ vibeCustomText: (e.detail && e.detail.value) || '' });
+  },
+
+  onVibeCustomConfirm: function () {
+    var text = (this.data.vibeCustomText || '').trim();
+    tasteProfile.setManualRegion(text || null);
+    this.setData({ showVibeCustomInput: false, vibeCustomText: '', vibeRegion: text ? 'custom' : '' });
   },
 
   onRejectSingleDish: function (e) {
@@ -741,6 +1013,17 @@ Page({
     if (targetIdx < 0 || !menus[targetIdx]) {
       wx.showToast({ title: '未找到该菜品', icon: 'none' });
       return;
+    }
+
+    var currentDishList = that.data.omakaseDishList || [];
+    var keptIds = [];
+    for (var k = 0; k < currentDishList.length; k++) {
+      if (currentDishList[k].locked && currentDishList[k].id && currentDishList[k].id !== recipeId) {
+        keptIds.push(currentDishList[k].id);
+      }
+    }
+    if (keptIds.length > 0 || currentDishList.some(function (d) { return d.locked; })) {
+      tasteProfile.recordCombinationRejection(keptIds, recipeId);
     }
 
     var pref = Object.assign(
@@ -806,15 +1089,20 @@ Page({
         hasCover: true
       };
 
-      var dishList = menus.map(function (m) {
+      var prevDishList = that.data.omakaseDishList || [];
+      var dishList = menus.map(function (m, idx) {
         var ar2 = m.adultRecipe;
         var dishType = ar2 ? (ar2.dish_type || '') : '';
         var meat = ar2 ? (ar2.meat || '') : '';
         var role = dishType === 'soup' ? '汤' : (meat === 'vegetable' ? '素' : '荤');
+        var rid = ar2 ? (ar2.id || ar2._id || '') : '';
+        var prev = prevDishList[idx];
+        var locked = !!(prev && prev.locked && (idx === targetIdx ? false : prev.id === rid));
         return {
-          id: ar2 ? (ar2.id || ar2._id || '') : '',
+          id: rid,
           name: ar2 ? (ar2.name || '') : '',
-          role: role
+          role: role,
+          locked: locked
         };
       }).filter(function (d) { return d.name; });
 
@@ -1337,13 +1625,90 @@ Page({
     }
   },
 
+  onToggleBurner: function (e) {
+    var val = parseInt(e.currentTarget.dataset.val, 10);
+    if (val !== 1 && val !== 2) return;
+    if (val === this.data.kitchenBurners) return;
+    this._kitchenConfig = this._kitchenConfig || {};
+    this._kitchenConfig.burners = val;
+    var that = this;
+    that.setData({ kitchenBurners: val });
+    that._refreshScheduleAfterKitchenChange();
+  },
+
+  onToggleAppliance: function (e) {
+    var key = e.currentTarget.dataset.key;
+    var fieldMap = { microwave: 'kitchenHasMicrowave', airFryer: 'kitchenHasAirFryer', steamer: 'kitchenHasSteamer', oven: 'kitchenHasOven' };
+    var configMap = { microwave: 'hasMicrowave', airFryer: 'hasAirFryer', steamer: 'hasSteamer', oven: 'hasOven' };
+    var field = fieldMap[key];
+    var cfgKey = configMap[key];
+    if (!field || !cfgKey) return;
+    var newVal = !this.data[field];
+    this._kitchenConfig = this._kitchenConfig || {};
+    this._kitchenConfig[cfgKey] = newVal;
+    var patch = {};
+    patch[field] = newVal;
+    this.setData(patch);
+    this._refreshScheduleAfterKitchenChange();
+  },
+
+  _refreshScheduleAfterKitchenChange: function () {
+    var that = this;
+    var menus = (that._fullPreviewMenus || []);
+    var prevTotalTime = (that.data.schedulePreview && that.data.schedulePreview.totalTime) || 0;
+    var prevSerialTime = (that.data.schedulePreview && that.data.schedulePreview.serialTime) || 0;
+
+    that.setData({ isRecalculating: true });
+
+    var delay = 400 + Math.floor(Math.random() * 200);
+
+    setTimeout(function () {
+      if (!that._pageAlive) return;
+
+      try { tasteProfile.update({ kitchenConfig: that._kitchenConfig }); } catch (e) {}
+      var pref = getApp().globalData.preference || {};
+      pref.kitchenConfig = that._kitchenConfig;
+      getApp().globalData.preference = pref;
+
+      if (!menus || menus.length < 2) {
+        that.setData({ isRecalculating: false });
+        return;
+      }
+
+      var schedulePreview = that._computeSchedulePreview(menus);
+      var dashboard = that._computePreviewDashboard(menus, pref);
+
+      var totalUnchanged = (schedulePreview.totalTime === prevTotalTime && schedulePreview.serialTime === prevSerialTime);
+
+      that.setData({
+        isRecalculating: false,
+        schedulePreview: schedulePreview,
+        previewDashboard: dashboard
+      });
+
+      try { wx.vibrateShort({ type: 'medium' }); } catch (e) {}
+
+      if (totalUnchanged) {
+        wx.showToast({
+          title: '✨ 当前菜谱已处于最优物理排程',
+          icon: 'none',
+          duration: 2000
+        });
+      }
+    }, delay);
+  },
+
+  _getKitchenConfig: function () {
+    return this._kitchenConfig || { burners: 2, hasSteamer: false, hasAirFryer: false, hasOven: false, hasMicrowave: false };
+  },
+
   confirmAndGo: function () {
     var payload = getApp().globalData.menuPreview;
     var menus = payload && payload.menus ? payload.menus : [];
     var pref = Object.assign(
       {},
       payload && payload.preference ? payload.preference : this._defaultPreference(),
-      { adultCount: this.data.adultCount, avoidList: this._getActiveAvoidList() }
+      { adultCount: this.data.adultCount, avoidList: this._getActiveAvoidList(), kitchenConfig: this._getKitchenConfig() }
     );
     if (!menus || menus.length === 0) {
       wx.showToast({ title: '请先生成菜单', icon: 'none' });
@@ -2176,7 +2541,7 @@ Page({
       if (r) recipes.push(r);
     }
     if (recipes.length < 2) return empty;
-    var result = scheduleEngine.computeSchedulePreview(recipes);
+    var result = scheduleEngine.computeSchedulePreview(recipes, this._getKitchenConfig());
     if (!result || result.serialTime <= 0) return empty;
     result.parallelPercent = Math.round(result.totalTime / result.serialTime * 100);
     return result;

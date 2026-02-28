@@ -8,6 +8,7 @@
 var generator = require('./menuGenerator.js');
 var cloudRecipeService = require('../utils/cloudRecipeService.js');
 var constant = require('../config/constant.js');
+var fridgeStore = require('./fridgeStore.js');
 
 var MEAT_LABEL_MAP = { chicken: '鸡肉', pork: '猪肉', beef: '牛肉', fish: '鱼肉', shrimp: '虾仁', vegetable: '素菜' };
 exports.MEAT_KEY_MAP = { 鸡肉: 'chicken', 猪肉: 'pork', 牛肉: 'beef', 鱼肉: 'fish', 虾仁: 'shrimp', 素菜: 'vegetable', chicken: 'chicken', pork: 'pork', beef: 'beef', fish: 'fish', shrimp: 'shrimp', vegetable: 'vegetable' };
@@ -1371,6 +1372,9 @@ exports.generateShoppingListFromMenus = function (preference, menus) {
   
   var list = buildMergedShoppingList(raw, adultCount);
 
+  // 购物清单抵扣：冰箱已有食材标记 fridgeHas，默认打勾
+  list = applyFridgeDeduction(list);
+
   // 离线降级标记：精简版 recipes.js 无 ingredients，购物清单仅含主料兜底
   if (offlineCount > 0 && totalCount > 0) {
     list._isOfflineFallback = true;
@@ -1378,6 +1382,31 @@ exports.generateShoppingListFromMenus = function (preference, menus) {
   }
   return list;
 };
+
+/**
+ * 购物清单抵扣：比对冰箱库存，已有食材标记 fridgeHas 并默认打勾
+ * 跳过调料、干货（用户一般不录入冰箱）
+ */
+function applyFridgeDeduction(list) {
+  if (!list || !Array.isArray(list)) return list;
+  var SKIP_CATEGORIES = ['调料', '干货'];
+  try {
+    for (var i = 0; i < list.length; i++) {
+      var item = list[i];
+      if (!item || SKIP_CATEGORIES.indexOf(item.category) !== -1) continue;
+      var name = (item.name || '').trim();
+      if (!name) continue;
+      var matches = fridgeStore.getMatchingItems && fridgeStore.getMatchingItems(name);
+      if (matches && matches.length > 0) {
+        item.fridgeHas = true;
+        item.checked = true;
+      } else {
+        item.fridgeHas = false;
+      }
+    }
+  } catch (e) { /* fridgeStore 可能未加载，静默 */ }
+  return list;
+}
 
 // ============ 云端菜谱同步相关 ============
 

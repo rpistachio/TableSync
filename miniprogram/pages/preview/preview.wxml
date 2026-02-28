@@ -1,6 +1,6 @@
 <view class="preview-page {{isTiredMode ? 'preview-page-tired' : ''}} {{isHelperMode ? 'preview-page-helper' : ''}}">
   <view class="preview-page-scroll">
-    <view class="preview-scroll-content">
+    <view class="preview-scroll-content {{isRecalculating ? 'is-recalculating' : ''}}">
       <view class="preview-header">
         <view class="preview-header-text">
           <image wx:if="{{professionalTalkBgUrl}}" class="preview-header-avatar" src="{{professionalTalkBgUrl}}" mode="aspectFill" />
@@ -20,9 +20,10 @@
         </block>
         <block wx:else>
           <view class="dash-item dash-item-time">
-            <text class="dash-value" wx:if="{{schedulePreview.savedTime > 0}}">约 {{schedulePreview.totalTime}} 分钟</text>
-            <text class="dash-value" wx:else>{{previewDashboard.estimatedTime}}</text>
-            <text class="dash-save-tag" wx:if="{{schedulePreview.savedTime > 0}}">省{{schedulePreview.savedTime}}min</text>
+            <text class="dash-value" wx:if="{{!isRecalculating && schedulePreview.savedTime > 0}}">约 {{schedulePreview.totalTime}} 分钟</text>
+            <text class="dash-value" wx:elif="{{!isRecalculating}}">{{previewDashboard.estimatedTime}}</text>
+            <text class="dash-recalc-hint" wx:if="{{isRecalculating}}">✨ AI 时空折叠中...</text>
+            <text class="dash-save-tag" wx:if="{{!isRecalculating && schedulePreview.savedTime > 0}}">省{{schedulePreview.savedTime}}min</text>
           </view>
           <view class="dash-item">
             <text class="dash-value">{{previewDashboard.stoveCount}}火</text>
@@ -146,6 +147,44 @@
 
       <view class="preview-add-dish-placeholder" catchtap="onAddDish">
         <text class="preview-add-dish-text">+ 再加个菜？</text>
+      </view>
+
+      <!-- 厨房火力 — 晨雾粗陶 -->
+      <view class="kc-console" wx:if="{{!isHelperMode}}">
+        <view class="kc-header">
+          <text class="kc-title">火力资源</text>
+        </view>
+        <view class="kc-burner-track">
+          <view class="kc-burner-item {{kitchenBurners === 1 ? 'active' : ''}}" data-val="1" catchtap="onToggleBurner">
+            <view class="kc-flame-dot"></view>
+            <text class="kc-burner-text">单灶游击</text>
+          </view>
+          <view class="kc-burner-item {{kitchenBurners === 2 ? 'active' : ''}}" data-val="2" catchtap="onToggleBurner">
+            <view class="kc-flame-dot-group">
+              <view class="kc-flame-dot"></view>
+              <view class="kc-flame-dot"></view>
+            </view>
+            <text class="kc-burner-text">双灶全开</text>
+          </view>
+        </view>
+        <view class="kc-app-matrix">
+          <view class="kc-app-wrap {{kitchenHasSteamer ? 'active' : ''}}" data-key="steamer" catchtap="onToggleAppliance">
+            <view class="kc-app-ring">蒸</view>
+            <text class="kc-app-label">蒸锅/箱</text>
+          </view>
+          <view class="kc-app-wrap {{kitchenHasMicrowave ? 'active' : ''}}" data-key="microwave" catchtap="onToggleAppliance">
+            <view class="kc-app-ring">微</view>
+            <text class="kc-app-label">微波炉</text>
+          </view>
+          <view class="kc-app-wrap {{kitchenHasAirFryer ? 'active' : ''}}" data-key="airFryer" catchtap="onToggleAppliance">
+            <view class="kc-app-ring">炸</view>
+            <text class="kc-app-label">空气炸锅</text>
+          </view>
+          <view class="kc-app-wrap {{kitchenHasOven ? 'active' : ''}}" data-key="oven" catchtap="onToggleAppliance">
+            <view class="kc-app-ring">烤</view>
+            <text class="kc-app-label">烤箱</text>
+          </view>
+        </view>
       </view>
 
       <!-- 一句话微调 -->
@@ -277,15 +316,32 @@
     </view>
     <text class="omakase-micro-copy {{omakaseRefreshing ? 'is-refreshing' : ''}}" wx:if="{{omakaseCopy}}">{{omakaseCopy}}</text>
     <view class="omakase-dish-list {{omakaseRefreshing ? 'is-refreshing' : ''}}" wx:if="{{omakaseDishList.length > 0}}">
-      <view class="omakase-dish-row" wx:for="{{omakaseDishList}}" wx:key="id">
-        <view class="omakase-dish-name-wrap">
+      <view class="omakase-dish-row {{item.locked ? 'is-locked' : ''}}" wx:for="{{omakaseDishList}}" wx:key="id">
+        <view class="omakase-dish-name-wrap" bindtap="onToggleLockDish" data-index="{{index}}">
+          <text class="omakase-lock-icon" wx:if="{{item.locked}}">📌</text>
           <text class="omakase-role-badge omakase-role-{{item.role === '荤' ? 'meat' : item.role === '素' ? 'veg' : 'soup'}}">{{item.role}}</text>
           <text class="omakase-dish-name">{{item.name}}</text>
         </view>
-        <view class="omakase-reject-btn" bindtap="onRejectSingleDish" data-recipe-id="{{item.id}}">
+        <view class="omakase-reject-btn" wx:if="{{!item.locked}}" bindtap="onRejectSingleDish" data-recipe-id="{{item.id}}">
           <text class="omakase-reject-icon">↻</text>
           <text class="omakase-reject-text">换掉</text>
         </view>
+      </view>
+    </view>
+    <view class="omakase-vibe-input" wx:if="{{!vibeRegionLocked}}">
+      <text class="vibe-label">想念哪里的风味？</text>
+      <scroll-view class="vibe-tags" scroll-x enhanced show-scrollbar="{{false}}">
+        <view class="vibe-tags-inner">
+          <view class="vibe-tag {{vibeRegion === 'cantonese' ? 'is-active' : ''}}" data-region="cantonese" bindtap="onVibeTagSelect">粤港</view>
+          <view class="vibe-tag {{vibeRegion === 'sichuan' ? 'is-active' : ''}}" data-region="sichuan" bindtap="onVibeTagSelect">川渝</view>
+          <view class="vibe-tag {{vibeRegion === 'jiangzhe' ? 'is-active' : ''}}" data-region="jiangzhe" bindtap="onVibeTagSelect">江浙</view>
+          <view class="vibe-tag {{vibeRegion === 'dongbei' ? 'is-active' : ''}}" data-region="dongbei" bindtap="onVibeTagSelect">东北</view>
+          <view class="vibe-tag {{vibeRegion === 'custom' ? 'is-active' : ''}}" data-region="custom" bindtap="onVibeCustomInput">其他…</view>
+        </view>
+      </scroll-view>
+      <view class="vibe-custom-row" wx:if="{{showVibeCustomInput}}">
+        <input class="vibe-custom-input" placeholder="输入城市或风味" placeholder-class="vibe-custom-placeholder" value="{{vibeCustomText}}" bindinput="onVibeCustomTextInput" bindconfirm="onVibeCustomConfirm" confirm-type="done" focus="{{showVibeCustomInput}}" />
+        <view class="vibe-custom-btn" bindtap="onVibeCustomConfirm">确定</view>
       </view>
     </view>
     <view class="omakase-actions">

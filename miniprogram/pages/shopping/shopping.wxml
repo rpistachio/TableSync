@@ -33,7 +33,7 @@
             wx:for-item="row"
             wx:for-index="rowIndex"
             wx:key="id"
-            class="list-row {{row.checked ? 'is-done' : ''}} {{rowIndex % 2 === 1 ? 'stripe' : ''}}"
+            class="list-row {{row.checked ? 'is-done' : ''}} {{row.fridgeHas ? 'fridge-has' : ''}} {{rowIndex % 2 === 1 ? 'stripe' : ''}}"
             bindtap="onCheckToday"
             data-item="{{row}}"
           >
@@ -45,6 +45,7 @@
                 <text class="list-row__name">{{row.name}}</text>
                 <text class="list-row__amount">{{row.displayAmount != null ? row.displayAmount : row.amount}}</text>
               </view>
+              <text wx:if="{{row.fridgeHas}}" class="fridge-tag">🧊 冰箱已有</text>
               <text wx:if="{{row.isShared}}" class="shared-tag">多菜共用</text>
               <text wx:if="{{row.hasExternalSource && !row.isShared}}" class="shared-tag external-tag">外部菜谱</text>
               <text wx:if="{{row.fromRecipesText}}" class="from-recipes-hint">{{row.fromRecipesText}}</text>

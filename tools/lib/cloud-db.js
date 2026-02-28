@@ -111,7 +111,7 @@ function normalizeStepsForCloud(steps = []) {
 
 /**
  * 将本地 adult recipe 映射为云端 recipes 集合文档结构。
- * 保留原始字段，同时补充：
+ * 保留原始字段（含 cuisine、tags 等），同时补充：
  * - main_ingredients / seasonings
  * - 标准化 steps
  * - cook_time（来自 cook_minutes，如有）
@@ -194,7 +194,8 @@ export async function fetchRecipesForAnalysis() {
 
 /**
  * 将成人菜谱写入云端 recipes 集合。
- * 处理 type='adult' 的条目，并补充 updateTime 字段；若 recipe 含 baby_variant，会一并写入（大手牵小手）。
+ * 若云端已存在同名且 type='adult' 的文档，则执行更新，避免重复插入（如融合车间 Approve 与步骤校验同步重复执行）。
+ * 否则执行新增。
  */
 export async function insertAdultRecipeToCloud(recipe) {
   const db = getDb();
@@ -210,6 +211,16 @@ export async function insertAdultRecipeToCloud(recipe) {
     ...cloudDoc,
     updateTime: now
   };
+
+  const name = recipe.name && String(recipe.name).trim();
+  if (name) {
+    const { data: existing } = await coll.where({ name, type: 'adult' }).limit(1).get();
+    if (existing && existing.length > 0) {
+      const { _id } = existing[0];
+      await coll.doc(_id).update(doc);
+      return { updated: true, _id };
+    }
+  }
 
   const res = await coll.add(doc);
   return res;

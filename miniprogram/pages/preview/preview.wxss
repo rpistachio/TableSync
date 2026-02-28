@@ -115,6 +115,33 @@
   opacity: 0.9;
 }
 
+.dash-recalc-hint {
+  font-size: 22rpx;
+  font-weight: 500;
+  color: #8C7A5E;
+  letter-spacing: 1rpx;
+}
+
+/* 重算呼吸态：上半区弱化 + 哑金光晕 */
+.preview-scroll-content.is-recalculating .preview-header,
+.preview-scroll-content.is-recalculating .dashboard-bar,
+.preview-scroll-content.is-recalculating .preview-menu-header,
+.preview-scroll-content.is-recalculating .preview-baby-hint,
+.preview-scroll-content.is-recalculating .preview-dish-list,
+.preview-scroll-content.is-recalculating .schedule-compare-section {
+  opacity: 0.5;
+  animation: kc-breathe 1.6s ease-in-out infinite;
+}
+
+@keyframes kc-breathe {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.65; }
+}
+
+.preview-scroll-content.is-recalculating .dashboard-bar {
+  box-shadow: 0 0 24rpx rgba(212, 175, 55, 0.12);
+}
+
 /* 今日提示条 */
 .preview-tips-bar {
   display: flex;
@@ -1144,6 +1171,141 @@
   color: var(--text-subtle);
 }
 
+/* ============ 厨房火力 · 晨雾粗陶（高调侘寂） ============ */
+
+.kc-console {
+  margin: 16rpx 32rpx 24rpx;
+  padding: 40rpx 36rpx;
+  background: linear-gradient(145deg, #F5F2EB 0%, #E8E3D8 100%);
+  border-radius: 32rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.8);
+  border-bottom: 1rpx solid rgba(0, 0, 0, 0.04);
+  box-shadow: 0 16rpx 40rpx rgba(120, 104, 84, 0.08);
+}
+
+.kc-header {
+  margin-bottom: 36rpx;
+  text-align: center;
+}
+
+.kc-title {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #5C5449;
+  letter-spacing: 4rpx;
+  text-shadow: 0 2rpx 0 rgba(255, 255, 255, 0.9);
+}
+
+.kc-burner-track {
+  display: flex;
+  background: #DFDACE;
+  border-radius: 20rpx;
+  padding: 8rpx;
+  margin-bottom: 48rpx;
+  box-shadow: inset 0 4rpx 12rpx rgba(140, 125, 110, 0.25), 0 2rpx 0 rgba(255, 255, 255, 0.7);
+}
+
+.kc-burner-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16rpx 0;
+  border-radius: 16rpx;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.kc-burner-item > .kc-flame-dot {
+  margin-right: 12rpx;
+}
+
+.kc-flame-dot-group {
+  display: flex;
+  gap: 6rpx;
+  margin-right: 12rpx;
+}
+
+.kc-burner-text {
+  font-size: 26rpx;
+  color: #9E968A;
+  font-weight: 500;
+  transition: color 0.3s;
+}
+
+.kc-burner-item.active {
+  background: #FCFAF8;
+  box-shadow: 0 6rpx 16rpx rgba(140, 120, 100, 0.12), inset 0 -3rpx 0 rgba(212, 175, 55, 0.3);
+}
+
+.kc-burner-item.active .kc-burner-text {
+  color: #4A433B;
+}
+
+.kc-flame-dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background: #C4BCB0;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.kc-burner-item.active .kc-flame-dot {
+  background: radial-gradient(circle at 30% 30%, #FFD700, #E5A91A);
+  box-shadow: 0 0 12rpx rgba(229, 169, 26, 0.6);
+}
+
+.kc-app-matrix {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 16rpx;
+}
+
+.kc-app-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.kc-app-wrap:active {
+  transform: scale(0.92);
+}
+
+.kc-app-ring {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 24rpx;
+  font-weight: 500;
+  border: 1rpx solid rgba(160, 148, 132, 0.3);
+  color: rgba(92, 84, 73, 0.35);
+  background: transparent;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  margin-bottom: 12rpx;
+}
+
+.kc-app-label {
+  font-size: 20rpx;
+  color: #A69E93;
+  font-weight: 400;
+  transition: all 0.3s ease;
+}
+
+.kc-app-wrap.active .kc-app-ring {
+  background: #FFFFFF;
+  border: 1rpx solid rgba(212, 175, 55, 0.6);
+  color: #B8860B;
+  box-shadow: 0 0 16rpx rgba(212, 175, 55, 0.25), inset 0 0 8rpx rgba(212, 175, 55, 0.1);
+}
+
+.kc-app-wrap.active .kc-app-label {
+  color: #8C7A5E;
+  font-weight: 500;
+}
+
 /* ============ 一句话微调 ============ */
 
 .tweak-bar {
@@ -1391,6 +1553,22 @@
   margin-bottom: 0;
 }
 
+.omakase-dish-row.is-locked {
+  background: rgba(184, 151, 106, 0.08);
+  border-radius: 12rpx;
+  padding: 8rpx 12rpx;
+  margin-left: -12rpx;
+  margin-right: -12rpx;
+  padding-left: 12rpx;
+  padding-right: 12rpx;
+}
+
+.omakase-lock-icon {
+  font-size: 24rpx;
+  line-height: 1;
+  margin-right: 4rpx;
+}
+
 .omakase-dish-name-wrap {
   display: flex;
   align-items: center;
@@ -1460,5 +1638,83 @@
   font-size: 22rpx;
   color: rgba(27, 61, 47, 0.4);
   line-height: 1;
+}
+
+/* 许愿池地域风味（仅 VIP） */
+.omakase-vibe-input {
+  width: 100%;
+  padding: 0 24rpx 20rpx;
+  margin-bottom: 8rpx;
+}
+
+.vibe-label {
+  display: block;
+  font-size: 22rpx;
+  color: rgba(58, 58, 58, 0.6);
+  margin-bottom: 12rpx;
+}
+
+.vibe-tags {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.vibe-tags-inner {
+  display: inline-flex;
+  gap: 16rpx;
+  padding: 4rpx 0;
+}
+
+.vibe-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 10rpx 20rpx;
+  font-size: 24rpx;
+  color: rgba(58, 58, 58, 0.7);
+  background: rgba(184, 151, 106, 0.12);
+  border-radius: 24rpx;
+  flex-shrink: 0;
+}
+
+.vibe-tag.is-active {
+  color: #1b3d2f;
+  background: rgba(184, 151, 106, 0.22);
+}
+
+.vibe-tag:active {
+  opacity: 0.8;
+}
+
+.vibe-custom-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 12rpx;
+}
+
+.vibe-custom-input {
+  flex: 1;
+  height: 64rpx;
+  padding: 0 20rpx;
+  font-size: 26rpx;
+  color: #3a3a3a;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 12rpx;
+}
+
+.vibe-custom-placeholder {
+  color: rgba(58, 58, 58, 0.4);
+}
+
+.vibe-custom-btn {
+  padding: 14rpx 24rpx;
+  font-size: 26rpx;
+  color: #1b3d2f;
+  background: rgba(184, 151, 106, 0.2);
+  border-radius: 12rpx;
+}
+
+.vibe-custom-btn:active {
+  opacity: 0.8;
 }
 

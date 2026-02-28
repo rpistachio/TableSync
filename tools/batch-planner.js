@@ -49,6 +49,12 @@ const COOK_CN = {
   air_fryer: '空气炸', cold_dress: '凉拌', salad: '沙拉',
 };
 
+const CUISINES = ['cantonese', 'sichuan', 'jiangzhe', 'dongbei', 'hunan', 'minyue', 'yungui', 'xibei', 'huaiyang'];
+const CUISINE_CN = {
+  cantonese: '粤港', sichuan: '川渝', jiangzhe: '江浙', dongbei: '东北',
+  hunan: '湖南', minyue: '闽粤', yungui: '云贵', xibei: '西北', huaiyang: '淮扬',
+};
+
 // 稀有食材权重更高（鼓励扩品）
 const MEAT_RARITY = {
   lamb: 1.5, duck: 1.5, shellfish: 1.4, fish: 1.2,
@@ -182,6 +188,45 @@ function findBabyGaps(adults) {
   return gaps;
 }
 
+function getRecipeCuisine(recipe) {
+  if (recipe.cuisine && CUISINES.includes(recipe.cuisine)) return recipe.cuisine;
+  const tags = recipe.tags || [];
+  for (const c of CUISINES) {
+    if (tags.includes(c)) return c;
+  }
+  return null;
+}
+
+function buildCuisineMatrix(recipes) {
+  const matrix = {};
+  for (const r of recipes) {
+    const m = r.meat;
+    const c = getRecipeCuisine(r);
+    if (!m || !c) continue;
+    const key = `${m}|${c}`;
+    matrix[key] = (matrix[key] || 0) + 1;
+  }
+  return matrix;
+}
+
+function findCuisineGaps(cuisineMatrix) {
+  const gaps = [];
+  for (const m of MEATS) {
+    for (const c of CUISINES) {
+      const key = `${m}|${c}`;
+      const count = cuisineMatrix[key] || 0;
+      const rarity = MEAT_RARITY[m] || 1.0;
+      if (count === 0) {
+        gaps.push({ meat: m, cuisine: c, count, priority: 0.5 * rarity });
+      } else if (count === 1) {
+        gaps.push({ meat: m, cuisine: c, count, priority: 0.2 * rarity });
+      }
+    }
+  }
+  gaps.sort((a, b) => b.priority - a.priority);
+  return gaps;
+}
+
 // ────────────────────────────────────────────
 // 批次编排策略
 // ────────────────────────────────────────────
@@ -274,6 +319,21 @@ function generateBatchPlan(matrixGaps, cookTypeGaps, babyGaps, opts = {}) {
     }
   }
 
+  // Batch 7 (低优先级): 地域菜系缺口 — meat × cuisine
+  const cuisineGaps = opts.cuisineGaps || [];
+  if (batches.length < maxBatches && cuisineGaps.length > 0) {
+    const cuisineSlots = cuisineGaps
+      .filter(g => g.count === 0)
+      .slice(0, batchSize)
+      .map(g => ({
+        meat: g.meat, cuisine: g.cuisine,
+        hint: `${CUISINE_CN[g.cuisine] || g.cuisine} ${MEAT_CN[g.meat]} 地域扩展`,
+      }));
+    if (cuisineSlots.length > 0) {
+      batches.push({ theme: '地域菜系扩展', slots: cuisineSlots });
+    }
+  }
+
   return batches.slice(0, maxBatches);
 }
 
@@ -289,6 +349,7 @@ function formatGenerateCommand(batch, index) {
     if (s.taste) parts.push(`   taste: ${s.taste}`);
     if (s.flavor_profile) parts.push(`   flavor_profile: ${s.flavor_profile}`);
     if (s.cook_type) parts.push(`   cook_type: ${s.cook_type}`);
+    if (s.cuisine) parts.push(`   cuisine: ${s.cuisine}`);
     if (s.is_baby_friendly) parts.push(`   is_baby_friendly: true`);
     lines.push(parts.join('\n'));
   });
@@ -382,6 +443,35 @@ function printGenerateCommands(batches) {
 }
 
 // ────────────────────────────────────────────
+// Exports (for recipe-fusion-spider and server)
+// ────────────────────────────────────────────
+
+export {
+  loadLocalRecipes,
+  loadRecipes,
+  loadCloudRecipes,
+  buildMatrix,
+  buildCuisineMatrix,
+  findMatrixGaps,
+  findCookTypeGaps,
+  findCuisineGaps,
+  findBabyGaps,
+  getRecipeCuisine,
+  generateBatchPlan,
+  MEATS,
+  ADULT_TASTES,
+  FLAVORS,
+  COOK_TYPES,
+  CUISINES,
+  CUISINE_CN,
+  MEAT_CN,
+  TASTE_CN,
+  FLAVOR_CN,
+  COOK_CN,
+  MEAT_RARITY,
+};
+
+// ────────────────────────────────────────────
 // CLI
 // ────────────────────────────────────────────
 
@@ -422,7 +512,9 @@ async function main() {
   const matrixGaps = findMatrixGaps(matrix);
   const cookTypeGaps = findCookTypeGaps(cookMatrix);
   const babyGaps = findBabyGaps(unique);
-  const batches = generateBatchPlan(matrixGaps, cookTypeGaps, babyGaps, { batchSize, maxBatches, focus });
+  const cuisineMatrix = buildCuisineMatrix(unique);
+  const cuisineGaps = findCuisineGaps(cuisineMatrix);
+  const batches = generateBatchPlan(matrixGaps, cookTypeGaps, babyGaps, { batchSize, maxBatches, focus, cuisineGaps });
 
   if (jsonOutput) {
     console.log(JSON.stringify({
@@ -444,7 +536,12 @@ async function main() {
   }
 }
 
-main().catch(err => {
-  console.error(chalk.red('Error:'), err.message || err);
-  process.exit(1);
-});
+const isMainModule =
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+if (isMainModule) {
+  main().catch((err) => {
+    console.error(chalk.red('Error:'), err.message || err);
+    process.exit(1);
+  });
+}

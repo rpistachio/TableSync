@@ -158,13 +158,26 @@ var DIETARY_PREFERENCE_TAGS = {
  * 场景: late_night(深夜食堂), ultra_quick(极致快手≤8分钟), comfort(暖心治愈), party(聚会硬菜)
  * 属性: quick, light, high_protein, spicy, vegetarian, no_oil, steamed, salty_umami, hearty, soup, stir_fry, baby_friendly
  */
-var RECIPE_TAGS_VOCABULARY = ['late_night', 'ultra_quick', 'comfort', 'party', 'quick', 'light', 'high_protein', 'spicy', 'vegetarian', 'no_oil', 'steamed', 'salty_umami', 'hearty', 'soup', 'stir_fry', 'baby_friendly'];
+var RECIPE_TAGS_VOCABULARY = ['late_night', 'ultra_quick', 'comfort', 'party', 'quick', 'light', 'high_protein', 'spicy', 'vegetarian', 'no_oil', 'steamed', 'salty_umami', 'hearty', 'soup', 'stir_fry', 'baby_friendly', 'cantonese', 'sichuan', 'jiangzhe', 'dongbei', 'hunan', 'minyue', 'yungui', 'xibei', 'huaiyang', 'sour_fresh', 'sweet'];
 
 /**
  * 根据菜谱特征生成默认 tags（无 tags 时用于回填，与 .bak defaultTags 逻辑一致）
  * @param {Object} r - 菜谱对象
  * @returns {Array<string>}
  */
+/** 菜名关键词 → 地域 tag（用于 defaultTagsForRecipe 推断存量菜谱地域标签） */
+var CUISINE_NAME_HINTS = {
+  cantonese: ['白切', '白灼', '煲仔', '老火', '广式', '港式', '叉烧', '蚝油'],
+  sichuan: ['麻婆', '宫保', '回锅', '水煮', '鱼香', '麻辣', '川味', '泡椒'],
+  jiangzhe: ['红烧', '糖醋', '狮子头', '东坡', '本帮', '杭式', '醉'],
+  dongbei: ['锅包', '小鸡炖', '地三鲜', '东北', '乱炖', '酸菜'],
+  hunan: ['剁椒', '湘味', '毛氏', '小炒肉'],
+  minyue: ['闽南', '台式', '沙茶', '姜母鸭', '三杯'],
+  yungui: ['过桥', '汽锅', '酸汤', '折耳根'],
+  xibei: ['手抓', '大盘鸡', '羊肉泡', '肉夹馍', '馕'],
+  huaiyang: ['淮扬', '徽式', '鲁菜', '豫式', '家常']
+};
+
 function defaultTagsForRecipe(r) {
   var tags = [];
   var n = (r.name || '');
@@ -201,6 +214,19 @@ function defaultTagsForRecipe(r) {
   if (r.cook_type === 'stir_fry') tags.push('stir_fry');
   if (r.taste === 'slow_stew' || (r.dish_type === 'soup' && r.meat !== 'vegetable')) tags.push('hearty');
   if (r.taste === 'steamed_salad' || n.indexOf('蒸') !== -1) tags.push('steamed');
+
+  // 基于菜名关键词推断 cuisine tag（存量菜谱自动带地域标签）
+  for (var cuisineKey in CUISINE_NAME_HINTS) {
+    if (CUISINE_NAME_HINTS.hasOwnProperty(cuisineKey)) {
+      var hints = CUISINE_NAME_HINTS[cuisineKey];
+      for (var h = 0; h < hints.length; h++) {
+        if (n.indexOf(hints[h]) !== -1) {
+          if (tags.indexOf(cuisineKey) === -1) tags.push(cuisineKey);
+          break;
+        }
+      }
+    }
+  }
 
   return tags;
 }
@@ -420,13 +446,28 @@ function computeDeviceLimits(kitchenConfig) {
 }
 
 /**
+ * 获取用于设备/冷菜判定的有效 cook_type（修正名称是凉拌却误标为蒸的数据）
+ * @param {Object} recipe - 菜谱对象
+ * @returns {String} cook_type
+ */
+function getEffectiveCookType(recipe) {
+  if (!recipe) return 'stir_fry';
+  var raw = recipe.cook_type || recipe.cook_method || 'stir_fry';
+  var name = (recipe.name || '') + '';
+  // 名称明确为凉拌/冷盘，但数据误标为蒸时，按冷菜处理（不占蒸锅）
+  if (raw === 'steam' && (/凉拌|拍黄瓜|拌凉皮|拌凉|木瓜沙拉|凉拌米线|凉拌茄子|凉拌秋葵|凉拌荞麦面|手撕鸡/.test(name)))
+    return 'cold_dress';
+  return raw;
+}
+
+/**
  * 获取菜谱的设备类型
  * @param {Object} recipe - 菜谱对象
  * @returns {String} 设备类型
  */
 function getRecipeDevice(recipe) {
   if (!recipe) return 'wok';
-  var cookType = recipe.cook_type || recipe.cook_method || 'stir_fry';
+  var cookType = getEffectiveCookType(recipe);
   return COOK_TYPE_TO_DEVICE[cookType] || 'wok';
 }
 
@@ -439,7 +480,7 @@ function getStepFocusLevel(step) {
   if (!step) return 'low';
   if (step.step_type === 'prep') return 'none';
   var recipe = step.recipe || null;
-  var cookType = recipe ? (recipe.cook_type || recipe.cook_method || 'stir_fry') : 'stir_fry';
+  var cookType = recipe ? getEffectiveCookType(recipe) : 'stir_fry';
   return COOK_TYPE_FOCUS_LEVEL[cookType] || 'low';
 }
 
@@ -628,7 +669,26 @@ function pickOneWithDeviceBalance(pool, deviceCountsRef, limits, flavorOptions) 
 
   var pick;
   if (flavorOptions && availablePool.length > 0) {
-    var weights = availablePool.map(function (r) { return _affinityWeight(r, flavorOptions); });
+    var tasteProfile = null;
+    try { tasteProfile = require('./tasteProfile.js'); } catch (e) {}
+    var lockedIds = (flavorOptions && Array.isArray(flavorOptions.lockedMenuIds)) ? flavorOptions.lockedMenuIds : [];
+    var regionTags = (flavorOptions && Array.isArray(flavorOptions.regionTags)) ? flavorOptions.regionTags : [];
+    var weights = availablePool.map(function (r) {
+      var w = _affinityWeight(r, flavorOptions);
+      if (tasteProfile && lockedIds.length > 0) {
+        var rid = r.id || r._id || '';
+        if (rid) w *= tasteProfile.getCombinationPenalties(rid, lockedIds);
+      }
+      if (regionTags.length > 0 && Array.isArray(r.tags)) {
+        for (var rt = 0; rt < regionTags.length; rt++) {
+          if (r.tags.indexOf(regionTags[rt]) !== -1) {
+            w += 2;
+            break;
+          }
+        }
+      }
+      return w;
+    });
     var totalWeight = 0;
     for (var w = 0; w < weights.length; w++) totalWeight += weights[w];
     var rand = Math.random() * totalWeight;
@@ -1782,6 +1842,38 @@ function generateMenuWithFilters(meat, babyMonth, hasBaby, adultCount, babyTaste
       _preferredMeats: (userPreference && userPreference.preferredMeats) || []
     };
   }
+  var lockedMenuIds = existingMenus.map(function (m) {
+    var ar = m && m.adultRecipe;
+    return ar ? (ar.id || ar._id || '') : '';
+  }).filter(Boolean);
+  if (lockedMenuIds.length > 0) {
+    if (!flavorOptions) flavorOptions = {};
+    flavorOptions.lockedMenuIds = lockedMenuIds;
+  }
+  try {
+    var tasteProfileRegion = require('./tasteProfile.js');
+    var regionCuisineMap = require('./regionCuisineMap.js');
+    var activeRegion = tasteProfileRegion.getActiveRegion && tasteProfileRegion.getActiveRegion();
+    if (activeRegion) {
+      var regionCuisineKey = activeRegion.manual
+        ? regionCuisineMap.getCuisineKeyByCity(activeRegion.manual)
+        : regionCuisineMap.getCuisineKeyByCity(activeRegion.city, activeRegion.province);
+      if (regionCuisineKey) {
+        var regionTags = regionCuisineMap.getTagsByCuisineKey(regionCuisineKey);
+        if (regionTags && regionTags.length > 0 && Math.random() < 0.4) {
+          if (!flavorOptions) flavorOptions = {};
+          flavorOptions.regionTags = regionTags;
+        }
+      }
+      try {
+        var app = typeof getApp === 'function' && getApp();
+        if (app && app.globalData) app.globalData.lastRegionWeightTriggered = !!(flavorOptions && flavorOptions.regionTags);
+      } catch (e2) {}
+    }
+  } catch (e) {}
+  if (flavorOptions && flavorOptions.regionTags && !flavorOptions.preferredFlavor && !flavorOptions.flavorAffinity) {
+    flavorOptions.flavorAffinity = {};
+  }
   var pickResult = pickOneWithStewBalance(aPool, currentStew, deviceLimits, flavorOptions);
   if (stewCountRef && typeof stewCountRef.stewCount === 'number') stewCountRef.stewCount = pickResult.stewCount;
 
@@ -2859,101 +2951,617 @@ function buildParallelContext(steps) {
   return output;
 }
 
+// ========== Hybrid JIT 双向对撞排程引擎 ==========
+/** 空间锚点：热菜最后一步对齐的虚拟开饭时间（分钟），Phase 4 平移裁剪会抹平 */
+const T_END_ANCHOR = 1000;
+
+const COLD_COOK_TYPES = ['cold', 'cold_dress', 'salad'];
+const MEAT_KEYWORDS = /肉|排骨|鸡|鱼|虾|牛|羊|鸭|蟹/;
+const ASYNC_MARINATE = /腌制|腌渍|腌\s*\d/;
+const ASYNC_SOAK = /泡发|浸泡/;
+const SINK_KEYWORDS = /洗|焯水|捞出过凉|过凉水/;
+
+/** 硬性家电设备 key（容量为 0 时禁止排程） */
+const HARD_APPLIANCE_KEYS = ['microwave', 'air_fryer', 'oven', 'steamer'];
+
 /**
- * 四阶段重排（盲盒第四层 Combo 引擎之时序统筹）：预处理 → 长耗时烹饪 → 间隙/快炒 → 收汁收尾
- * 对应设计：prep → long_term → gap(active/idle_prep) → finish
+ * 全局资源追踪器 (RCPSP)：管理家电容量、双手/水槽时间片、砧板状态机
+ * 用于 Phase 2 正向 FFD 与 Phase 3 逆向 JIT 的约束拦截
+ */
+class ResourceTracker {
+  constructor(kitchenConfig = {}) {
+    const cfg = kitchenConfig || {};
+    this.hardAppliances = {
+      microwave: cfg.hasMicrowave === true ? 1 : 0,
+      air_fryer: cfg.hasAirFryer === true ? 1 : 0,
+      oven: cfg.hasOven === true ? 1 : 0,
+      steamer: cfg.hasSteamer === true ? 1 : 0
+    };
+    this.handsIntervals = [];
+    this.sinkIntervals = [];
+    this.boardState = 'clean';
+  }
+
+  /** 硬性设备快失败：步骤所需设备容量为 0 时返回 false */
+  checkDevice(device) {
+    if (!device || device === 'none') return true;
+    if (HARD_APPLIANCE_KEYS.indexOf(device) === -1) return true;
+    return (this.hardAppliances[device] || 0) > 0;
+  }
+
+  /** 区间 [start, end] 是否与 intervals 有重叠 */
+  static overlaps(intervals, start, end) {
+    return intervals.some(({ start: s, end: e }) => start < e && end > s);
+  }
+
+  /** 在 intervals 中找第一个与 [from, from+duration] 冲突的区间，返回其 end；无冲突返回 from */
+  static firstConflictEnd(intervals, from, duration) {
+    const end = from + duration;
+    for (const { start: s, end: e } of intervals) {
+      if (from < e && end > s) return e;
+    }
+    return null;
+  }
+
+  isHandsFree(start, end) {
+    return !ResourceTracker.overlaps(this.handsIntervals, start, end);
+  }
+
+  isSinkFree(start, end) {
+    return !ResourceTracker.overlaps(this.sinkIntervals, start, end);
+  }
+
+  /** 正向寻隙：从 fromTime 起找第一个 [t, t+duration] 同时满足 hands/sink 空闲的 t */
+  findFirstFitForward(fromTime, duration, needsHands, needsSink) {
+    let t = fromTime;
+    for (;;) {
+      const end = t + duration;
+      const handsOk = !needsHands || this.isHandsFree(t, end);
+      const sinkOk = !needsSink || this.isSinkFree(t, end);
+      if (handsOk && sinkOk) return t;
+      let next = t + 1;
+      if (needsHands) {
+        const c = ResourceTracker.firstConflictEnd(this.handsIntervals, t, duration);
+        if (c != null && c > next) next = c;
+      }
+      if (needsSink) {
+        const c = ResourceTracker.firstConflictEnd(this.sinkIntervals, t, duration);
+        if (c != null && c > next) next = c;
+      }
+      t = next;
+    }
+  }
+
+  reserveHands(start, end) {
+    this.handsIntervals.push({ start, end });
+    this.handsIntervals.sort((a, b) => a.start - b.start);
+  }
+
+  reserveSink(start, end) {
+    this.sinkIntervals.push({ start, end });
+    this.sinkIntervals.sort((a, b) => a.start - b.start);
+  }
+
+  /** 砧板状态机：切蔬菜前若为 raw_meat 需先插 wash_board，并返回插入的时长（0 或 1） */
+  requireBoardForCutVeg() {
+    if (this.boardState === 'raw_meat') {
+      this.boardState = 'clean';
+      return 1;
+    }
+    return 0;
+  }
+
+  afterCutVeg() {
+    this.boardState = 'veg';
+  }
+
+  afterCutMeat() {
+    this.boardState = 'raw_meat';
+  }
+
+  /** 步骤是否需要占用双手（high-focus 或主动操作） */
+  static stepNeedsHands(step, getStepFocusLevel, getStepText) {
+    const focus = getStepFocusLevel(step);
+    if (focus === 'high') return true;
+    const at = step.actionType || '';
+    if (at === 'active' || at === 'long_term') return true;
+    const text = getStepText(step) || '';
+    if (/切|剁|炒|煎|翻|拌/.test(text)) return true;
+    return false;
+  }
+
+  /** 步骤是否需要水槽（洗、焯水捞出过凉） */
+  static stepNeedsSink(step, getStepText) {
+    return SINK_KEYWORDS.test(getStepText(step) || '');
+  }
+}
+
+/**
+ * Phase 1: 步骤拆解与属性标记 (AST Triage)
+ * 将规范化后的步骤分流进 prepQueue / cookQueue / asyncTasks / coldDishes / longStews / finishSteps
+ * @param {Array} normalized - 规范化后的步骤
+ * @param {Object} [resourceTracker] - 若传入则执行硬性设备快失败：无设备容量的步骤不进入排程（_noDevice 标记）
+ */
+function triageSteps(normalized, resourceTracker) {
+  const prepQueue = [];
+  const cookQueue = [];
+  const asyncTasks = [];
+  const coldDishes = [];
+  const longStews = [];
+  const finishSteps = [];
+
+  for (const step of normalized) {
+    const s = cloneStep(step);
+    const text = getStepText(s) || '';
+    const recipe = s.recipe || null;
+    const cookType = recipe ? getEffectiveCookType(recipe) : '';
+    const duration = typeof s.duration_num === 'number' ? s.duration_num : estimateMinutes(text);
+    const device = s.device || getRecipeDevice(recipe) || 'wok';
+
+    // 硬性设备拦截 (Fast-Fail)：所需设备容量为 0 则禁止进入排程
+    if (resourceTracker && !resourceTracker.checkDevice(device)) {
+      s._noDevice = true;
+      s._requiredDevice = device;
+    }
+
+    // 异步长任务标记
+    if (ASYNC_MARINATE.test(text)) {
+      s.isAsync = true;
+      s.asyncType = 'marinate';
+    } else if (ASYNC_SOAK.test(text)) {
+      s.isAsync = true;
+      s.asyncType = 'soak';
+    }
+
+    // 冷菜豁免（使用 getEffectiveCookType，避免凉拌菜误标 steam 仍占蒸锅）
+    s.isColdDish = COLD_COOK_TYPES.indexOf(cookType) !== -1;
+
+    // 长炖煮豁免 (duration > 45min)
+    s.isLongStew = s.actionType === 'long_term' && duration > 45;
+
+    // 备菜子类型
+    if (s.step_type === 'prep') {
+      if (/[洗冲清理去泥]/.test(text)) s.prepSubType = 'wash';
+      else if (/[切剁改刀块片丝丁段]/.test(text)) {
+        const hasMeat = recipe && recipe.meat && recipe.meat !== 'vegetable';
+        s.prepSubType = hasMeat && MEAT_KEYWORDS.test(text) ? 'cut_meat' : 'cut_veg';
+      } else if (s.isAsync && s.asyncType === 'marinate') s.prepSubType = 'marinate';
+      else if (s.isAsync && s.asyncType === 'soak') s.prepSubType = 'soak';
+      else if (/调[酱汁]|拌[匀好]|搅拌/.test(text)) s.prepSubType = 'sauce';
+      else s.prepSubType = 'general';
+    }
+
+    if (isFinishStep(s)) {
+      finishSteps.push(s);
+      continue;
+    }
+
+    if (s._noDevice) continue;
+
+    if (s.step_type === 'prep') {
+      prepQueue.push(s);
+      if (s.isAsync) asyncTasks.push(s);
+    } else {
+      if (s.isColdDish) coldDishes.push(s);
+      else if (s.isLongStew) longStews.push(s);
+      else cookQueue.push(s);
+    }
+  }
+
+  return { prepQueue, cookQueue, asyncTasks, coldDishes, longStews, finishSteps };
+}
+
+/**
+ * Phase 2: 备菜正向筑底 (Forward Scheduling)
+ * 集成 ResourceTracker：双手/水槽互斥、砧板状态机（切蔬菜前若 raw_meat 则插 wash_board）
+ */
+function forwardSchedulePrep(triage, kitchenConfig, resourceTracker) {
+  const { prepQueue, asyncTasks } = triage;
+  const tracker = resourceTracker || new ResourceTracker(kitchenConfig);
+  const scheduled = [];
+  let t = 0;
+  const asyncTimers = [];
+  const usedStepKeys = new Set();
+
+  const needsHands = (step) => ResourceTracker.stepNeedsHands(step, getStepFocusLevel, getStepText);
+  const needsSink = (step) => ResourceTracker.stepNeedsSink(step, getStepText);
+
+  // 找出需要提权的前置步骤（同 recipeId 且 prepSubType === 'cut_meat' 的步骤，在 async 之前）
+  const hoistSet = new Set();
+  for (const asyncStep of asyncTasks) {
+    const recipeId = asyncStep.recipeId || '';
+    const order = typeof asyncStep.intraRecipeOrder === 'number' ? asyncStep.intraRecipeOrder : -1;
+    for (const p of prepQueue) {
+      if (p.recipeId !== recipeId) continue;
+      const pOrder = typeof p.intraRecipeOrder === 'number' ? p.intraRecipeOrder : -1;
+      if (pOrder >= order) continue;
+      if (p.prepSubType === 'cut_meat' || (p.prepSubType === 'general' && MEAT_KEYWORDS.test(getStepText(p)))) {
+        hoistSet.add(p.stepKey || p.recipeId + '_' + pOrder);
+      }
+    }
+  }
+
+  // 先排提权步骤（切肉 + wash_board + 腌制/泡发后台），并注册双手/水槽
+  for (const step of prepQueue) {
+    if (!hoistSet.has(step.stepKey)) continue;
+    const dur = typeof step.duration_num === 'number' ? step.duration_num : estimateMinutes(getStepText(step)) || 5;
+    const tStart = tracker.findFirstFitForward(t, dur, needsHands(step), needsSink(step));
+    const s = cloneStep(step);
+    s.startAt = tStart;
+    s.endAt = tStart + dur;
+    s.pipelineStage = 'prep';
+    scheduled.push(s);
+    if (needsHands(step)) tracker.reserveHands(tStart, s.endAt);
+    if (needsSink(step)) tracker.reserveSink(tStart, s.endAt);
+    tracker.afterCutMeat();
+    usedStepKeys.add(s.stepKey);
+    t = tStart + dur;
+    const tMarinateStart = t;
+
+    // 物理重置惩罚：洗手/洗砧板 1min（占用双手+水槽）
+    const washStart = tracker.findFirstFitForward(t, 1, true, true);
+    const washStep = {
+      text: '洗手/洗砧板',
+      duration_num: 1,
+      step_type: 'cook',
+      actionType: 'active',
+      device: 'none',
+      pipelineStage: 'clean_gap',
+      stepKey: 'wash_board_' + scheduled.length,
+      startAt: washStart,
+      endAt: washStart + 1
+    };
+    scheduled.push(washStep);
+    tracker.reserveHands(washStart, washStart + 1);
+    tracker.reserveSink(washStart, washStart + 1);
+    t = washStart + 1;
+
+    // 同菜谱的腌制/泡发：从 tMarinateStart 起后台倒计时，不占主厨时间
+    const recipeId = step.recipeId;
+    for (const asyncStep of asyncTasks) {
+      if (asyncStep.recipeId !== recipeId) continue;
+      if (usedStepKeys.has(asyncStep.stepKey)) continue;
+      const asyncDur = typeof asyncStep.duration_num === 'number' ? asyncStep.duration_num : estimateMinutes(getStepText(asyncStep)) || 10;
+      asyncTimers.push({ asyncStartAt: tMarinateStart, asyncEndAt: tMarinateStart + asyncDur, step: asyncStep });
+      usedStepKeys.add(asyncStep.stepKey);
+      const as = cloneStep(asyncStep);
+      as.startAt = tMarinateStart;
+      as.endAt = tMarinateStart + asyncDur;
+      as.pipelineStage = 'prep';
+      scheduled.push(as);
+    }
+  }
+
+  // 剩余备菜按 先素后荤，并应用砧板状态机与双手/水槽寻隙
+  const remaining = prepQueue.filter((p) => !usedStepKeys.has(p.stepKey));
+  const vegFirst = remaining.filter((p) => p.prepSubType === 'cut_veg' || p.prepSubType === 'wash' || p.prepSubType === 'sauce' || p.prepSubType === 'general');
+  const meatLast = remaining.filter((p) => p.prepSubType === 'cut_meat');
+  const rest = remaining.filter((p) => vegFirst.indexOf(p) === -1 && meatLast.indexOf(p) === -1);
+  const ordered = [...vegFirst, ...rest, ...meatLast];
+
+  for (const step of ordered) {
+    const dur = typeof step.duration_num === 'number' ? step.duration_num : estimateMinutes(getStepText(step)) || 5;
+    let tStart = tracker.findFirstFitForward(t, dur, needsHands(step), needsSink(step));
+
+    // 砧板状态机：切蔬菜前若为 raw_meat 则插入 wash_board（交叉感染防范）
+    if (step.prepSubType === 'cut_veg' && tracker.requireBoardForCutVeg() === 1) {
+      const washStart = tracker.findFirstFitForward(tStart, 1, true, true);
+      const washStep = {
+        text: '洗手/洗砧板',
+        duration_num: 1,
+        step_type: 'cook',
+        actionType: 'active',
+        device: 'none',
+        pipelineStage: 'clean_gap',
+        stepKey: 'wash_board_' + scheduled.length,
+        startAt: washStart,
+        endAt: washStart + 1
+      };
+      scheduled.push(washStep);
+      tracker.reserveHands(washStart, washStart + 1);
+      tracker.reserveSink(washStart, washStart + 1);
+      tStart = tracker.findFirstFitForward(washStart + 1, dur, needsHands(step), needsSink(step));
+    }
+
+    const s = cloneStep(step);
+    s.startAt = tStart;
+    s.endAt = tStart + dur;
+    s.pipelineStage = 'prep';
+    scheduled.push(s);
+    if (needsHands(step)) tracker.reserveHands(tStart, s.endAt);
+    if (needsSink(step)) tracker.reserveSink(tStart, s.endAt);
+    if (step.prepSubType === 'cut_veg') tracker.afterCutVeg();
+    else if (step.prepSubType === 'cut_meat') tracker.afterCutMeat();
+    t = tStart + dur;
+  }
+
+  const prepEndTime = scheduled.length > 0
+    ? Math.max(...scheduled.map((s) => s.endAt != null ? s.endAt : (s.startAt || 0) + (s.duration_num || 0)))
+    : 0;
+  return { scheduled, prepEndTime, asyncTimers };
+}
+
+/**
+ * Phase 3: 热菜逆向倒推 (Reverse JIT)
+ * T_END_ANCHOR 锚定，从右向左分配；心智负载 + 双手/水槽互斥（ResourceTracker 约束）
+ */
+function reverseScheduleCook(cookQueue, kitchenConfig) {
+  if (!cookQueue.length) return { scheduled: [], cookStartTime: T_END_ANCHOR, T_END_ANCHOR };
+
+  const limits = kitchenConfig ? computeDeviceLimits(kitchenConfig) : DEVICE_LIMITS;
+  const needsBurner = limits._needsBurner || {};
+
+  // 按 recipeId 分组，每组内按 intraRecipeOrder 排序，得到每道菜的最后一步
+  const byRecipe = new Map();
+  for (const step of cookQueue) {
+    const rid = step.recipeId || step.recipeName || 'single';
+    if (!byRecipe.has(rid)) byRecipe.set(rid, []);
+    byRecipe.get(rid).push(cloneStep(step));
+  }
+
+  // 收集所有步骤，按「逆序」排：每道菜的最后一步优先（endAt 靠右）
+  const reverseOrder = [];
+  for (const [, steps] of byRecipe) {
+    steps.sort((a, b) => (a.intraRecipeOrder || 0) - (b.intraRecipeOrder || 0));
+    for (let i = steps.length - 1; i >= 0; i--) reverseOrder.push(steps[i]);
+  }
+  reverseOrder.sort((a, b) => {
+    const ra = a.recipeId || a.recipeName || '';
+    const rb = b.recipeId || b.recipeName || '';
+    if (ra !== rb) return ra.localeCompare(rb);
+    return (b.intraRecipeOrder || 0) - (a.intraRecipeOrder || 0);
+  });
+
+  // 逆向槽位：设备、双手、水槽的「当前可用最右端 endAt」
+  const deviceNextEnd = {};
+  ['wok', 'stove_long', 'steamer', 'pot', 'none', 'air_fryer', 'rice_cooker', 'oven', 'microwave'].forEach((d) => {
+    deviceNextEnd[d] = T_END_ANCHOR;
+  });
+  let highFocusNextEnd = T_END_ANCHOR;
+  let handsNextEnd = T_END_ANCHOR;
+  let sinkNextEnd = T_END_ANCHOR;
+
+  const scheduled = [];
+  for (const s of reverseOrder) {
+    const dur = typeof s.duration_num === 'number' ? s.duration_num : estimateMinutes(getStepText(s)) || 5;
+    const dev = s.device || getRecipeDevice(s.recipe) || 'wok';
+    const focus = getStepFocusLevel(s);
+    const stepNeedsHands = ResourceTracker.stepNeedsHands(s, getStepFocusLevel, getStepText);
+    const stepNeedsSink = ResourceTracker.stepNeedsSink(s, getStepText);
+
+    let endAt = T_END_ANCHOR;
+    const nextInRecipe = scheduled.find(
+      (x) => x.recipeId === s.recipeId && (x.intraRecipeOrder || 0) === (s.intraRecipeOrder || 0) + 1
+    );
+    if (nextInRecipe && nextInRecipe.startAt != null) {
+      endAt = Math.min(endAt, nextInRecipe.startAt);
+    }
+    if (needsBurner[dev] && deviceNextEnd[dev] != null) {
+      endAt = Math.min(endAt, deviceNextEnd[dev]);
+    }
+    if (focus === 'high') {
+      endAt = Math.min(endAt, highFocusNextEnd);
+    }
+    if (stepNeedsHands) {
+      endAt = Math.min(endAt, handsNextEnd);
+    }
+    if (stepNeedsSink) {
+      endAt = Math.min(endAt, sinkNextEnd);
+    }
+    const startAt = endAt - dur;
+    s.endAt = endAt;
+    s.startAt = startAt;
+    s.pipelineStage = 'cook_jit';
+
+    if (needsBurner[dev]) {
+      deviceNextEnd[dev] = startAt;
+    }
+    if (focus === 'high') {
+      highFocusNextEnd = startAt;
+    }
+    if (stepNeedsHands) {
+      handsNextEnd = startAt;
+    }
+    if (stepNeedsSink) {
+      sinkNextEnd = startAt;
+    }
+    scheduled.push(s);
+  }
+
+  let cookStartTime = T_END_ANCHOR;
+  for (const s of scheduled) {
+    if (s.startAt < cookStartTime) cookStartTime = s.startAt;
+  }
+
+  return { scheduled, cookStartTime, T_END_ANCHOR };
+}
+
+/**
+ * Phase 4: 时空对撞与平移裁剪 (Collision & Shift)
+ * 穿透则右移 cook；否则检查异步等待，可裁剪则左移；冷菜贴近末尾排布；长炖找最早灶台；合并时间线
+ */
+function collideAndShift(prepResult, cookResult, triage, kitchenConfig) {
+  const { scheduled: prepScheduled, prepEndTime, asyncTimers } = prepResult;
+  const { scheduled: cookScheduled, cookStartTime } = cookResult;
+  const { coldDishes, longStews, finishSteps } = triage;
+
+  let cookShift = 0;
+  if (cookStartTime < prepEndTime) {
+    cookShift = prepEndTime - cookStartTime;
+  } else {
+    const maxAsyncEnd = asyncTimers.length ? Math.max(...asyncTimers.map((x) => x.asyncEndAt)) : 0;
+    if (maxAsyncEnd <= prepEndTime) {
+      cookShift = -(cookStartTime - prepEndTime);
+    }
+  }
+
+  const out = [];
+  for (const s of prepScheduled) {
+    const c = cloneStep(s);
+    if (c.startAt != null) c.startAt += 0;
+    if (c.endAt != null) c.endAt += 0;
+    out.push(c);
+  }
+
+  for (const s of cookScheduled) {
+    const c = cloneStep(s);
+    c.startAt = (c.startAt || 0) + cookShift;
+    c.endAt = (c.endAt || 0) + cookShift;
+    out.push(c);
+  }
+
+  // 长炖：找最早可用灶台
+  const limits = kitchenConfig ? computeDeviceLimits(kitchenConfig) : DEVICE_LIMITS;
+  let stoveFree = 0;
+  for (const s of out) {
+    const e = s.endAt != null ? s.endAt : (s.gapEndAt != null ? s.gapEndAt : 0);
+    if (e > stoveFree) stoveFree = e;
+  }
+  for (const s of longStews) {
+    const c = cloneStep(s);
+    const dur = typeof c.duration_num === 'number' ? c.duration_num : estimateMinutes(getStepText(c)) || 45;
+    c.startAt = stoveFree;
+    c.endAt = stoveFree + dur;
+    c.pipelineStage = 'long_term';
+    out.push(c);
+    stoveFree = c.endAt;
+  }
+
+  // 冷菜：贴近终点（开饭前 10–15 分钟），仅当末尾无空才用炖煮空档
+  const timelineEnd = out.reduce((max, s) => Math.max(max, s.endAt != null ? s.endAt : 0), 0);
+  const coldWindowStart = Math.max(0, timelineEnd - 15);
+  const coldWindowEnd = timelineEnd - 5;
+  const gaps = [];
+  const sorted = out.slice().sort((a, b) => (a.startAt != null ? a.startAt : 0) - (b.startAt != null ? b.startAt : 0));
+  let cur = 0;
+  for (const s of sorted) {
+    const start = s.startAt != null ? s.startAt : s.gapStartAt;
+    const end = s.endAt != null ? s.endAt : s.gapEndAt;
+    if (start == null || end == null) continue;
+    if (cur < start) gaps.push([cur, start]);
+    if (end > cur) cur = end;
+  }
+  const nearEndGaps = gaps.filter(([a, b]) => b >= coldWindowStart && a <= coldWindowEnd);
+  const otherGaps = gaps.filter(([a, b]) => !(b >= coldWindowStart && a <= coldWindowEnd));
+  const coldSlots = nearEndGaps.length ? nearEndGaps : otherGaps;
+
+  let coldIdx = 0;
+  for (const g of coldSlots) {
+    if (coldIdx >= coldDishes.length) break;
+    const [gapStart, gapEnd] = g;
+    const slotDur = gapEnd - gapStart;
+    if (slotDur < 3) continue;
+    const step = coldDishes[coldIdx];
+    const dur = Math.min(slotDur, typeof step.duration_num === 'number' ? step.duration_num : 10);
+    const c = cloneStep(step);
+    c.gapStartAt = gapEnd - dur;
+    c.gapEndAt = gapEnd;
+    c.pipelineStage = 'idle_gap';
+    out.push(c);
+    coldIdx++;
+  }
+  for (let i = coldIdx; i < coldDishes.length; i++) {
+    const c = cloneStep(coldDishes[i]);
+    c.gapStartAt = timelineEnd - 12;
+    c.gapEndAt = timelineEnd - 2;
+    c.pipelineStage = 'idle_gap';
+    out.push(c);
+  }
+
+  for (const s of finishSteps) {
+    const c = cloneStep(s);
+    c.pipelineStage = 'finish';
+    const maxEnd = out.reduce((m, x) => Math.max(m, x.endAt != null ? x.endAt : 0, x.gapEndAt != null ? x.gapEndAt : 0), 0);
+    c.startAt = maxEnd;
+    c.endAt = maxEnd + (typeof c.duration_num === 'number' ? c.duration_num : 5);
+    out.push(c);
+  }
+
+  // Phase 4 归零：整体左移到从 0 开始
+  const minT = out.reduce((m, s) => {
+    const t = s.startAt != null ? s.startAt : (s.gapStartAt != null ? s.gapStartAt : Infinity);
+    return Math.min(m, t);
+  }, Infinity);
+  if (minT > 0 && minT !== Infinity) {
+    for (const s of out) {
+      if (s.startAt != null) s.startAt -= minT;
+      if (s.endAt != null) s.endAt -= minT;
+      if (s.gapStartAt != null) s.gapStartAt -= minT;
+      if (s.gapEndAt != null) s.gapEndAt -= minT;
+    }
+  }
+
+  return out.sort((a, b) => {
+    const ta = a.startAt != null ? a.startAt : (a.gapStartAt != null ? a.gapStartAt : 0);
+    const tb = b.startAt != null ? b.startAt : (b.gapStartAt != null ? b.gapStartAt : 0);
+    return ta - tb;
+  });
+}
+
+/**
+ * 四阶段重排（Hybrid JIT 双向对撞）：备菜正向筑底 + 热菜逆向倒推 + 时空对撞裁剪
  * @param {Array} allSteps 原始步骤数组（可混合多个菜）
  * @param {Array} menus    当前菜单列表（暂未强依赖，预留扩展）
- * @param {Object} [kitchenConfig] - 厨房配置，供 buildTimeline / fillGaps 使用
+ * @param {Object} [kitchenConfig] - 厨房配置
  * @returns {Array} 重排后的步骤数组
  */
 function reorderStepsForPipeline(allSteps, menus, kitchenConfig) {
   if (!Array.isArray(allSteps) || allSteps.length === 0) return [];
-  // menus 暂留作扩展（如按菜品权重排序），当前实现中未强依赖
   void menus;
 
-  // 1. 规范化所有步骤
-  var normalized = [];
-  for (var i = 0; i < allSteps.length; i++) {
-    var ns = normalizeStepForPipeline(allSteps[i], allSteps[i] && allSteps[i].recipe);
+  const normalized = [];
+  for (let i = 0; i < allSteps.length; i++) {
+    const ns = normalizeStepForPipeline(allSteps[i], allSteps[i] && allSteps[i].recipe);
     if (ns) normalized.push(ns);
   }
   if (normalized.length === 0) return [];
 
-  // 2. 分类
-  var prepSteps = [];
-  var longTermSteps = [];
-  var otherSteps = [];
+  const resourceTracker = new ResourceTracker(kitchenConfig);
+  const triage = triageSteps(normalized, resourceTracker);
 
-  for (var j = 0; j < normalized.length; j++) {
-    var s = normalized[j];
-    if (s.step_type === 'prep') {
-      prepSteps.push(s);
-    } else if (s.actionType === 'long_term') {
-      longTermSteps.push(s);
-    } else {
-      otherSteps.push(s);
-    }
-  }
-
-  // 收尾步骤单独拿出来，后面整体推到 Stage 4
-  var finishSteps = [];
-  var activeAndIdle = [];
-  for (var k = 0; k < otherSteps.length; k++) {
-    var os = otherSteps[k];
-    if (isFinishStep(os)) finishSteps.push(os);
-    else activeAndIdle.push(os);
-  }
-
-  // 3. Stage 1：合并备菜（洗/切等去重）
-  var mergedPrep = mergeEssentialPrep(prepSteps);
-
-  // 4. 若无长耗时任务，则简化为：prep → active/idle → finish
-  if (longTermSteps.length === 0) {
-    var simple = [];
-    Array.prototype.push.apply(simple, mergedPrep);
-    Array.prototype.push.apply(simple, activeAndIdle);
-    Array.prototype.push.apply(simple, finishSteps);
-    return simple;
-  }
-
-  // 4.5 单灶 + 所有长耗时任务均占灶 → 线性降级，不并行
-  var limits = kitchenConfig ? computeDeviceLimits(kitchenConfig) : null;
-  if (limits && limits._burners <= 1 && longTermSteps.length > 0) {
-    var needsBurnerFn = function (step) {
-      var dev = step.device || getRecipeDevice(step.recipe) || 'wok';
+  // 单灶 + 所有热菜均占灶 → 线性降级
+  const limits = kitchenConfig ? computeDeviceLimits(kitchenConfig) : null;
+  if (limits && limits._burners <= 1 && triage.cookQueue.length > 0) {
+    const needsBurner = (step) => {
+      const dev = step.device || getRecipeDevice(step.recipe) || 'wok';
       return limits._needsBurner && limits._needsBurner[dev] === true;
     };
-    if (longTermSteps.every(needsBurnerFn)) {
-      var linearOutput = [];
-      Array.prototype.push.apply(linearOutput, mergedPrep);
-      Array.prototype.push.apply(linearOutput, longTermSteps);
-      Array.prototype.push.apply(linearOutput, activeAndIdle);
-      for (var fi = 0; fi < finishSteps.length; fi++) {
-        var fStep = cloneStep(finishSteps[fi]);
-        fStep.pipelineStage = fStep.pipelineStage || 'finish';
-        linearOutput.push(fStep);
+    if (triage.cookQueue.every(needsBurner)) {
+      const linearOutput = [];
+      const mergedPrep = mergeEssentialPrep(triage.prepQueue);
+      linearOutput.push(...mergedPrep);
+      linearOutput.push(...triage.cookQueue.map((s) => { const c = cloneStep(s); c.pipelineStage = c.pipelineStage || 'long_term'; return c; }));
+      linearOutput.push(...triage.longStews.map((s) => { const c = cloneStep(s); c.pipelineStage = 'long_term'; return c; }));
+      linearOutput.push(...triage.coldDishes.map((s) => { const c = cloneStep(s); c.pipelineStage = 'idle_gap'; return c; }));
+      for (const s of triage.finishSteps) {
+        const c = cloneStep(s);
+        c.pipelineStage = 'finish';
+        linearOutput.push(c);
       }
       return linearOutput;
     }
   }
 
-  // 5. Stage 2+3：基于长耗时任务构建时间线并填充间隙
-  var timeline = buildTimeline(longTermSteps, kitchenConfig);
-  var gapFilled = fillGaps(timeline, activeAndIdle, kitchenConfig);
-
-  // 6. Stage 4：收尾步骤整体放在最后
-  var output = [];
-  Array.prototype.push.apply(output, mergedPrep);
-  Array.prototype.push.apply(output, gapFilled);
-
-  for (var f = 0; f < finishSteps.length; f++) {
-    var fs = cloneStep(finishSteps[f]);
-    fs.pipelineStage = fs.pipelineStage || 'finish';
-    output.push(fs);
+  // 无热菜仅备菜+冷菜+收尾 → 简化路径
+  if (triage.cookQueue.length === 0 && triage.longStews.length === 0) {
+    const prepResult = forwardSchedulePrep(triage, kitchenConfig, resourceTracker);
+    const out = [...prepResult.scheduled];
+    for (const s of triage.coldDishes) {
+      const c = cloneStep(s);
+      c.pipelineStage = 'idle_gap';
+      out.push(c);
+    }
+    for (const s of triage.finishSteps) {
+      const c = cloneStep(s);
+      c.pipelineStage = 'finish';
+      out.push(c);
+    }
+    return out;
   }
 
-  return output;
+  const prepResult = forwardSchedulePrep(triage, kitchenConfig, resourceTracker);
+  const cookResult = reverseScheduleCook(triage.cookQueue, kitchenConfig);
+  return collideAndShift(prepResult, cookResult, triage, kitchenConfig);
 }
 
 /** 设备类型对应的甘特图条颜色 */
@@ -3068,7 +3676,7 @@ function annotatePhases(steps) {
       if (firstPrep === -1) firstPrep = i;
     } else if (stage === 'long_term') {
       if (firstLong === -1) firstLong = i;
-    } else if (stage === 'active_gap' || stage === 'idle_gap' || stage === 'active_tail') {
+    } else if (stage === 'active_gap' || stage === 'idle_gap' || stage === 'active_tail' || stage === 'clean_gap' || stage === 'cook_jit') {
       if (firstGap === -1) firstGap = i;
     } else if (stage === 'finish' || isFinishStep(s)) {
       if (firstFinish === -1) firstFinish = i;
@@ -3101,7 +3709,7 @@ function annotatePhases(steps) {
       step.isPhaseStart = true;
       step.phaseType = 'prep';
       step.phaseTitle = '切配阶段';
-      step.phaseSubtitle = '按菜品完成洗、切、腌等准备';
+      step.phaseSubtitle = '先素后荤，有腌制则提前切肉并洗手/洗砧板';
       step.phaseTimeline = buildPhaseTimelineData(steps, firstPrep, prepEnd);
     } else if (j === firstLong && firstLong !== -1) {
       step.isPhaseStart = true;

@@ -212,6 +212,17 @@
   color: var(--text-muted);
 }
 
+.fridge-tag {
+  display: inline-block;
+  margin-top: 8rpx;
+  margin-right: 12rpx;
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  background: rgba(129, 199, 132, 0.2);
+  color: #2e7d32;
+  border-radius: 8rpx;
+}
+
 .shared-tag {
   display: inline-block;
   margin-top: 8rpx;
