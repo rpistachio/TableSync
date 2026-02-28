@@ -1,4 +1,4 @@
-# TableSync 技术规格与 2026 需求实现状态 (v5.0)
+# TableSync 技术规格与 2026 需求实现状态 (v5.2)
 
 本文档为 TableSync 微信小程序的核心技术规格与 2026 版需求落地状态说明。需求原文见 [TableSync-核心逻辑与用户体验优化需求-2026.md](./TableSync-核心逻辑与用户体验优化需求-2026.md)。
 
@@ -90,6 +90,10 @@ flowchart TD
 | 菜单忌口过滤增强 | 已完成 | getTodayMenusByCombo 模板忌口校验 + 汤品忌口过滤 + pickReplacementFromCache 忌口过滤。详见 §11.9。 |
 | 菜谱批量规划与相似度分析 | 已完成 | batch-planner 覆盖矩阵分析 + recipe-similarity 语义去重 + generate.js 集成预警。详见 §11.9。 |
 | stressWeight 评分因子 | 待扩展 | 当前 isTimeSave 已驱动过滤与空气炸锅优先，未单独暴露 stressWeight 数值。 |
+| 凉拌菜 cook_type 修复 | 已完成 | menuGenerator 新增 getEffectiveCookType：名称含「凉拌/拍黄瓜/拌凉皮」等且 cook_type 误标为 steam 时按 cold_dress 处理；recipes.js 中拍黄瓜、火烧树番茄酱拌凉皮、傣味凉拌米线等 8 道改为 cold_dress，避免占蒸锅。 |
+| Preview 火力资源中控台 | 已完成 | 预览页「配置今晚的火力资源」：单/双灶拨钮（默认双灶）+ 蒸/微/炸/烤 圆环（置灰→点亮），晨雾粗陶风格；kitchenConfig 持久化 tasteProfile，confirmAndGo 传入 steps。 |
+| 统筹时间联动与呼吸态 | 已完成 | 切换灶台/家电后强制重算 schedulePreview + previewDashboard；400–600ms 呼吸态（isRecalculating + 哑金光晕 + 「✨ AI 时空折叠中...」）；无变化时 Toast「当前菜谱已处于最优物理排程」；wx.vibrateShort。 |
+| 首页 V2.0 更新弹窗 | 已完成 | 新老用户首次进入均弹一次；tableSync_version 存 2.0.0 后不再弹；晨雾粗陶面板（暖砂渐变+毛玻璃遮罩+三条亮点+「开启新厨房」）。 |
 
 ---
 
@@ -349,10 +353,10 @@ flowchart TD
 - **globalData._hesitantStart**  
   - home 页 onZenGo 中检测到犹豫（停留 > 60s 或切换状态 >= 3 次）时设为 true；steps 完成时读取并传入贴纸检测。
 
-- **scheduleEngine.computeSchedulePreview(recipes)**  
+- **scheduleEngine.computeSchedulePreview(recipes, kitchenConfig)**  
   - 位置：`miniprogram/utils/scheduleEngine.js`  
-  - 输入：菜谱数组（含 prep_time、cook_minutes、cook_type、name）。  
-  - 返回：totalTime、serialTime、savedTime、efficiency、cookingOrder、tips、devices、stoveCount 等；cookingOrder 中炖/蒸项带 noWatch: true。
+  - 输入：菜谱数组（含 prep_time、cook_minutes、cook_type、name）；可选 kitchenConfig（burners、hasSteamer 等）。  
+  - 返回：totalTime、serialTime、savedTime、efficiency、cookingOrder、tips、devices、stoveCount 等；cookingOrder 中炖/蒸项带 noWatch: true。单灶时总时长按串行递增（v5.2）。
 
 - **menuData.canSafelySlimMenus(menus)**  
   - 位置：`miniprogram/data/menuData.js`  
@@ -1138,6 +1142,58 @@ flowchart TD
 | miniprogram/pages/steps/steps.wxss | 里程碑卡片样式 + clean_gap 阶段标签样式 + 延后按钮样式 + helper 模式样式协调 + 按钮文字溢出处理 |
 | miniprogram/components/helper-card/helper-card.wxml | 操作项新增 hint 子文本展示 |
 | miniprogram/components/helper-card/helper-card.wxss | helper-action-body 列式布局 + helper-action-hint 样式 |
+
+### 11.11 2026-02-28 变更（凉拌菜修复、Preview 火力中控台、统筹联动呼吸态、V2.0 弹窗）
+
+> **本次为 v5.2 更新**：凉拌菜误标蒸锅数据与逻辑修复；预览页「火力资源」中控台（晨雾粗陶风格）；统筹时间随灶台/家电配置联动并增加呼吸态反馈；首页 V2.0 更新弹窗（新老用户仅弹一次）。
+
+#### 凉拌菜 cook_type 修复
+
+| 维度 | 说明 |
+|------|------|
+| 问题 | 部分凉拌菜（拍黄瓜、傣味凉拌米线等）在数据中为 cook_type: steam，被当作蒸锅菜参与排程。 |
+| 逻辑兜底 | menuGenerator 新增 getEffectiveCookType(recipe)：若名称含「凉拌/拍黄瓜/拌凉皮/拌凉/木瓜沙拉/凉拌米线/凉拌茄子/凉拌秋葵/凉拌荞麦面/手撕鸡」且 cook_type 为 steam，则按 cold_dress 返回；getRecipeDevice、getStepFocusLevel、triageSteps 中 isColdDish 均改用 getEffectiveCookType。 |
+| 数据修正 | recipes.js 中 8 道菜 cook_type 从 steam 改为 cold_dress：拍黄瓜、火烧树番茄酱拌凉皮、傣味凉拌米线、傣味柠檬手撕鸡、泰式凉拌虾木瓜沙拉、凉拌茄子豆芽、凉拌秋葵、魔芋凉拌荞麦面。 |
+
+#### Preview 火力资源中控台
+
+| 维度 | 说明 |
+|------|------|
+| 位置 | 预览页菜品列表与「再加个菜」之间。 |
+| 交互 | 单灶/双灶连体拨钮（默认双灶）；蒸锅/微波炉/空气炸锅/烤箱四枚圆环，置灰→点击点亮；底部辅助文案（蒸锅/箱、微波炉、空气炸锅、烤箱）。 |
+| 视觉 | 晨雾粗陶：暖砂渐变面板（#F5F2EB→#E8E3D8）、深胡桃木标题、凹槽拨钮、点亮态琥珀金微光。 |
+| 数据流 | 切换后持久化 tasteProfile.kitchenConfig + globalData.preference；confirmAndGo 将 kitchenConfig 写入 storage 并带入 steps；scheduleEngine.computeSchedulePreview(recipes, kitchenConfig) 单灶时总时长串行递增。 |
+
+#### 统筹时间联动与呼吸态
+
+| 维度 | 说明 |
+|------|------|
+| 触发 | 用户切换单/双灶或任意家电时，_refreshScheduleAfterKitchenChange 延迟 400–600ms 执行。 |
+| 呼吸态 | setData isRecalculating: true；上半区（header/dashboard/菜单列表/统筹区）opacity 0.5 + kc-breathe 动画；时间区文案改为「✨ AI 时空折叠中...」；计算完成后 setData schedulePreview + previewDashboard，isRecalculating: false，wx.vibrateShort。 |
+| 无变化提示 | 若 totalTime/serialTime 未变，Toast「✨ 当前菜谱已处于最优物理排程」（2s）。 |
+
+#### 首页 V2.0 更新弹窗
+
+| 维度 | 说明 |
+|------|------|
+| 触发 | onShow 时 wx.getStorageSync('tableSync_version') !== '2.0.0' 则 showUpdateModal: true。 |
+| 仅弹一次 | 关闭或点击「开启新厨房」时写入 tableSync_version: '2.0.0'，新老用户首次进入均展示。 |
+| 内容 | 主标题「TableSync 2.0 ｜ 时空折叠引擎上线」；三条亮点（AI 时空折叠、物理硬件自适应、真实厨房物理学）；按钮「开启新厨房」。 |
+| 视觉 | 毛玻璃遮罩 + 晨雾粗陶面板 + 深炭按钮与浅金文案，:active scale(0.95)。 |
+
+#### 涉及文件一览（§11.11）
+
+| 文件 | 变更摘要 |
+|------|----------|
+| miniprogram/data/menuGenerator.js | getEffectiveCookType；getRecipeDevice/getStepFocusLevel/triageSteps 使用 getEffectiveCookType |
+| miniprogram/data/recipes.js | 8 道凉拌菜 cook_type → cold_dress |
+| miniprogram/utils/scheduleEngine.js | computeSchedulePreview(recipes, kitchenConfig)；单灶时 totalTime 串行计算 |
+| miniprogram/pages/preview/preview.js | kitchenConfig 数据与事件；_refreshScheduleAfterKitchenChange 延迟+呼吸态+Toast+震动；_computeSchedulePreview 传入 kitchenConfig |
+| miniprogram/pages/preview/preview.wxml | 火力中控台结构；isRecalculating + dash-recalc-hint；preview-scroll-content 动态 class |
+| miniprogram/pages/preview/preview.wxss | 晨雾粗陶中控台样式；呼吸态 is-recalculating + kc-breathe |
+| miniprogram/pages/home/home.js | showUpdateModal；onShow 版本判断；onCloseUpdateModal/onConfirmUpdateModal |
+| miniprogram/pages/home/home.wxml | V2.0 更新弹窗（遮罩+面板+关闭+标题+三条+按钮） |
+| miniprogram/pages/home/home.wxss | 更新弹窗遮罩/面板/标题/列表/按钮样式 |
 
 ---
 
